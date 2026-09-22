@@ -1,86 +1,40 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full bg-gray-50">
 <head>
-    {% load static %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" type="text/css" href="{% static 'css/tailwind.css' %}">
-    <title>ManufactureHub</title>
+    <title>Log in — ManufactureHub</title>
+    <link rel="stylesheet" href="{% load static %}{% static 'css/tailwind-built.css' %}">
 </head>
-<body>
-<div class="container mx-auto px-4 py-4">
-    <div class="flex items-center justify-between">
-        <a href="#" class="text-xl font-bold text-gray-900 dark:text-white">ManufactureHub</a>
-        <nav>
-            <a href="#" class="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white px-3 py-2" onclick="showContent('default')">Home</a>
-            <a href="#" onclick="showContent('about-mh')" class="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white px-3 py-2">About MH</a>
-            <a href="#" onclick="showContent('contact')" class="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white px-3 py-2">Contact us</a>
-            <a href="#" onclick="showContent('login')"  class="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white px-3 py-2">Login</a>
-        </nav>
-    </div>
-</div>
-</header>
-<br/><br/><br/>
-<div class="container mx-auto px-4 py-8">
-    <div id="default" style="display: none;">
-        <div id="login" class="loginclass">
-
-            <div class="login-card">
-                {% if user.is_authenticated %}
-                <h2>Welcome back, {{ request.user.username }}!</h2>
-                <a class="cta" href="{% url 'home' %}">
-                    <span>Go to Home</span>
-                    <svg width="15px" height="10px" viewBox="0 0 13 10">
-                        <path d="M1,5 L11,5"></path>
-                        <polyline points="8 1 12 5 8 9"></polyline>
-                    </svg>
-                </a>
-                <a class="cta" href="{% url 'logout' %}">
-                    <span>Logout</span>
-                    <svg width="15px" height="10px" viewBox="0 0 13 10">
-                        <path d="M1,5 L11,5"></path>
-                        <polyline points="8 1 12 5 8 9"></polyline>
-                    </svg>
-                </a>
-                {% else %}
-                <div class="container d-flex justify-content-center align-items-center min-vh-100">
-                    <div class="card shadow-lg p-4" style="width: 100%; max-width: 400px;">
-                        <div class="card-body">
-                            <h2 class="card-title text-center mb-4">Please Sign In</h2>
-                            <form method="POST" class="login-form">
-                                {% csrf_token %}
-                                <fieldset class="form-group">
-                                    {{ form|crispy }}
-                                    <div class="d-grid mt-3">
-                                        <button class="btn btn-primary" type="submit">
-                                            Login
-                                            <svg width="15px" height="10px" viewBox="0 0 13 10" class="ms-2">
-                                                <path d="M1,5 L11,5"></path>
-                                                <polyline points="8 1 12 5 8 9"></polyline>
-                                            </svg>
-                                        </button>
-                                    </div>
-                                </fieldset>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-
-                {% endif %}
+<body class="h-full flex items-center justify-center px-4">
+    <div class="w-full max-w-sm">
+        <div class="text-center mb-8">
+            <a href="{% url 'home' %}" class="text-2xl font-semibold text-brand-700">ManufactureHub</a>
+            <p class="text-gray-500 text-sm mt-1">Log in to your account</p>
+        </div>
+        <div class="card">
+            {% if form.non_field_errors %}
+            <div class="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">
+                {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
             </div>
+            {% endif %}
+            <form method="post" class="space-y-4">
+                {% csrf_token %}
+                <div>
+                    <label for="id_username" class="field-label">Email</label>
+                    <input type="email" name="username" id="id_username" required autofocus class="field-input" placeholder="you@example.com">
+                </div>
+                <div>
+                    <label for="id_password" class="field-label">Password</label>
+                    <input type="password" name="password" id="id_password" required class="field-input">
+                </div>
+                <input type="hidden" name="next" value="{{ next }}">
+                <button type="submit" class="btn-primary w-full">Log in</button>
+            </form>
         </div>
+        <p class="text-center text-sm text-gray-500 mt-6">
+            New here? <a href="{% url 'register' %}" class="text-brand-600 hover:underline">Create an account</a>
+        </p>
     </div>
-</div>
-<footer class="bg-gray-900 text-white">
-    <div class="container mx-auto px-4 py-4">
-        <div class="flex items-center justify-between">
-            <p>&copy; 2024 ManufactureHub. All rights reserved.</p>
-            <nav>
-                <a href="#" class="hover:text-gray-300 px-2" onclick="showContent('privacy-policy')">Privacy Policy</a>
-                <a href="#" class="hover:text-gray-300 px-2" onclick="showContent('terms-of-service')">Terms of Service</a>
-            </nav>
-        </div>
-    </div>
-</footer>
 </body>
 </html>

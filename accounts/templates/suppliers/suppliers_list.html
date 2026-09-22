@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Manufacturers{% endblock title %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <h1 class="text-xl font-semibold text-gray-900">Manufacturers</h1>
+</div>
+
+<div class="card">
+    {% if object_list %}
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+            <thead>
+                <tr class="text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    <th class="py-2 pr-4">Company Name</th>
+                    <th class="py-2 pr-4">Phone</th>
+                    <th class="py-2 pr-4">Address</th>
+                    <th class="py-2 pr-4">City</th>
+                    <th class="py-2 pr-4">State</th>
+                    <th class="py-2 pr-4">Country</th>
+                    <th class="py-2 pr-4">Action</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for supplier in object_list %}
+                <tr>
+                    <td class="py-2 pr-4">
+                        <a href="{% url 'supplier' supplier.pk %}" class="font-medium text-brand-600 hover:underline">{{ supplier.companyname }}</a>
+                    </td>
+                    <td class="py-2 pr-4">{{ supplier.phone }}</td>
+                    <td class="py-2 pr-4">{{ supplier.address }}</td>
+                    <td class="py-2 pr-4">{{ supplier.city }}</td>
+                    <td class="py-2 pr-4">{{ supplier.state }}</td>
+                    <td class="py-2 pr-4">{{ supplier.country }}</td>
+                    <td class="py-2 pr-4 space-x-2">
+                        {% if supplier.is_deleted %}
+                        <a href="{% url 'activate-supplier' supplier.pk %}" class="badge bg-green-50 text-green-700">Activate</a>
+                        {% else %}
+                        <a href="{% url 'edit-supplier' supplier.pk %}" class="badge bg-green-50 text-green-700">Edit</a>
+                        <a href="{% url 'delete-supplier' supplier.pk %}" class="badge bg-red-50 text-red-700">Delete</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if is_paginated %}
+    <div class="flex flex-wrap items-center gap-2 mt-6">
+        {% if page_obj.has_previous %}
+        <a class="btn-secondary" href="?page=1">First</a>
+        <a class="btn-secondary" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+        {% endif %}
+        {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+            <a class="btn-primary" href="?page={{ num }}">{{ num }}</a>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+            <a class="btn-secondary" href="?page={{ num }}">{{ num }}</a>
+            {% endif %}
+        {% endfor %}
+        {% if page_obj.has_next %}
+        <a class="btn-secondary" href="?page={{ page_obj.next_page_number }}">Next</a>
+        <a class="btn-secondary" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+        {% endif %}
+    </div>
+    {% endif %}
+    {% else %}
+    <p class="text-center text-gray-500 py-10">No manufacturers found.</p>
+    {% endif %}
+</div>
+{% endblock content %}

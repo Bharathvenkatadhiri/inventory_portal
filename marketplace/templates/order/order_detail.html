@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% load custom_filters %}
+{% block title %}Order #{{ bill.billno }} — ManufactureHub{% endblock %}
+{% block content %}
+
+<div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-semibold text-gray-900">Order #{{ bill.billno }}</h1>
+    <a href="{% url 'orders-list' %}" class="text-sm text-brand-600 hover:underline">Back to orders</a>
+</div>
+
+<div class="grid gap-6 lg:grid-cols-3 mb-6">
+    <div class="card lg:col-span-2">
+        <h2 class="font-semibold text-gray-900 mb-4">Order summary</h2>
+        <dl class="grid grid-cols-2 gap-4 text-sm mb-6">
+            <div>
+                <dt class="text-gray-500">Requirement</dt>
+                <dd class="text-gray-900"><a href="{% url 'requirement' demand.pk %}" class="text-brand-600 hover:underline">{{ demand.title }}</a></dd>
+            </div>
+            <div>
+                <dt class="text-gray-500">Manufacturer</dt>
+                <dd class="text-gray-900">{{ supplier.companyname|default:supplier }}</dd>
+            </div>
+            <div>
+                <dt class="text-gray-500">Customer</dt>
+                <dd class="text-gray-900">{{ customer.Name }}</dd>
+            </div>
+            <div>
+                <dt class="text-gray-500">Order date</dt>
+                <dd class="text-gray-900">{{ bill.created_at.date }}</dd>
+            </div>
+        </dl>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                <thead>
+                    <tr class="text-left text-gray-500">
+                        <th class="py-2 pr-4">Part</th>
+                        <th class="py-2 pr-4">Code</th>
+                        <th class="py-2 pr-4">Qty</th>
+                        <th class="py-2 pr-4">Rate</th>
+                        <th class="py-2 pr-4">Amount</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for item in items %}
+                    <tr>
+                        <td class="py-2 pr-4 text-gray-900">{{ item.part_name }}</td>
+                        <td class="py-2 pr-4 text-gray-600">{{ item.technology|slice:":3"|upper }}-{{ item.Material|slice:":3"|upper }}-{{ item.id }}</td>
+                        <td class="py-2 pr-4 text-gray-600">{{ item.quantity }}</td>
+                        <td class="py-2 pr-4 text-gray-600">{{ quote.quote_price }}</td>
+                        <td class="py-2 pr-4 text-gray-600">{{ item.quantity|multiply:quote.quote_price }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="4" class="py-2 pr-4 text-right font-semibold text-gray-900">Total</td>
+                        <td class="py-2 pr-4 font-semibold text-gray-900">{{ demand.quote_currency }} {{ total }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        {% include "order/_order_status.html" %}
+    </div>
+</div>
+
+{% endblock content %}

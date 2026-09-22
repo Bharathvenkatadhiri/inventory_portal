@@ -1,221 +1,41 @@
-{% extends "base_register.html" %}
-{% block title %} Welcome {{ session_first_name }}, {% endblock title %}
-{% block content %}
-<div class="container">
-    <h3 class="text-center mb-4" style="color: #1a9ba9; font-weight: bold;">Welcome {{ session_first_name }},</h3>
-    <nav class="navbar navbar-light bg-light">
-        <div class="container">
-            <ul class="nav">
-                <li class="nav-item">
-                    <a class="nav-link step-link" href="#" data-step="1">Step 1: Company Details</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link step-link" href="#" data-step="2">Step 2: Activity and Competency</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link step-link" href="#" data-step="3">Step 3: Financial Details</a>
-                </li>
-            </ul>
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manufacturer Details — ManufactureHub</title>
+    <link rel="stylesheet" href="{% load static %}{% static 'css/tailwind-built.css' %}">
+</head>
+<body class="h-full flex items-center justify-center px-4 py-10">
+    <div class="w-full max-w-2xl">
+        <div class="text-center mb-8">
+            <a href="{% url 'home' %}" class="text-2xl font-semibold text-brand-700">ManufactureHub</a>
+            <p class="text-gray-500 text-sm mt-1">Welcome {{ session_first_name }}, tell us about your company</p>
         </div>
-    </nav>
-    <div class="row mt-4">
-        <div class="col-md-8 offset-md-2">
-            <form method="post" action="{% url 'register-supplier' %}">
+        <div class="card">
+            {% load widget_tweaks %}
+            {% if form.non_field_errors %}
+            <div class="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">
+                {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+            </div>
+            {% endif %}
+            <form method="post" action="{% url 'register-supplier' %}" class="space-y-4">
                 {% csrf_token %}
-                <!-- Hidden Field for User ID -->
-                <input type="text" hidden name="user" class="form-control{% if form.user.errors %} is-invalid{% endif %}" id="id_user" value="{{ session_user_id }}">
-                <div id="section-1" class="form-section">
-                    <div class="form-group">
-                        <label for="id_companyname">Company Name:</label>
-                        <input type="text" name="companyname" class="form-control{% if form.companyname.errors %} is-invalid{% endif %}" id="id_companyname" value="{{ form.companyname.value|default_if_none:'' }}">
-                        {% for error in form.companyname.errors %}
-                        <div class="invalid-feedback">{{ error }}</div>
-                        {% endfor %}
+                {% for field in form %}
+                    {% if field.is_hidden %}
+                        {{ field }}
+                    {% else %}
+                    <div>
+                        <label for="{{ field.id_for_label }}" class="field-label">{{ field.label }}</label>
+                        {{ field|add_class:"field-input" }}
+                        {% if field.help_text %}<p class="text-xs text-gray-500 mt-1">{{ field.help_text }}</p>{% endif %}
+                        {% for error in field.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
                     </div>
-                    <div class="form-group">
-                        <label for="id_email">Email ID:</label>
-                        <input type="text" name="email" class="form-control{% if form.email.errors %} is-invalid{% endif %}" id="id_email" value="{{ form.email.value|default_if_none:'' }}">
-                        {% for error in form.email.errors %}
-                        <div class="invalid-feedback">{{ error }}</div>
-                        {% endfor %}
-                    </div>                    
-                    <div class="form-group">
-                        <label for="id_phone">Phone:</label>
-                        <input type="text" name="phone" class="form-control{% if form.phone.errors %} is-invalid{% endif %}" id="id_phone" value="{{ form.phone.value|default_if_none:'' }}">
-                        {% for error in form.phone.errors %}
-                        <div class="invalid-feedback">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-                    <div class="form-group">
-                        <label for="id_address">Address:</label>
-                        <input type="text" name="address" class="form-control{% if form.address.errors %} is-invalid{% endif %}" id="id_address" value="{{ form.address.value|default_if_none:'' }}">
-                        {% for error in form.address.errors %}
-                        <div class="invalid-feedback">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-                    <div class="form-group">
-                        <label for="id_city">City:</label>
-                        <input type="text" name="city" class="form-control{% if form.city.errors %} is-invalid{% endif %}" id="id_city" value="{{ form.city.value|default_if_none:'' }}">
-                        {% for error in form.city.errors %}
-                        <div class="invalid-feedback">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-                    <div class="form-group">
-                        <label for="id_state">State:</label>
-                        <input type="text" name="state" class="form-control{% if form.state.errors %} is-invalid{% endif %}" id="id_state" value="{{ form.state.value|default_if_none:'' }}">
-                        {% for error in form.state.errors %}
-                        <div class="invalid-feedback">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-                    <div class="form-group">
-                        <label for="id_country">Country:</label>
-                        <input type="text" name="country" class="form-control{% if form.country.errors %} is-invalid{% endif %}" id="id_country" value="{{ form.country.value|default_if_none:'' }}">
-                        {% for error in form.country.errors %}
-                        <div class="invalid-feedback">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-                    <button type="button" class="next-btn btn btn-primary btn-block" onclick="showSection('section-2')">Next</button>
-                </div>
-                <div id="section-2" class="form-section" style="display:none;">                 
-                    <div class="form-group">
-                        <label for="id_activity_type">Activity Type:</label>
-                        <select name="activity_type" class="form-control{% if form.activity_type.errors %} is-invalid{% endif %}" id="id_activity_type">
-                            {% for value, label in form.activity_type.field.choices %}
-                            <option value="{{ value }}" {% if value == form.activity_type.value %}selected{% endif %}>{{ label }}</option>
-                            {% endfor %}
-                        </select>
-                        {% for error in form.activity_type.errors %}
-                        <div class="invalid-feedback">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-                    <div class="form-group">
-                        <label for="id_production_area">Production Area:</label>
-                        <input type="number" name="production_area" class="form-control{% if form.production_area.errors %} is-invalid{% endif %}" id="id_production_area" value="{{ form.production_area.value|default_if_none:'' }}">
-                        {% for error in form.production_area.errors %}
-                        <div class="invalid-feedback">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-                    <div class="form-group">
-                        <label for="id_manufacturing_competency1">Manufacturing Competency 1:</label>
-                        <select name="manufacturing_competency1" class="form-control{% if form.manufacturing_competency1.errors %} is-invalid{% endif %}" id="id_manufacturing_competency1">
-                            {% for value, label in form.manufacturing_competency1.field.choices %}
-                            <option value="{{ value }}" {% if value == form.manufacturing_competency1.value %}selected{% endif %}>{{ label }}</option>
-                            {% endfor %}
-                        </select>
-                        {% for error in form.manufacturing_competency1.errors %}
-                        <div class="invalid-feedback">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-                    <div class="form-group">
-                        <label for="id_manufacturing_competency2">Manufacturing Competency 2:</label>
-                        <select name="manufacturing_competency2" class="form-control{% if form.manufacturing_competency2.errors %} is-invalid{% endif %}" id="id_manufacturing_competency2">
-                            {% for value, label in form.manufacturing_competency2.field.choices %}
-                            <option value="{{ value }}" {% if value == form.manufacturing_competency2.value %}selected{% endif %}>{{ label }}</option>
-                            {% endfor %}
-                        </select>
-                        {% for error in form.manufacturing_competency2.errors %}
-                        <div class="invalid-feedback">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-                    <div class="form-group">
-                        <label for="id_info_source">Information Source:</label>
-                        <select name="info_source" class="form-control{% if form.info_source.errors %} is-invalid{% endif %}" id="id_info_source">
-                            {% for value, label in form.info_source.field.choices %}
-                            <option value="{{ value }}" {% if value == form.info_source.value %}selected{% endif %}>{{ label }}</option>
-                            {% endfor %}
-                        </select>
-                        {% for error in form.info_source.errors %}
-                        <div class="invalid-feedback">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-                    <button type="button" class="prev-btn btn btn-secondary" onclick="showSection('section-1')">Previous</button>
-                    <button type="button" class="next-btn btn btn-primary" onclick="showSection('section-3')">Next</button>
-                </div>
-                <div id="section-3" class="form-section" style="display:none;">
-                    <div class="form-group">
-                        <label for="id_amount_of_employees">Amount of Employees:</label>
-                        <select name="amount_of_employees" class="form-control{% if form.amount_of_employees.errors %} is-invalid{% endif %}" id="id_amount_of_employees">
-                            {% for value, label in form.amount_of_employees.field.choices %}
-                            <option value="{{ value }}" {% if value == form.amount_of_employees.value %}selected{% endif %}>{{ label }}</option>
-                            {% endfor %}
-                        </select>
-                        {% for error in form.amount_of_employees.errors %}
-                        <div class="invalid-feedback">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-
-                    <div class="form-group">
-                        <label for="id_turnover_per_year">Certificate:</label>
-                        <select name="turnover_per_year" class="form-control{% if form.turnover_per_year.errors %} is-invalid{% endif %}" id="id_turnover_per_year">
-                            {% for value, label in form.turnover_per_year.field.choices %}
-                            <option value="{{ value }}" {% if value == form.turnover_per_year.value %}selected{% endif %}>{{ label }}</option>
-                            {% endfor %}
-                        </select>
-                        {% for error in form.turnover_per_year.errors %}
-                        <div class="invalid-feedback">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-                    <div class="form-group">
-                        <label for="id_certificates">Certificate:</label>
-                        <select name="certificates" class="form-control{% if form.certificates.errors %} is-invalid{% endif %}" id="id_certificates">
-                            {% for value, label in form.certificates.field.choices %}
-                            <option value="{{ value }}" {% if value == form.certificates.value %}selected{% endif %}>{{ label }}</option>
-                            {% endfor %}
-                        </select>
-                        {% for error in form.certificates.errors %}
-                        <div class="invalid-feedback">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-                    <button type="button" class="prev-btn btn btn-secondary" onclick="showSection('section-2')">Previous</button>
-                    <button type="submit" class="submit-btn btn btn-success">Submit</button>
-                </div>
+                    {% endif %}
+                {% endfor %}
+                <button type="submit" class="btn-primary w-full">Submit</button>
             </form>
         </div>
     </div>
-</div>
-
-<!-- JavaScript for show-hide functionality and step highlighting -->
-<script>
-    function showSection(sectionId) {
-        // Hide all sections and remove active class from nav links
-        document.querySelectorAll('.form-section').forEach(section => {
-            section.style.display = 'none';
-        });
-        document.querySelectorAll('.step-link').forEach(link => {
-            link.classList.remove('active');
-        });
-
-        // Show the requested section and highlight nav link
-        document.getElementById(sectionId).style.display = 'block';
-        document.querySelector(`.step-link[data-step="${sectionId.split('-')[1]}"]`).classList.add('active');
-    }
-
-    // Initial setup to highlight the first step
-    document.addEventListener('DOMContentLoaded', function() {
-        showSection('section-1');
-    });
-</script>
-
-<style>
-    .form-section {
-        margin-bottom: 20px;
-    }
-    .form-group {
-        margin-bottom: 10px;
-    }
-    button.next-btn, button.prev-btn {
-        margin-top: 10px;
-    }
-    /* Nav Bar Styles */
-    .navbar-nav {
-        flex-direction: row;
-    }
-    .nav-link {
-        padding: 0.5rem 1rem;
-    }
-    .nav-link.active {
-        font-weight: bold;
-        color: #ea2088;
-    }
-</style>
-{% endblock %}
+</body>
+</html>

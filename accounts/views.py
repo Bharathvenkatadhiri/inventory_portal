@@ -1,13 +1,12 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
-from .forms import SupplierDetailsForm, UserRegistrationForm, SelectCustomer, UpdateSubscription, updateCustomer
-from .models import Supplier_details, Customer, SubscriptionPlan
+from django.contrib.auth.decorators import login_not_required
+from .forms import SupplierDetailsForm, updateSupplierDetailsForm, UserRegistrationForm, SelectCustomer, UpdateSubscription, updateCustomer
+from .models import ManufacturerProfile, ConsumerProfile, SubscriptionPlan
 from django.views.generic import (View, ListView, CreateView, UpdateView, DeleteView)
 from django.contrib.messages.views import SuccessMessageMixin
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
-from django_filters.views import FilterView
-from .filters import CustomerFilter
 from django.conf import settings
 from django.apps import apps
 from core.settings import subscription_plan_details
@@ -17,9 +16,8 @@ app_label, model_name = model_str.split('.')
 User = apps.get_model(app_label, model_name)
 
 
-
 class CreateSupplier(SuccessMessageMixin, CreateView):
-    model = Supplier_details
+    model = ManufacturerProfile
     form_class = SupplierDetailsForm
     template_name = "register_supplier.html"
     success_url = '/#login'  # Redirects to home page after submitting the form
@@ -43,12 +41,13 @@ class CreateSupplier(SuccessMessageMixin, CreateView):
         return super().form_invalid(form)
 
 
+@login_not_required
 def register(request):
     if request.method == 'POST':
         email = request.POST.get('email')
         is_staff = request.POST.get('is_staff')
-        if Customer.objects.filter(email=email).exists() \
-            or Supplier_details.objects.filter(email=email).exists():
+        if ConsumerProfile.objects.filter(email=email).exists() \
+            or ManufacturerProfile.objects.filter(email=email).exists():
                 form = UserRegistrationForm(request.POST)
         else:
             if User.objects.filter(email=email).exists():
@@ -80,9 +79,8 @@ def register(request):
     return render(request, 'register_first.html', {'form': form})
 
 
-
 class CreateCustomer(SuccessMessageMixin, CreateView):
-    model = Customer
+    model = ConsumerProfile
     form_class = SelectCustomer
     success_url = '/#login'
     success_message = "Customer has been created successfully"
@@ -105,13 +103,11 @@ class CreateCustomer(SuccessMessageMixin, CreateView):
 def ViewProfileDetails(request):
     context = {}
     if request.user.is_staff:
-        context['base_template'] = 'supplier_base.html'
-        supplier = Supplier_details.objects.filter(user=request.user).first()
+        supplier = ManufacturerProfile.objects.filter(user=request.user).first()
         if supplier:
             context['supplier'] = supplier
     else:
-        context['base_template'] = 'customer_base.html'
-        customer = Customer.objects.filter(user=request.user.id).first()
+        customer = ConsumerProfile.objects.filter(user=request.user.id).first()
         if customer:
             context['customer'] = customer
     return render(request, 'profile.html', context)
@@ -119,22 +115,24 @@ def ViewProfileDetails(request):
 
 
 
-class CustomerListView(ListView,FilterView):
-    model = Customer
-    filterset_class = CustomerFilter
+class CustomerListView(ListView):
+    model = ConsumerProfile
     template_name = "customer/customer_list.html"
-    queryset = Customer.objects.filter()
     paginate_by = 5
+
+    def get_queryset(self):
+        queryset = ConsumerProfile.objects.filter()
+        email = self.request.GET.get('email')
+        if email:
+            queryset = queryset.filter(email__icontains=email)
+        return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['base_template'] = 'customer_base.html'
-        if self.request.user.is_staff:
-            context['base_template'] = 'supplier_base.html'     
         return context
 
 class CustomerCreateView(SuccessMessageMixin, CreateView):
-    model = Customer
+    model = ConsumerProfile
     form_class = SelectCustomer
     success_url = '/accounts/customers'
     success_message = "Customer has been created successfully"
@@ -144,13 +142,10 @@ class CustomerCreateView(SuccessMessageMixin, CreateView):
         context = super().get_context_data(**kwargs)
         context["title"] = 'New Customer'
         context["savebtn"] = 'Add Customer'
-        context['base_template'] = 'customer_base.html'
-        if self.request.user.is_staff:
-            context['base_template'] = 'supplier_base.html'     
         return context
 
 class CustomerUpdateView(SuccessMessageMixin, UpdateView):
-    model = Customer
+    model = ConsumerProfile
     form_class = updateCustomer
     success_url = '/accounts/customers'
     success_message = "Customer details has been updated successfully"
@@ -160,60 +155,48 @@ class CustomerUpdateView(SuccessMessageMixin, UpdateView):
         context = super().get_context_data(**kwargs)
         context["title"] = 'Edit Customer'
         context["savebtn"] = 'Save Changes'
-        context['base_template'] = 'customer_base.html'
-        if self.request.user.is_staff:
-            context['base_template'] = 'supplier_base.html'     
         return context
 
 class CustomerDeleteView(View):
     template_name = "customer/delete_customer.html"
     success_message = "Customer Record has been deleted successfully"
 
-    def get(self, request, pk):      
-        customer = get_object_or_404(Customer, pk=pk)
-        base_template = 'customer_base.html'
-        if self.request.user.is_staff:
-            base_template = 'supplier_base.html'            
-        return render(request, self.template_name, {'object' : customer,'base_template':base_template})
+    def get(self, request, pk):
+        customer = get_object_or_404(ConsumerProfile, pk=pk)
+        return render(request, self.template_name, {'object' : customer})
 
     def post(self, request, pk):
-        user_id = Customer.objects.filter(pk=pk).values('user_id').last()
+        user_id = ConsumerProfile.objects.filter(pk=pk).values('user_id').last()
         User.objects.filter(id=user_id['user_id']).update(is_active=False)
-        customer = get_object_or_404(Customer, pk=pk)
+        customer = get_object_or_404(ConsumerProfile, pk=pk)
         customer.is_deleted = True
         customer.save()
         messages.success(request, self.success_message)
         return redirect('customers-list')
-    
+
 class CustomeractivateView(View):
     template_name = "customer/activate_customer.html"
     success_message = "Customer Record has been activated successfully"
 
-    def get(self, request, pk):      
-        customer = get_object_or_404(Customer, pk=pk)
-        base_template = 'customer_base.html'
-        if self.request.user.is_staff:
-            base_template = 'supplier_base.html'            
-        return render(request, self.template_name, {'object' : customer,'base_template':base_template})
+    def get(self, request, pk):
+        customer = get_object_or_404(ConsumerProfile, pk=pk)
+        return render(request, self.template_name, {'object' : customer})
 
     def post(self, request, pk):
-        user_id = Customer.objects.filter(pk=pk).values('user_id').last()
+        user_id = ConsumerProfile.objects.filter(pk=pk).values('user_id').last()
         User.objects.filter(id=user_id['user_id']).update(is_active=True)
-        customer = get_object_or_404(Customer, pk=pk)
+        customer = get_object_or_404(ConsumerProfile, pk=pk)
         customer.is_deleted = False
         customer.save()
         messages.success(request, self.success_message)
-        return redirect('customers-list')    
+        return redirect('customers-list')
 
 class CustomerView(View):
     def get(self, request, pk):
-        customer = get_object_or_404(Customer, pk=pk)
-        base_template = 'customer_base.html'
-        if self.request.user.is_staff:
-            base_template = 'supplier_base.html'            
-        return render(request, 'customer/customer.html', {'customer' : customer,'base_template':base_template})
+        customer = get_object_or_404(ConsumerProfile, pk=pk)
+        return render(request, 'customer/customer.html', {'customer' : customer})
 
-class SubscriptionView(ListView,FilterView):
+class SubscriptionView(ListView):
     model = SubscriptionPlan
     template_name = "subscription_list.html"
     queryset = SubscriptionPlan.objects.all()
@@ -221,10 +204,7 @@ class SubscriptionView(ListView,FilterView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['base_template'] = 'customer_base.html'
-        if self.request.user.is_staff:
-            context['base_template'] = 'supplier_base.html'
-        return context    
+        return context
 
 class SubscriptionDeleteView(View):
     template_name = "delete_subscription.html"
@@ -232,10 +212,7 @@ class SubscriptionDeleteView(View):
 
     def get(self, request, pk):
         subscription = get_object_or_404(SubscriptionPlan, pk=pk)
-        base_template = 'customer_base.html'
-        if self.request.user.is_staff:
-            base_template = 'supplier_base.html'            
-        return render(request, self.template_name, {'object' : subscription,'base_template':base_template})
+        return render(request, self.template_name, {'object' : subscription})
 
     def post(self, request, pk):
         subscription = get_object_or_404(SubscriptionPlan, pk=pk)
@@ -243,7 +220,7 @@ class SubscriptionDeleteView(View):
         subscription.save()
         messages.success(request, self.success_message)
         return redirect('subscription-list')
-    
+
 class SubscriptionUpdateView(SuccessMessageMixin, UpdateView):
     model = SubscriptionPlan
     form_class = UpdateSubscription
@@ -255,7 +232,72 @@ class SubscriptionUpdateView(SuccessMessageMixin, UpdateView):
         context = super().get_context_data(**kwargs)
         context["title"] = 'Edit Customer'
         context["savebtn"] = 'Save Changes'
-        context['base_template'] = 'customer_base.html'
-        if self.request.user.is_staff:
-            context['base_template'] = 'supplier_base.html'
         return context
+
+
+class SupplierListView(ListView):
+    model = ManufacturerProfile
+    template_name = "suppliers/suppliers_list.html"
+    queryset = ManufacturerProfile.objects.filter()
+    paginate_by = 10
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        return context
+
+
+class SupplierUpdateView(SuccessMessageMixin, UpdateView):
+    model = ManufacturerProfile
+    form_class = updateSupplierDetailsForm
+    success_url = '/accounts/suppliers'
+    success_message = "Supplier details has been updated successfully"
+    template_name = "suppliers/edit_supplier.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["title"] = 'Edit Supplier'
+        context["savebtn"] = 'Save Changes'
+        return context
+
+
+class SupplierDeleteView(View):
+    template_name = "suppliers/delete_supplier.html"
+    success_message = "Manufacturer has been deleted successfully"
+
+    def get(self, request, pk):
+        supplier = get_object_or_404(ManufacturerProfile, pk=pk)
+        return render(request, self.template_name, {'object': supplier})
+
+    def post(self, request, pk):
+        supplier = get_object_or_404(ManufacturerProfile, pk=pk)
+        supplier.is_deleted = True
+        supplier.save()
+        messages.success(request, self.success_message)
+        return redirect('suppliers-list')
+
+
+class SupplieractivateView(View):
+    template_name = "suppliers/activate_supplier.html"
+    success_message = "Supplier Record has been activated successfully"
+
+    def get(self, request, pk):
+        supplier = get_object_or_404(ManufacturerProfile, pk=pk)
+        return render(request, self.template_name, {'object': supplier})
+
+    def post(self, request, pk):
+        user_id = ManufacturerProfile.objects.filter(pk=pk).values('user_id').last()
+        User.objects.filter(id=user_id['user_id']).update(is_active=True)
+        supplier = get_object_or_404(ManufacturerProfile, pk=pk)
+        supplier.is_deleted = False
+        supplier.save()
+        messages.success(request, self.success_message)
+        return redirect('suppliers-list')
+
+
+class SupplierView(View):
+    def get(self, request, pk=''):
+        supplierobj = get_object_or_404(ManufacturerProfile, pk=pk)
+        context = {
+            'supplier': supplierobj,
+        }
+        return render(request, 'suppliers/supplier.html', context)

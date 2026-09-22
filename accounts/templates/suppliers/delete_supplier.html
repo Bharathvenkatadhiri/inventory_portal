@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Delete Manufacturer{% endblock title %}
+{% block content %}
+<div class="card max-w-lg">
+    <h1 class="text-lg font-semibold text-gray-900 mb-2">Delete manufacturer</h1>
+    <p class="text-sm text-gray-600 mb-6">Are you sure you want to delete the manufacturer "{{ object.companyname }}"?</p>
+    <form method="post" class="flex gap-3">
+        {% csrf_token %}
+        <button type="submit" class="btn-danger">Yes, delete</button>
+        <a href="{% url 'suppliers-list' %}" class="btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock content %}

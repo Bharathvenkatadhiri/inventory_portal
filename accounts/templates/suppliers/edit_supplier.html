@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+{% block title %}{{ title }}{% endblock title %}
+{% block content %}
+<h1 class="text-xl font-semibold text-gray-900 mb-6">{{ title }}</h1>
+
+<div class="card max-w-2xl">
+    <form method="post" enctype="multipart/form-data" class="space-y-4">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+        <div class="rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">
+            {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+        </div>
+        {% endif %}
+        {% for field in form %}
+            {% if field.is_hidden %}
+                {{ field }}
+            {% else %}
+            <div>
+                <label for="{{ field.id_for_label }}" class="field-label">{{ field.label }}</label>
+                {% if field|widget_type == 'checkboxinput' %}
+                <input type="checkbox" name="{{ field.html_name }}" id="{{ field.id_for_label }}" {% if field.value %}checked{% endif %} class="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500">
+                {% else %}
+                {{ field|add_class:"field-input" }}
+                {% endif %}
+                {% if field.help_text %}<p class="text-xs text-gray-500 mt-1">{{ field.help_text }}</p>{% endif %}
+                {% for error in field.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+            </div>
+            {% endif %}
+        {% endfor %}
+        <div class="flex gap-3 pt-2">
+            <button type="submit" class="btn-primary">{{ savebtn }}</button>
+            {% if title == "New Supplier" %}
+            <button type="reset" class="btn-secondary">Reset</button>
+            {% endif %}
+            <a href="{% url 'suppliers-list' %}" class="btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock content %}

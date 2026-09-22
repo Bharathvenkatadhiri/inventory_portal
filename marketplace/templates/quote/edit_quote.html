@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — ManufactureHub{% endblock %}
+{% block content %}
+
+<h1 class="text-2xl font-semibold text-gray-900 mb-2">{{ title }}</h1>
+{% if demand %}
+<p class="text-sm text-gray-500 mb-6">For requirement: <a href="{% url 'requirement' demand.pk %}" class="text-brand-600 hover:underline">{{ demand.title }}</a></p>
+{% endif %}
+
+<div class="card max-w-xl">
+    <form method="post"{% if not quote %} hx-post="{{ request.get_full_path }}" hx-swap="none"{% endif %}>
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+
+        <div class="space-y-4">
+            <div>
+                <label for="{{ form.quote_price.id_for_label }}" class="field-label">Quote price</label>
+                {{ form.quote_price }}
+                {% for error in form.quote_price.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
+            </div>
+            <div>
+                <label for="{{ form.note.id_for_label }}" class="field-label">Note</label>
+                {{ form.note }}
+                {% for error in form.note.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3 mt-6">
+            <button type="submit" class="btn-primary">{{ savebtn }}</button>
+            {% if delbtn %}
+            <a href="{% url 'delete-quote' quote.pk %}" class="btn-danger">{{ delbtn }}</a>
+            {% endif %}
+            <a href="{% url 'quote-list' %}" class="btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+{% endblock content %}

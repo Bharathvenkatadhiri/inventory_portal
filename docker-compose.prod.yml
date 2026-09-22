@@ -1,0 +1,21 @@
+# Production stack. Standalone on purpose — it does NOT layer on top of
+# docker-compose.yml (that file's web service hardcodes the dev db
+# container hostname, which would silently override the real managed
+# DATABASE_URL you set in .env). No bundled Postgres here — point .env at
+# a managed instance (see .env.prod.example).
+#
+# Usage:
+#   cp .env.prod.example .env   # fill in every value
+#   docker compose -f docker-compose.prod.yml up -d --build
+services:
+  web:
+    build: .
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py collectstatic --noinput &&
+             gunicorn core.wsgi:application --bind 0.0.0.0:8000"
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    restart: unless-stopped

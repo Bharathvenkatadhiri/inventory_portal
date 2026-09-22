@@ -1,0 +1,40 @@
+# Local development stack: bundles a Postgres container alongside the app
+# so you don't need anything installed locally beyond Docker.
+#
+# Usage: `docker compose up` — Compose auto-merges docker-compose.override.yml
+# on top of this file automatically (bind mounts, runserver, exposed db
+# port), no extra flags needed.
+#
+# This file is NOT used in production — see docker-compose.prod.yml, which
+# is a separate, standalone file (no bundled db; points at a managed
+# instance instead).
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: marketplace
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: .
+    env_file:
+      - .env
+    environment:
+      # Override .env's localhost-based URL (correct for running Django
+      # directly on the host) with the in-network service name Compose
+      # gives this container.
+      DATABASE_URL: postgres://postgres:postgres@db:5432/marketplace
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

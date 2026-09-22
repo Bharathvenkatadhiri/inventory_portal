@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ supplier.companyname }}{% endblock title %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <div>
+        <h1 class="text-xl font-semibold text-gray-900">{{ supplier.companyname }}</h1>
+        <p class="text-sm text-gray-500">{{ supplier.get_activity_type_display }} &middot; created {{ supplier.created_at|date:"Y-m-d" }}</p>
+    </div>
+    <div class="flex gap-2">
+        <a href="{% url 'edit-supplier' supplier.pk %}" class="btn-secondary">Edit</a>
+        <a href="{% url 'suppliers-list' %}" class="btn-secondary">Back to list</a>
+    </div>
+</div>
+
+<div class="card grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div>
+        <h6 class="field-label">Phone</h6>
+        <p class="text-sm text-gray-900">{{ supplier.phone }}</p>
+    </div>
+    <div>
+        <h6 class="field-label">Email</h6>
+        <p class="text-sm text-gray-900">{{ supplier.email }}</p>
+    </div>
+    <div>
+        <h6 class="field-label">Address</h6>
+        <p class="text-sm text-gray-900">{{ supplier.address }}</p>
+    </div>
+    <div>
+        <h6 class="field-label">City</h6>
+        <p class="text-sm text-gray-900">{{ supplier.city }}</p>
+    </div>
+    <div>
+        <h6 class="field-label">State</h6>
+        <p class="text-sm text-gray-900">{{ supplier.state }}</p>
+    </div>
+    <div>
+        <h6 class="field-label">Country</h6>
+        <p class="text-sm text-gray-900">{{ supplier.country }}</p>
+    </div>
+    <div>
+        <h6 class="field-label">Company URL</h6>
+        {% if supplier.company_url %}
+        <a href="{{ supplier.company_url }}" target="_blank" class="text-sm text-brand-600 hover:underline">{{ supplier.company_url }}</a>
+        {% else %}
+        <p class="text-sm text-gray-900">—</p>
+        {% endif %}
+    </div>
+    <div>
+        <h6 class="field-label">Production Area</h6>
+        <p class="text-sm text-gray-900">{{ supplier.production_area|default:"—" }}</p>
+    </div>
+    <div>
+        <h6 class="field-label">Manufacturing Competency</h6>
+        <p class="text-sm text-gray-900">{{ supplier.get_manufacturing_competency1_display|default:"—" }}, {{ supplier.get_manufacturing_competency2_display|default:"—" }}</p>
+    </div>
+    <div>
+        <h6 class="field-label">Amount of Employees</h6>
+        <p class="text-sm text-gray-900">{{ supplier.get_amount_of_employees_display }}</p>
+    </div>
+    <div>
+        <h6 class="field-label">Turnover per Year</h6>
+        <p class="text-sm text-gray-900">{{ supplier.get_turnover_per_year_display }}</p>
+    </div>
+    <div>
+        <h6 class="field-label">Certificates</h6>
+        <p class="text-sm text-gray-900">{{ supplier.get_certificates_display|default:"—" }}</p>
+    </div>
+    <div>
+        <h6 class="field-label">Status</h6>
+        {% if supplier.is_deleted %}
+        <span class="badge bg-red-50 text-red-700">Deactivated</span>
+        {% else %}
+        <span class="badge bg-green-50 text-green-700">Active</span>
+        {% endif %}
+    </div>
+</div>
+{% endblock content %}

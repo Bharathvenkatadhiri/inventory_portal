@@ -1,105 +1,76 @@
-{% extends "base_register.html" %}
-{% block title %} {{ title }} {% endblock title %}
-
-{% block content %}
-<div class="container py-5">
-    <h3 class="text-center mb-4" style="color: #1a9ba9; font-weight: bold;">Welcome {{ session_first_name }},</h3>
-
-    <form method="post">
-        {% csrf_token %}
-
-        <div class="row mb-3">
-            <div class="col-md-6">
-                <div class="form-group">
-                    <label for="{{ form.Name.id_for_label }}">Name:</label>
-                    {{ form.Name|safe }}
-                    {% if form.Name.errors %}
-                    <div class="invalid-feedback d-block">{{ form.Name.errors }}</div>
-                    {% endif %}
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="form-group">
-                    <label for="{{ form.type_of_business.id_for_label }}">Sector:</label>
-                    {{ form.type_of_business|safe }}
-                    {% if form.type_of_business.errors %}
-                    <div class="invalid-feedback d-block">{{ form.type_of_business.errors }}</div>
-                    {% endif %}
-                </div>
-            </div>
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title|default:"Consumer Details" }} — ManufactureHub</title>
+    <link rel="stylesheet" href="{% load static %}{% static 'css/tailwind-built.css' %}">
+</head>
+<body class="h-full flex items-center justify-center px-4 py-10">
+    <div class="w-full max-w-2xl">
+        <div class="text-center mb-8">
+            <a href="{% url 'home' %}" class="text-2xl font-semibold text-brand-700">ManufactureHub</a>
+            <p class="text-gray-500 text-sm mt-1">Welcome {{ session_first_name }}, tell us about your business</p>
         </div>
-
-        <div class="row mb-3">
-            <div class="col-md-6">
-                <div class="form-group">
-                    <label for="{{ form.Address.id_for_label }}">Address:</label>
-                    {{ form.Address|safe }}
-                    {% if form.Address.errors %}
-                    <div class="invalid-feedback d-block">{{ form.Address.errors }}</div>
-                    {% endif %}
-                </div>
+        <div class="card">
+            {% load widget_tweaks %}
+            {% if form.non_field_errors %}
+            <div class="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">
+                {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
             </div>
-            <div class="col-md-6">
-                <div class="form-group">
-                    <label for="{{ form.phone.id_for_label }}">Phone:</label>
-                    {{ form.phone|safe }}
-                    {% if form.phone.errors %}
-                    <div class="invalid-feedback d-block">{{ form.phone.errors }}</div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
-        <div class="row mb-3">
-            <div class="col-md-6">
-                <div class="form-group">
-                    <label for="{{ form.email.id_for_label }}">Email ID:</label>
-                    {{ form.email|safe }}
-                    {% if form.email.errors %}
-                    <div class="invalid-feedback d-block">{{ form.email.errors }}</div>
-                    {% endif %}
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="form-group">
-                    <label for="{{ form.EORI_number.id_for_label }}">EORI #:</label>
-                    {{ form.EORI_number|safe }}
-                    {% if form.EORI_number.errors %}
-                    <div class="invalid-feedback d-block">{{ form.EORI_number.errors }}</div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
-        <div class="row mb-3">
-            <div class="col-md-6">
-                <div class="form-group">
-                    <label for="{{ form.VAT_number.id_for_label }}">VAT #:</label>
-                    {{ form.VAT_number|safe }}
-                    {% if form.VAT_number.errors %}
-                    <div class="invalid-feedback d-block">{{ form.VAT_number.errors }}</div>
-                    {% endif %}
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="form-group">
-                    <label for="{{ form.is_deleted.id_for_label }}">Is Deleted:</label>
-                    {{ form.is_deleted|safe }}
-                    {% if form.is_deleted.errors %}
-                    <div class="invalid-feedback d-block">{{ form.is_deleted.errors }}</div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
-        <input type="hidden" name="user" class="form-control" id="id_user" value="{{ session_user_id }}">
-
-        <div class="d-flex justify-content-center mt-4">
-            <button type="submit" class="btn btn-primary me-2">{{ savebtn }}</button>
-            {% if title == "New Customer" %}
-            <button type="reset" class="btn btn-secondary me-2">Reset</button>
             {% endif %}
+            <form method="post" class="space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="user" value="{{ session_user_id }}">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="{{ form.Name.id_for_label }}" class="field-label">Name</label>
+                        {{ form.Name|add_class:"field-input" }}
+                        {% for error in form.Name.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+                    </div>
+                    <div>
+                        <label for="{{ form.type_of_business.id_for_label }}" class="field-label">Sector</label>
+                        {{ form.type_of_business|add_class:"field-input" }}
+                        {% for error in form.type_of_business.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+                    </div>
+                </div>
+                <div>
+                    <label for="{{ form.Address.id_for_label }}" class="field-label">Address</label>
+                    {{ form.Address|add_class:"field-input" }}
+                    {% for error in form.Address.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="{{ form.phone.id_for_label }}" class="field-label">Phone</label>
+                        {{ form.phone|add_class:"field-input" }}
+                        {% for error in form.phone.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+                    </div>
+                    <div>
+                        <label for="{{ form.email.id_for_label }}" class="field-label">Email</label>
+                        {{ form.email|add_class:"field-input" }}
+                        {% for error in form.email.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="{{ form.EORI_number.id_for_label }}" class="field-label">EORI Number</label>
+                        {{ form.EORI_number|add_class:"field-input" }}
+                        {% for error in form.EORI_number.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+                    </div>
+                    <div>
+                        <label for="{{ form.VAT_number.id_for_label }}" class="field-label">VAT Number</label>
+                        {{ form.VAT_number|add_class:"field-input" }}
+                        {% for error in form.VAT_number.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" name="{{ form.is_deleted.html_name }}" id="{{ form.is_deleted.id_for_label }}" {% if form.is_deleted.value %}checked{% endif %} class="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500">
+                    <label for="{{ form.is_deleted.id_for_label }}" class="text-sm text-gray-700">Deactivated</label>
+                    {% for error in form.is_deleted.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+                </div>
+                <button type="submit" class="btn-primary w-full">{{ savebtn|default:"Save" }}</button>
+            </form>
         </div>
-    </form>
-</div>
-{% endblock content %}
+    </div>
+</body>
+</html>

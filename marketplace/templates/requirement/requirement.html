@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% load custom_filters %}
+{% block title %}{{ demand.title }} — ManufactureHub{% endblock %}
+{% block content %}
+
+<div class="flex items-start justify-between gap-4 mb-6">
+    <div>
+        <h1 class="text-2xl font-semibold text-gray-900">{{ demand.title }}</h1>
+        <p class="text-sm text-gray-500 mt-1">Requested by {{ demand.user.first_name|default:demand.user.email }}</p>
+    </div>
+    <div class="flex flex-col items-end gap-2">
+        {% if demand.status == 'Approved' %}
+        <span class="badge bg-green-50 text-green-700">Approved</span>
+        {% elif demand.status == 'Production' %}
+        <span class="badge bg-yellow-50 text-yellow-700">In Production</span>
+        {% elif demand.status == 'Completed' %}
+        <span class="badge bg-green-50 text-green-700">Completed</span>
+        {% elif demand.status == 'Rejected' %}
+        <span class="badge bg-red-50 text-red-700">Rejected</span>
+        {% else %}
+        <span class="badge bg-gray-100 text-gray-700">Submitted</span>
+        {% endif %}
+
+        {% if request.user.role == 'manufacturer' and demand.status == 'Approved' %}
+        <a href="{% url 'requirement-update-status' demand.pk 'Production' %}" class="btn-secondary text-xs">Start production</a>
+        {% elif request.user.role == 'manufacturer' and demand.status == 'Production' %}
+        <a href="{% url 'requirement-update-status' demand.pk 'Completed' %}" class="btn-secondary text-xs">Complete RFQ</a>
+        {% endif %}
+
+        {% if demand.user == request.user and not demand.status %}
+        <div class="flex gap-3">
+            <a href="{% url 'edit-requirement' demand.pk %}" class="text-sm text-gray-500 hover:text-gray-700">Edit</a>
+            <a href="{% url 'delete-requirement' demand.pk %}" class="text-sm text-red-600 hover:text-red-700">Delete</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="grid gap-6 lg:grid-cols-3 mb-6">
+    <div class="card lg:col-span-2">
+        <h2 class="font-semibold text-gray-900 mb-4">Requirement details</h2>
+        <dl class="grid grid-cols-2 gap-4 text-sm">
+            <div>
+                <dt class="text-gray-500">Description</dt>
+                <dd class="text-gray-900">{{ demand.rfq_desc }}</dd>
+            </div>
+            <div>
+                <dt class="text-gray-500">Currency</dt>
+                <dd class="text-gray-900">{{ demand.quote_currency }}</dd>
+            </div>
+            <div>
+                <dt class="text-gray-500">Reason for request</dt>
+                <dd class="text-gray-900">{{ demand.get_request_reason_display }}</dd>
+            </div>
+            <div>
+                <dt class="text-gray-500">Parts</dt>
+                <dd class="text-gray-900">{{ demand.parts }}</dd>
+            </div>
+            <div>
+                <dt class="text-gray-500">End date</dt>
+                <dd class="text-gray-900">{{ demand.end_date|date:"M j, Y"|default:"—" }}</dd>
+            </div>
+            <div>
+                <dt class="text-gray-500">Industry</dt>
+                <dd class="text-gray-900">{{ demand.industry|default:"—" }}</dd>
+            </div>
+            <div>
+                <dt class="text-gray-500">NDA required</dt>
+                <dd class="text-gray-900">{{ demand.nda_required|yesno:"Yes,No" }}</dd>
+            </div>
+        </dl>
+    </div>
+    <div class="card">
+        <h2 class="font-semibold text-gray-900 mb-4">Master file</h2>
+        {% if demand.file %}
+        <a href="{{ demand.file.url }}" target="_blank" class="btn-secondary w-full justify-center">Download file</a>
+        {% else %}
+        <p class="text-sm text-gray-500">No file attached.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card mb-6">
+    <h2 class="font-semibold text-gray-900 mb-4">Parts</h2>
+    {% if demanddetails %}
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+            <thead>
+                <tr class="text-left text-gray-500">
+                    <th class="py-2 pr-4">Name</th>
+                    <th class="py-2 pr-4">Description</th>
+                    <th class="py-2 pr-4">Technology</th>
+                    <th class="py-2 pr-4">Material</th>
+                    <th class="py-2 pr-4">Quantity</th>
+                    <th class="py-2 pr-4">File</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for part in demanddetails %}
+                <tr>
+                    <td class="py-2 pr-4 text-gray-900">{{ part.part_name }}</td>
+                    <td class="py-2 pr-4 text-gray-600">{{ part.Part_desc|default:"—" }}</td>
+                    <td class="py-2 pr-4 text-gray-600">{{ part.technology }}</td>
+                    <td class="py-2 pr-4 text-gray-600">{{ part.Material }}</td>
+                    <td class="py-2 pr-4 text-gray-600">{{ part.quantity }}</td>
+                    <td class="py-2 pr-4">
+                        {% if part.file %}
+                        <a href="{{ part.file.url }}" target="_blank" class="text-brand-600 hover:underline">Download</a>
+                        {% else %}
+                        <span class="text-gray-400">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-sm text-gray-500">No parts recorded for this requirement.</p>
+    {% endif %}
+</div>
+
+{% include "requirement/_quotes_section.html" %}
+
+{% endblock content %}

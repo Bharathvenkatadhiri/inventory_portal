@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Delete Quote — ManufactureHub{% endblock %}
+{% block content %}
+
+<div class="card max-w-lg">
+    <h1 class="text-xl font-semibold text-gray-900 mb-2">Delete quotation</h1>
+    <p class="text-sm text-gray-600 mb-6">Are you sure you want to delete "{{ object }}"? This cannot be undone.</p>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="flex gap-3">
+            <button type="submit" class="btn-danger">Yes, delete</button>
+            <a href="{% url 'quote-list' %}" class="btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+{% endblock content %}

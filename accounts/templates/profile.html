@@ -1,211 +1,187 @@
-{% extends base_template %}
-
+{% extends "base.html" %}
+{% block title %}Profile{% endblock title %}
 {% block content %}
+<div class="flex items-center justify-between mb-6">
+    <h1 class="text-xl font-semibold text-gray-900">Profile</h1>
+</div>
 
-<main class="main-wrapper ms-sm-auto px-md-4 border-start">
-    <div class="title-group mb-3">
-        <h1 class="h2 mb-0">Profile</h1>
-    </div>
-    <div class="row my-4">
-        <div class="col-lg-7 col-12">
-            <div class="custom-block custom-block-profile">
-                <div class="row">
-                    <div class="col-lg-12 col-12 mb-3">
-                        <h6>General</h6>
-                    </div>
-                    <div class="col-lg-9 col-12">
-                        <p class="d-flex flex-wrap mb-2">
-                            <strong>First Name:</strong>
-
-                            <span>{{ request.user.first_name }}</span>
-                        </p>
-                        <p class="d-flex flex-wrap mb-2">
-                            <strong>Last Name:</strong>
-
-                            <span>{{ request.user.last_name }}</span>
-                        </p>
-                        <p class="d-flex flex-wrap mb-2">
-                            <strong>UserName:</strong>
-
-                            <span>{{ request.user.username }}</span>
-                        </p>
-                        <p class="d-flex flex-wrap mb-2">
-                            <strong>Email:</strong>
-
-                            <a href="#">
-                                {{ request.user.email }}
-                            </a>
-                        </p>
-                    </div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 space-y-6">
+        <div class="card">
+            <h6 class="text-sm font-semibold text-gray-900 mb-4">General</h6>
+            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div>
+                    <dt class="text-gray-500">First Name</dt>
+                    <dd class="text-gray-900">{{ request.user.first_name }}</dd>
                 </div>
-            </div>
-            {% if supplier %}
-            <div class="custom-block custom-block-profile bg-white">
-                <h6 class="mb-4">Manufacturer Information</h6>
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>Account ID:</strong>
-
-                    <span>00MF0{{ request.user.id }}</span>
-                </p>
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>Subscription Type:</strong>
-
-                    <span>Premium</span>
-                </p>
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>Company Name:</strong>
-                    <span>{{ supplier.companyname }}</span>
-                </p>
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>Phone:</strong>
-                    <span>{{ supplier.phone }}</span>
-                </p>
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>Address:</strong>
-                    <span>{{ supplier.address }}</span>
-                </p>
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>City:</strong>
-                    <span>{{ supplier.city }}</span>
-                </p>
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>State:</strong>
-                    <span>{{ supplier.state }}</span>
-                </p>
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>Country:</strong>
-                    <span>{{ supplier.country }}</span>
-                </p>
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>Activity Type:</strong>
-                    <span>{{ supplier.get_activity_type_display }}</span>
-                </p>
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>Company Street:</strong>
-                    <span>{{ supplier.company_street }}</span>
-                </p>
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>Company Postal Code:</strong>
-                    <span>{{ supplier.company_postalcode }}</span>
-                </p>
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>Company City:</strong>
-                    <span>{{ supplier.company_city }}</span>
-                </p>
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>Company URL:</strong>
-                    <span>{{ supplier.company_url }}</span>
-                </p>
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>Production Area:</strong>
-                    <span>{{ supplier.production_area }} sq.ft</span>
-                </p>
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>Manufacturing Competency 1:</strong>
-                    <span>{{ supplier.get_manufacturing_competency1_display }}</span>
-                </p>
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>Manufacturing Competency 2:</strong>
-                    <span>{{ supplier.get_manufacturing_competency2_display }}</span>
-                </p>
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>Info Source:</strong>
-                    <span>{{ supplier.get_info_source_display }}</span>
-                </p>
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>Amount of Employees:</strong>
-                    <span>{{ supplier.get_amount_of_employees_display }}</span>
-                </p>
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>Turnover per Year:</strong>
-                    <span>{{ supplier.get_turnover_per_year_display }}</span>
-                </p>
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>Certificates:</strong>
-                    <span>{{ supplier.get_certificates_display }}</span>
-                </p>
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>Created At:</strong>
-                    <span>{{ supplier.created_at }}</span>
-                </p>
-            </div>
-            {% endif %}
-
-            {% if customer %}
-            <div class="custom-block custom-block-profile bg-white">
-                <h6 class="mb-4">Business Information</h6>
-
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>Name:</strong>
-                    <span>{{ customer.name }}</span>
-                </p>
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>Type of Business:</strong>
-                    <span>{{ customer.get_type_of_business_display }}</span>
-                </p>
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>Address:</strong>
-                    <span>{{ customer.address }}</span>
-                </p>
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>City:</strong>
-                    <span>{{ customer.city }}</span>
-                </p>
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>State:</strong>
-                    <span>{{ customer.state }}</span>
-                </p>
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>Country:</strong>
-                    <span>{{ customer.country }}</span>
-                </p>
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>Phone:</strong>
-                    <span>{{ customer.phone }}</span>
-                </p>
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>Email:</strong>
-                    <span>{{ customer.email }}</span>
-                </p>
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>EORI Number:</strong>
-                    <span>{{ customer.eori_number }}</span>
-                </p>
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>VAT Number:</strong>
-                    <span>{{ customer.vat_number }}</span>
-                </p>
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>Industry Choice:</strong>
-                    <span>{{ customer.get_industry_choice_display }}</span>
-                </p>
-                <p class="d-flex flex-wrap mb-2">
-                    <strong>Created At:</strong>
-                    <span>{{ customer.created_at }}</span>
-                </p>
-            </div>
-            {%endif%}
-
-
+                <div>
+                    <dt class="text-gray-500">Last Name</dt>
+                    <dd class="text-gray-900">{{ request.user.last_name }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Username</dt>
+                    <dd class="text-gray-900">{{ request.user.username }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Email</dt>
+                    <dd class="text-gray-900">{{ request.user.email }}</dd>
+                </div>
+            </dl>
         </div>
 
-        <div class="col-lg-5 col-12">
-            <div class="custom-block custom-block-contact">
-                <h6 class="mb-4">Still can’t find what you looking for?</h6>
-
-                <p>
-                    <strong>Call us:</strong>
-                    <a href="tel: 00000000" class="ms-2">
-                        (91)
-                        999-9999-99
-                    </a>
-                </p>
-
-                <a href="#" class="btn custom-btn custom-btn-bg-white mt-3">
-                    Contact Us
-                </a>
+        {% if supplier %}
+        <div class="card">
+            <div class="flex items-center justify-between mb-4">
+                <h6 class="text-sm font-semibold text-gray-900">Manufacturer Information</h6>
+                <a href="{% url 'edit-supplier' supplier.pk %}" class="text-sm text-brand-600 hover:underline">Edit</a>
             </div>
+            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div>
+                    <dt class="text-gray-500">Company Name</dt>
+                    <dd class="text-gray-900">{{ supplier.companyname }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Phone</dt>
+                    <dd class="text-gray-900">{{ supplier.phone }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Address</dt>
+                    <dd class="text-gray-900">{{ supplier.address }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">City</dt>
+                    <dd class="text-gray-900">{{ supplier.city }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">State</dt>
+                    <dd class="text-gray-900">{{ supplier.state }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Country</dt>
+                    <dd class="text-gray-900">{{ supplier.country }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Activity Type</dt>
+                    <dd class="text-gray-900">{{ supplier.get_activity_type_display }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Company Street</dt>
+                    <dd class="text-gray-900">{{ supplier.company_street|default:"—" }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Company Postal Code</dt>
+                    <dd class="text-gray-900">{{ supplier.company_postalcode|default:"—" }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Company City</dt>
+                    <dd class="text-gray-900">{{ supplier.company_city|default:"—" }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Company URL</dt>
+                    <dd class="text-gray-900">{{ supplier.company_url|default:"—" }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Production Area</dt>
+                    <dd class="text-gray-900">{{ supplier.production_area|default:"—" }} sq.ft</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Manufacturing Competency 1</dt>
+                    <dd class="text-gray-900">{{ supplier.get_manufacturing_competency1_display|default:"—" }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Manufacturing Competency 2</dt>
+                    <dd class="text-gray-900">{{ supplier.get_manufacturing_competency2_display|default:"—" }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Info Source</dt>
+                    <dd class="text-gray-900">{{ supplier.get_info_source_display|default:"—" }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Amount of Employees</dt>
+                    <dd class="text-gray-900">{{ supplier.get_amount_of_employees_display }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Turnover per Year</dt>
+                    <dd class="text-gray-900">{{ supplier.get_turnover_per_year_display }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Certificates</dt>
+                    <dd class="text-gray-900">{{ supplier.get_certificates_display|default:"—" }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Created At</dt>
+                    <dd class="text-gray-900">{{ supplier.created_at }}</dd>
+                </div>
+            </dl>
         </div>
+        {% endif %}
+
+        {% if customer %}
+        <div class="card">
+            <div class="flex items-center justify-between mb-4">
+                <h6 class="text-sm font-semibold text-gray-900">Business Information</h6>
+                <a href="{% url 'edit-customer' customer.pk %}" class="text-sm text-brand-600 hover:underline">Edit</a>
+            </div>
+            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div>
+                    <dt class="text-gray-500">Name</dt>
+                    <dd class="text-gray-900">{{ customer.Name }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Type of Business</dt>
+                    <dd class="text-gray-900">{{ customer.get_type_of_business_display }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Address</dt>
+                    <dd class="text-gray-900">{{ customer.Address|default:"—" }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">City</dt>
+                    <dd class="text-gray-900">{{ customer.city }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">State</dt>
+                    <dd class="text-gray-900">{{ customer.state }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Country</dt>
+                    <dd class="text-gray-900">{{ customer.country }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Phone</dt>
+                    <dd class="text-gray-900">{{ customer.phone }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Email</dt>
+                    <dd class="text-gray-900">{{ customer.email }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">EORI Number</dt>
+                    <dd class="text-gray-900">{{ customer.EORI_number }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">VAT Number</dt>
+                    <dd class="text-gray-900">{{ customer.VAT_number }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Industry</dt>
+                    <dd class="text-gray-900">{{ customer.get_industry_Choice_display }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Created At</dt>
+                    <dd class="text-gray-900">{{ customer.created_at }}</dd>
+                </div>
+            </dl>
+        </div>
+        {% endif %}
     </div>
 
+    <div>
+        <div class="card">
+            <h6 class="text-sm font-semibold text-gray-900 mb-2">Still can't find what you're looking for?</h6>
+            <p class="text-sm text-gray-600 mb-4">Call us: <a href="tel:0000000000" class="text-brand-600 hover:underline">(91) 999-9999-99</a></p>
+            <a href="#" class="btn-secondary">Contact Us</a>
+        </div>
+    </div>
+</div>
 {% endblock %}

@@ -55,7 +55,7 @@ class ManufacturingTech(models.Model):
         return dict(self.TECH_CHOICES).get(self.technology_type, 'Other Technology')
 
 
-class Supplier_details(models.Model):
+class ManufacturerProfile(models.Model):
     EMPLOYEES_CHOICES = [
         ('10-20', '10 - 20'),
         ('20-50', '20 - 50'),
@@ -196,7 +196,7 @@ class Supplier_details(models.Model):
 
 
 # Contains customers
-class Customer(models.Model):
+class ConsumerProfile(models.Model):
     BUSINESS_TYPES = [
         ('electronics', 'Electronics'),
         ('infrastructure', 'Infrastructure'),

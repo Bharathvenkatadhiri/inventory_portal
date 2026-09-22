@@ -1,98 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full bg-gray-50">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Error 500 - Bug</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css?family=Open+Sans:400,700');
-
-        body {
-          width: 100%;
-          height: 100%;
-          font-family: 'Open Sans', sans-serif;
-          margin: 0;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          background-color: #EB5155;
-          color: #2C3E50;
-        }
-
-        .error {
-          text-align: center;
-        }
-
-        .error i {
-          color: #2C3E50;
-          font-size: 183px;
-        }
-
-        .error h1 {
-          font-size: 144px;
-          font-weight: 700;
-          color: #fff;
-          margin-top: 0;
-        }
-
-        .error p {
-          font-size: 76px;
-          color: #fff;
-        }
-
-        .error span {
-          font-size: 20px;
-          color: #fff;
-        }
-
-        .error a {
-          color: #2C3E50;
-        }
-
-        @media (max-width: 767px) {
-          .error i {
-            font-size: 60px;
-          }
-
-          .error h1 {
-            font-size: 44px;
-          }
-
-          .error p {
-            font-size: 26px;
-          }
-
-          .error span {
-            font-size: 14px;
-          }
-        }
-    </style>
+    <title>Something went wrong — ManufactureHub</title>
+    <link rel="stylesheet" href="{% load static %}{% static 'css/tailwind-built.css' %}">
 </head>
-<body>
-<div class="container-fluid error">
-    <div class="row">
-        <div class="col-xs-12 error-content">
-            <i class="fa fa-bug" aria-hidden="true"></i>
-            <h1>500</h1>
-            <p>Oops! That's a bug</p>
-            <span>Please send us a ticket at <a href="mailto:rajkumarv88@icloud.com">rajkumarv88@icloud.com</a></span>
-        </div>
+<body class="h-full flex items-center justify-center px-4">
+    <div class="card max-w-sm w-full text-center">
+        <p class="text-5xl font-bold text-red-500 mb-2">500</p>
+        <h1 class="text-xl font-semibold text-gray-900 mb-2">Something went wrong</h1>
+        <p class="text-gray-600 mb-6">We've been notified. Please try again shortly.</p>
+        <a href="/" class="btn-primary w-full">Go home</a>
     </div>
-</div>
-
-<script>
-    // JavaScript from the original example
-    var resizeContent = function() {
-      var windowHeight = window.innerHeight;
-      if (windowHeight < 550) {
-        document.querySelector('.error').classList.add('responsive');
-      } else {
-        document.querySelector('.error').classList.remove('responsive');
-      }
-    };
-
-    resizeContent();
-    window.addEventListener('resize', resizeContent);
-</script>
 </body>
 </html>

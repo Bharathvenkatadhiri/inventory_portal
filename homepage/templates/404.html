@@ -1,86 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full bg-gray-50">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>404 Not Found</title>
-    <link href="https://fonts.googleapis.com/css?family=Fira+Mono:400" rel="stylesheet">
-    <style>
-        body {
-            display: flex;
-            width: 100vw;
-            height: 100vh;
-            align-items: center;
-            justify-content: center;
-            margin: 0;
-            background: #131313;
-            color: #fff;
-            font-size: 96px;
-            font-family: 'Fira Mono', monospace;
-            letter-spacing: -7px;
-        }
-
-        div {
-            animation: glitch 1s linear infinite;
-        }
-
-        @keyframes glitch {
-            2%, 64% {
-                transform: translate(2px, 0) skew(0deg);
-            }
-            4%, 60% {
-                transform: translate(-2px, 0) skew(0deg);
-            }
-            62% {
-                transform: translate(0, 0) skew(5deg);
-            }
-        }
-
-        div:before,
-        div:after {
-            content: attr(title);
-            position: absolute;
-            left: 0;
-        }
-
-        div:before {
-            animation: glitchTop 1s linear infinite;
-            clip-path: polygon(0 0, 100% 0, 100% 33%, 0 33%);
-            -webkit-clip-path: polygon(0 0, 100% 0, 100% 33%, 0 33%);
-        }
-
-        @keyframes glitchTop {
-            2%, 64% {
-                transform: translate(2px, -2px);
-            }
-            4%, 60% {
-                transform: translate(-2px, 2px);
-            }
-            62% {
-                transform: translate(13px, -1px) skew(-13deg);
-            }
-        }
-
-        div:after {
-            animation: glitchBotom 1.5s linear infinite;
-            clip-path: polygon(0 67%, 100% 67%, 100% 100%, 0 100%);
-            -webkit-clip-path: polygon(0 67%, 100% 67%, 100% 100%, 0 100%);
-        }
-
-        @keyframes glitchBotom {
-            2%, 64% {
-                transform: translate(-2px, 0);
-            }
-            4%, 60% {
-                transform: translate(-2px, 0);
-            }
-            62% {
-                transform: translate(-22px, 5px) skew(21deg);
-            }
-        }
-    </style>
+    <title>Page not found — ManufactureHub</title>
+    <link rel="stylesheet" href="{% load static %}{% static 'css/tailwind-built.css' %}">
 </head>
-<body>
-<div title="404 Page Not Found">404 Page Not Found</div>
+<body class="h-full flex items-center justify-center px-4">
+    <div class="card max-w-sm w-full text-center">
+        <p class="text-5xl font-bold text-brand-600 mb-2">404</p>
+        <h1 class="text-xl font-semibold text-gray-900 mb-2">Page not found</h1>
+        <p class="text-gray-600 mb-6">The page you're looking for doesn't exist.</p>
+        <a href="{% url 'home' %}" class="btn-primary w-full">Go home</a>
+    </div>
 </body>
 </html>

@@ -1,83 +1,76 @@
-{% extends base_template %}
-{% load widget_tweaks %}
-{% block title %} Customer List {% endblock title %}
+{% extends "base.html" %}
+{% block title %}Consumers{% endblock title %}
 {% block content %}
-<main class="main-wrapper ms-sm-auto py-4 px-md-4 border-start">
+<div class="flex items-center justify-between mb-6">
+    <h1 class="text-xl font-semibold text-gray-900">Consumers</h1>
+</div>
 
-    <div class="row my-4">
-        <div class="col-lg-12 col-12">
-            <div class="custom-block bg-white">
-                <h5 class="mb-4">Customers List</h5>
-                <div class="table-responsive">
-    <table class="account-table table">
-        {% render_field filter.form.Name class="input" placeholder="Search by Customer" %}
-        <thead class="thead-inverse align-middle">
-            <tr>
-                <th width="20%">Name</th>
-                <th width="15%">Sector</th>
-                <th width="10%">Phone</th>
-                <th width="15%">Email ID</th>
-                <th width="10%">EORI Number</th>
-                <th width="10%">VAT Number</th>
-                <th width="20%">Action</th>
-            </tr>
-        </thead>
-{% if object_list %}
-        <tbody>
-            {% for customer in object_list %}
-            <tr>
-                <td>
-                    <h6><a href="{% url 'customer' customer.pk %}">{{ customer.Name }}</a> </h6>
-                </td>
-                <td class="align-middle"> {{ customer.type_of_business }} </td>
-                <td class="align-middle blurred-text blur-text" > {{ customer.phone }} </td>
-                <td class="align-middle blurred-text blur-text" > {{ customer.email }} </td>
-                <td class="align-middle blurred-text blur-text" > {{ customer.EORI_number }} </td>
-                <td class="align-middle "> {{ customer.VAT_number }} </td>
-                <td class="align-middle">
-                    <div class="align-middle">
+<div class="card">
+    <form method="get" class="flex gap-2 mb-4">
+        <input type="text" name="email" class="field-input max-w-xs" placeholder="Search by email" value="{{ request.GET.email|default:'' }}">
+        <button type="submit" class="btn-secondary">Search</button>
+    </form>
+
+    {% if object_list %}
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+            <thead>
+                <tr class="text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    <th class="py-2 pr-4">Name</th>
+                    <th class="py-2 pr-4">Sector</th>
+                    <th class="py-2 pr-4">Phone</th>
+                    <th class="py-2 pr-4">Email</th>
+                    <th class="py-2 pr-4">EORI Number</th>
+                    <th class="py-2 pr-4">VAT Number</th>
+                    <th class="py-2 pr-4">Action</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for customer in object_list %}
+                <tr>
+                    <td class="py-2 pr-4">
+                        <a href="{% url 'customer' customer.pk %}" class="font-medium text-brand-600 hover:underline">{{ customer.Name }}</a>
+                    </td>
+                    <td class="py-2 pr-4">{{ customer.get_type_of_business_display }}</td>
+                    <td class="py-2 pr-4">{{ customer.phone }}</td>
+                    <td class="py-2 pr-4">{{ customer.email }}</td>
+                    <td class="py-2 pr-4">{{ customer.EORI_number }}</td>
+                    <td class="py-2 pr-4">{{ customer.VAT_number }}</td>
+                    <td class="py-2 pr-4 space-x-2">
                         {% if customer.is_deleted %}
-                        <a href="{% url 'activate-customer' customer.pk %}" class="badge text-bg-success">+ Activate</a><br/>
-                        {% else%}
-                            <a href="{% url 'edit-customer' customer.pk %}" class="badge text-bg-success">+ Edit</a><br/>
-                            <a href="{% url 'delete-customer' customer.pk %}" class="badge text-bg-danger">- Delete</a>
+                        <a href="{% url 'activate-customer' customer.pk %}" class="badge bg-green-50 text-green-700">Activate</a>
+                        {% else %}
+                        <a href="{% url 'edit-customer' customer.pk %}" class="badge bg-green-50 text-green-700">Edit</a>
+                        <a href="{% url 'delete-customer' customer.pk %}" class="badge bg-red-50 text-red-700">Delete</a>
                         {% endif %}
-                    </div>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-                </div>
-            </div>
-        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 
-
-    <div class="align-middle">
-        {% if is_paginated %}
-            {% if page_obj.has_previous %}
-                <a class="btn btn-outline-info mb-4" href="?page=1">First</a>
-                <a class="btn btn-outline-info mb-4" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+    {% if is_paginated %}
+    <div class="flex flex-wrap items-center gap-2 mt-6">
+        {% if page_obj.has_previous %}
+        <a class="btn-secondary" href="?page=1{% if request.GET.email %}&email={{ request.GET.email }}{% endif %}">First</a>
+        <a class="btn-secondary" href="?page={{ page_obj.previous_page_number }}{% if request.GET.email %}&email={{ request.GET.email }}{% endif %}">Previous</a>
+        {% endif %}
+        {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+            <a class="btn-primary" href="?page={{ num }}{% if request.GET.email %}&email={{ request.GET.email }}{% endif %}">{{ num }}</a>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+            <a class="btn-secondary" href="?page={{ num }}{% if request.GET.email %}&email={{ request.GET.email }}{% endif %}">{{ num }}</a>
             {% endif %}
-            {% for num in page_obj.paginator.page_range %}
-                {% if page_obj.number == num %}
-                    <a class="btn btn-info mb-4" href="?page={{ num }}">{{ num }}</a>
-                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                    <a class="btn btn-outline-info mb-4" href="?page={{ num }}">{{ num }}</a>
-                {% endif %}
-            {% endfor %}
-            {% if page_obj.has_next %}
-                <a class="btn btn-outline-info mb-4" href="?page={{ page_obj.next_page_number }}">Next</a>
-                <a class="btn btn-outline-info mb-4" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
-            {% endif %}
+        {% endfor %}
+        {% if page_obj.has_next %}
+        <a class="btn-secondary" href="?page={{ page_obj.next_page_number }}{% if request.GET.email %}&email={{ request.GET.email }}{% endif %}">Next</a>
+        <a class="btn-secondary" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.email %}&email={{ request.GET.email }}{% endif %}">Last</a>
         {% endif %}
     </div>
-{% else %}
-        <tbody></tbody>
-    </table>
-    <br><br><br><br><br><br><br><br>
-    <div style="color: #ea2088; font-style: bold; font-size: 1.5rem; text-align: center;">WOW, SUCH EMPTY</div>
-{% endif %}
-</main>
+    {% endif %}
+    {% else %}
+    <p class="text-center text-gray-500 py-10">No consumers found.</p>
+    {% endif %}
+</div>
 {% endblock content %}
