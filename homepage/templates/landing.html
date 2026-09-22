@@ -1,53 +1,131 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-gray-50">
+<html lang="en" class="h-full bg-slate-50">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ManufactureHub — From requirement to production</title>
     <link rel="stylesheet" href="{% load static %}{% static 'css/tailwind-built.css' %}">
 </head>
-<body class="h-full">
-    <header class="bg-white border-b border-gray-200">
-        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div class="flex h-16 justify-between items-center">
-                <span class="text-lg font-semibold text-brand-700">ManufactureHub</span>
-                <nav class="flex items-center gap-4 text-sm">
-                    <a href="{% url 'about' %}" class="text-gray-600 hover:text-gray-900">About</a>
-                    <a href="{% url 'login' %}" class="btn-primary">Log in</a>
-                </nav>
-            </div>
+<body class="h-full flex flex-col">
+    {% if messages %}
+    <div id="toast-messages" class="fixed top-4 inset-x-0 z-50 flex flex-col items-center gap-2 px-4">
+        {% for message in messages %}
+        <div class="w-full max-w-sm rounded-md border {% if message.tags == 'error' %}border-red-200 bg-red-50 text-red-700{% else %}border-green-200 bg-green-50 text-green-700{% endif %} px-4 py-3 text-sm shadow-lg flex items-center justify-between gap-3">
+            <span>{{ message }}</span>
+            <button type="button" onclick="this.closest('div').remove()" class="shrink-0 opacity-60 hover:opacity-100" aria-label="Dismiss">&times;</button>
+        </div>
+        {% endfor %}
+    </div>
+    <script>
+        setTimeout(function () {
+            var el = document.getElementById('toast-messages');
+            if (el) el.remove();
+        }, 4000);
+    </script>
+    {% endif %}
+    <header class="shrink-0 border-b border-gray-200 bg-white">
+        <div class="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 sm:px-12">
+            <a href="{% url 'home' %}" class="flex items-center gap-2">
+                <img src="{% static 'images/logo.png' %}" alt="ManufactureHub" class="h-8 w-8 rounded-lg">
+                <span class="text-lg font-bold text-gray-900">Manufacture<span class="text-orange-500">Hub</span></span>
+            </a>
+            <nav class="flex items-center gap-6 text-sm text-gray-600">
+                <a href="{% url 'about' %}" class="hover:text-gray-900">About MH</a>
+                <a href="{% url 'pricing' %}" class="hover:text-gray-900">Pricing</a>
+                <a href="{% url 'contact' %}" class="hover:text-gray-900">Contact</a>
+            </nav>
         </div>
     </header>
 
-    <main>
-        <section class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 text-center">
-            <h1 class="text-4xl sm:text-5xl font-bold text-gray-900 tracking-tight">
-                Your custom parts, made real.
-            </h1>
-            <p class="mt-6 text-lg text-gray-600 max-w-2xl mx-auto">
-                Upload your requirement — a diagram, a spec, a description — and get quotes from
-                manufacturers ready to build it. Pick the best fit and track it through to delivery.
-            </p>
-            <div class="mt-8 flex justify-center gap-4">
-                <a href="{% url 'register-customer' %}" class="btn-primary">Submit a requirement</a>
-                <a href="{% url 'register-supplier' %}" class="btn-secondary">Join as a manufacturer</a>
-            </div>
-        </section>
+    <div class="flex-1 lg:grid lg:grid-cols-2">
+        <div class="relative flex flex-col overflow-hidden bg-slate-950 px-6 py-16 text-white sm:px-12">
+            <svg class="pointer-events-none absolute bottom-0 right-0 h-72 w-96 text-white/10" viewBox="0 0 300 220" fill="none">
+                <rect x="150" y="120" width="70" height="70" stroke="currentColor" stroke-width="1.5"/>
+                <polygon points="260,90 300,150 260,210 220,150" stroke="currentColor" stroke-width="1.5"/>
+                <circle cx="230" cy="60" r="35" stroke="currentColor" stroke-width="1.5"/>
+            </svg>
 
-        <section class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 pb-20 grid gap-6 sm:grid-cols-3">
-            <div class="card text-center">
-                <p class="text-brand-600 font-semibold mb-2">1. Submit</p>
-                <p class="text-sm text-gray-600">Describe your requirement and upload a diagram or spec file.</p>
+            <div class="relative flex-1 flex flex-col justify-center">
+                <h1 class="font-serif text-4xl leading-tight">
+                    Your custom parts,<br>made real.
+                </h1>
+                <p class="mt-4 max-w-md italic text-sm text-indigo-200/70">
+                    Where manufacturers and buyers meet to turn requirements into production —
+                    for metal cutting, bending, and other engineering services.
+                </p>
+
+                <div class="mt-10 space-y-6">
+                    <div class="flex items-start gap-4">
+                        <span class="shrink-0 text-sm font-bold text-orange-500">01</span>
+                        <div>
+                            <p class="font-semibold">Submit</p>
+                            <p class="text-sm text-slate-400">Upload drawings, specifications and requirements</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-4">
+                        <span class="shrink-0 text-sm font-bold text-orange-500">02</span>
+                        <div>
+                            <p class="font-semibold">Get Quotes</p>
+                            <p class="text-sm text-slate-400">Receive and compare quotes from manufacturers</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-4">
+                        <span class="shrink-0 text-sm font-bold text-orange-500">03</span>
+                        <div>
+                            <p class="font-semibold">Track</p>
+                            <p class="text-sm text-slate-400">Follow your order from confirmation to delivery</p>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="card text-center">
-                <p class="text-brand-600 font-semibold mb-2">2. Compare quotes</p>
-                <p class="text-sm text-gray-600">Manufacturers respond with quotes. Pick the one that fits.</p>
+
+            <p class="relative text-sm italic text-slate-500">&copy; {% now "Y" %} ManufactureHub, Inc.</p>
+        </div>
+
+        <div class="flex flex-col justify-center px-4 py-16 sm:px-6 lg:px-16">
+            <div class="w-full max-w-sm mx-auto">
+                <h2 class="font-serif text-2xl text-gray-900">Welcome back</h2>
+                <p class="mt-1 text-sm italic text-gray-500">Log in to manage your RFQs and quotes.</p>
+
+                {% if form.non_field_errors %}
+                <div class="mt-6 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+                </div>
+                {% endif %}
+
+                <form method="post" action="{% url 'login' %}" class="mt-6 space-y-4">
+                    {% csrf_token %}
+                    <div>
+                        <label for="id_username" class="field-label italic">Email</label>
+                        <input type="email" name="username" id="id_username" required autofocus class="field-input" placeholder="you@company.com">
+                    </div>
+                    <div>
+                        <label for="id_password" class="field-label italic">Password</label>
+                        <div class="relative">
+                            <input type="password" name="password" id="id_password" required class="field-input pr-10">
+                            <button type="button" onclick="const f=document.getElementById('id_password'); f.type = f.type === 'password' ? 'text' : 'password';" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600" aria-label="Show password">
+                                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <input type="hidden" name="next" value="{{ next }}">
+                    <button type="submit" class="w-full inline-flex items-center justify-center rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900">Sign in</button>
+                </form>
+
+                <p class="text-center text-sm text-gray-500 mt-6">
+                    New here? <a href="{% url 'register' %}" class="font-semibold text-gray-900 hover:underline">Create an account</a>
+                </p>
+                <p class="text-center text-xs text-gray-400 mt-4">
+                    By continuing you agree to our
+                    <a href="{% url 'terms-of-service' %}" class="hover:underline">Terms</a>
+                    and
+                    <a href="{% url 'privacy-policy' %}" class="hover:underline">Privacy Policy</a>.
+                </p>
             </div>
-            <div class="card text-center">
-                <p class="text-brand-600 font-semibold mb-2">3. Track to delivery</p>
-                <p class="text-sm text-gray-600">Follow the order from production through payment and delivery.</p>
-            </div>
-        </section>
-    </main>
+        </div>
+    </div>
 </body>
 </html>

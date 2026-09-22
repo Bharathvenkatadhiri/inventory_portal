@@ -1,6 +1,8 @@
 from django.shortcuts import render
 from django.views.generic import View, TemplateView
 from django.contrib.auth.decorators import login_not_required
+from django.contrib.auth.views import LogoutView
+from django.contrib import messages
 from marketplace.models import Requirement, Quote, Order
 from accounts.models import ManufacturerProfile, ConsumerProfile
 
@@ -43,3 +45,28 @@ class HomeView(View):
 
 class AboutView(TemplateView):
     template_name = "about.html"
+
+
+class PricingView(TemplateView):
+    template_name = "pricing.html"
+
+
+class ContactView(TemplateView):
+    template_name = "contact.html"
+
+
+class PrivacyPolicyView(TemplateView):
+    template_name = "privacy_policy.html"
+
+
+class TermsOfServiceView(TemplateView):
+    template_name = "terms_of_service.html"
+
+
+class CustomLogoutView(LogoutView):
+    next_page = 'home'
+
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        messages.success(request, "You've been logged out successfully.")
+        return response

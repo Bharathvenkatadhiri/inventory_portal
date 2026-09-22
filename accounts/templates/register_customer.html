@@ -6,10 +6,26 @@
     <title>{{ title|default:"Consumer Details" }} — ManufactureHub</title>
     <link rel="stylesheet" href="{% load static %}{% static 'css/tailwind-built.css' %}">
 </head>
-<body class="h-full flex items-center justify-center px-4 py-10">
+<body class="h-full flex flex-col">
+    <header class="shrink-0 border-b border-gray-200 bg-white">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="flex h-16 justify-between items-center">
+                <a href="{% url 'home' %}" class="flex items-center gap-2">
+                    <img src="{% static 'images/logo.png' %}" alt="ManufactureHub" class="h-8 w-8 rounded-lg">
+                    <span class="text-lg font-bold text-gray-900">Manufacture<span class="text-orange-500">Hub</span></span>
+                </a>
+                <nav class="flex items-center gap-4 text-sm">
+                    <a href="{% url 'about' %}" class="{% if request.resolver_match.url_name == 'about' %}font-semibold text-gray-900 underline underline-offset-4{% else %}text-gray-600 hover:text-gray-900{% endif %}">About MH</a>
+                    <a href="{% url 'pricing' %}" class="{% if request.resolver_match.url_name == 'pricing' %}font-semibold text-gray-900 underline underline-offset-4{% else %}text-gray-600 hover:text-gray-900{% endif %}">Pricing</a>
+                    <a href="{% url 'contact' %}" class="{% if request.resolver_match.url_name == 'contact' %}font-semibold text-gray-900 underline underline-offset-4{% else %}text-gray-600 hover:text-gray-900{% endif %}">Contact</a>
+                    <a href="{% url 'login' %}" class="{% if request.resolver_match.url_name == 'login' %}font-semibold text-gray-900 underline underline-offset-4{% else %}text-gray-600 hover:text-gray-900{% endif %}">Login</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+    <div class="flex-1 flex items-center justify-center px-4 py-10">
     <div class="w-full max-w-2xl">
         <div class="text-center mb-8">
-            <a href="{% url 'home' %}" class="text-2xl font-semibold text-brand-700">ManufactureHub</a>
             <p class="text-gray-500 text-sm mt-1">Welcome {{ session_first_name }}, tell us about your business</p>
         </div>
         <div class="card">
@@ -17,6 +33,19 @@
             {% if form.non_field_errors %}
             <div class="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">
                 {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+            </div>
+            {% endif %}
+            {% for error in form.user.errors %}
+            <div class="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700"><p>{{ error }}</p></div>
+            {% endfor %}
+            {% if form.errors %}
+            <div class="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">
+                <p class="font-medium mb-1">Please fix the following before submitting:</p>
+                <ul class="list-disc list-inside">
+                    {% for field in form.visible_fields %}
+                        {% for error in field.errors %}<li>{{ field.label }}: {{ error }}</li>{% endfor %}
+                    {% endfor %}
+                </ul>
             </div>
             {% endif %}
             <form method="post" class="space-y-4">
@@ -68,9 +97,25 @@
                     <label for="{{ form.is_deleted.id_for_label }}" class="text-sm text-gray-700">Deactivated</label>
                     {% for error in form.is_deleted.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
                 </div>
-                <button type="submit" class="btn-primary w-full">{{ savebtn|default:"Save" }}</button>
+                <div class="flex gap-3">
+                    <button type="reset" class="btn-secondary flex-1">Clear</button>
+                    <button type="submit" class="btn-primary flex-1">{{ savebtn|default:"Save" }}</button>
+                </div>
             </form>
         </div>
+        <p class="text-center text-sm text-gray-500 mt-6">
+            <a href="javascript:void(0)" onclick="history.back()" class="text-brand-600 hover:underline">&larr; Back</a>
+        </p>
     </div>
+    </div>
+    <footer class="shrink-0 border-t border-gray-200">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 flex flex-col sm:flex-row justify-between items-center gap-2">
+            <p class="text-sm text-gray-500">&copy; {% now "Y" %} ManufactureHub, Inc.</p>
+            <div class="flex gap-4 text-sm text-gray-500">
+                <a href="{% url 'privacy-policy' %}" class="hover:text-gray-700">Privacy Policy</a>
+                <a href="{% url 'terms-of-service' %}" class="hover:text-gray-700">Terms of Service</a>
+            </div>
+        </div>
+    </footer>
 </body>
 </html>

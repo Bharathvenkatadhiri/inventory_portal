@@ -185,7 +185,7 @@ class ManufacturerProfile(models.Model):
     info_source = models.CharField(max_length=3, choices=INFO_SOURCE_CHOICES, blank=True, null=True)
     amount_of_employees = models.CharField(max_length=20, choices=EMPLOYEES_CHOICES)
     turnover_per_year = models.CharField(max_length=20, choices=TURNOVER_CHOICES)
-    certificates = models.CharField(max_length=40, choices=CERTIFICATES_CHOICES)
+    certificates = models.CharField(max_length=40, choices=CERTIFICATES_CHOICES, blank=True, null=True)
     email = models.EmailField(max_length=254, unique=True, blank=False, null=False)
     is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)

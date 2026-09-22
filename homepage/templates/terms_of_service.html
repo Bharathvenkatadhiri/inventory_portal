@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Terms of Service — ManufactureHub{% endblock %}
+{% block content %}
+<div class="card max-w-3xl mx-auto space-y-4">
+    <h1 class="text-2xl font-semibold text-gray-900 mb-2">Terms of Service</h1>
+
+    <p class="text-gray-600">
+        Welcome to ManufactureHub! These terms of service ("Terms") apply to your use of our website and
+        services ("Platform"). By accessing or using our Platform, you agree to comply with and be bound by
+        these Terms. Please read them carefully. If you do not agree with these Terms, you may not use our
+        Platform.
+    </p>
+
+    <div>
+        <h2 class="text-lg font-semibold text-gray-900 mb-1">1. Use of the Platform</h2>
+        <p class="text-gray-600 mb-2">
+            You agree to use the Platform only for lawful purposes and in accordance with these Terms. You
+            are responsible for ensuring that your use of the Platform complies with all applicable laws and
+            regulations. You agree not to:
+        </p>
+        <ul class="list-disc list-inside text-gray-600 space-y-1">
+            <li>Use the Platform in any manner that could disable, overburden, damage, or impair the Platform or interfere with any other party's use of the Platform.</li>
+            <li>Engage in any conduct that is fraudulent, misleading, or otherwise harmful to ManufactureHub or other users.</li>
+            <li>Upload or transmit any viruses, malware, or other harmful code.</li>
+            <li>Attempt to gain unauthorized access to any portion of the Platform, other user accounts, or any systems or networks connected to the Platform.</li>
+        </ul>
+    </div>
+
+    <div>
+        <h2 class="text-lg font-semibold text-gray-900 mb-1">2. Account Registration and Security</h2>
+        <p class="text-gray-600">
+            To use certain features of the Platform, you may be required to register for an account. You
+            agree to provide accurate, current, and complete information during the registration process and
+            to update such information to keep it accurate, current, and complete. You are responsible for
+            maintaining the confidentiality of your account password and for all activities that occur under
+            your account. You agree to notify us immediately of any unauthorized use of your account.
+        </p>
+    </div>
+
+    <div>
+        <h2 class="text-lg font-semibold text-gray-900 mb-1">3. User Content</h2>
+        <p class="text-gray-600">
+            By posting, uploading, or otherwise making available any content on the Platform ("User
+            Content"), you grant ManufactureHub a non-exclusive, transferable, sub-licensable, royalty-free,
+            worldwide license to use, reproduce, modify, distribute, and display such User Content in
+            connection with the operation of the Platform. You represent and warrant that you own or have
+            the necessary rights to the User Content you provide and that your User Content does not
+            infringe the rights of any third party.
+        </p>
+    </div>
+
+    <div>
+        <h2 class="text-lg font-semibold text-gray-900 mb-1">4. Intellectual Property</h2>
+        <p class="text-gray-600">
+            All content and materials on the Platform, including but not limited to text, graphics, logos,
+            icons, images, and software, are the property of ManufactureHub or its licensors and are
+            protected by copyright, trademark, and other intellectual property laws. You agree not to copy,
+            modify, distribute, or create derivative works based on any content or materials from the
+            Platform without our prior written consent.
+        </p>
+    </div>
+
+    <div>
+        <h2 class="text-lg font-semibold text-gray-900 mb-1">5. Disclaimers and Limitation of Liability</h2>
+        <p class="text-gray-600">
+            The Platform is provided on an "as is" and "as available" basis. ManufactureHub makes no
+            representations or warranties of any kind, express or implied, as to the operation of the
+            Platform or the information, content, or materials included on the Platform. To the fullest
+            extent permitted by law, we disclaim all warranties, express or implied, including but not
+            limited to implied warranties of merchantability and fitness for a particular purpose.
+            ManufactureHub will not be liable for any damages of any kind arising from the use of the
+            Platform, including but not limited to direct, indirect, incidental, punitive, and consequential
+            damages.
+        </p>
+    </div>
+
+    <div>
+        <h2 class="text-lg font-semibold text-gray-900 mb-1">6. Governing Law</h2>
+        <p class="text-gray-600">
+            These Terms shall be governed by and construed in accordance with the laws of the jurisdiction in
+            which ManufactureHub is headquartered, without regard to its conflict of law principles. You
+            agree to submit to the personal jurisdiction of the courts located in that jurisdiction for the
+            purpose of litigating all such claims or disputes.
+        </p>
+    </div>
+
+    <div>
+        <h2 class="text-lg font-semibold text-gray-900 mb-1">7. Changes to Terms</h2>
+        <p class="text-gray-600">
+            We reserve the right to modify these Terms at any time. Any changes will be effective immediately
+            upon posting on the Platform. Your continued use of the Platform following the posting of changes
+            constitutes your acceptance of such changes. We encourage you to review these Terms periodically
+            to stay informed of any updates.
+        </p>
+    </div>
+
+    <div>
+        <h2 class="text-lg font-semibold text-gray-900 mb-1">8. Contact Us</h2>
+        <p class="text-gray-600">
+            If you have any questions or concerns about these Terms, please
+            <a href="{% url 'contact' %}" class="text-brand-600 hover:underline">contact us</a>.
+        </p>
+    </div>
+</div>
+{% endblock %}

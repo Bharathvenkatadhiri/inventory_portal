@@ -1,13 +1,57 @@
 {% extends "base.html" %}
 {% block title %}About — ManufactureHub{% endblock %}
 {% block content %}
-<div class="card max-w-2xl">
-    <h1 class="text-2xl font-semibold text-gray-900 mb-4">About ManufactureHub</h1>
-    <p class="text-gray-600 mb-4">
-        ManufactureHub connects consumers who need custom parts made with manufacturers who can make them.
-        Submit a requirement with your diagram or spec, receive quotes from manufacturers, pick the one
-        that works for you, and track the order through production to payment.
+<div class="text-center max-w-2xl mx-auto py-8">
+    <p class="text-xs font-semibold uppercase tracking-wide text-orange-500 mb-3">About ManufactureHub</p>
+    <h1 class="font-serif text-4xl text-gray-900 leading-tight">Built for the people who make things.</h1>
+    <p class="mt-4 italic text-sm text-gray-500">
+        ManufactureHub is where engineering buyers and manufacturers meet — one place to turn a drawing into
+        a quote, and a quote into a finished part, without the back-and-forth of calls and spreadsheets.
     </p>
-    <p class="text-gray-600">Questions? Reach us at <a class="text-brand-600 hover:underline" href="mailto:rajkumarv88@icloud.com">rajkumarv88@icloud.com</a>.</p>
+</div>
+
+<div class="relative overflow-hidden rounded-xl bg-slate-950 px-8 py-10 text-white grid gap-8 sm:grid-cols-2 items-center">
+    <svg class="pointer-events-none absolute -right-10 -bottom-10 h-56 w-56 text-white/10" viewBox="0 0 300 220" fill="none">
+        <rect x="150" y="120" width="70" height="70" stroke="currentColor" stroke-width="1.5"/>
+        <polygon points="260,90 300,150 260,210 220,150" stroke="currentColor" stroke-width="1.5"/>
+        <circle cx="230" cy="60" r="35" stroke="currentColor" stroke-width="1.5"/>
+    </svg>
+    <div class="relative">
+        <p class="text-xs font-semibold uppercase tracking-wide text-orange-500 mb-2">Our Mission</p>
+        <h2 class="font-serif text-2xl leading-snug">Make custom manufacturing as easy to buy as it is to build.</h2>
+    </div>
+    <p class="relative italic text-sm text-indigo-200/70">
+        Sourcing a custom part shouldn't take three weeks of emails and follow-up calls. We built
+        ManufactureHub to connect people who need parts made — for metal cutting, bending, CNC machining,
+        and more — with the manufacturers who can make them, so a requirement can become a quote, and a
+        quote can become a delivery, all in one place.
+    </p>
+</div>
+
+<h2 id="how-it-works" class="mt-16 mb-6 text-center font-serif text-2xl text-gray-900">How it works</h2>
+<div class="grid gap-6 sm:grid-cols-3">
+    <div class="card">
+        <p class="text-sm font-bold text-orange-500 mb-2">01</p>
+        <p class="font-semibold text-gray-900">Submit</p>
+        <p class="mt-1 text-sm text-gray-500">Upload drawings, specifications and requirements — we route them to the right process.</p>
+    </div>
+    <div class="card">
+        <p class="text-sm font-bold text-orange-500 mb-2">02</p>
+        <p class="font-semibold text-gray-900">Get Quotes</p>
+        <p class="mt-1 text-sm text-gray-500">Receive and compare quotes from verified manufacturers, side by side.</p>
+    </div>
+    <div class="card">
+        <p class="text-sm font-bold text-orange-500 mb-2">03</p>
+        <p class="font-semibold text-gray-900">Track</p>
+        <p class="mt-1 text-sm text-gray-500">Follow your order from confirmation through production to delivery.</p>
+    </div>
+</div>
+
+<div class="card mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+    <div>
+        <p class="font-semibold text-gray-900">Still have questions?</p>
+        <p class="text-sm text-gray-500">Our team usually replies within one business day.</p>
+    </div>
+    <a href="mailto:bharathvenkatadhiri@gmail.com" class="inline-flex items-center justify-center rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-black">bharathvenkatadhiri@gmail.com</a>
 </div>
 {% endblock %}

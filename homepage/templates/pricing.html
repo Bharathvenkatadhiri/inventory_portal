@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Pricing — ManufactureHub{% endblock %}
+{% block content %}
+<div x-data="{ buyer: true }">
+    <div class="text-center max-w-2xl mx-auto py-4">
+        <p class="text-xs font-semibold uppercase tracking-wide text-orange-500 mb-3">Pricing</p>
+        <h1 class="font-serif text-4xl text-gray-900 leading-tight">Simple, transparent pricing</h1>
+        <p class="mt-4 italic text-sm text-gray-500">
+            Whether you're sourcing parts or fulfilling them, pick the plan that matches your volume.
+        </p>
+    </div>
+
+    <div class="flex justify-center mb-10">
+        <div class="inline-flex rounded-md bg-gray-100 p-1 text-sm">
+            <button type="button" @click="buyer = true" class="px-4 py-2 rounded-md font-medium transition-colors" :class="buyer ? 'bg-white text-gray-900 shadow' : 'text-gray-500'">For Buyers</button>
+            <button type="button" @click="buyer = false" class="px-4 py-2 rounded-md font-medium transition-colors" :class="!buyer ? 'bg-white text-gray-900 shadow' : 'text-gray-500'">For Manufacturers</button>
+        </div>
+    </div>
+
+    <div class="grid gap-6 sm:grid-cols-3 items-start">
+        <div class="card text-center">
+            <p class="italic text-sm text-gray-500 mb-3">Free</p>
+            <p class="text-3xl font-bold text-gray-900">$0<span class="text-sm font-normal text-gray-400">/month</span></p>
+            <p class="mt-1 italic text-xs text-gray-400">For occasional sourcing</p>
+            <hr class="my-4 border-gray-200">
+            <ul class="text-sm text-gray-600 space-y-2 text-left">
+                <li class="flex items-start gap-2">
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-orange-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span x-text="buyer ? '5 RFQs per month' : 'Respond to 5 RFQs per month'"></span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-orange-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span>1 user</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-orange-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span>Basic support</span>
+                </li>
+            </ul>
+            <a href="{% url 'register' %}" class="btn-secondary w-full mt-6">Get started</a>
+        </div>
+
+        <div class="relative card text-center border-2 border-orange-400">
+            <span class="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-orange-500 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">Most Popular</span>
+            <p class="italic text-sm text-orange-500 mb-3">Professional</p>
+            <p class="text-3xl font-bold text-gray-900">$2,000<span class="text-sm font-normal text-gray-400">/month</span></p>
+            <p class="mt-1 italic text-xs text-gray-400">For active buying teams</p>
+            <hr class="my-4 border-gray-200">
+            <ul class="text-sm text-gray-600 space-y-2 text-left">
+                <li class="flex items-start gap-2">
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-orange-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span x-text="buyer ? '20 RFQs per month' : 'Respond to 20 RFQs per month'"></span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-orange-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span>5 users</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-orange-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span>Priority support</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-orange-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span>Order tracking dashboard</span>
+                </li>
+            </ul>
+            <a href="{% url 'register' %}" class="inline-flex items-center justify-center rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-black w-full mt-6">Get started</a>
+        </div>
+
+        <div class="card text-center">
+            <p class="italic text-sm text-gray-500 mb-3">Enterprise</p>
+            <p class="text-3xl font-bold text-gray-900">$3,500<span class="text-sm font-normal text-gray-400">/month</span></p>
+            <p class="mt-1 italic text-xs text-gray-400">For high-volume sourcing</p>
+            <hr class="my-4 border-gray-200">
+            <ul class="text-sm text-gray-600 space-y-2 text-left">
+                <li class="flex items-start gap-2">
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-orange-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span x-text="buyer ? 'Unlimited RFQs per month' : 'Respond to unlimited RFQs per month'"></span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-orange-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span>Unlimited users</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-orange-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span>Dedicated support</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-orange-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span>API access</span>
+                </li>
+            </ul>
+            <a href="{% url 'register' %}" class="btn-secondary w-full mt-6">Get started</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

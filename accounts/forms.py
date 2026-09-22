@@ -28,7 +28,6 @@ class SupplierDetailsForm(forms.ModelForm):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         self.fields['companyname'].initial = 'Default Company Name'
-        self.fields['phone'].widget.attrs.update({'readonly': 'readonly'})
         self.fields['address'].widget.attrs.update({'placeholder': 'Enter your address here'})
         if 'company_street' in self.fields:
             self.fields['company_street'].widget = forms.HiddenInput()

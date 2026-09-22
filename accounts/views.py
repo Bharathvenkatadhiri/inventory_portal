@@ -20,12 +20,15 @@ class CreateSupplier(SuccessMessageMixin, CreateView):
     model = ManufacturerProfile
     form_class = SupplierDetailsForm
     template_name = "register_supplier.html"
-    success_url = '/#login'  # Redirects to home page after submitting the form
-    success_message = "Manufacturer account has been created successfully"
+    success_url = '/'  # Redirects to home (the login page for anonymous users)
+    success_message = "Your manufacturer account is all set. Log in to get started."
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        kwargs['user'] = self.request.user  # Pass the user to the form
+        # request.user is still anonymous at this point in the registration
+        # flow (the account created in `register` isn't logged in yet), so
+        # look the user up from the session instead of using request.user.
+        kwargs['user'] = User.objects.filter(pk=self.request.session.get('session_user_id')).first()
         return kwargs
 
     def get_context_data(self, **kwargs):
@@ -82,8 +85,8 @@ def register(request):
 class CreateCustomer(SuccessMessageMixin, CreateView):
     model = ConsumerProfile
     form_class = SelectCustomer
-    success_url = '/#login'
-    success_message = "Customer has been created successfully"
+    success_url = '/'
+    success_message = "Your buyer account is all set. Log in to get started."
     template_name = "register_customer.html"
 
     def get_context_data(self, **kwargs):

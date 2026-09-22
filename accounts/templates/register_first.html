@@ -6,10 +6,26 @@
     <title>Create an account — ManufactureHub</title>
     <link rel="stylesheet" href="{% load static %}{% static 'css/tailwind-built.css' %}">
 </head>
-<body class="h-full flex items-center justify-center px-4 py-10">
+<body class="h-full flex flex-col">
+    <header class="shrink-0 border-b border-gray-200 bg-white">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="flex h-16 justify-between items-center">
+                <a href="{% url 'home' %}" class="flex items-center gap-2">
+                    <img src="{% static 'images/logo.png' %}" alt="ManufactureHub" class="h-8 w-8 rounded-lg">
+                    <span class="text-lg font-bold text-gray-900">Manufacture<span class="text-orange-500">Hub</span></span>
+                </a>
+                <nav class="flex items-center gap-4 text-sm">
+                    <a href="{% url 'about' %}" class="{% if request.resolver_match.url_name == 'about' %}font-semibold text-gray-900 underline underline-offset-4{% else %}text-gray-600 hover:text-gray-900{% endif %}">About MH</a>
+                    <a href="{% url 'pricing' %}" class="{% if request.resolver_match.url_name == 'pricing' %}font-semibold text-gray-900 underline underline-offset-4{% else %}text-gray-600 hover:text-gray-900{% endif %}">Pricing</a>
+                    <a href="{% url 'contact' %}" class="{% if request.resolver_match.url_name == 'contact' %}font-semibold text-gray-900 underline underline-offset-4{% else %}text-gray-600 hover:text-gray-900{% endif %}">Contact</a>
+                    <a href="{% url 'login' %}" class="{% if request.resolver_match.url_name == 'login' %}font-semibold text-gray-900 underline underline-offset-4{% else %}text-gray-600 hover:text-gray-900{% endif %}">Login</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+    <div class="flex-1 flex items-center justify-center px-4 py-10">
     <div class="w-full max-w-lg">
         <div class="text-center mb-8">
-            <a href="{% url 'home' %}" class="text-2xl font-semibold text-brand-700">ManufactureHub</a>
             <p class="text-gray-500 text-sm mt-1">Create your account</p>
         </div>
         <div class="card">
@@ -19,7 +35,7 @@
                 {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
             </div>
             {% endif %}
-            <form method="post" class="space-y-4">
+            <form method="post" class="space-y-4" id="register-form">
                 {% csrf_token %}
                 <div>
                     <label for="{{ form.username.id_for_label }}" class="field-label">Username</label>
@@ -47,6 +63,12 @@
                     <div>
                         <label for="{{ form.password1.id_for_label }}" class="field-label">Password</label>
                         {{ form.password1|add_class:"field-input" }}
+                        <div class="mt-1.5 flex items-center gap-2">
+                            <div class="h-1.5 flex-1 rounded-full bg-gray-200 overflow-hidden">
+                                <div id="password-strength-bar" class="h-full w-0 rounded-full transition-all"></div>
+                            </div>
+                            <span id="password-strength-label" class="text-xs text-gray-400 w-12 shrink-0"></span>
+                        </div>
                         {% for error in form.password1.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
                     </div>
                     <div>
@@ -69,12 +91,92 @@
                     </div>
                     {% for error in form.is_staff.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
                 </fieldset>
-                <button type="submit" class="btn-primary w-full">Register</button>
+                <div class="flex gap-3">
+                    <button type="reset" class="btn-secondary flex-1">Clear</button>
+                    <button type="submit" class="btn-primary flex-1">Register</button>
+                </div>
             </form>
         </div>
         <p class="text-center text-sm text-gray-500 mt-6">
             <a href="{% url 'home' %}" class="text-brand-600 hover:underline">Back to homepage</a>
         </p>
     </div>
+    </div>
+    <footer class="shrink-0 border-t border-gray-200">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 flex flex-col sm:flex-row justify-between items-center gap-2">
+            <p class="text-sm text-gray-500">&copy; {% now "Y" %} ManufactureHub, Inc.</p>
+            <div class="flex gap-4 text-sm text-gray-500">
+                <a href="{% url 'privacy-policy' %}" class="hover:text-gray-700">Privacy Policy</a>
+                <a href="{% url 'terms-of-service' %}" class="hover:text-gray-700">Terms of Service</a>
+            </div>
+        </div>
+    </footer>
+    <script>
+        (function () {
+            var pw = document.getElementById('{{ form.password1.id_for_label }}');
+            var bar = document.getElementById('password-strength-bar');
+            var label = document.getElementById('password-strength-label');
+            var form = document.getElementById('register-form');
+            var currentStrength = '';
+
+            function scorePassword(value) {
+                var score = 0;
+                if (value.length >= 8) score++;
+                if (value.length >= 12) score++;
+                if (/[a-z]/.test(value)) score++;
+                if (/[A-Z]/.test(value)) score++;
+                if (/[0-9]/.test(value)) score++;
+                if (/[^A-Za-z0-9]/.test(value)) score++;
+                return score;
+            }
+
+            function strengthOf(value) {
+                if (!value) return '';
+                var score = scorePassword(value);
+                if (score <= 2) return 'Poor';
+                if (score <= 4) return 'Good';
+                return 'Strong';
+            }
+
+            var colors = {
+                Poor: { bar: 'bg-red-500', text: 'text-red-600' },
+                Good: { bar: 'bg-yellow-500', text: 'text-yellow-600' },
+                Strong: { bar: 'bg-green-500', text: 'text-green-600' }
+            };
+
+            if (pw && bar && label) {
+                pw.addEventListener('input', function () {
+                    currentStrength = strengthOf(pw.value);
+                    var score = scorePassword(pw.value);
+                    bar.style.width = (pw.value ? Math.min(100, (score / 6) * 100) : 0) + '%';
+                    bar.className = 'h-full rounded-full transition-all ' + (colors[currentStrength] ? colors[currentStrength].bar : '');
+                    label.textContent = currentStrength;
+                    label.className = 'text-xs w-12 shrink-0 ' + (colors[currentStrength] ? colors[currentStrength].text : 'text-gray-400');
+                });
+            }
+
+            if (form) {
+                form.addEventListener('submit', function (e) {
+                    if (pw && pw.value && currentStrength === 'Poor') {
+                        e.preventDefault();
+                        label.textContent = 'Too weak';
+                        label.className = 'text-xs w-12 shrink-0 text-red-600';
+                        pw.focus();
+                    }
+                });
+                form.addEventListener('reset', function () {
+                    currentStrength = '';
+                    if (bar) {
+                        bar.style.width = '0%';
+                        bar.className = 'h-full rounded-full transition-all';
+                    }
+                    if (label) {
+                        label.textContent = '';
+                        label.className = 'text-xs w-12 shrink-0 text-gray-400';
+                    }
+                });
+            }
+        })();
+    </script>
 </body>
 </html>
