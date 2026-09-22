@@ -1,0 +1,61 @@
+{% extends base_template %}
+
+{% block title %} Orders List {% endblock title %}
+
+{% block content %}
+
+    <div class="row" style="color: #ea2088; font-style: bold; font-size: 3rem;">
+        <div class="col-md-8">Orders List</div>
+    </div>
+    <br>
+    <table class="table table-css">
+        <thead class="thead-inverse align-middle">
+            <tr>
+                <th width="10%">Order No</th>
+                <th width="20%">Requirement</th>
+                <th width="15%">Status</th>
+                <th width="15%">Order Date</th>
+                <th width="20%">Options</th>
+            </tr>
+        </thead>
+
+{% if bills %}
+        <tbody>
+            {% for order in bills %}
+            <tr>
+                <td class="align-middle"> <h3>{{ order.billno }}</h3> </td>
+                <td class=""> {{ order.requirement.user.first_name }} {{ order.requirement.user.last_name }} <br> <small style="color: #909494">RFQ : {{ order.requirement.id }} - {{ order.requirement.title }}</small> </td>
+                <td class="align-middle">{{ order.get_status_display }}</td>
+                <td class="align-middle">{{ order.created_at.date }}</td>
+                <td class="align-middle"> <a href="{% url 'order-detail' order.billno %}" class="btn ghost-pink">View Order</a> </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="align-middle">
+        {% if is_paginated %}
+            {% if page_obj.has_previous %}
+                <a class="btn btn-outline-info mb-4" href="?page=1">First</a>
+                <a class="btn btn-outline-info mb-4" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+            {% endif %}
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <a class="btn btn-info mb-4" href="?page={{ num }}">{{ num }}</a>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <a class="btn btn-outline-info mb-4" href="?page={{ num }}">{{ num }}</a>
+                {% endif %}
+            {% endfor %}
+            {% if page_obj.has_next %}
+                <a class="btn btn-outline-info mb-4" href="?page={{ page_obj.next_page_number }}">Next</a>
+                <a class="btn btn-outline-info mb-4" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+            {% endif %}
+        {% endif %}
+    </div>
+{% else %}
+        <tbody></tbody>
+    </table>
+    <br><br><br><br><br><br><br><br>
+    <div style="color: #ea2088; font-style: bold; font-size: 1.5rem; text-align: center;">WOW, SUCH EMPTY</div>
+{% endif %}
+{% endblock content %}

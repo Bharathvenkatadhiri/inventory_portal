@@ -45,6 +45,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
+    "core.middleware.GlobalSearchMiddleware",
     "django.contrib.auth.middleware.LoginRequiredMiddleware",
 ]
 
@@ -147,3 +148,13 @@ REST_FRAMEWORK = {
 RAZORPAY_KEY_ID = env("RAZORPAY_KEY_ID", default="")
 RAZORPAY_KEY_SECRET = env("RAZORPAY_KEY_SECRET", default="")
 RAZORPAY_WEBHOOK_SECRET = env("RAZORPAY_WEBHOOK_SECRET", default="")
+
+# --- Subscription plans ---------------------------------------------------
+# Referenced by accounts.forms/accounts.views when creating/updating a
+# SubscriptionPlan. Minimal defaults; adjust pricing/limits as the product
+# requires.
+subscription_plan_details = {
+    "basic": {"price": 0, "rfq_limit": "5"},
+    "standard": {"price": 999, "rfq_limit": "50"},
+    "enterprise": {"price": 4999, "rfq_limit": "unlimited"},
+}

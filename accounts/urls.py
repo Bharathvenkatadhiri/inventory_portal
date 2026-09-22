@@ -7,6 +7,12 @@ urlpatterns = [
     path('register-customer', views.CreateCustomer.as_view(), name='register-customer'),
     path('profile', views.ViewProfileDetails, name='profile'),
 
+    path('suppliers/', views.SupplierListView.as_view(), name='suppliers-list'),
+    path('suppliers/<pk>/edit', views.SupplierUpdateView.as_view(), name='edit-supplier'),
+    path('suppliers/<pk>/delete', views.SupplierDeleteView.as_view(), name='delete-supplier'),
+    path('suppliers/<pk>/activate', views.SupplieractivateView.as_view(), name='activate-supplier'),
+    path('supplier/<pk>', views.SupplierView.as_view(), name='supplier'),
+
     path('customers/', views.CustomerListView.as_view(), name='customers-list'),
     path('customers/new', views.CustomerCreateView.as_view(), name='new-customer'),
     path('customers/<pk>/edit', views.CustomerUpdateView.as_view(), name='edit-customer'),

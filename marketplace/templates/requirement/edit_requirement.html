@@ -1,0 +1,334 @@
+{% extends base_template %}
+
+{% load static %}
+
+{% block title %} {{ title }} {% endblock title %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-10">
+            <div class="card border-light shadow-sm rounded">
+                <div class="card-body p-4">
+                    <h3 class="text-center mb-4" style="color: #ea2088; font-weight: bold;">{{ title }}</h3>
+                    <form method="post" enctype="multipart/form-data" novalidate>
+                        {% csrf_token %}
+
+                        <div class="form-errors mb-3">
+                            {{ form.non_field_errors }}
+                            {{ form.user.errors }}
+                            {{ form.title.errors }}
+                            {{ form.rfq_desc.errors }}
+                            {{ form.nda_required.errors }}
+                            {{ form.quote_currency.errors }}
+                            {{ form.request_reason.errors }}
+                            {{ form.parts.errors }}
+                            {{ form.end_date.errors }}
+                            {{ form.industry.errors }}
+                            {{ form.file.errors }}
+                        </div>
+
+                        <input type="hidden" name="user" value="{{ request.user.id }}">
+
+                        <!-- Demand Form Fields in Table Format -->
+                        <table class="table-responsive mb-4">
+                            <tbody>
+                            <tr>
+                                <td style="width: 40%;"><label for="{{ form.title.id_for_label }}">Title of RFQ:</label></td>
+                                <td>
+                                    {{ form.title }}
+                                    {% if form.title.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.title.errors %}
+                                        {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><label for="{{ form.rfq_desc.id_for_label }}">RFQ Description:</label></td>
+                                <td>
+                                    {{ form.rfq_desc }}
+                                    {% if form.rfq_desc.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.rfq_desc.errors %}
+                                        {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><label for="{{ form.nda_required.id_for_label }}">NDA Required:</label></td>
+                                <td>
+                                    <div class="form-check custom-checkbox">
+                                        {{ form.nda_required }}
+                                        {% if form.nda_required.errors %}
+                                        <div class="invalid-feedback d-block mt-1">
+                                            {% for error in form.nda_required.errors %}
+                                            {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><label for="{{ form.quote_currency.id_for_label }}">Currency:</label></td>
+                                <td>
+                                    {{ form.quote_currency }}
+                                    {% if form.quote_currency.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.quote_currency.errors %}
+                                        {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><label for="{{ form.request_reason.id_for_label }}">Reason for Request:</label></td>
+                                <td>
+                                    {{ form.request_reason }}
+                                    {% if form.request_reason.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.request_reason.errors %}
+                                        {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><label for="{{ form.parts.id_for_label }}">Number of Parts:</label></td>
+                                <td>
+                                    {{ form.parts }}
+                                    {% if form.parts.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.parts.errors %}
+                                        {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><label for="{{ form.end_date.id_for_label }}">End Date:</label></td>
+                                <td>
+                                    {{ form.end_date }}
+                                    {% if form.end_date.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.end_date.errors %}
+                                        {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><label for="{{ form.industry.id_for_label }}">Industry:</label></td>
+                                <td>
+                                    {{ form.industry }}
+                                    {% if form.industry.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.industry.errors %}
+                                        {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><label for="{{ form.file.id_for_label }}">Master File:</label></td>
+                                <td>
+                                    {{ form.file }}
+                                    {% if form.file.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.file.errors %}
+                                        {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                        {% if formset %}<br/>
+                        <div class="parts-section mb-4">
+                            <h4 class="text-center mb-3">Parts Associated with RFQ</h4>
+                            <div id="formset-container">
+                                {{ formset.management_form }}
+                                {% for form in formset %}
+                                <div class="form-row mb-3">
+                                    <table class="table-responsive mb-4">
+                                        <tbody>
+                                        <tr>
+                                            <td>{{ form.non_field_errors }}</td>
+                                            <td>{{ form.part_name.errors }}</td>
+                                            <td>{{ form.Part_desc.errors }}</td>
+                                            <td>{{ form.technology.errors }}</td>
+                                            <td>{{ form.Material.errors }}</td>
+                                            <td>{{ form.file.errors }}</td>
+                                            <td>{{ form.quantity.errors }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="width: 25%;"><label for="{{ form.part_name.id_for_label }}">Part Name:</label></td>
+                                            <td  style="width: 25%;">
+                                                {{ form.part_name }}
+                                                {% if form.part_name.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {% for error in form.part_name.errors %}
+                                                    {{ error }}
+                                                    {% endfor %}
+                                                </div>
+                                                {% endif %}
+                                            </td>
+                                            <td  style="width: 2%;"></td>
+                                            <td  style="width: 25%;"><label for="{{ form.Part_desc.id_for_label }}"> Part Description:</label></td>
+                                            <td>
+                                                {{ form.Part_desc }}
+                                                {% if form.Part_desc.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {% for error in form.Part_desc.errors %}
+                                                    {{ error }}
+                                                    {% endfor %}
+                                                </div>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><label for="{{ form.technology.id_for_label }}">Technology:</label></td>
+                                            <td>
+                                                {{ form.technology }}
+                                                {% if form.technology.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {% for error in form.technology.errors %}
+                                                    {{ error }}
+                                                    {% endfor %}
+                                                </div>
+                                                {% endif %}
+                                            </td><td  style="width: 2%;"></td>
+                                            <td><label for="{{ form.Material.id_for_label }}"> Material:</label></td>
+                                            <td>
+                                                {{ form.Material }}
+                                                {% if form.Material.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {% for error in form.Material.errors %}
+                                                    {{ error }}
+                                                    {% endfor %}
+                                                </div>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><label for="{{ form.file.id_for_label }}">File:</label></td>
+                                            <td>
+                                                {{ form.file }}
+                                                {% if form.file.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {% for error in form.file.errors %}
+                                                    {{ error }}
+                                                    {% endfor %}
+                                                </div>
+                                                {% endif %}
+                                            </td><td  style="width: 2%;"></td>
+                                            <td><label for="{{ form.quantity.id_for_label }}"> Quantity:</label></td>
+                                            <td>
+                                                {{ form.quantity }}
+                                                {% if form.quantity.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {% for error in form.quantity.errors %}
+                                                    {{ error }}
+                                                    {% endfor %}
+                                                </div>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="4">
+                                                <button type="button" class="badge text-bg-danger remove-form-row">- Remove</button>
+                                            </td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <a href="#" class="add-form-row badge text-bg-success ">+ Add More</a>
+                        </div>
+                        {% endif %}
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <button type="submit" class="btn btn-success">{{ savebtn }}</button>
+                            {% if title == "New RFQ" %}
+                            <button type="reset" class="btn btn-primary">Reset</button>
+                            {% endif %}
+                            <a href="{% url 'requirement-list' %}" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript" src="{% static 'js/jquery-3.2.1.slim.min.js' %}"></script>
+<script type="text/javascript">
+    function updateElementIndex(el, prefix, ndx) {
+        var id_regex = new RegExp('(' + prefix + '-\\d+)');
+        var replacement = prefix + '-' + ndx;
+        if ($(el).attr("for")) $(el).attr("for", $(el).attr("for").replace(id_regex, replacement));
+        if (el.id) el.id = el.id.replace(id_regex, replacement);
+        if (el.name) el.name = el.name.replace(id_regex, replacement);
+    }
+
+    function cloneMore(selector, prefix) {
+        var formCount = parseInt($('#id_' + prefix + '-TOTAL_FORMS').val());
+        var newElement = $(selector).clone(true);
+        newElement.find(':input:not([type=button]):not([type=submit]):not([type=reset])').each(function() {
+            var name = $(this).attr('name');
+            if(name) {
+                name = name.replace('-' + (formCount - 1) + '-', '-' + formCount + '-');
+                var id = 'id_' + name;
+                $(this).attr({'name': name, 'id': id}).val('').removeAttr('checked');
+            }
+        });
+        newElement.find('label').each(function() {
+            var forValue = $(this).attr('for');
+            if (forValue) {
+                forValue = forValue.replace('-' + (formCount - 1) + '-', '-' + formCount + '-');
+                $(this).attr({'for': forValue});
+            }
+        });
+        $('#id_' + prefix + '-TOTAL_FORMS').val(formCount + 1);
+        $(selector).after(newElement);
+    }
+
+    function deleteForm(prefix, btn) {
+        var formCount = parseInt($('#id_' + prefix + '-TOTAL_FORMS').val());
+        if (formCount > 1) {
+            btn.closest('.form-row').remove();
+            $('#id_' + prefix + '-TOTAL_FORMS').val(formCount - 1);
+            $('.form-row').each(function(index) {
+                $(this).find(':input').each(function() {
+                    updateElementIndex(this, prefix, index);
+                });
+            });
+        } else {
+            alert('At least one form is required.');
+        }
+    }
+
+    $(document).on('click', '.add-form-row', function(e) {
+        e.preventDefault();
+        cloneMore('.form-row:last', 'form');
+    });
+
+    $(document).on('click', '.remove-form-row', function(e) {
+        e.preventDefault();
+        deleteForm('form', $(this));
+    });
+</script>
+
+{% endblock content %}

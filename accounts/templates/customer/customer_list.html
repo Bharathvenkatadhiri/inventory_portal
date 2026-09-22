@@ -10,7 +10,10 @@
                 <h5 class="mb-4">Customers List</h5>
                 <div class="table-responsive">
     <table class="account-table table">
-        {% render_field filter.form.Name class="input" placeholder="Search by Customer" %}
+        <form method="get" class="mb-2">
+            <input type="text" name="email" class="input" placeholder="Search by email" value="{{ request.GET.email }}">
+            <button type="submit" class="btn btn-outline-info btn-sm">Search</button>
+        </form>
         <thead class="thead-inverse align-middle">
             <tr>
                 <th width="20%">Name</th>

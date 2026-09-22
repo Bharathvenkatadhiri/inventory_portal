@@ -1,0 +1,29 @@
+{% extends base_template %}
+{% block title %}
+{{ quote.name }}'s profile
+{% endblock %}
+{% block content %}
+    <div class="content-section">
+        <div class="media">
+            <div class="media-body">
+                <h2 style="color:#ea2088;" class="account-heading">&nbsp;{{ quote.name }}</h2>
+                <a href="{% url 'edit-quote' quote.pk %}" class="btn ghost-button" style="float: right;">Edit Details</a>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p class="fal">
+                            Name &nbsp; : {{ quote.requirement }} <br>
+                            Manufacturer &nbsp; : {{ quote.supplier }} <br>
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="fal">
+                            Quantity:  {{ quote.quantity }} <br>
+                            quote_price: {{ quote.quote_price }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock content %}

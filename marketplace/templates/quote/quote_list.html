@@ -1,0 +1,78 @@
+{% extends base_template %}
+{% block title %} RFQ List {% endblock title %}
+
+{% block content %}
+<main class="main-wrapper ms-sm-auto py-4 px-md-4 border-start">
+    <div class="row my-4">
+        <div class="col-md-8">
+            <h1 class="display-4" style="color: #ea2088;">Quotation List</h1>
+        </div>
+    </div>
+
+    {% if object_list %}
+    <div class="row">
+        {% for quote in object_list %}
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="custom-block bg-white p-4">
+                <h5 class="mb-3">
+                    <a href="{% url 'quote' quote.pk %}" class="text-decoration-none text-primary">Quote ID: {{ quote.pk }}</a>
+                </h5>
+                <p><strong>Demand:</strong> {{ quote.requirement }}</p>
+                <p><strong>Manufacturer:</strong> {{ quote.supplier }}</p>
+                <p><strong>Price:</strong> {{ quote.quote_price }}</p>
+                <p><strong>Quantity:</strong> {{ quote.quantity }}</p>
+                <p><strong>Note:</strong> {{ quote.note }}</p>
+                <div class="d-flex justify-content-between mt-3">
+                    <a href="{% url 'edit-quote' quote.pk %}" class="btn btn-success">Edit Details</a>
+                    <a href="{% url 'delete-quote' quote.pk %}" class="btn btn-danger">Delete RFQ</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="align-middle">
+        {% if is_paginated %}
+        <nav aria-label="Page navigation">
+            <ul class="pagination">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1">First</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                <li class="page-item active" aria-current="page">
+                    <span class="page-link">{{ num }}</span>
+                </li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                </li>
+                {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+
+    {% else %}
+    <div class="text-center">
+        <div style="color: #ea2088; font-style: bold; font-size: 1.5rem;">WOW, SUCH EMPTY</div>
+    </div>
+    {% endif %}
+</main>
+{% endblock content %}

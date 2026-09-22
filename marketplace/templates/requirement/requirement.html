@@ -1,0 +1,212 @@
+{% extends base_template %}
+{% block title %}
+{% load custom_filters %}
+
+{{ demand.part_name }}'s Demand
+{% endblock %}
+{% block content %}
+
+{% for button in demand.demand_buttons %}
+<a href="{% if button.url %}{% url button.url button.pk button.status %}{% else %}#{% endif %}" class="{{ button.class }}" style="{{ button.style }}">{{ button.label }}</a>
+{% endfor %}
+
+
+<div class="courses-container">
+    <div class="course">
+        <div class="course-preview">
+            <h2>RFQ :  {{demand.title}}</h2>
+            <h4>Customer : {{demand.user.first_name}}</h4>
+            {% if demand.status == 'Production' %}
+            <a href="#" class="badge text-bg-success" style="float:right;">In Production</a>
+            {% elif demand.status == 'Completed' %}
+            <a href="#" class="badge text-bg-success" style="float:right;">Production Completed</a>
+            {% endif %}
+        </div>
+        <div class="course-info">
+            <div class="progress-container">
+                <div class="progress"></div>
+                <span class="progress-text">
+					{{demand.parts}} Parts
+				</span>
+            </div>
+            <table style="width: 100%;">
+                <tr>
+                    <td style="width: 33%;">
+                        <h6>{{ demand.end_date|date:"Y-m-d" }} UTC</h6>
+                        <h5>{{ demand.industry }}</h5>
+                        <h5>{{ demand.request_reason }}</h5>
+                        <a href="#" data-toggle="modal" data-target="#filePreviewModal{{ demand.id }}">
+                            Preview RFQ File
+                        </a>
+
+                        <!-- Modal -->
+                        <div class="modal fade" id="filePreviewModal{{ demand.id }}" tabindex="-1" role="dialog" aria-labelledby="filePreviewModalLabel{{ demand.id }}" aria-hidden="true">
+                            <div class="modal-dialog modal-lg" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="filePreviewModalLabel{{ demand.id }}">File Preview</h5>
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                    <div class="modal-body">
+                                        {% if demand.file.url|is_image %}
+                                        <img src="{{ demand.file.url }}" class="img-fluid" alt="Preview">
+                                        {% elif demand.file.url|is_pdf %}
+                                        <embed src="{{ demand.file.url }}" type="application/pdf" width="100%" height="600px" />
+                                        {% else %}
+                                        <p>No preview available for this file type.</p>
+                                        {% endif %}
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </td>
+                    <td style="width: 33%;">
+                        <h5>{{ demand.rfq_desc }}</h5>
+                        <h5>{{ demand.nda_required }}</h5>
+                        <h5>{{ demand.quote_currency }}</h5>
+                    </td>
+                    <td style="width: 33%;">
+                        {% if request.user.is_staff and demand.status == None %}
+                        <a class="btn ghost-green" href="{% url 'new-quote' demand.pk %}">Add Quotation</a><br/><br/>
+                        {% endif %}
+                        {% if not demand.status and demand.user == request.user %}
+                        <a class="btn ghost-green"  href="{% url 'edit-requirement' demand.pk %}" >Edit</a><br/><br/>
+                        <a class="btn ghost-red" href="{% url 'delete-requirement' demand.pk %}">Delete</a>
+                        {% endif %}
+                    </td>
+                </tr>
+            </table><br/>
+    {% if demanddetails %}
+            <div class="course-preview">
+                <h2>Parts of RFQ</h2>
+            </div>
+                        {% for eachdemand in demanddetails %}
+
+            <table style="width: 100%;">
+                <tr>
+                    <td style="width: 33%;">
+                        {{ eachdemand.id }}
+                    </td>
+                    <td style="width: 33%;">
+                        {{ eachdemand.part_name }}
+                    </td>
+                    <td style="width: 33%;">
+                        {{ eachdemand.Part_desc }}
+                    </td>
+                    <td style="width: 33%;" rowspan="2">
+                        {% if eachdemand.file %}
+                        <a href="#" data-toggle="modal" data-target="#filePreviewModal{{ eachdemand.id }}">
+                            <button class="Btn">
+                                <svg class="svgIcon" viewBox="0 0 384 512" height="1em" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M169.4 470.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 370.8 224 64c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 306.7L54.6 265.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"></path>
+                                </svg>
+                                <span class="icon2"></span>
+                                <span class="tooltip">{{ eachdemand.file }}</span>
+                            </button>
+                        </a>
+
+                        <div class="modal fade" id="filePreviewModal{{ eachdemand.id }}" tabindex="-1" role="dialog" aria-labelledby="filePreviewModalLabel{{ demand.id }}" aria-hidden="true">
+                            <div class="modal-dialog modal-lg" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="filePreviewModalLabel{{ eachdemand.id }}">File Preview</h5>
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                    <div class="modal-body">
+                                        {% if eachdemand.file.url|is_image %}
+                                        <img src="{{ eachdemand.file.url }}" class="img-fluid" alt="Preview">
+                                        {% elif demand.file.url|is_pdf %}
+                                        <embed src="{{ eachdemand.file.url }}" type="application/pdf" width="100%" height="600px" />
+                                        {% else %}
+                                        <p>No preview available for this file type.</p>
+                                        {% endif %}
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td style="width: 33%;">
+                        {{ eachdemand.technology }}
+                    </td>
+                    <td style="width: 33%;">
+                        {{ eachdemand.Material }}
+                    </td>
+                    <td style="width: 33%;">
+                        {{ eachdemand.quantity }}
+                    </td>
+
+                </tr>
+            </table>
+
+            {% endfor %}
+                        {% endif %}
+
+
+        </div>
+    </div>
+</div>
+
+{% for quote in quotes %}
+{% if quote.pk %}
+<div class="content-section">
+    <div class="media">
+        <div class="media-body">
+            <h2 style="color:#ea2088;" class="account-heading">&nbsp;Q Id#{{ quote.pk }}</h2>
+            {% if not quote.status and not request.user.is_staff %}
+            <a href="{% url 'quote-update-status' quote.pk 'Approved' %}"  method="get"  class="btn ghost-button" style="float: right;">Approve</a>
+            <a href="{% url 'quote-update-status' quote.pk 'Rejected'  %}"  method="get"  class="btn ghost-button" style="float: right;">Reject</a>
+            {%elif not quote.status and request.user.is_staff %}
+            <a class="btn {{ btn_class }}" style="float: right;" >Customer Action Pending</a>
+            {% else %}
+            <a class="btn {{ btn_class }}" style="float: right;" >{{ quote.status }}</a>
+            {% endif %}
+            <div class="row">
+                <div class="col-md-12">
+                    <table style="width: 100%;">
+                        <tr>
+                            <td style="width: 33%;">
+                                Supplier
+                            </td>
+                            <td style="width: 67%;">
+                                {{ quote.supplier }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="width: 33%;">
+                                Price
+                            </td>
+                            <td style="width: 67%;">
+                                {{ quote.quote_price }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="width: 33%;">
+                                Note
+                            </td>
+                            <td style="width: 67%;">
+                                {{ quote.note }}
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+{% endblock content %}

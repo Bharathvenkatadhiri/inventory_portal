@@ -1,0 +1,95 @@
+{% extends base_template %}
+{% block title %}
+Order No : {{ bill.billno }}
+{% endblock title %}
+{% block content %}
+{% load custom_filters %}
+
+<div><h5 class="mb-4">Order No : {{ bill.billno }} &mdash; {{ bill.get_status_display }}</h5></div>
+<br>
+<div id="printArea" class="bg">
+    <table class="outer-box inner-box" style="width: 800px; margin-left: auto; margin-right: auto;">
+        <tbody>
+            <tr style="height: 1px;">
+                <td> <p style="text-align: center;">ORDER SUMMARY</p> </td>
+            </tr>
+            <tr style="text-align: center;">
+                <td>
+                    <span><h5 class="mb-4">ManufactureHub</h5></span>
+                    <span style="font-size: 120%; font-weight: bold; text-decoration: underline;">MANUFACTURER : {{ supplier.companyname }}</span> <br>
+                    <span style="font-weight: bold;">ADDRESS : {{ supplier.address|linebreaks }}</span>
+                    <span style="font-weight: bold;">COUNTRY : {{ supplier.country }}</span><br>
+                    <span style="text-decoration: underline; font-weight: bold;">EMAIL : {{ supplier.user.email }}</span> <br><br>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                <table class="outer-box" style="width: 800px; margin-left: auto; margin-right: auto;">
+                    <tbody>
+                        <tr>
+                            <td class="inner-box" style="width: 50%; font-weight: bold;">&nbsp;CUSTOMER</td>
+                            <td class="inner-box" style="width: 25%; font-weight: bold;">&nbsp;ORDER NO</td>
+                            <td class="inner-box" style="width: 25%;">&nbsp;{{ bill.billno }}</td>
+                        </tr>
+                        <tr>
+                            <td class="inner-box" style="width: 50%;">&nbsp;{{ customer.Name }}</td>
+                            <td class="inner-box" style="width: 25%; font-weight: bold;">&nbsp;DATE</td>
+                            <td class="inner-box" style="width: 25%;">&nbsp;{{ bill.created_at.date }}</td>
+                        </tr>
+                        <tr>
+                            <td class="inner-box" style="width: 50%;" rowspan="1">{{ customer.Address|linebreaks }}</td>
+                            <td class="inner-box" style="width: 25%; font-weight: bold;">&nbsp;STATUS</td>
+                            <td class="inner-box align-middle" style="width: 25%;">&nbsp;{{ bill.get_status_display }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                <table class="outer-box" style="width: auto; margin-left: auto; margin-right: auto;">
+                    <tbody>
+                        <tr>
+                            <td class="inner-box" style="width: 5%; font-weight: bold; text-align: center;">&nbsp;SL NO</td>
+                            <td class="inner-box" style="width: 30%; font-weight: bold; text-align: center;">PART</td>
+                            <td class="inner-box" style="width: 12%; font-weight: bold; text-align: center;">CODE</td>
+                            <td class="inner-box" style="width: 12%; font-weight: bold; text-align: center;">QTY</td>
+                            <td class="inner-box" style="width: 12%; font-weight: bold; text-align: center;">RATE</td>
+                            <td class="inner-box" style="width: 12%; font-weight: bold; text-align: center;">AMOUNT</td>
+                        </tr>
+                        {% for item in items %}
+                            <tr style="height: auto;">
+                                <td class="inner-box" style="width: 5%;">&nbsp;{{ forloop.counter }}</td>
+                                <td class="inner-box" style="width: 30%;">&nbsp;{{ item.part_name }}</td>
+                                <td class="inner-box" style="width: 12%;">{{ item.technology|slice:":3"|upper }}-{{ item.Material|slice:":3"|upper }}-{{ item.id }}</td>
+                                <td class="inner-box" style="width: 12%;">&nbsp;{{ item.quantity }}</td>
+                                <td class="inner-box" style="width: 12%;">&nbsp;{{ quote.quote_price }}</td>
+                                <td class="inner-box" style="width: 12%;">&nbsp;{{ item.quantity|multiply:quote.quote_price }}</td>
+                            </tr>
+                        {% endfor %}
+                        <tr>
+                            <td class="inner-box" colspan="5" style="text-align: right; font-weight: bold;">&nbsp;TOTAL</td>
+                            <td class="inner-box" style="font-weight: bold;">&nbsp;{{ total }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+<br><br>
+<div class="wrapper">
+    <button class="center ghost-blue" onclick="printpage('printArea')">Print</button>
+    <a href="{% url 'orders-list' %}" class="btn center ghost-button">Go Back</a>
+</div>
+<script>
+    function printpage(divName) {
+        var printContents = document.getElementById(divName).innerHTML;
+        var originalContents = document.body.innerHTML;
+        document.body.innerHTML = printContents;
+        window.print();
+        document.body.innerHTML = originalContents;
+    }
+</script>
+{% endblock %}
