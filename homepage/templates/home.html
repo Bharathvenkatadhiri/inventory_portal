@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — ManufactureHub{% endblock %}
+{% block content %}
+
+{% if request.user.role == "manufacturer" %}
+<h1 class="text-2xl font-semibold text-gray-900 mb-6">Manufacturer dashboard</h1>
+
+<div class="grid gap-4 sm:grid-cols-3 mb-8">
+    <div class="card">
+        <p class="text-sm text-gray-500">Open requirements</p>
+        <p class="text-3xl font-semibold text-gray-900">{{ open_requirement_count }}</p>
+    </div>
+    <div class="card">
+        <p class="text-sm text-gray-500">Quotes submitted</p>
+        <p class="text-3xl font-semibold text-gray-900">{{ my_quote_count }}</p>
+    </div>
+    <div class="card">
+        <p class="text-sm text-gray-500">Orders</p>
+        <p class="text-3xl font-semibold text-gray-900">{{ my_order_count }}</p>
+    </div>
+</div>
+
+<div class="grid gap-6 lg:grid-cols-2">
+    <div class="card">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="font-semibold text-gray-900">Open requirements</h2>
+            <a href="{% url 'requirement-list' %}" class="text-sm text-brand-600 hover:underline">View all</a>
+        </div>
+        {% if open_requirements %}
+        <ul class="divide-y divide-gray-100">
+            {% for r in open_requirements %}
+            <li class="py-3">
+                <a href="{% url 'requirement' r.pk %}" class="font-medium text-gray-900 hover:text-brand-600">{{ r.title }}</a>
+                <p class="text-sm text-gray-500">{{ r.parts }} part(s) &middot; {{ r.created_at|date:"M j, Y" }}</p>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-sm text-gray-500">No requirements posted yet.</p>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="font-semibold text-gray-900">My recent quotes</h2>
+            <a href="{% url 'quote-list' %}" class="text-sm text-brand-600 hover:underline">View all</a>
+        </div>
+        {% if my_quotes %}
+        <ul class="divide-y divide-gray-100">
+            {% for q in my_quotes %}
+            <li class="py-3 flex items-center justify-between">
+                <div>
+                    <a href="{% url 'quote' q.pk %}" class="font-medium text-gray-900 hover:text-brand-600">{{ q.requirement.title }}</a>
+                    <p class="text-sm text-gray-500">₹{{ q.quote_price }}</p>
+                </div>
+                {% if q.is_selected %}<span class="badge bg-green-50 text-green-700">Selected</span>{% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-sm text-gray-500">You haven't submitted any quotes yet.</p>
+        {% endif %}
+    </div>
+</div>
+
+{% else %}
+<h1 class="text-2xl font-semibold text-gray-900 mb-6">Your dashboard</h1>
+
+<div class="grid gap-4 sm:grid-cols-3 mb-8">
+    <div class="card">
+        <p class="text-sm text-gray-500">My requirements</p>
+        <p class="text-3xl font-semibold text-gray-900">{{ my_requirement_count }}</p>
+    </div>
+    <div class="card">
+        <p class="text-sm text-gray-500">With quotes</p>
+        <p class="text-3xl font-semibold text-gray-900">{{ requirements_with_quotes_count }}</p>
+    </div>
+    <div class="card">
+        <p class="text-sm text-gray-500">Orders</p>
+        <p class="text-3xl font-semibold text-gray-900">{{ my_order_count }}</p>
+    </div>
+</div>
+
+<div class="flex justify-end mb-4">
+    <a href="{% url 'new-requirement' %}" class="btn-primary">Submit a requirement</a>
+</div>
+
+<div class="card">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="font-semibold text-gray-900">My recent requirements</h2>
+        <a href="{% url 'requirement-list' %}" class="text-sm text-brand-600 hover:underline">View all</a>
+    </div>
+    {% if my_requirements %}
+    <ul class="divide-y divide-gray-100">
+        {% for r in my_requirements %}
+        <li class="py-3 flex items-center justify-between">
+            <div>
+                <a href="{% url 'requirement' r.pk %}" class="font-medium text-gray-900 hover:text-brand-600">{{ r.title }}</a>
+                <p class="text-sm text-gray-500">{{ r.created_at|date:"M j, Y" }}</p>
+            </div>
+            <span class="badge bg-gray-100 text-gray-700">{{ r.status|default:"Pending" }}</span>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-sm text-gray-500">You haven't submitted a requirement yet.</p>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

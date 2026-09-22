@@ -1,55 +1,13 @@
-{% extends base_template %}
-
-{% block title %} About {% endblock title %}
-
+{% extends "base.html" %}
+{% block title %}About — ManufactureHub{% endblock %}
 {% block content %}
-<main class="main-wrapper ms-sm-auto border-start">
-    <div class="title-group mb-3">
-        <h1 class="h2 mb-0">ManufactureHub</h1>
-        <small class="text-muted">Hello !</small>
-    </div>
-
-    <div class="row my-4">
-        <div class="col-lg-7 col-12">
-            <!-- About Block -->
-            <div class="custom-block bg-white mb-4">
-                <h5 class="mb-4">About</h5>
-                <p>
-                    The software efficiently tracks incoming and outgoing stock, ensuring real-time inventory updates and dynamically rendered bills including Real-Time Inventory Tracking, Supplier Profiles, and Dynamic Billing.
-                </p>
-            </div>
-
-            <!-- Features Block -->
-            <div class="custom-block bg-white">
-                <h5 class="mb-4">Features</h5>
-                <ul class="list-group">
-                    <li class="list-group-item">Interactive charts display current available stock.</li>
-                    <li class="list-group-item">Detailed stock information is maintained, including current available stock.</li>
-                    <li class="list-group-item">Incoming transactions are managed through purchases.</li>
-                    <li class="list-group-item">Outgoing transactions are managed through sales.</li>
-                    <li class="list-group-item">All transactions performed through the software are recorded.</li>
-                    <li class="list-group-item">Bills are dynamically generated and can be printed.</li>
-                    <li class="list-group-item">Individual profiles are maintained for each supplier.</li>
-                </ul>
-            </div>
-        </div>
-
-        <div class="col-lg-5 col-12">
-            <!-- Developer Block -->
-            <div class="custom-block custom-block-profile-front custom-block-profile text-center bg-white">
-                <small>An Inventory Management System</small>
-                <div class="d-flex justify-content-between align-items-center mt-3">
-                    <div>
-                        <small>ManufactureHub is a robust inventory management solution designed to meet the specific needs of businesses.</small>
-                    </div>
-                    <div class="text-end">
-                        <small>Developed by:</small><br/>
-                        <span>Rajkumar V</span><br/>
-                        <span>rajkumarv88@icloud.com</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</main>
-{% endblock content %}
+<div class="card max-w-2xl">
+    <h1 class="text-2xl font-semibold text-gray-900 mb-4">About ManufactureHub</h1>
+    <p class="text-gray-600 mb-4">
+        ManufactureHub connects consumers who need custom parts made with manufacturers who can make them.
+        Submit a requirement with your diagram or spec, receive quotes from manufacturers, pick the one
+        that works for you, and track the order through production to payment.
+    </p>
+    <p class="text-gray-600">Questions? Reach us at <a class="text-brand-600 hover:underline" href="mailto:rajkumarv88@icloud.com">rajkumarv88@icloud.com</a>.</p>
+</div>
+{% endblock %}
