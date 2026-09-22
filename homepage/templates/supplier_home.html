@@ -1,0 +1,151 @@
+{% extends "supplier_base.html" %}
+
+{% block title %} Dashboard {% endblock %}
+
+{% block content %}
+<main class="main-wrapper ms-sm-auto border-start">
+    <div class="title-group mb-3">
+        <h1 class="h2 mb-0">Overview</h1>
+        <small class="text-muted">Hello {{ request.user.first_name }}, welcome back!</small>
+    </div>
+
+    <div class="row my-4">
+        <div class="col-lg-7 col-12">
+            <!-- Balance Block -->
+            <div class="custom-block custom-block-balance">
+                <small>Your Balance</small>
+                <h2 class="mt-2 mb-3">$0</h2>
+                <div class="d-flex">
+                    <div>
+                        <small>Account Valid Date</small>
+                        <p>12/2028</p>
+                    </div>
+                    <div class="ms-auto">
+                        <small>Account Type</small><br/>
+                        <span>Supplier/Manufacturer</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Sales and Purchases -->
+            <div class="custom-block bg-white">
+                <h5 class="mb-4">Recent RFQ's</h5>
+                <ul class="list-group">
+                    {% for recent_demand in recent_demands %}
+                    <li class="list-group-item">
+                        RFQ ID: {{ recent_demand.id }} - {{ recent_demand.title }} on {{ recent_demand.created_at }}
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item">No recent sales.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="custom-block bg-white">
+                <h5 class="mb-4">My Open RFQ Status</h5>
+                <ul class="list-group">
+                    {% for my_recent_demand in my_recent_demands %}
+                    <li class="list-group-item">
+                        RFQ ID: {{ my_recent_demand.id }} has {{ my_recent_demand.title }} got <strong>{{my_recent_demand.quote_count}}</strong> till and expires on {{ my_recent_demand.end_date.date }}
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item">No recent purchases.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="custom-block bg-white">
+                <h5 class="mb-4">Activity Overview</h5>
+                <div id="pie-chart"></div>
+            </div>
+            <div class="custom-block bg-white">
+                <h5 class="mb-4">RFQ Trends</h5>
+                <div id="chart"></div>
+            </div>
+        </div>
+        <div class="col-lg-5 col-12">
+            <div class="custom-block custom-block-profile-front custom-block-profile text-center bg-white">
+                <div class="custom-block-profile-image-wrap mb-4">
+                    <svg
+                            class="custom-block-profile-image img-fluid"
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 100 100"
+                            width="100" height="100"
+                            alt="Profile Icon"
+                    >
+                        <circle cx="50" cy="50" r="48" fill="#e0e0e0" stroke="#b0b0b0" stroke-width="2"/>
+                        <circle cx="50" cy="35" r="18" fill="#f3d1bf" />
+                        <path d="M32 32c6-8 24-8 30 0-6-10-24-10-30 0z" fill="#604d40" />
+                        <path d="M50 60c-15 0-30 10-30 30v10h60v-10c0-20-15-30-30-30z" fill="#4a90e2"/>
+                        <circle cx="42" cy="35" r="3" fill="#000" />
+                        <circle cx="58" cy="35" r="3" fill="#000" />
+                        <path d="M42 45 Q50 52, 58 45" stroke="#000" stroke-width="2" fill="none" />
+                    </svg>
+                    <a href="{% url 'profile' %}" class="bi-pencil-square custom-block-edit-icon"></a>
+                </div>
+                <p class="d-flex flex-wrap mb-2">
+                    <strong>Name:</strong>
+                    <span>{{ request.user.get_full_name }}</span>
+                </p>
+                <p class="d-flex flex-wrap mb-2">
+                    <strong>Email:</strong>
+                    <a href="mailto:{{ request.user.email }}">{{ request.user.email }}</a>
+                </p>
+                <p class="d-flex flex-wrap mb-0">
+                    <strong>Phone:</strong>
+                    <a href="tel:{{ request.user.profile.phone_number }}">{{ request.user.profile.phone_number }}</a>
+                </p>
+            </div>
+            <div class="custom-block custom-block-transations">
+                <h5 class="mb-4">RFQ's for my Action</h5>
+                {% for quote in quotes_with_no_status %}
+                <div class="d-flex flex-wrap align-items-center mb-4">
+                    <div class="d-flex align-items-center">
+                        <div>
+                            <p>
+                                <a href="{% url 'demand' quote.demand.pk  %}">RFQ-{{quote.demand.pk}}</a>
+                            </p>
+                            <small class="text-muted"> {{quote.demand.title}}</small>
+                        </div>
+                    </div>
+                    <div class="ms-auto">
+                        <small>{{quote.note}}</small>
+                        <strong class="d-block text-danger"><span class="me-1">-</span> <a href="{% url 'demand' quote.demand.pk  %}"> {{quote.quote_price}}</a></strong>
+                    </div>
+                </div>
+                {% endfor %}
+                <div class="border-top pt-4 mt-4 text-center">
+                    <a class="btn custom-btn" href="{% url 'demand-list' %}">
+                        View all RFQ's
+                        <i class="bi-arrow-up-right-circle-fill ms-2"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div class="custom-block custom-block-transations">
+                <h5 class="mb-4">Recent Approved RFQ's</h5>
+                {% for demand in demand_approved_status %}
+                <div class="d-flex flex-wrap align-items-center mb-4">
+                    <div class="d-flex align-items-center">
+                        <div>
+                            <p>
+                                <a href="{% url 'demand' demand.pk  %}">RFQ-{{demand.pk}}</a>
+                            </p>
+                            <small class="text-muted">{{demand.title}}</small>
+                        </div>
+                    </div>
+                    <div class="ms-auto">
+                        <small>QuoteID-{{demand.quote_id}}</small>
+                        <strong class="d-block text-danger"><span class="me-1">-</span> <a href="{% url 'demand' demand.pk  %}"> {{demand.created_at.date}}</a></strong>
+                    </div>
+                </div>
+                {% endfor %}
+                <div class="border-top pt-4 mt-4 text-center">
+                    <a class="btn custom-btn" href="{% url 'demand-list' %}">
+                        View all RFQs
+                        <i class="bi-arrow-up-right-circle-fill ms-2"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}
