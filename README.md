@@ -87,7 +87,16 @@ python manage.py runserver
 ### Frontend styling (Tailwind)
 
 The compiled CSS (`homepage/static/css/tailwind-built.css`) is committed, so you don't need
-Node just to run the app. You only need it if you're changing templates/styles:
+Node just to run the app. You only need it if you're changing templates/styles.
+
+**Install Node.js** (skip if you already have it) — version 20 LTS or newer:
+
+- **Windows/macOS**: download the LTS installer from https://nodejs.org/ and run it (npm is
+  bundled in).
+- **Linux**: use [nvm](https://github.com/nvm-sh/nvm) (`nvm install --lts`) rather than your
+  distro's package manager, which often ships an outdated Node.
+
+Confirm it worked: `node --version` (should print v20+) and `npm --version`.
 
 ```bash
 npm install
