@@ -1,3 +1,5 @@
+import logging
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.views.generic import (
@@ -22,6 +24,8 @@ from .forms import SelectRequirement, RequirementPartInlineFormSet, SelectQuote
 model_str = settings.AUTH_USER_MODEL
 app_label, model_name = model_str.split('.')
 User = apps.get_model(app_label, model_name)
+
+logger = logging.getLogger(__name__)
 
 # Order.status transitions keyed by the target status they move the order to,
 # mapping onto the django_fsm transition methods defined on the model.
@@ -128,9 +132,14 @@ class RequirementCreateView(SuccessMessageMixin, CreateView):
             formset = RequirementPartInlineFormSet(request.POST, request.FILES, instance=requirement)
             if formset.is_valid():
                 formset.save()
+                logger.info("Requirement #%s created by %s", requirement.pk, request.user)
                 messages.success(request, self.success_message)
                 return redirect(self.success_url)
             # Parts were invalid — undo the just-created requirement and re-show the form.
+            logger.warning(
+                "RequirementPart formset invalid for requirement #%s by %s, rolling back: %s",
+                requirement.pk, request.user, formset.errors,
+            )
             requirement.delete()
             return self.render_to_response(self.get_context_data(form=form, formset=formset))
         return self.form_invalid(form)
@@ -239,6 +248,7 @@ class QuoteCreateView(SuccessMessageMixin, CreateView):
             note=note
         )
         quote.save()
+        logger.info("Quote #%s submitted for requirement #%s by %s", quote.pk, requirement.pk, request.user)
         messages.success(request, self.success_message)
         if getattr(request, 'htmx', False):
             response = render(request, 'requirement/_quotes_section.html', {
@@ -302,8 +312,13 @@ class QuoteStatusUpdateView(View):
             for reject_quote in other_quotes:
                 reject_quote.status = 'Rejected'
                 reject_quote.save()
+            logger.info(
+                "Quote #%s selected for requirement #%s by %s (%d other quote(s) auto-rejected)",
+                quote.pk, requirement.pk, request.user, other_quotes.count(),
+            )
         elif status == 'Rejected':
             quote.status = 'Rejected'
+            logger.info("Quote #%s rejected by %s", quote.pk, request.user)
         quote.save()
         if getattr(request, 'htmx', False):
             is_manufacturer = request.user.is_authenticated and request.user.role == 'manufacturer'
@@ -342,6 +357,7 @@ class RequirementStatusUpdateView(View):
                     order = Order.objects.create(
                         requirement=requirement, quote=quote, supplier=quote.supplier, customer=customer,
                     )
+                    logger.info("Order #%s auto-created for requirement #%s", order.billno, requirement.pk)
                     # Reflect that the requirement already has a selected quote
                     # and is moving straight into production.
                     try:
@@ -350,7 +366,15 @@ class RequirementStatusUpdateView(View):
                         order.start_production()
                         order.save()
                     except Exception:
-                        pass
+                        logger.exception(
+                            "Failed to fast-forward order #%s to in_production for requirement #%s",
+                            order.billno, requirement.pk,
+                        )
+                else:
+                    logger.warning(
+                        "Requirement #%s marked Completed but has no selected quote — no Order created",
+                        requirement.pk,
+                    )
         return redirect(reverse('requirement', kwargs={'pk': requirement.id}))
 
     def get(self, request, pk, status):
@@ -420,10 +444,16 @@ class OrderStatusUpdateView(LoginRequiredMixin, View):
             try:
                 transition_method(note=request.POST.get('note', ''))
                 order.save()
+                logger.info("Order #%s -> %s by %s", order.billno, order.status, request.user)
                 messages.success(request, f"Order moved to {order.get_status_display()}.")
             except TransitionNotAllowed:
+                logger.warning(
+                    "Rejected transition '%s' on order #%s (current status: %s) by %s",
+                    status, order.billno, order.status, request.user,
+                )
                 messages.error(request, "That status change isn't allowed from the order's current state.")
         else:
+            logger.warning("Unknown order status '%s' requested for order #%s", status, billno)
             messages.error(request, "Unknown order status.")
         if getattr(request, 'htmx', False):
             can_advance = request.user.is_authenticated and (
