@@ -20,6 +20,16 @@ environment to `.env` (gitignored, never commit it) and fill in the blanks.
 
 ## Getting Started (development)
 
+### Common setup
+
+```bash
+git clone https://github.com/yourusername/inventory_portal.git
+cd inventory_portal
+cp .env.dev.example .env   # use this for local dev, whether you run Docker or not
+```
+
+This same setup applies to both the Docker and non-Docker workflows below. For production deployment, you later switch to `.env.prod.example` instead.
+
 ### Prerequisites
 
 - Python 3.12
@@ -28,9 +38,6 @@ environment to `.env` (gitignored, never commit it) and fill in the blanks.
 ### Installation (Docker — recommended)
 
 ```bash
-git clone https://github.com/yourusername/inventory_portal.git
-cd inventory_portal
-cp .env.dev.example .env   # defaults already work for local dev
 docker compose up --build
 ```
 
@@ -77,7 +84,7 @@ venv\Scripts\activate        # Windows
 source venv/bin/activate     # macOS/Linux
 
 pip install -r requirements-dev.txt
-cp .env.dev.example .env     # edit DATABASE_URL/SECRET_KEY if your local Postgres differs
+# edit DATABASE_URL/SECRET_KEY in .env if your local Postgres differs
 
 python manage.py migrate
 python manage.py createsuperuser
