@@ -1,5 +1,5 @@
 from django import forms
-from django.forms import formset_factory
+from django.forms import formset_factory, inlineformset_factory
 
 from .models import Requirement, RequirementPart, Quote
 
@@ -12,7 +12,7 @@ class SelectRequirement(forms.ModelForm):
             self.fields['quote_currency'].initial = kwargs['initial']['quote_currency']
 
         for field_name in self.fields:
-            self.fields[field_name].widget.attrs.update({'class': 'form-control'})
+            self.fields[field_name].widget.attrs.update({'class': 'field-input'})
 
         if self.instance and self.instance.is_deleted:
             self.fields['title'].widget.attrs.update({'disabled': 'disabled'})
@@ -24,9 +24,10 @@ class SelectRequirement(forms.ModelForm):
             'end_date', 'industry', 'is_deleted', 'rfq_desc', 'file'
         ]
         widgets = {
-            'end_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'end_date': forms.DateInput(attrs={'type': 'date', 'class': 'field-input'}),
             'nda_required': forms.Select(choices=[(True, 'Yes'), (False, 'No')]),
             'is_deleted': forms.HiddenInput(),
+            'user': forms.HiddenInput(),
         }
 
 
@@ -35,16 +36,26 @@ class RequirementPartForm(forms.ModelForm):
         model = RequirementPart
         fields = ['part_name', 'Part_desc', 'technology', 'Material', 'file', 'quantity']
         widgets = {
-            'part_name': forms.TextInput(attrs={'class': 'form-control'}),
-            'Part_desc': forms.TextInput(attrs={'class': 'form-control'}),
-            'technology': forms.Select(attrs={'class': 'form-control'}),
-            'Material': forms.Select(attrs={'class': 'form-control'}),
-            'file': forms.ClearableFileInput(attrs={'class': 'form-control'}),
-            'quantity': forms.NumberInput(attrs={'class': 'form-control'}),
+            'part_name': forms.TextInput(attrs={'class': 'field-input'}),
+            'Part_desc': forms.TextInput(attrs={'class': 'field-input'}),
+            'technology': forms.Select(attrs={'class': 'field-input'}),
+            'Material': forms.Select(attrs={'class': 'field-input'}),
+            'file': forms.ClearableFileInput(attrs={'class': 'field-input'}),
+            'quantity': forms.NumberInput(attrs={'class': 'field-input'}),
         }
 
 
 RequirementPartFormSet = formset_factory(RequirementPartForm, extra=1)
+
+# Inline formset for editing/creating RequirementParts alongside their parent
+# Requirement in one submission (used by requirement/edit_requirement.html).
+RequirementPartInlineFormSet = inlineformset_factory(
+    Requirement,
+    RequirementPart,
+    form=RequirementPartForm,
+    extra=1,
+    can_delete=True,
+)
 
 
 class SelectQuote(forms.ModelForm):

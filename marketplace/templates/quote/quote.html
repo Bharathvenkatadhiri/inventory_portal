@@ -1,29 +1,45 @@
-{% extends base_template %}
-{% block title %}
-{{ quote.name }}'s profile
-{% endblock %}
+{% extends "base.html" %}
+{% block title %}Quote #{{ quote.pk }} — ManufactureHub{% endblock %}
 {% block content %}
-    <div class="content-section">
-        <div class="media">
-            <div class="media-body">
-                <h2 style="color:#ea2088;" class="account-heading">&nbsp;{{ quote.name }}</h2>
-                <a href="{% url 'edit-quote' quote.pk %}" class="btn ghost-button" style="float: right;">Edit Details</a>
-                <div class="row">
-                    <div class="col-md-6">
-                        <p class="fal">
-                            Name &nbsp; : {{ quote.requirement }} <br>
-                            Manufacturer &nbsp; : {{ quote.supplier }} <br>
-                        </p>
-                    </div>
-                    <div class="col-md-6">
-                        <p class="fal">
-                            Quantity:  {{ quote.quantity }} <br>
-                            quote_price: {{ quote.quote_price }}
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
+
+<div class="flex items-start justify-between gap-4 mb-6">
+    <div>
+        <h1 class="text-2xl font-semibold text-gray-900">Quote #{{ quote.pk }}</h1>
+        <p class="text-sm text-gray-500 mt-1">
+            <a href="{% url 'requirement' quote.requirement.pk %}" class="text-brand-600 hover:underline">{{ quote.requirement.title }}</a>
+        </p>
     </div>
+    <div class="flex flex-col items-end gap-2">
+        {% if quote.is_selected %}
+        <span class="badge bg-green-50 text-green-700">Selected</span>
+        {% elif quote.status == 'Rejected' %}
+        <span class="badge bg-red-50 text-red-700">Rejected</span>
+        {% elif quote.status == 'Approved' %}
+        <span class="badge bg-green-50 text-green-700">Approved</span>
+        {% else %}
+        <span class="badge bg-yellow-50 text-yellow-700">Pending</span>
+        {% endif %}
+        {% if quote.supplier.user == request.user %}
+        <a href="{% url 'edit-quote' quote.pk %}" class="text-sm text-brand-600 hover:underline">Edit details</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <dl class="grid grid-cols-2 gap-4 text-sm">
+        <div>
+            <dt class="text-gray-500">Manufacturer</dt>
+            <dd class="text-gray-900">{{ quote.supplier }}</dd>
+        </div>
+        <div>
+            <dt class="text-gray-500">Price</dt>
+            <dd class="text-gray-900">{{ quote.requirement.quote_currency }} {{ quote.quote_price }}</dd>
+        </div>
+        <div class="col-span-2">
+            <dt class="text-gray-500">Note</dt>
+            <dd class="text-gray-900">{{ quote.note|default:"—" }}</dd>
+        </div>
+    </dl>
+</div>
 
 {% endblock content %}

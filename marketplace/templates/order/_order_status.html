@@ -1,0 +1,43 @@
+{% load custom_filters %}
+<div id="order-status-block">
+    <div class="flex items-center justify-between mb-4">
+        <div>
+            {% if bill.status == 'cancelled' %}
+            <span class="badge bg-red-50 text-red-700 text-sm">{{ bill.get_status_display }}</span>
+            {% elif bill.status == 'paid' or bill.status == 'completed' %}
+            <span class="badge bg-green-50 text-green-700 text-sm">{{ bill.get_status_display }}</span>
+            {% elif bill.status == 'submitted' %}
+            <span class="badge bg-gray-100 text-gray-700 text-sm">{{ bill.get_status_display }}</span>
+            {% else %}
+            <span class="badge bg-yellow-50 text-yellow-700 text-sm">{{ bill.get_status_display }}</span>
+            {% endif %}
+        </div>
+        {% if next_status and can_advance %}
+        <button
+            class="btn-primary text-xs"
+            hx-post="{% url 'order-update-status' bill.billno next_status %}"
+            hx-target="#order-status-block"
+            hx-swap="outerHTML"
+        >Advance to {{ next_status|title }}</button>
+        {% endif %}
+    </div>
+
+    <h2 class="font-semibold text-gray-900 mb-3">Status history</h2>
+    {% if bill.status_history.all %}
+    <ul class="space-y-3">
+        {% for entry in bill.status_history.all %}
+        <li class="flex items-start gap-3 text-sm">
+            <span class="mt-1 h-2 w-2 rounded-full bg-brand-500 shrink-0"></span>
+            <div>
+                <p class="text-gray-900">
+                    {% if entry.from_status %}{{ entry.from_status|title }} &rarr; {% endif %}{{ entry.to_status|title }}
+                </p>
+                <p class="text-xs text-gray-500">{{ entry.changed_at|date:"M j, Y H:i" }}{% if entry.note %} &middot; {{ entry.note }}{% endif %}</p>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-sm text-gray-500">No status changes recorded yet.</p>
+    {% endif %}
+</div>

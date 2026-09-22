@@ -1,15 +1,13 @@
-{% extends base_template %}
-{% block title %} Activate Supplier {% endblock title %}
+{% extends "base.html" %}
+{% block title %}Activate Supplier{% endblock title %}
 {% block content %}
-    <form method="post">
+<div class="card max-w-lg">
+    <h1 class="text-lg font-semibold text-gray-900 mb-2">Activate manufacturer</h1>
+    <p class="text-sm text-gray-600 mb-6">Are you sure you want to activate the manufacturer "{{ object.companyname }}"?</p>
+    <form method="post" class="flex gap-3">
         {% csrf_token %}
-        <fieldset class="form-group">
-            <div style="color:#ea2088; font-style: bold; font-size: 3rem; border-bottom: 1px solid white;">Activate Supplier</div> <br>
-            <h2>Are you sure you want to Activate the Supplier "{{ object.Name }}"?</h2>
-        </fieldset>
-        <div class="form-group">  
-            <button type="submit" class="btn ghost-red">Yes, Activate</button>
-            <a href="{% url 'suppliers-list' %}" class="btn ghost-button">Cancel</a>
-        </div>
+        <button type="submit" class="btn-primary">Yes, activate</button>
+        <a href="{% url 'suppliers-list' %}" class="btn-secondary">Cancel</a>
     </form>
+</div>
 {% endblock content %}

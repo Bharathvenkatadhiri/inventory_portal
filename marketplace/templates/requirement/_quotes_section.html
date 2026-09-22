@@ -1,0 +1,52 @@
+{% load custom_filters %}
+<div id="quotes-section">
+    <h2 class="font-semibold text-gray-900 mb-4">Quotes</h2>
+    {% if quotes %}
+    <div class="space-y-4">
+        {% for quote in quotes %}
+        <div class="card" id="quote-{{ quote.pk }}">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <a href="{% url 'quote' quote.pk %}" class="font-medium text-gray-900 hover:text-brand-600">Quote #{{ quote.pk }}</a>
+                    <p class="text-sm text-gray-500 mt-1">{{ quote.supplier }}</p>
+                    {% if request.user == demand.user or quote.supplier.user == request.user %}
+                    <p class="text-lg font-semibold text-gray-900 mt-2">{{ demand.quote_currency }} {{ quote.quote_price }}</p>
+                    {% endif %}
+                    {% if quote.note %}<p class="text-sm text-gray-600 mt-1">{{ quote.note }}</p>{% endif %}
+                </div>
+                <div class="flex flex-col items-end gap-2 shrink-0">
+                    {% if quote.is_selected %}
+                    <span class="badge bg-green-50 text-green-700">Selected</span>
+                    {% elif quote.status == 'Rejected' %}
+                    <span class="badge bg-red-50 text-red-700">Rejected</span>
+                    {% elif quote.status == 'Approved' %}
+                    <span class="badge bg-green-50 text-green-700">Approved</span>
+                    {% else %}
+                    <span class="badge bg-yellow-50 text-yellow-700">Pending</span>
+                    {% endif %}
+
+                    {% if request.user == demand.user and not quote.status and not demand.status %}
+                    <button
+                        class="btn-primary text-xs"
+                        hx-post="{% url 'quote-update-status' quote.pk 'Approved' %}"
+                        hx-target="#quotes-section"
+                        hx-swap="outerHTML"
+                    >Select this quote</button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="card text-center text-gray-500">No quotes submitted yet.</div>
+    {% endif %}
+
+    {% if is_manufacturer and not my_quote %}
+    <div class="mt-4">
+        <a href="{% url 'new-quote' demand.pk %}" class="btn-primary">Submit a quote</a>
+    </div>
+    {% elif is_manufacturer and my_quote %}
+    <div class="mt-4 text-sm text-gray-500">You already submitted a quote for this requirement.</div>
+    {% endif %}
+</div>

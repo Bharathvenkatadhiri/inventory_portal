@@ -105,12 +105,10 @@ class CreateCustomer(SuccessMessageMixin, CreateView):
 def ViewProfileDetails(request):
     context = {}
     if request.user.is_staff:
-        context['base_template'] = 'supplier_base.html'
         supplier = ManufacturerProfile.objects.filter(user=request.user).first()
         if supplier:
             context['supplier'] = supplier
     else:
-        context['base_template'] = 'customer_base.html'
         customer = ConsumerProfile.objects.filter(user=request.user.id).first()
         if customer:
             context['customer'] = customer
@@ -133,9 +131,6 @@ class CustomerListView(ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['base_template'] = 'customer_base.html'
-        if self.request.user.is_staff:
-            context['base_template'] = 'supplier_base.html'
         return context
 
 class CustomerCreateView(SuccessMessageMixin, CreateView):
@@ -149,9 +144,6 @@ class CustomerCreateView(SuccessMessageMixin, CreateView):
         context = super().get_context_data(**kwargs)
         context["title"] = 'New Customer'
         context["savebtn"] = 'Add Customer'
-        context['base_template'] = 'customer_base.html'
-        if self.request.user.is_staff:
-            context['base_template'] = 'supplier_base.html'
         return context
 
 class CustomerUpdateView(SuccessMessageMixin, UpdateView):
@@ -165,9 +157,6 @@ class CustomerUpdateView(SuccessMessageMixin, UpdateView):
         context = super().get_context_data(**kwargs)
         context["title"] = 'Edit Customer'
         context["savebtn"] = 'Save Changes'
-        context['base_template'] = 'customer_base.html'
-        if self.request.user.is_staff:
-            context['base_template'] = 'supplier_base.html'
         return context
 
 class CustomerDeleteView(View):
@@ -176,10 +165,7 @@ class CustomerDeleteView(View):
 
     def get(self, request, pk):
         customer = get_object_or_404(ConsumerProfile, pk=pk)
-        base_template = 'customer_base.html'
-        if self.request.user.is_staff:
-            base_template = 'supplier_base.html'
-        return render(request, self.template_name, {'object' : customer,'base_template':base_template})
+        return render(request, self.template_name, {'object' : customer})
 
     def post(self, request, pk):
         user_id = ConsumerProfile.objects.filter(pk=pk).values('user_id').last()
@@ -196,10 +182,7 @@ class CustomeractivateView(View):
 
     def get(self, request, pk):
         customer = get_object_or_404(ConsumerProfile, pk=pk)
-        base_template = 'customer_base.html'
-        if self.request.user.is_staff:
-            base_template = 'supplier_base.html'
-        return render(request, self.template_name, {'object' : customer,'base_template':base_template})
+        return render(request, self.template_name, {'object' : customer})
 
     def post(self, request, pk):
         user_id = ConsumerProfile.objects.filter(pk=pk).values('user_id').last()
@@ -213,10 +196,7 @@ class CustomeractivateView(View):
 class CustomerView(View):
     def get(self, request, pk):
         customer = get_object_or_404(ConsumerProfile, pk=pk)
-        base_template = 'customer_base.html'
-        if self.request.user.is_staff:
-            base_template = 'supplier_base.html'
-        return render(request, 'customer/customer.html', {'customer' : customer,'base_template':base_template})
+        return render(request, 'customer/customer.html', {'customer' : customer})
 
 class SubscriptionView(ListView):
     model = SubscriptionPlan
@@ -226,9 +206,6 @@ class SubscriptionView(ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['base_template'] = 'customer_base.html'
-        if self.request.user.is_staff:
-            context['base_template'] = 'supplier_base.html'
         return context
 
 class SubscriptionDeleteView(View):
@@ -237,10 +214,7 @@ class SubscriptionDeleteView(View):
 
     def get(self, request, pk):
         subscription = get_object_or_404(SubscriptionPlan, pk=pk)
-        base_template = 'customer_base.html'
-        if self.request.user.is_staff:
-            base_template = 'supplier_base.html'
-        return render(request, self.template_name, {'object' : subscription,'base_template':base_template})
+        return render(request, self.template_name, {'object' : subscription})
 
     def post(self, request, pk):
         subscription = get_object_or_404(SubscriptionPlan, pk=pk)
@@ -260,9 +234,6 @@ class SubscriptionUpdateView(SuccessMessageMixin, UpdateView):
         context = super().get_context_data(**kwargs)
         context["title"] = 'Edit Customer'
         context["savebtn"] = 'Save Changes'
-        context['base_template'] = 'customer_base.html'
-        if self.request.user.is_staff:
-            context['base_template'] = 'supplier_base.html'
         return context
 
 
@@ -274,9 +245,6 @@ class SupplierListView(ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['base_template'] = 'customer_base.html'
-        if self.request.user.is_staff:
-            context['base_template'] = 'supplier_base.html'
         return context
 
 
@@ -291,9 +259,6 @@ class SupplierUpdateView(SuccessMessageMixin, UpdateView):
         context = super().get_context_data(**kwargs)
         context["title"] = 'Edit Supplier'
         context["savebtn"] = 'Save Changes'
-        context['base_template'] = 'customer_base.html'
-        if self.request.user.is_staff:
-            context['base_template'] = 'supplier_base.html'
         return context
 
 
@@ -303,10 +268,7 @@ class SupplierDeleteView(View):
 
     def get(self, request, pk):
         supplier = get_object_or_404(ManufacturerProfile, pk=pk)
-        base_template = 'customer_base.html'
-        if self.request.user.is_staff:
-            base_template = 'supplier_base.html'
-        return render(request, self.template_name, {'object': supplier, 'base_template': base_template})
+        return render(request, self.template_name, {'object': supplier})
 
     def post(self, request, pk):
         supplier = get_object_or_404(ManufacturerProfile, pk=pk)
@@ -322,10 +284,7 @@ class SupplieractivateView(View):
 
     def get(self, request, pk):
         supplier = get_object_or_404(ManufacturerProfile, pk=pk)
-        base_template = 'customer_base.html'
-        if self.request.user.is_staff:
-            base_template = 'supplier_base.html'
-        return render(request, self.template_name, {'object': supplier, 'base_template': base_template})
+        return render(request, self.template_name, {'object': supplier})
 
     def post(self, request, pk):
         user_id = ManufacturerProfile.objects.filter(pk=pk).values('user_id').last()
@@ -343,7 +302,4 @@ class SupplierView(View):
         context = {
             'supplier': supplierobj,
         }
-        context['base_template'] = 'customer_base.html'
-        if self.request.user.is_staff:
-            context['base_template'] = 'supplier_base.html'
         return render(request, 'suppliers/supplier.html', context)

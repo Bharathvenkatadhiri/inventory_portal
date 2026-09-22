@@ -1,15 +1,13 @@
-{% extends base_template %}
-{% block title %} Delete Subscriber {% endblock title %}
+{% extends "base.html" %}
+{% block title %}Deactivate Subscription{% endblock title %}
 {% block content %}
-    <form method="post">
+<div class="card max-w-lg">
+    <h1 class="text-lg font-semibold text-gray-900 mb-2">Deactivate subscription</h1>
+    <p class="text-sm text-gray-600 mb-6">Are you sure you want to deactivate the subscription for {{ object.user_profile }}?</p>
+    <form method="post" class="flex gap-3">
         {% csrf_token %}
-        <fieldset class="form-group">
-            <div style="color:#ea2088; font-style: bold; font-size: 3rem; border-bottom: 1px solid white;">Deactivate Subscription</div> <br>
-            <h2>Are you sure you want to deactivate the subscription for {{ object.user_profile }}?</h2>
-        </fieldset>
-        <div class="form-group">  
-            <button type="submit" class="btn ghost-red">Yes, Delete</button>
-            <a href="{% url 'subscription-list' %}" class="btn ghost-button">Cancel</a>
-        </div>
+        <button type="submit" class="btn-danger">Yes, deactivate</button>
+        <a href="{% url 'subscription-list' %}" class="btn-secondary">Cancel</a>
     </form>
+</div>
 {% endblock content %}

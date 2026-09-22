@@ -1,57 +1,40 @@
-{% extends base_template %}
-{% block title %} {{title}} {% endblock title %}
+{% extends "base.html" %}
+{% load widget_tweaks %}
+{% block title %}{{ title }}{% endblock title %}
 {% block content %}
-    <div style="color:#ea2088; font-style: bold; font-size: 3rem; border-bottom: 1px solid white;">{{title}}</div> <br>
-    <form method="post">
+<h1 class="text-xl font-semibold text-gray-900 mb-6">{{ title }}</h1>
+
+<div class="card max-w-2xl">
+    <form method="post" class="space-y-4">
         {% csrf_token %}
-        {{ form.non_field_errors }}
-        {{ form.Name.errors }}
-        {{ form.type_of_business.errors }}
-        {{ form.Address.errors }}
-        {{ form.phone.errors }}
-        {{ form.email.errors }}
-        {{ form.EORI_number.errors }}
-        {{ form.VAT_number.errors }}
-        <div class="form-group">
-            <label for="{{ form.Name.id_for_label }}">Name:</label>
-            {{ form.Name }}
+        {% if form.non_field_errors %}
+        <div class="rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">
+            {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
         </div>
-        <div class="form-group">
-            <label for="{{ form.type_of_business.id_for_label }}">Sector:</label>
-            {{ form.type_of_business }}
-        </div>
-        <div class="form-group">
-            <label for="{{ form.Address.id_for_label }}">Address:</label>
-            {{ form.Address }}
-        </div>
-
-        <div class="form-group">
-            <label for="{{ form.phone.id_for_label }}">Phone:</label>
-            {{ form.phone }}
-        </div>
-
-        <div class="form-group">
-            <label for="{{ form.email.id_for_label }}">Email ID:</label>
-            {{ form.email }}
-        </div>
-
-        <div class="form-group">
-            <label for="{{ form.EORI_number.id_for_label }}">EORI #:</label>
-            {{ form.EORI_number }}
-        </div>
-
-        <div class="form-group">
-            <label for="{{ form.VAT_number.id_for_label }}">VAT #:</label>
-            {{ form.VAT_number }}
-        </div>
-        <br>
-        <div class="align-middle">
-            <button type="submit" class="btn ghost-green">{{ savebtn }}</button>
-            {% if title == "New Customer" %}
-                <button type="reset" class="btn ghost-blue" >Reset</button>
+        {% endif %}
+        {% for field in form %}
+            {% if field.is_hidden %}
+                {{ field }}
+            {% else %}
+            <div>
+                <label for="{{ field.id_for_label }}" class="field-label">{{ field.label }}</label>
+                {% if field|widget_type == 'checkboxinput' %}
+                <input type="checkbox" name="{{ field.html_name }}" id="{{ field.id_for_label }}" {% if field.value %}checked{% endif %} class="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500">
+                {% else %}
+                {{ field|add_class:"field-input" }}
+                {% endif %}
+                {% if field.help_text %}<p class="text-xs text-gray-500 mt-1">{{ field.help_text }}</p>{% endif %}
+                {% for error in field.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+            </div>
             {% endif %}
-            <a href="{% url 'customers-list' %}" class="btn ghost-button">Cancel</a>
+        {% endfor %}
+        <div class="flex gap-3 pt-2">
+            <button type="submit" class="btn-primary">{{ savebtn }}</button>
+            {% if title == "New Customer" %}
+            <button type="reset" class="btn-secondary">Reset</button>
+            {% endif %}
+            <a href="{% url 'customers-list' %}" class="btn-secondary">Cancel</a>
         </div>
     </form>
-
+</div>
 {% endblock content %}

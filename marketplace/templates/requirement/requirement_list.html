@@ -1,149 +1,91 @@
-{% extends base_template %}
-{% load widget_tweaks %}
-{% block title %} RFQ List {% endblock title %}
+{% extends "base.html" %}
+{% block title %}Requirements — ManufactureHub{% endblock %}
 {% block content %}
 
-<div class="row" style="color: #ea2088; font-style: bold; font-size: 2rem;">
-    <h5 class="mb-4">List of RFQ's
-        {% if not request.user.is_staff %}
-        <div style="float:right;"> <a class="btn ghost-blue" href="{% url 'new-requirement' %}">Add New Demand</a></div>
-        {% endif %}
-    </h5>
-    <div class="col-md-12">
-        <form method="get" class="row gx-3 gy-2 align-items-center" id="filterForm">
-            <div class="col-auto">
-                <label for="sort" class="visually-hidden">Sort By:</label>
-                <select name="sort" id="sort" class="form-select" onchange="document.getElementById('filterForm').submit();">
-                    <option value="">Sort By (default)</option>
-                    <option value="date_asc" {% if request.GET.sort == 'date_asc' %}selected{% endif %}>End Date: Oldest to Newest</option>
-                    <option value="date_desc" {% if request.GET.sort == 'date_desc' %}selected{% endif %}>End Date: Newest to Oldest</option>
-                    <option value="parts_asc" {% if request.GET.sort == 'parts_asc' %}selected{% endif %}>Parts: Low to High</option>
-                    <option value="parts_desc" {% if request.GET.sort == 'parts_desc' %}selected{% endif %}>Parts: High to Low</option>
-                    <option value="cr_date_asc" {% if request.GET.sort == 'cr_date_asc' %}selected{% endif %}>Created Date: Oldest to Newest</option>
-                    <option value="cr_date_desc" {% if request.GET.sort == 'cr_date_desc' %}selected{% endif %}>Created Date: Newest to Oldest</option>
-                </select>
-            </div>
-            <div class="col-auto visually-hidden">
-                <label for="industry" class="visually-hidden">Industry:</label>
-                <select name="industry" id="industry" class="form-select" onchange="document.getElementById('filterForm').submit();">
-                    <option value="">All Industries</option>
-                    {% for industry in industries %}
-                    <option value="{{ industry.pk }}" {% if request.GET.industry == industry.pk|stringformat:"s" %}selected{% endif %}>{{ industry.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-        </form>
-    </div>
+<div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-semibold text-gray-900">
+        {% if request.user.role == 'manufacturer' %}Open Requirements{% else %}My Requirements{% endif %}
+    </h1>
+    {% if request.user.role != 'manufacturer' %}
+    <a href="{% url 'new-requirement' %}" class="btn-primary">Submit Requirement</a>
+    {% endif %}
 </div>
-<br>
+
+<form method="get" class="card mb-6 flex flex-wrap items-end gap-4">
+    <div>
+        <label for="sort" class="field-label">Sort by</label>
+        <select name="sort" id="sort" class="field-input" onchange="this.form.submit()">
+            <option value="">Default</option>
+            <option value="date_asc" {% if request.GET.sort == 'date_asc' %}selected{% endif %}>End date: oldest to newest</option>
+            <option value="date_desc" {% if request.GET.sort == 'date_desc' %}selected{% endif %}>End date: newest to oldest</option>
+            <option value="parts_asc" {% if request.GET.sort == 'parts_asc' %}selected{% endif %}>Parts: low to high</option>
+            <option value="parts_desc" {% if request.GET.sort == 'parts_desc' %}selected{% endif %}>Parts: high to low</option>
+            <option value="cr_date_asc" {% if request.GET.sort == 'cr_date_asc' %}selected{% endif %}>Created: oldest to newest</option>
+            <option value="cr_date_desc" {% if request.GET.sort == 'cr_date_desc' %}selected{% endif %}>Created: newest to oldest</option>
+        </select>
+    </div>
+</form>
 
 {% if object_list %}
-{% for demand in object_list %}
-<div class="courses-container">
-    <div class="course">
-        <div class="course-preview">
-            <h2>{{ demand.title }}</h2>
-            <a href="{% url 'requirement' demand.pk %}">View all details <i class="fas fa-chevron-right"></i></a>
-            {% if demand.status == 'Approved' and request.user.is_staff %}
-            <a href="{% url 'requirement-update-status' demand.pk 'Production' %}" class="badge text-bg-success" style="float:right;">+ Start Production</a>
-            {% endif %}
-            {% if demand.status == 'Production' %}
-            <a href="#" class="badge text-bg-success" style="float:right;">In Production</a>
-            {% if request.user.is_staff %}
-            <a href="{% url 'requirement-update-status' demand.pk 'Completed' %}" class="badge text-bg-success" style="float:right;">+ Complete RFQ</a>
-            {% endif %}
-            {% endif %}
-        </div>
-        <div class="course-info">
-            <div class="progress-container">
-                <div class="progress"></div>
-                <span class="progress-text">
-                    {{ demand.parts }} Parts
-                </span>
+<div class="space-y-4">
+    {% for demand in object_list %}
+    <div class="card">
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <a href="{% url 'requirement' demand.pk %}" class="text-lg font-medium text-gray-900 hover:text-brand-600">{{ demand.title }}</a>
+                <p class="text-sm text-gray-500 mt-1">{{ demand.parts }} part(s) &middot; {{ demand.industry|default:"—" }} &middot; ends {{ demand.end_date|date:"M j, Y"|default:"—" }}</p>
+                <p class="text-sm text-gray-600 mt-1">{{ demand.rfq_desc }}</p>
             </div>
-            <table style="width: 100%;">
-                <tr>
-                    <td style="width: 33%;">
-                        <h6>{{ demand.end_date|date:"Y-m-d" }} UTC</h6>
-                        <h5>{{ demand.industry }}</h5>
-                        <h5>{{ demand.request_reason }}</h5>
-                        <a href="#" data-toggle="modal" data-target="#filePreviewModal{{ demand.id }}">
-                            Preview RFQ File
-                        </a>
-
-                        <!-- Modal -->
-                        <div class="modal fade" id="filePreviewModal{{ demand.id }}" tabindex="-1" role="dialog" aria-labelledby="filePreviewModalLabel{{ demand.id }}" aria-hidden="true">
-                            <div class="modal-dialog modal-lg" role="document">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title" id="filePreviewModalLabel{{ demand.id }}">File Preview</h5>
-                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                            <span aria-hidden="true">&times;</span>
-                                        </button>
-                                    </div>
-                                    {% load custom_filters %}
-                                    <div class="modal-body">
-                                        {% if demand.file.url|is_image %}
-                                        <img src="{{ demand.file.url }}" class="img-fluid" alt="Preview">
-                                        {% elif demand.file.url|is_pdf %}
-                                        <embed src="{{ demand.file.url }}" type="application/pdf" width="100%" height="600px" />
-                                        {% else %}
-                                        <p>No preview available for this file type.</p>
-                                        {% endif %}
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </td>
-                    <td style="width: 33%;">
-                        <h5>{{ demand.rfq_desc }}</h5>
-                        <h5>{{ demand.nda_required }}</h5>
-                        <h5>{{ demand.quote_currency }}</h5>
-                    </td>
-                    <td style="width: 33%;">
-                        {% if request.user.is_staff and demand.status == None %}
-                        <a class="btn ghost-green" href="{% url 'new-quote' demand.pk %}">Add Quotation</a><br/><br/>
-                        {% endif %}
-                        {% if demand.user == request.user and demand.status == None  %}
-                        <a class="btn ghost-green" href="{% url 'edit-requirement' demand.pk %}" >Edit</a><br/><br/>
-                        <a class="btn ghost-red" href="{% url 'delete-requirement' demand.pk %}">Delete</a>
-                        {% endif %}
-                        {% if demand.status %}
-                        <a class="btn ghost-gray" href="#" >{{demand.status}}</a><br/><br/>
-                        {% endif %}
-                    </td>
-                </tr>
-            </table>
+            <div class="flex flex-col items-end gap-2 shrink-0">
+                {% if demand.status == 'Approved' %}
+                <span class="badge bg-green-50 text-green-700">Approved</span>
+                {% elif demand.status == 'Production' %}
+                <span class="badge bg-yellow-50 text-yellow-700">In Production</span>
+                {% elif demand.status == 'Completed' %}
+                <span class="badge bg-green-50 text-green-700">Completed</span>
+                {% elif demand.status == 'Rejected' %}
+                <span class="badge bg-red-50 text-red-700">Rejected</span>
+                {% else %}
+                <span class="badge bg-gray-100 text-gray-700">Submitted</span>
+                {% endif %}
+                {% if request.user.role == 'manufacturer' and demand.status == 'Approved' %}
+                <a href="{% url 'requirement-update-status' demand.pk 'Production' %}" class="text-xs text-brand-600 hover:underline">+ Start production</a>
+                {% elif request.user.role == 'manufacturer' and demand.status == 'Production' %}
+                <a href="{% url 'requirement-update-status' demand.pk 'Completed' %}" class="text-xs text-brand-600 hover:underline">+ Complete RFQ</a>
+                {% endif %}
+                {% if demand.user == request.user and not demand.status %}
+                <div class="flex gap-3">
+                    <a href="{% url 'edit-requirement' demand.pk %}" class="text-xs text-gray-500 hover:text-gray-700">Edit</a>
+                    <a href="{% url 'delete-requirement' demand.pk %}" class="text-xs text-red-600 hover:text-red-700">Delete</a>
+                </div>
+                {% endif %}
+            </div>
         </div>
     </div>
+    {% endfor %}
 </div>
-{% endfor %}
-<div class="align-middle">
-    {% if is_paginated %}
+
+{% if is_paginated %}
+<div class="mt-6 flex flex-wrap gap-2">
     {% if page_obj.has_previous %}
-    <a class="btn btn-outline-info mb-4" href="?page=1{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}{% if request.GET.industry %}&industry={{ request.GET.industry }}{% endif %}">First</a>
-    <a class="btn btn-outline-info mb-4" href="?page={{ page_obj.previous_page_number }}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}{% if request.GET.industry %}&industry={{ request.GET.industry }}{% endif %}">Previous</a>
+    <a class="btn-secondary" href="?page=1{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}">First</a>
+    <a class="btn-secondary" href="?page={{ page_obj.previous_page_number }}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}">Previous</a>
     {% endif %}
     {% for num in page_obj.paginator.page_range %}
-    {% if page_obj.number == num %}
-    <a class="btn btn-info mb-4" href="?page={{ num }}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}{% if request.GET.industry %}&industry={{ request.GET.industry }}{% endif %}">{{ num }}</a>
-    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-    <a class="btn btn-outline-info mb-4" href="?page={{ num }}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}{% if request.GET.industry %}&industry={{ request.GET.industry }}{% endif %}">{{ num }}</a>
-    {% endif %}
+        {% if page_obj.number == num %}
+        <span class="btn-primary">{{ num }}</span>
+        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+        <a class="btn-secondary" href="?page={{ num }}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}">{{ num }}</a>
+        {% endif %}
     {% endfor %}
     {% if page_obj.has_next %}
-    <a class="btn btn-outline-info mb-4" href="?page={{ page_obj.next_page_number }}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}{% if request.GET.industry %}&industry={{ request.GET.industry }}{% endif %}">Next</a>
-    <a class="btn btn-outline-info mb-4" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}{% if request.GET.industry %}&industry={{ request.GET.industry }}{% endif %}">Last</a>
-    {% endif %}
+    <a class="btn-secondary" href="?page={{ page_obj.next_page_number }}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}">Next</a>
+    <a class="btn-secondary" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}">Last</a>
     {% endif %}
 </div>
+{% endif %}
+
 {% else %}
-<tbody></tbody>
-</table>
-<br><br><br><br><br><br><br><br>
-<div style="color: #ea2088; font-style: bold; font-size: 1.5rem; text-align: center;">WOW, SUCH EMPTY</div>
+<div class="card text-center text-gray-500">No requirements found.</div>
 {% endif %}
 {% endblock content %}

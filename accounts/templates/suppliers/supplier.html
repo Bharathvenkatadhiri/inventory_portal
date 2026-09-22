@@ -1,112 +1,77 @@
-{% extends base_template %}
-{% block title %}
-{{ supplier.companyname }}'s profile
-{% endblock %}
+{% extends "base.html" %}
+{% block title %}{{ supplier.companyname }}{% endblock title %}
 {% block content %}
-
-<main class="main-wrapper ms-sm-auto py-4 px-md-4 border-start">
-    <div class="title-group mb-3">
-        <h1 class="h2 mb-0">{{ supplier.companyname }} Detail</h1>
-        <strong class="d-block text-success"><span class="me-1"></span> <a href="{% url 'suppliers-list' %}" >View Full List</a></strong>
+<div class="flex items-center justify-between mb-6">
+    <div>
+        <h1 class="text-xl font-semibold text-gray-900">{{ supplier.companyname }}</h1>
+        <p class="text-sm text-gray-500">{{ supplier.get_activity_type_display }} &middot; created {{ supplier.created_at|date:"Y-m-d" }}</p>
     </div>
-    <div class="row my-4">
-        <div class="col-lg-12 col-12">
-            <div class="custom-block custom-block-transation-detail bg-white">
-                <div class="d-flex flex-wrap align-items-center border-bottom pb-3 mb-3">
-                    <div class="d-flex align-items-center">
-                        <div>
-                            <p>Sector</p>
-                            <small class="text-muted">{{ supplier.activity_type }}</small>
-                            <small class="text-muted">{{ supplier.created_at }}</small>
-                        </div>
-                    </div>
-                    <div class="ms-auto">
-                        <strong class="d-block text-success"><span class="me-1">+</span> <a href="{% url 'edit-supplier' supplier.pk %}" > Edit</a></strong>
-                    </div>
-                </div>
-
-                <div class="d-flex flex-wrap align-items-center">
-                    <div class="custom-block-transation-detail-item mt-4">
-                        <h6>Phone Number</h6>
-                        <p class="blurred-text blur-text">{{ supplier.phone }}</p>
-                    </div>
-
-                    <div class="custom-block-transation-detail-item mt-4 mx-auto px-4">
-                        <h6>City</h6>
-                        <p>{{ supplier.city }}</p>
-                    </div>
-
-                    <div class="custom-block-transation-detail-item mt-4 ms-lg-auto px-lg-3 px-md-3">
-                        <h6>State</h6>
-                        <p>{{ supplier.state }}</p>
-                    </div>
-
-                    <div class="custom-block-transation-detail-item mt-4 ms-auto me-auto">
-                        <h6>Country</h6>
-                        <p>{{ supplier.country }}</p>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-        <div class="custom-block custom-block-transation-detail bg-white">
-            <div class="d-flex flex-wrap align-items-center border-bottom pb-3 mb-3">
-                <div class="d-flex align-items-center">
-                    <div>
-                        <p>Address</p>
-                        <small class="text-muted blurred-text blur-text">{{ supplier.address }}</small>
-                    </div>
-                </div>
-            </div>
-
-            <div class="d-flex flex-wrap align-items-center">
-                <div class="custom-block-transation-detail-item mt-4">
-                    <h6>Company Name</h6>
-                    <p>{{ supplier.companyname }}</p>
-                </div>
-
-                <div class="custom-block-transation-detail-item mt-4 mx-auto px-4">
-                    <h6>Company URL</h6>
-                    <p><a href="{{ supplier.company_url }}" target="_blank">{{ supplier.company_url }}</a></p>
-                </div>
-
-                <div class="custom-block-transation-detail-item mt-4 ms-lg-auto px-lg-3 px-md-3">
-                    <h6>Production Area</h6>
-                    <p>{{ supplier.production_area }}</p>
-                </div>
-
-                <div class="custom-block-transation-detail-item mt-4 ms-auto me-auto">
-                    <h6>Manufacturing Competency</h6>
-                    <p>{{ supplier.manufacturing_competency1 }}, {{ supplier.manufacturing_competency2 }}</p>
-                </div>
-            </div>
-        </div>
-    </div>
-</main>
-
-<div class="content-section">
-    <div class="media">
-        <div class="media-body">
-            <h2 style="color:#ea2088;" class="account-heading">&nbsp;</h2>
-
-            <div class="row">
-                <div class="col-md-6">
-                    <p class="fal">
-                        Sector &nbsp; :  {{ supplier.activity_type }}<br>
-                        Phone &nbsp; :  {{ supplier.phone }}<br>
-                        Email ID &nbsp; :  {{ supplier.email }}<br>
-                        EORI # &nbsp; :  {{ supplier.EORI_number }}<br>
-                        VAT # &nbsp; :  {{ supplier.VAT_number }}<br>
-                    </p>
-                </div>
-                <div class="col-md-6">
-                    <p class="fal">
-                        Address: <br> {{ supplier.address|linebreaks }}
-                    </p>
-                </div>
-            </div>
-        </div>
+    <div class="flex gap-2">
+        <a href="{% url 'edit-supplier' supplier.pk %}" class="btn-secondary">Edit</a>
+        <a href="{% url 'suppliers-list' %}" class="btn-secondary">Back to list</a>
     </div>
 </div>
 
+<div class="card grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div>
+        <h6 class="field-label">Phone</h6>
+        <p class="text-sm text-gray-900">{{ supplier.phone }}</p>
+    </div>
+    <div>
+        <h6 class="field-label">Email</h6>
+        <p class="text-sm text-gray-900">{{ supplier.email }}</p>
+    </div>
+    <div>
+        <h6 class="field-label">Address</h6>
+        <p class="text-sm text-gray-900">{{ supplier.address }}</p>
+    </div>
+    <div>
+        <h6 class="field-label">City</h6>
+        <p class="text-sm text-gray-900">{{ supplier.city }}</p>
+    </div>
+    <div>
+        <h6 class="field-label">State</h6>
+        <p class="text-sm text-gray-900">{{ supplier.state }}</p>
+    </div>
+    <div>
+        <h6 class="field-label">Country</h6>
+        <p class="text-sm text-gray-900">{{ supplier.country }}</p>
+    </div>
+    <div>
+        <h6 class="field-label">Company URL</h6>
+        {% if supplier.company_url %}
+        <a href="{{ supplier.company_url }}" target="_blank" class="text-sm text-brand-600 hover:underline">{{ supplier.company_url }}</a>
+        {% else %}
+        <p class="text-sm text-gray-900">—</p>
+        {% endif %}
+    </div>
+    <div>
+        <h6 class="field-label">Production Area</h6>
+        <p class="text-sm text-gray-900">{{ supplier.production_area|default:"—" }}</p>
+    </div>
+    <div>
+        <h6 class="field-label">Manufacturing Competency</h6>
+        <p class="text-sm text-gray-900">{{ supplier.get_manufacturing_competency1_display|default:"—" }}, {{ supplier.get_manufacturing_competency2_display|default:"—" }}</p>
+    </div>
+    <div>
+        <h6 class="field-label">Amount of Employees</h6>
+        <p class="text-sm text-gray-900">{{ supplier.get_amount_of_employees_display }}</p>
+    </div>
+    <div>
+        <h6 class="field-label">Turnover per Year</h6>
+        <p class="text-sm text-gray-900">{{ supplier.get_turnover_per_year_display }}</p>
+    </div>
+    <div>
+        <h6 class="field-label">Certificates</h6>
+        <p class="text-sm text-gray-900">{{ supplier.get_certificates_display|default:"—" }}</p>
+    </div>
+    <div>
+        <h6 class="field-label">Status</h6>
+        {% if supplier.is_deleted %}
+        <span class="badge bg-red-50 text-red-700">Deactivated</span>
+        {% else %}
+        <span class="badge bg-green-50 text-green-700">Active</span>
+        {% endif %}
+    </div>
+</div>
 {% endblock content %}
