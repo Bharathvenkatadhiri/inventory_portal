@@ -46,6 +46,17 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
+### Frontend styling (Tailwind)
+
+The compiled CSS (`homepage/static/css/tailwind-built.css`) is committed, so you don't need
+Node just to run the app. You only need it if you're changing templates/styles:
+
+```bash
+npm install
+npm run watch-css     # rebuilds on save, during development
+npm run build-css     # one-shot minified build — run before committing UI changes
+```
+
 ### Background workers (Celery)
 
 ```bash
@@ -68,17 +79,23 @@ pytest
 - `payments` — `Payment`, Razorpay webhook endpoint
 - `homepage` — public landing pages
 
+## Production note: static files
+
+Static files use `whitenoise`'s manifest storage, which resolves `{% static %}` tags via
+a hashed-filename manifest. In `DEBUG=True` (the local dev default) this is bypassed
+automatically. Before deploying with `DEBUG=False`, run `python manage.py collectstatic`
+first — otherwise every page referencing `{% static %}` will error.
+
 ## Roadmap (not yet built)
 
-- End-to-end htmx UI for the requirement → quote → order flow
 - Live Razorpay integration (currently a signature-verifying webhook stub)
 - AI-assisted diagram/spec extraction (`Requirement.extracted_data` is reserved for this)
 - Production deployment (hosting, CI/CD, monitoring)
 
 ## Licensing and Commercial Terms
 
-ManufactureHub is a commercial software product. Usage of this application is chargeable, and the source code is available under separate commercial terms. For licensing and purchasing details, please contact rajkumarv88@icloud.com.
+ManufactureHub is a commercial software product. Usage of this application is chargeable, and the source code is available under separate commercial terms. For licensing and purchasing details, please contact bharathvenkatadhiri@gmail.com.
 
 ## Contact
 
-For any questions or feedback, please contact us at [rajkumarv88@icloud.com](mailto:rajkumarv88@icloud.com).
+For any questions or feedback, please contact us at [bharathvenkatadhiri@gmail.com](mailto:bharathvenkatadhiri@gmail.com).

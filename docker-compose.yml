@@ -24,6 +24,12 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      # Override .env's localhost-based URLs (correct for running Django
+      # directly on the host) with the in-network service names Compose
+      # gives these containers.
+      DATABASE_URL: postgres://postgres:postgres@db:5432/marketplace
+      REDIS_URL: redis://redis:6379/0
     depends_on:
       - db
       - redis
@@ -35,6 +41,9 @@ services:
       - .:/app
     env_file:
       - .env
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/marketplace
+      REDIS_URL: redis://redis:6379/0
     depends_on:
       - db
       - redis
