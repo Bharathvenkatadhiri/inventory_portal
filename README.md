@@ -1,101 +1,79 @@
-# ManufactureHub - The Supply Demand Management System
+# ManufactureHub
 
-ManufactureHub is a robust and efficient Supply, Demand and inventory management system built with Django. It allows users to add stock items, generate bills, and manage inventory seamlessly. All data is stored in a database and rendered in real-time, providing a smooth user experience.
+ManufactureHub is a B2B manufacturing marketplace: a consumer submits a requirement (with a diagram/spec file), manufacturers respond with quotes, the consumer selects one, and the order proceeds through production to payment.
+
+Stack: Django 5.1 + PostgreSQL, server-rendered templates (htmx/Alpine, no separate SPA), a scoped DRF API for webhooks/integrations, Celery + Redis for async work, S3-compatible storage for uploaded files, and Razorpay for payments.
 
 ## Getting Started
 
 ### Prerequisites
 
-Ensure you have Python and Django installed on your machine. If not, you can download and install them from the following links:
-- [Python](https://www.python.org/downloads/)
-- [Django](https://www.djangoproject.com/download/)
+- Python 3.12
+- Docker + Docker Compose (recommended — runs Postgres/Redis for you)
 
-### Installation
-
-1. **Clone the Repository**
-
-   ```bash
-   git clone https://github.com/yourusername/ManufactureHub.git
-   cd ManufactureHub
-   ```
-
-2. **Install Dependencies**
-
-   Create a virtual environment and activate it:
-
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
-   ```
-
-   Install the required packages:
-
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-### Database Setup
-
-To set up the database for the first time, run the following commands in the project's directory. This process involves creating and applying migrations for each app within the project.
+### Installation (Docker — recommended)
 
 ```bash
-python manage.py makemigrations core
-python manage.py migrate core
-python manage.py makemigrations homepage
-python manage.py migrate homepage
-python manage.py makemigrations accounts
-python manage.py migrate accounts
-python manage.py makemigrations transactions
-python manage.py migrate transactions
-python manage.py makemigrations inventory
-python manage.py migrate inventory
+git clone <repo-url>
+cd inventory_portal
+cp .env.example .env   # fill in SECRET_KEY at minimum; defaults work for local dev
+docker-compose up --build
 ```
 
-For subsequent model changes, you only need to run:
+In another terminal:
 
 ```bash
-python manage.py makemigrations
+docker-compose exec web python manage.py migrate
+docker-compose exec web python manage.py createsuperuser
+```
+
+Visit `http://127.0.0.1:8000`.
+
+### Installation (without Docker)
+
+Requires a local PostgreSQL instance and a `DATABASE_URL` in `.env` pointing to it.
+
+```bash
+python -m venv venv
+venv\Scripts\activate        # Windows
+source venv/bin/activate     # macOS/Linux
+
+pip install -r requirements-dev.txt
+cp .env.example .env         # edit DATABASE_URL/SECRET_KEY
+
 python manage.py migrate
-python manage.py populate_choices
-```
-
-### Running the Server
-
-To start the development server, use the following command:
-
-```bash
+python manage.py createsuperuser
 python manage.py runserver
 ```
 
-Visit `http://127.0.0.1:8000` in your web browser to access the application.
-
-### Creating an Admin User
-
-To create an admin user for accessing the Django admin interface, run:
+### Background workers (Celery)
 
 ```bash
-python manage.py createsuperuser
+celery -A core worker -l info
 ```
 
-Follow the prompts to set the username, email, and password.
+(Started automatically as the `worker` service under Docker Compose.)
 
-## Features
+### Running tests
 
-- **Real-time Data Rendering**: All inventory data is updated and rendered in real-time.
-- **User Management**: Create and manage users with different levels of access.
-- **Stock Management**: Add, update, and remove stock items.
-- **Billing**: Generate and manage bills for inventory items.
-- **Admin Interface**: Manage the system through a powerful and intuitive admin interface.
+```bash
+pytest
+```
 
-## Contributing
+## Project layout
 
-We welcome contributions to enhance ManufactureHub. To contribute:
+- `core` — custom user model (email-based auth, `role`: consumer/manufacturer/admin), settings, Celery app
+- `accounts` — `ConsumerProfile`, `ManufacturerProfile`, subscription plans
+- `marketplace` — `Requirement`, `RequirementPart`, `Quote`, `Order` (state machine), `OrderStatusHistory`
+- `payments` — `Payment`, Razorpay webhook endpoint
+- `homepage` — public landing pages
 
-1. Fork the repository.
-2. Create a new branch (`git checkout -b feature/your-feature`).
-3. Make your changes and commit them (`git commit -am 'Add some feature'`).
-4. Push to the branch (`git push origin feature/your-feature`).
-5. Open a pull request.
+## Roadmap (not yet built)
+
+- End-to-end htmx UI for the requirement → quote → order flow
+- Live Razorpay integration (currently a signature-verifying webhook stub)
+- AI-assisted diagram/spec extraction (`Requirement.extracted_data` is reserved for this)
+- Production deployment (hosting, CI/CD, monitoring)
 
 ## Licensing and Commercial Terms
 
@@ -104,7 +82,3 @@ ManufactureHub is a commercial software product. Usage of this application is ch
 ## Contact
 
 For any questions or feedback, please contact us at [rajkumarv88@icloud.com](mailto:rajkumarv88@icloud.com).
-
----
-
-With ManufactureHub, managing your supply, demand and inventory has never been easier. Get started today and experience a streamlined inventory management process!
