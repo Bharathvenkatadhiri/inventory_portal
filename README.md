@@ -28,7 +28,7 @@ environment to `.env` (gitignored, never commit it) and fill in the blanks.
 ### Installation (Docker — recommended)
 
 ```bash
-git clone https://github.com/Bharathvenkatadhiri/inventory_portal.git
+git clone https://github.com/yourusername/inventory_portal.git
 cd inventory_portal
 cp .env.dev.example .env   # defaults already work for local dev
 docker compose up --build
