@@ -1,0 +1,62 @@
+{% extends base_template %}
+{% block title %} {{ title }} {% endblock title %}
+
+{% block content %}
+<main class="main-wrapper ms-sm-auto py-4 px-md-4 border-start">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="display-4" style="color: #ea2088; border-bottom: 1px solid #fff;">{{ title }}</h1>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 col-md-10 col-12">
+            <div class="custom-block bg-white p-4">
+                <form method="post">
+                    {% csrf_token %}
+                    {{ form.non_field_errors }}
+
+                    <div class="form-group">
+                        <input type="hidden" name="demand" class="form-control{% if form.demand.errors %} is-invalid{% endif %}" id="id_demand" value="{{ demand.id }}">
+                        <input type="hidden" name="supplier" class="form-control{% if form.supplier.errors %} is-invalid{% endif %}" id="id_supplier" value="{{ request.user.id }}">
+                    </div>
+                    <div class="form-group mb-3">
+                        <label for="{{ form.quote_price.id_for_label }}">RFQ Price:</label>
+                        {{ form.quote_price|default_if_none:"" }}
+                        {% if form.quote_price.errors %}
+                        <div class="invalid-feedback">
+                            {% for error in form.quote_price.errors %}
+                            <div>{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="{{ form.note.id_for_label }}">RFQ Note:</label>
+                        {{ form.note|default_if_none:"" }}
+                        {% if form.note.errors %}
+                        <div class="invalid-feedback">
+                            {% for error in form.note.errors %}
+                            <div>{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <button type="submit" class="btn btn-success">{{ savebtn }}</button>
+                        {% if title == "New RFQ" %}
+                        <button type="reset" class="btn btn-primary">Reset</button>
+                        {% endif %}
+                        {% if delbtn %}
+                        <a href="{% url 'delete-quote' quote.pk %}" class="btn btn-danger">Delete RFQ</a>
+                        {% endif %}
+                        <a href="{% url 'quote-list' %}" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock content %}

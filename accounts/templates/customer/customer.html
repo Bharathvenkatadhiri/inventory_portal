@@ -1,0 +1,122 @@
+{% extends base_template %}
+{% block title %}
+{{ customer.name }}'s profile
+{% endblock %}
+{% block content %}
+
+<main class="main-wrapper ms-sm-auto py-4 px-md-4 border-start">
+    <div class="title-group mb-3">
+        <h1 class="h2 mb-0">{{ customer.Name }} Detail</h1>
+        <strong class="d-block text-success"><span class="me-1"></span> <a href="{% url 'customers-list' %}" >View Full List</a></strong>
+    </div>
+    <div class="row my-4">
+        <div class="col-lg-12 col-12">
+            <div class="custom-block custom-block-transation-detail bg-white">
+                <div class="d-flex flex-wrap align-items-center border-bottom pb-3 mb-3">
+                    <div class="d-flex align-items-center">
+                        <div>
+                            <p>Sector</p>
+                            <small class="text-muted">{{ customer.type_of_business }}</small>
+                            <small class="text-muted">{{ customer.created_at }}</small>
+                        </div>
+                    </div>
+                    <div class="ms-auto">
+                        <strong class="d-block text-success"><span class="me-1">+</span> <a href="{% url 'edit-customer' customer.pk %}" > Edit</a></strong>
+                    </div>
+                </div>
+
+                <div class="d-flex flex-wrap align-items-center">
+                    <div class="custom-block-transation-detail-item mt-4">
+                        <h6>Phone Number</h6>
+
+                        <p class="blurred-text blur-text">{{ customer.phone }}</p>
+                    </div>
+
+                    <div class="custom-block-transation-detail-item mt-4 mx-auto px-4">
+                        <h6>City</h6>
+
+                        <p>{{ customer.city }}</p>
+                    </div>
+
+                    <div class="custom-block-transation-detail-item mt-4 ms-lg-auto px-lg-3 px-md-3">
+                        <h6>State</h6>
+
+                        <p>{{ customer.state }}</p>
+                    </div>
+
+                    <div class="custom-block-transation-detail-item mt-4 ms-auto me-auto">
+                        <h6>Country</h6>
+
+                        <p>{{ customer.country }}</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        <div class="custom-block custom-block-transation-detail bg-white">
+            <div class="d-flex flex-wrap align-items-center border-bottom pb-3 mb-3">
+                <div class="d-flex align-items-center">
+                    <div>
+                        <p>Address</p>
+                        <small class="text-muted blurred-text blur-text">{{ customer.Address }}</small>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="d-flex flex-wrap align-items-center">
+                <div class="custom-block-transation-detail-item mt-4">
+                    <h6>Email</h6>
+
+                    <p class="blurred-text blur-text">{{ customer.email }}</p>
+                </div>
+
+                <div class="custom-block-transation-detail-item mt-4 mx-auto px-4">
+                    <h6>EORI Number</h6>
+
+                    <p>{{ customer.EORI_number }}</p>
+                </div>
+
+                <div class="custom-block-transation-detail-item mt-4 ms-lg-auto px-lg-3 px-md-3">
+                    <h6>VAT</h6>
+
+                    <p>{{ customer.VAT_number }}</p>
+                </div>
+
+                <div class="custom-block-transation-detail-item mt-4 ms-auto me-auto">
+                    <h6>Industry Choice</h6>
+
+                    <p>{{ customer.industry_Choice }}</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</main>
+
+    <div class="content-section">
+        <div class="media">
+            <div class="media-body">
+                <h2 style="color:#ea2088;" class="account-heading">&nbsp;</h2>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <p class="fal">
+                            Sector &nbsp; :  <br>
+                            Phone &nbsp; :  <br>
+                            Email ID &nbsp; : {{ customer.email }} <br>
+                            EORI # &nbsp; : {{ customer.EORI_number }} <br>
+                            VAT # &nbsp; : {{ customer.VAT_number }} <br>
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="fal">
+                            Address: <br> {{ customer.Address|linebreaks }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock content %}

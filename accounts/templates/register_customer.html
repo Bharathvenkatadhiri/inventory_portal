@@ -1,0 +1,105 @@
+{% extends "base_register.html" %}
+{% block title %} {{ title }} {% endblock title %}
+
+{% block content %}
+<div class="container py-5">
+    <h3 class="text-center mb-4" style="color: #1a9ba9; font-weight: bold;">Welcome {{ session_first_name }},</h3>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="{{ form.Name.id_for_label }}">Name:</label>
+                    {{ form.Name|safe }}
+                    {% if form.Name.errors %}
+                    <div class="invalid-feedback d-block">{{ form.Name.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="{{ form.type_of_business.id_for_label }}">Sector:</label>
+                    {{ form.type_of_business|safe }}
+                    {% if form.type_of_business.errors %}
+                    <div class="invalid-feedback d-block">{{ form.type_of_business.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="{{ form.Address.id_for_label }}">Address:</label>
+                    {{ form.Address|safe }}
+                    {% if form.Address.errors %}
+                    <div class="invalid-feedback d-block">{{ form.Address.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="{{ form.phone.id_for_label }}">Phone:</label>
+                    {{ form.phone|safe }}
+                    {% if form.phone.errors %}
+                    <div class="invalid-feedback d-block">{{ form.phone.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="{{ form.email.id_for_label }}">Email ID:</label>
+                    {{ form.email|safe }}
+                    {% if form.email.errors %}
+                    <div class="invalid-feedback d-block">{{ form.email.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="{{ form.EORI_number.id_for_label }}">EORI #:</label>
+                    {{ form.EORI_number|safe }}
+                    {% if form.EORI_number.errors %}
+                    <div class="invalid-feedback d-block">{{ form.EORI_number.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="{{ form.VAT_number.id_for_label }}">VAT #:</label>
+                    {{ form.VAT_number|safe }}
+                    {% if form.VAT_number.errors %}
+                    <div class="invalid-feedback d-block">{{ form.VAT_number.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="{{ form.is_deleted.id_for_label }}">Is Deleted:</label>
+                    {{ form.is_deleted|safe }}
+                    {% if form.is_deleted.errors %}
+                    <div class="invalid-feedback d-block">{{ form.is_deleted.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <input type="hidden" name="user" class="form-control" id="id_user" value="{{ session_user_id }}">
+
+        <div class="d-flex justify-content-center mt-4">
+            <button type="submit" class="btn btn-primary me-2">{{ savebtn }}</button>
+            {% if title == "New Customer" %}
+            <button type="reset" class="btn btn-secondary me-2">Reset</button>
+            {% endif %}
+        </div>
+    </form>
+</div>
+{% endblock content %}

@@ -1,0 +1,93 @@
+{% extends base_template %}
+{% load widget_tweaks %}
+{% block title %} Inventory List {% endblock title %}
+{% block content %}
+    <div class="row" style="color: #ea2088; font-style: bold; font-size: 3rem; ">
+        <div class="col-md-8">Inventory List</div>
+        <div class="col-md-4">               
+            <div style="float:right;"> <a class="btn ghost-blue" href="{% url 'new-stock' %}">Add New Part</a> </div>
+        </div>
+    </div>
+    <div style="border-bottom: 1px solid white;"></div>
+    <br>
+    <table class="table table-css">
+        <form method="get">
+            <div class="search">
+                <div class="search-box">
+                    <div class="search-field">
+                        {% render_field filter.form.name class="input" placeholder="Search by Inventory" %}
+                        <div class="search-box-icon">
+                            <button class="btn-icon-content">
+                                <i class="search-icon">
+                                    <svg xmlns="://www.w3.org/2000/svg" version="1.1" viewBox="0 0 512 512"><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z" fill="#fff"></path></svg>
+                                </i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+        <br>
+        
+        <thead class="thead-inverse align-middle">
+            <tr>
+                <th width="15%">Part ID</th>
+                <th width="20%">Part Number</th>
+                <th width="30%">Part Description</th>
+                <th width="15%">Current Stock in Inventory</th>
+                <th width="20%">Options</th>
+            </tr>
+        </thead>
+                  
+{% if object_list %}
+
+        <tbody>         
+            {% for stock in object_list %}
+                <tr>
+                    <td>#{{ stock.pk }}</td>
+                    <td><h4>{{ stock.name }}</h4></td>
+                    <td>{{ stock.desc }}</td>
+                    <td class="align-middle">{{ stock.quantity }}</td>
+                    <td class="align-middle">
+                        <a href="{% url 'edit-stock' stock.pk %}" class="btn ghost-button">Edit Details</a>
+                        <a href="{% url 'delete-stock' stock.pk %}" class="btn ghost-red"> Delete Stock </a>
+                    </td>          
+                </tr>
+            {% endfor %}                   
+        </tbody>
+    </table>
+    <div class="align-middle">
+        {% if is_paginated %}
+
+            {% if page_obj.has_previous %}
+                <a class="btn btn-outline-info mb-4" href="?page=1">First</a>
+                <a class="btn btn-outline-info mb-4" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <a class="btn btn-info mb-4" href="?page={{ num }}">{{ num }}</a>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <a class="btn btn-outline-info mb-4" href="?page={{ num }}">{{ num }}</a>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <a class="btn btn-outline-info mb-4" href="?page={{ page_obj.next_page_number }}">Next</a>
+                <a class="btn btn-outline-info mb-4" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+            {% endif %}
+
+        {% endif %}
+    </div>
+
+{% else %}
+
+        <tbody></tbody>   
+    </table>
+
+    <br><br><br><br><br><br><br><br>
+    <div style="color: #ea2088; font-style: bold; font-size: 1.5rem; text-align: center;">WOW, SUCH EMPTY</div>
+
+{% endif %}
+
+{% endblock content %}

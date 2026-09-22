@@ -1,0 +1,89 @@
+{% extends "base_register.html" %}
+
+{% block title %} User Registration {% endblock title %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-4 col-lg-8">
+            <div class="card border-light shadow-sm rounded">
+                <div class="card-body p-2">
+                    <h3 class="text-center mb-4" style="color: #1a9ba9; font-weight: bold;">User Registration</h3>
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="form-group mb-3">
+                                <label for="id_username">Username:</label>
+                                <input type="text" name="username" class="form-control{% if form.username.errors %} is-invalid{% endif %}" id="id_username" value="{{ form.username.value|default_if_none:'' }}">
+                                {% for error in form.username.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            <div class="col-md-6 form-group mb-3">
+                                <label for="id_first_name">First Name:</label>
+                                <input type="text" name="first_name" class="form-control{% if form.first_name.errors %} is-invalid{% endif %}" id="id_first_name" value="{{ form.first_name.value|default_if_none:'' }}" required>
+                                {% for error in form.first_name.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            <div class="col-md-6 form-group mb-3">
+                                <label for="id_last_name">Last Name:</label>
+                                <input type="text" name="last_name" class="form-control{% if form.last_name.errors %} is-invalid{% endif %}" id="id_last_name" value="{{ form.last_name.value|default_if_none:'' }}" required>
+                                {% for error in form.last_name.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="form-group mb-3">
+                                <label for="id_email">Email address:</label>
+                                <input type="email" name="email" class="form-control{% if form.email.errors %} is-invalid{% endif %}" id="id_email" value="{{ form.email.value|default_if_none:'' }}" required>
+                                {% for error in form.email.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 form-group mb-3">
+                                <label for="id_password1">Password:</label>
+                                <input type="password" name="password1" class="form-control{% if form.password1.errors %} is-invalid{% endif %}" id="id_password1" required>
+                                {% for error in form.password1.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            <div class="col-md-6 form-group mb-3">
+                                <label for="id_password2">Reenter:</label>
+                                <input type="password" name="password2" class="form-control{% if form.password2.errors %} is-invalid{% endif %}" id="id_password2" required>
+                                {% for error in form.password2.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <fieldset class="form-group mb-4">
+                            <legend class="col-form-label">Customer or Manufacturer</legend>
+                            <div class="row text-center">
+                                <div class="col-md-6 mb-3">
+                                    <div class="form-check d-flex justify-content-center">
+                                        <input class="form-check-input" type="radio" name="is_staff" id="is_staff_true" value="1" {% if form.is_staff.value == '1' %}checked{% endif %}>
+                                        <label class="form-check-label ms-2" for="is_staff_true">Supplier</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="form-check d-flex justify-content-center">
+                                        <input class="form-check-input" type="radio" name="is_staff" id="is_staff_false" value="0" {% if form.is_staff.value == '0' %}checked{% endif %}>
+                                        <label class="form-check-label ms-2" for="is_staff_false">Buyer</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </fieldset>
+
+                        <button type="submit" class="btn btn-primary w-100">Register</button>
+                    </form>
+                    <a href="{% url 'home' %}"  class="text-muted px-3 py-2">Back to Homepage</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}

@@ -1,0 +1,202 @@
+{% extends base_template %}
+{% block title %} {{ title }} {% endblock title %}
+{% block content %}
+<div class="container mt-4">
+    <h5 class="mb-4">{{ title }}</h5>
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <div class="form-errors mb-4">
+            {{ form.non_field_errors }}
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label for="{{ form.companyname.id_for_label }}">Company Name:</label>
+            </div>
+            <div class="col-md-8">
+                {{ form.companyname }}
+                {{ form.companyname.errors }}
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label for="{{ form.phone.id_for_label }}">Phone:</label>
+            </div>
+            <div class="col-md-8">
+                {{ form.phone }}
+                {{ form.phone.errors }}
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label for="{{ form.address.id_for_label }}">Address:</label>
+            </div>
+            <div class="col-md-8">
+                {{ form.address }}
+                {{ form.address.errors }}
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label for="{{ form.city.id_for_label }}">City:</label>
+            </div>
+            <div class="col-md-8">
+                {{ form.city }}
+                {{ form.city.errors }}
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label for="{{ form.state.id_for_label }}">State:</label>
+            </div>
+            <div class="col-md-8">
+                {{ form.state }}
+                {{ form.state.errors }}
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label for="{{ form.country.id_for_label }}">Country:</label>
+            </div>
+            <div class="col-md-8">
+                {{ form.country }}
+                {{ form.country.errors }}
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label for="{{ form.activity_type.id_for_label }}">Sector:</label>
+            </div>
+            <div class="col-md-8">
+                {{ form.activity_type }}
+                {{ form.activity_type.errors }}
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label for="{{ form.company_street.id_for_label }}">Company Street:</label>
+            </div>
+            <div class="col-md-8">
+                {{ form.company_street }}
+                {{ form.company_street.errors }}
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label for="{{ form.company_postalcode.id_for_label }}">Company Postal Code:</label>
+            </div>
+            <div class="col-md-8">
+                {{ form.company_postalcode }}
+                {{ form.company_postalcode.errors }}
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label for="{{ form.company_city.id_for_label }}">Company City:</label>
+            </div>
+            <div class="col-md-8">
+                {{ form.company_city }}
+                {{ form.company_city.errors }}
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label for="{{ form.company_url.id_for_label }}">Company URL:</label>
+            </div>
+            <div class="col-md-8">
+                {{ form.company_url }}
+                {{ form.company_url.errors }}
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label for="{{ form.production_area.id_for_label }}">Production Area:</label>
+            </div>
+            <div class="col-md-8">
+                {{ form.production_area }}
+                {{ form.production_area.errors }}
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label for="{{ form.manufacturing_competency1.id_for_label }}">Manufacturing Competency 1:</label>
+            </div>
+            <div class="col-md-8">
+                {{ form.manufacturing_competency1 }}
+                {{ form.manufacturing_competency1.errors }}
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label for="{{ form.manufacturing_competency2.id_for_label }}">Manufacturing Competency 2:</label>
+            </div>
+            <div class="col-md-8">
+                {{ form.manufacturing_competency2 }}
+                {{ form.manufacturing_competency2.errors }}
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label for="{{ form.info_source.id_for_label }}">Info Source:</label>
+            </div>
+            <div class="col-md-8">
+                {{ form.info_source }}
+                {{ form.info_source.errors }}
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label for="{{ form.amount_of_employees.id_for_label }}">Amount of Employees:</label>
+            </div>
+            <div class="col-md-8">
+                {{ form.amount_of_employees }}
+                {{ form.amount_of_employees.errors }}
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label for="{{ form.turnover_per_year.id_for_label }}">Turnover Per Year:</label>
+            </div>
+            <div class="col-md-8">
+                {{ form.turnover_per_year }}
+                {{ form.turnover_per_year.errors }}
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label for="{{ form.certificates.id_for_label }}">Certificates:</label>
+            </div>
+            <div class="col-md-8">
+                {{ form.certificates }}
+                {{ form.certificates.errors }}
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between mt-4">
+            <button type="submit" class="btn btn-success">{{ savebtn }}</button>
+            {% if title == "New Supplier" %}
+            <button type="reset" class="btn btn-secondary">Reset</button>
+            {% endif %}
+            <a href="{% url 'suppliers-list' %}" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock content %}

@@ -1,0 +1,15 @@
+{% extends base_template %}
+{% block title %} Activate Supplier {% endblock title %}
+{% block content %}
+    <form method="post">
+        {% csrf_token %}
+        <fieldset class="form-group">
+            <div style="color:#ea2088; font-style: bold; font-size: 3rem; border-bottom: 1px solid white;">Activate Supplier</div> <br>
+            <h2>Are you sure you want to Activate the Supplier "{{ object.Name }}"?</h2>
+        </fieldset>
+        <div class="form-group">  
+            <button type="submit" class="btn ghost-red">Yes, Activate</button>
+            <a href="{% url 'suppliers-list' %}" class="btn ghost-button">Cancel</a>
+        </div>
+    </form>
+{% endblock content %}

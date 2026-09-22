@@ -1,0 +1,39 @@
+{% extends base_template %}
+{% block title %} {{title}} {% endblock title %}
+{% block content %}
+    <div style="color:#ea2088; font-style: bold; font-size: 3rem; border-bottom: 1px solid white;">{{title}}</div>
+    <br>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        <div class="form-group">
+            {{ form.name.errors }}
+            <label for="{{ form.name.id_for_label }}">Part Number:</label>
+            {{ form.name }}
+        </div>
+        <div class="form-group ">
+            {{ form.quantity.errors }}
+            <label for="{{ form.quantity.id_for_label }}">Quantity:</label>
+            {{ form.quantity }}
+        </div>
+        <div class="custom-file-drop-container">
+            {{ form.file.errors }}
+            <p class="custom-file-drop-title">Drop file here</p>
+            {{ form.file }}
+        </div>
+
+
+        <br>
+        <div class="align-middle">
+            <button type="submit" class="btn ghost-green">{{ savebtn }}</button>
+            {% if title == "New Stock" %}
+                <button type="reset" class="btn ghost-blue" >Reset</button>
+            {% endif %}
+            {% if delbtn %}
+                <a href="{% url 'delete-stock' object.pk %}" class="btn ghost-red"> Delete Part </a>
+            {% endif %}
+            <a href="{% url 'inventory' %}" class="btn ghost-button">Cancel</a>
+        </div>
+    </form>
+
+{% endblock content %}

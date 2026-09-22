@@ -1,0 +1,50 @@
+{% extends base_template %}
+{% block title %} {{ title }} {% endblock title %}
+
+{% block content %}
+<div class="container py-5">
+    <h3 class="text-center mb-4" style="color: #1a9ba9; font-weight: bold;">Edit Subscription</h3>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="{{ form.plan_type.id_for_label }}">Plan Type:</label>
+                    {{ form.plan_type|safe }}
+                    {% if form.plan_type.errors %}
+                    <div class="invalid-feedback d-block">{{ form.plan_type.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="{{ form.end_date.id_for_label }}">End Date:</label>
+                    {{ form.end_date|safe }}
+                    {% if form.end_date.errors %}
+                    <div class="invalid-feedback d-block">{{ form.end_date.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="{{ form.is_active.id_for_label }}">is Active:</label>
+                    {{ form.is_active|safe }}
+                    {% if form.is_active.errors %}
+                    <div class="invalid-feedback d-block">{{ form.is_active.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-center mt-4">
+            <button type="submit" class="btn btn-primary me-2">{{ savebtn }}</button>
+            <a href="{% url 'subscription-list' %}" class="btn ghost-button">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock content %}
