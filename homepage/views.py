@@ -10,7 +10,6 @@ def custom_404_view(request, exception):
     return render(request, '404.html', status=404)
 
 
-@login_not_required
 class HomeView(View):
     template_name = "home.html"
 
@@ -42,6 +41,5 @@ class HomeView(View):
         return render(request, self.template_name, context)
 
 
-@login_not_required
 class AboutView(TemplateView):
     template_name = "about.html"

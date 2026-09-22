@@ -16,7 +16,6 @@ app_label, model_name = model_str.split('.')
 User = apps.get_model(app_label, model_name)
 
 
-@login_not_required
 class CreateSupplier(SuccessMessageMixin, CreateView):
     model = ManufacturerProfile
     form_class = SupplierDetailsForm
@@ -80,7 +79,6 @@ def register(request):
     return render(request, 'register_first.html', {'form': form})
 
 
-@login_not_required
 class CreateCustomer(SuccessMessageMixin, CreateView):
     model = ConsumerProfile
     form_class = SelectCustomer
