@@ -48,6 +48,29 @@ Visit `http://127.0.0.1:8000`. Code changes on the host reload automatically
 
 Requires a local PostgreSQL instance and a `DATABASE_URL` in `.env` pointing to it.
 
+**Install PostgreSQL** (skip if you already have it):
+
+- **Windows**: download the installer from https://www.postgresql.org/download/windows/
+  and run it (the EDB installer bundles `pgAdmin` too). During setup you'll set a password
+  for the `postgres` superuser — remember it, you'll need it below. It installs as a
+  Windows service and starts automatically.
+- **macOS**: `brew install postgresql@16 && brew services start postgresql@16`
+- **Linux (Debian/Ubuntu)**: `sudo apt install postgresql && sudo systemctl start postgresql`
+
+**Create the database** matching `.env.dev.example`'s defaults (user `postgres`, password
+`postgres`, database `marketplace`, port `5432`) — adjust the `DATABASE_URL` in your `.env`
+instead if you'd rather use different values or an existing Postgres setup:
+
+```bash
+# Windows: open "SQL Shell (psql)" from the Start menu, or run psql from the install dir
+# macOS/Linux: just `psql postgres`
+psql -U postgres -c "CREATE DATABASE marketplace;"
+```
+
+(If your `postgres` user's password isn't `postgres`, either set it to match —
+`psql -U postgres -c "ALTER USER postgres PASSWORD 'postgres';"` — or edit `DATABASE_URL`
+in `.env` after copying the template below to use your real password instead.)
+
 ```bash
 python -m venv venv
 venv\Scripts\activate        # Windows
