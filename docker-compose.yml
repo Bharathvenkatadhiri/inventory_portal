@@ -1,13 +1,13 @@
-# Local development stack: bundles Postgres/Redis containers alongside the
-# app so you don't need anything installed locally beyond Docker.
+# Local development stack: bundles a Postgres container alongside the app
+# so you don't need anything installed locally beyond Docker.
 #
 # Usage: `docker compose up` — Compose auto-merges docker-compose.override.yml
-# on top of this file automatically (bind mounts, runserver, exposed
-# db/redis ports), no extra flags needed.
+# on top of this file automatically (bind mounts, runserver, exposed db
+# port), no extra flags needed.
 #
 # This file is NOT used in production — see docker-compose.prod.yml, which
-# is a separate, standalone file (no bundled db/redis; points at managed
-# instances instead).
+# is a separate, standalone file (no bundled db; points at a managed
+# instance instead).
 services:
   db:
     image: postgres:16-alpine
@@ -23,42 +23,17 @@ services:
       timeout: 5s
       retries: 5
 
-  redis:
-    image: redis:7-alpine
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   web:
     build: .
     env_file:
       - .env
     environment:
-      # Override .env's localhost-based URLs (correct for running Django
-      # directly on the host) with the in-network service names Compose
-      # gives these containers.
+      # Override .env's localhost-based URL (correct for running Django
+      # directly on the host) with the in-network service name Compose
+      # gives this container.
       DATABASE_URL: postgres://postgres:postgres@db:5432/marketplace
-      REDIS_URL: redis://redis:6379/0
     depends_on:
       db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
-  worker:
-    build: .
-    command: celery -A core worker -l info
-    env_file:
-      - .env
-    environment:
-      DATABASE_URL: postgres://postgres:postgres@db:5432/marketplace
-      REDIS_URL: redis://redis:6379/0
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
         condition: service_healthy
 
 volumes:

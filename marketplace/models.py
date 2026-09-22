@@ -45,8 +45,6 @@ class Requirement(models.Model):
     industry = models.CharField(max_length=200, blank=True, null=True)
     file = models.FileField(upload_to='requirement_files/', blank=True, null=True)
     status = models.CharField(max_length=50, blank=True, null=True, choices=REQUIREMENT_STATUS)
-    # Reserved for future AI-driven diagram extraction; unused for now.
-    extracted_data = models.JSONField(null=True, blank=True)
     is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

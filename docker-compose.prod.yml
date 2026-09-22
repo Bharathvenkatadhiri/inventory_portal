@@ -1,8 +1,8 @@
 # Production stack. Standalone on purpose — it does NOT layer on top of
-# docker-compose.yml (that file's web/worker services hardcode the dev
-# db/redis container hostnames, which would silently override the real
-# managed DATABASE_URL/REDIS_URL you set in .env). No bundled Postgres/Redis
-# here — point .env at managed instances (see .env.prod.example).
+# docker-compose.yml (that file's web service hardcodes the dev db
+# container hostname, which would silently override the real managed
+# DATABASE_URL you set in .env). No bundled Postgres here — point .env at
+# a managed instance (see .env.prod.example).
 #
 # Usage:
 #   cp .env.prod.example .env   # fill in every value
@@ -18,11 +18,4 @@ services:
       - .env
     ports:
       - "8000:8000"
-    restart: unless-stopped
-
-  worker:
-    build: .
-    command: celery -A core worker -l info
-    env_file:
-      - .env
     restart: unless-stopped
