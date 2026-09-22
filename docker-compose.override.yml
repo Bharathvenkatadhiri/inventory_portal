@@ -1,0 +1,22 @@
+# Dev-only overrides. Compose merges this automatically on top of
+# docker-compose.yml whenever you run `docker compose up` with no -f flags
+# — nothing extra to type for local development.
+services:
+  db:
+    ports:
+      - "5432:5432"   # so you can psql/DB-browser into it from the host
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  web:
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app        # live code reload — edits on the host show up immediately
+    ports:
+      - "8000:8000"
+
+  worker:
+    volumes:
+      - .:/app

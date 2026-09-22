@@ -1,3 +1,13 @@
+# Local development stack: bundles Postgres/Redis containers alongside the
+# app so you don't need anything installed locally beyond Docker.
+#
+# Usage: `docker compose up` — Compose auto-merges docker-compose.override.yml
+# on top of this file automatically (bind mounts, runserver, exposed
+# db/redis ports), no extra flags needed.
+#
+# This file is NOT used in production — see docker-compose.prod.yml, which
+# is a separate, standalone file (no bundled db/redis; points at managed
+# instances instead).
 services:
   db:
     image: postgres:16-alpine
@@ -7,21 +17,12 @@ services:
       POSTGRES_PASSWORD: postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
 
   web:
     build: .
-    command: python manage.py runserver 0.0.0.0:8000
-    volumes:
-      - .:/app
-    ports:
-      - "8000:8000"
     env_file:
       - .env
     environment:
@@ -37,8 +38,6 @@ services:
   worker:
     build: .
     command: celery -A core worker -l info
-    volumes:
-      - .:/app
     env_file:
       - .env
     environment:
