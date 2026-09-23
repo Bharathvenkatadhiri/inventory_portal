@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% block title %}How It Works — ManufactureHub{% endblock %}
+{% block hero %}
+{% include "_page_hero.html" with eyebrow="How It Works" heading="From drawing to delivered part in <span class='text-accent-500'>four steps.</span>" sub="Whether you're buying parts or making them, ManufactureHub keeps every step simple and visible." %}
+{% endblock %}
+{% block content %}
+<div x-data="{ buyer: true }">
+    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+        <div>
+            <p class="eyebrow">The Process</p>
+            <h2 class="mt-3 text-3xl font-extrabold tracking-tight text-navy-900" x-text="buyer ? 'How buying works' : 'How selling works'"></h2>
+        </div>
+        <div class="inline-flex self-start rounded-lg bg-gray-100 p-1 text-sm sm:self-auto">
+            <button type="button" @click="buyer = true" class="rounded-md px-5 py-2 font-semibold transition-colors" :class="buyer ? 'bg-navy-900 text-white shadow' : 'text-gray-500'">For Buyers</button>
+            <button type="button" @click="buyer = false" class="rounded-md px-5 py-2 font-semibold transition-colors" :class="!buyer ? 'bg-navy-900 text-white shadow' : 'text-gray-500'">For Manufacturers</button>
+        </div>
+    </div>
+
+    <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 items-start">
+        <div class="card">
+            <div class="flex items-center justify-between mb-3">
+                <span class="flex h-10 w-10 items-center justify-center rounded-full bg-accent-50 text-accent-500">
+                    <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 15v3a2 2 0 002 2h12a2 2 0 002-2v-3"/><path d="M7 9l5-5 5 5"/><path d="M12 4v13"/></svg>
+                </span>
+                <span class="text-3xl font-bold text-gray-200">01</span>
+            </div>
+            <p class="font-semibold text-navy-900" x-text="buyer ? 'Upload your RFQ' : 'Get matched to RFQs'"></p>
+            <p class="mt-1 text-sm text-gray-500" x-text="buyer ? 'Share drawings, CAD files and part details in one simple form.' : 'See requirements that match your processes, materials and capacity.'"></p>
+            <hr class="my-3 border-gray-100">
+            <ul class="text-sm text-gray-600 space-y-1.5">
+                <template x-if="buyer">
+                    <li class="flex items-start gap-2">
+                        <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                        <span>STEP, IGES, STL, DXF and PDF</span>
+                    </li>
+                </template>
+                <template x-if="!buyer">
+                    <li class="flex items-start gap-2">
+                        <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                        <span>Filter by process, material and volume</span>
+                    </li>
+                </template>
+                <li class="flex items-start gap-2">
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span x-text="buyer ? 'Process, material, finish and quantity' : 'Full drawings and specs upfront'"></span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span x-text="buyer ? 'Choose who can see your files' : 'Only requirements you\'re qualified for'"></span>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <div class="flex items-center justify-between mb-3">
+                <span class="flex h-10 w-10 items-center justify-center rounded-full bg-accent-50 text-accent-500">
+                    <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 4h9l5 5v11a1 1 0 01-1 1H6a1 1 0 01-1-1V5a1 1 0 011-1z"/><path d="M9 12h6M9 16h6M9 8h3"/></svg>
+                </span>
+                <span class="text-3xl font-bold text-gray-200">02</span>
+            </div>
+            <p class="font-semibold text-navy-900" x-text="buyer ? 'Compare quotes' : 'Submit your quote'"></p>
+            <p class="mt-1 text-sm text-gray-500" x-text="buyer ? 'Verified manufacturers respond with quotes in one standard format.' : 'Respond with price, lead time and tooling in one standard format.'"></p>
+            <hr class="my-3 border-gray-100">
+            <ul class="text-sm text-gray-600 space-y-1.5">
+                <li class="flex items-start gap-2">
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span x-text="buyer ? 'Price, lead time and tooling side by side' : 'Use the standard quote template'"></span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span x-text="buyer ? 'Ratings and certifications on every quote' : 'Show off your certifications and ratings'"></span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span x-text="buyer ? 'Ask questions in one thread' : 'Answer buyer questions in one thread'"></span>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <div class="flex items-center justify-between mb-3">
+                <span class="flex h-10 w-10 items-center justify-center rounded-full bg-accent-50 text-accent-500">
+                    <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+                </span>
+                <span class="text-3xl font-bold text-gray-200">03</span>
+            </div>
+            <p class="font-semibold text-navy-900" x-text="buyer ? 'Place your order' : 'Win the order'"></p>
+            <p class="mt-1 text-sm text-gray-500" x-text="buyer ? 'Award the best quote and confirm the purchase order in a click.' : 'Get awarded the purchase order with confirmed terms in a click.'"></p>
+            <hr class="my-3 border-gray-100">
+            <ul class="text-sm text-gray-600 space-y-1.5">
+                <li class="flex items-start gap-2">
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span>Digital PO and agreed terms</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span>Secure advance payment</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span>Approved drawing locked to the order</span>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <div class="flex items-center justify-between mb-3">
+                <span class="flex h-10 w-10 items-center justify-center rounded-full bg-accent-50 text-accent-500">
+                    <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h11l4 4v6a1 1 0 01-1 1H3a1 1 0 01-1-1V8a1 1 0 011-1z"/><circle cx="7" cy="18" r="1.5"/><circle cx="16" cy="18" r="1.5"/></svg>
+                </span>
+                <span class="text-3xl font-bold text-gray-200">04</span>
+            </div>
+            <p class="font-semibold text-navy-900" x-text="buyer ? 'Track to delivery' : 'Deliver and get paid'"></p>
+            <p class="mt-1 text-sm text-gray-500" x-text="buyer ? 'Follow production with live updates until the parts arrive.' : 'Update production status until the parts ship and you get paid.'"></p>
+            <hr class="my-3 border-gray-100">
+            <ul class="text-sm text-gray-600 space-y-1.5">
+                <li class="flex items-start gap-2">
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span>Stage-by-stage progress</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span>Photos, QC reports and certificates</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span>Delivery tracking and sign-off</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="flex justify-center mt-8">
+        <a href="{% url 'register' %}" class="inline-flex items-center justify-center rounded-md bg-accent-500 px-6 py-2.5 text-sm font-medium text-white hover:bg-accent-600" x-text="buyer ? 'Join as a buyer' : 'Join as a manufacturer'"></a>
+    </div>
+</div>
+
+<div class="mt-16 rounded-xl bg-navy-900 px-8 py-10 text-white">
+    <p class="text-xs font-semibold uppercase tracking-wide text-accent-400 mb-2">Why It Works</p>
+    <h2 class="text-2xl font-extrabold tracking-tight leading-snug mb-6">Less chasing, more making</h2>
+    <div class="grid gap-6 sm:grid-cols-3">
+        <div class="flex items-start gap-3">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-accent-400">
+                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+            </span>
+            <div>
+                <p class="font-semibold">Faster turnaround</p>
+                <p class="mt-1 text-sm text-white/65">Quotes arrive in days, not weeks — without chasing anyone.</p>
+            </div>
+        </div>
+        <div class="flex items-start gap-3">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-accent-400">
+                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v12H8l-4 4z"/></svg>
+            </span>
+            <div>
+                <p class="font-semibold">One conversation</p>
+                <p class="mt-1 text-sm text-white/65">Questions, revisions and approvals stay attached to the RFQ.</p>
+            </div>
+        </div>
+        <div class="flex items-start gap-3">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-accent-400">
+                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="10" width="14" height="9" rx="1"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>
+            </span>
+            <div>
+                <p class="font-semibold">Your drawings, protected</p>
+                <p class="mt-1 text-sm text-white/65">Files are shared only with the manufacturers you invite. NDA on request.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-16 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]" x-data="{ open: 0 }">
+    <div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-accent-500 mb-3">FAQ</p>
+        <h2 class="text-2xl font-extrabold tracking-tight text-navy-900 leading-tight">Common questions</h2>
+        <p class="mt-3 text-sm text-gray-500">Can't find what you need? <a href="{% url 'contact' %}" class="text-navy-900 hover:underline">Contact our team.</a></p>
+    </div>
+    <div class="divide-y divide-gray-200 border-y border-gray-200">
+        <div class="py-4">
+            <button type="button" @click="open = (open === 0 ? -1 : 0)" class="flex w-full items-center justify-between text-left">
+                <span class="font-medium text-navy-900">Is it free to post an RFQ?</span>
+                <span class="text-accent-500 text-lg" x-text="open === 0 ? '−' : '+'"></span>
+            </button>
+            <p class="mt-2 text-sm text-gray-500" x-show="open === 0">Posting RFQs and receiving quotes is included on every buyer plan. See the <a href="{% url 'pricing' %}" class="text-navy-900 hover:underline">Pricing</a> page for what each plan adds.</p>
+        </div>
+        <div class="py-4">
+            <button type="button" @click="open = (open === 1 ? -1 : 1)" class="flex w-full items-center justify-between text-left">
+                <span class="font-medium text-navy-900">How are manufacturers verified?</span>
+                <span class="text-accent-500 text-lg" x-text="open === 1 ? '−' : '+'"></span>
+            </button>
+            <p class="mt-2 text-sm text-gray-500" x-show="open === 1">Every manufacturer is verified for capability, quality systems and delivery record before they can quote.</p>
+        </div>
+        <div class="py-4">
+            <button type="button" @click="open = (open === 2 ? -1 : 2)" class="flex w-full items-center justify-between text-left">
+                <span class="font-medium text-navy-900">Who can see my drawings?</span>
+                <span class="text-accent-500 text-lg" x-text="open === 2 ? '−' : '+'"></span>
+            </button>
+            <p class="mt-2 text-sm text-gray-500" x-show="open === 2">Files are shared only with the manufacturers you invite. NDA available on request.</p>
+        </div>
+        <div class="py-4">
+            <button type="button" @click="open = (open === 3 ? -1 : 3)" class="flex w-full items-center justify-between text-left">
+                <span class="font-medium text-navy-900">How long does it take to get quotes?</span>
+                <span class="text-accent-500 text-lg" x-text="open === 3 ? '−' : '+'"></span>
+            </button>
+            <p class="mt-2 text-sm text-gray-500" x-show="open === 3">Most requirements receive their first quotes within a few business days.</p>
+        </div>
+        <div class="py-4">
+            <button type="button" @click="open = (open === 4 ? -1 : 4)" class="flex w-full items-center justify-between text-left">
+                <span class="font-medium text-navy-900">Can I use ManufactureHub for small batches?</span>
+                <span class="text-accent-500 text-lg" x-text="open === 4 ? '−' : '+'"></span>
+            </button>
+            <p class="mt-2 text-sm text-gray-500" x-show="open === 4">Yes — the platform supports everything from single prototypes to large production runs.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

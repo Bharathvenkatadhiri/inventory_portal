@@ -1,0 +1,30 @@
+<div class="flex items-center justify-between mb-4">
+    <h2 class="text-lg font-bold text-navy-900">Production stages</h2>
+    {% if can_manage_production and next_production_stage %}
+    <form method="post" action="{% url 'order-production-advance' bill.billno %}"
+          hx-post="{% url 'order-production-advance' bill.billno %}" hx-target="#production-tracker-block" hx-swap="innerHTML">
+        {% csrf_token %}
+        <button type="submit" class="btn-primary">Mark "{{ bill.get_production_stage_display }}" complete</button>
+    </form>
+    {% endif %}
+</div>
+
+<div class="grid gap-2" style="grid-template-columns: repeat({{ production_stages|length }}, minmax(0, 1fr));">
+    {% for key, label in production_stages %}
+    <div class="flex flex-col items-center text-center">
+        <div class="flex w-full items-center">
+            <div class="h-0.5 flex-1 {% if forloop.first %}bg-transparent{% elif forloop.counter0 <= current_stage_index %}bg-accent-500{% else %}bg-gray-200{% endif %}"></div>
+            <span class="mx-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 text-sm font-bold
+                {% if forloop.counter0 < current_stage_index %}border-accent-500 bg-accent-500 text-white
+                {% elif forloop.counter0 == current_stage_index %}border-accent-500 text-accent-500
+                {% else %}border-gray-200 text-gray-300{% endif %}">
+                {% if forloop.counter0 < current_stage_index %}
+                <svg viewBox="0 0 20 20" class="h-4 w-4" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                {% else %}{{ forloop.counter }}{% endif %}
+            </span>
+            <div class="h-0.5 flex-1 {% if forloop.last %}bg-transparent{% elif forloop.counter0 < current_stage_index %}bg-accent-500{% else %}bg-gray-200{% endif %}"></div>
+        </div>
+        <p class="mt-2 text-xs font-bold {% if forloop.counter0 == current_stage_index %}text-navy-900{% else %}text-gray-400{% endif %}">{{ label }}</p>
+    </div>
+    {% endfor %}
+</div>

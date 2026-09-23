@@ -4,7 +4,10 @@ from django.contrib.auth.forms import UserCreationForm
 #from django.contrib.auth.models import User
 from django.conf import settings
 from django import forms
-from .models import ManufacturerProfile, ConsumerProfile, SubscriptionPlan
+from .models import (
+    ManufacturerProfile, ConsumerProfile, SubscriptionPlan,
+    Machine, Certification, ManufacturingTech, MaterialCapability,
+)
 from django.apps import apps
 from core.settings import subscription_plan_details
 
@@ -23,12 +26,27 @@ class UserRegistrationForm(UserCreationForm):
         self.fields['last_name'].required = True
         self.fields['email'].required = True
 
+    def save(self, commit=True):
+        # `is_staff` here doubles as the Supplier/Buyer choice (see the field
+        # above) but `role` was never being set from it, so every signup
+        # stayed at the model's "consumer" default regardless of the choice
+        # made on this form.
+        user = super().save(commit=False)
+        user.role = 'manufacturer' if str(self.cleaned_data.get('is_staff')) == '1' else 'consumer'
+        if commit:
+            user.save()
+        return user
+
 class SupplierDetailsForm(forms.ModelForm):
+    """
+    Legal/company name, address, city, state and country are intentionally
+    NOT form fields here: they are populated server-side from the verified
+    Company record (see accounts.views.CreateSupplier.form_valid), not from
+    posted data, so a client can't submit an unverified company identity.
+    """
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
-        self.fields['companyname'].initial = 'Default Company Name'
-        self.fields['address'].widget.attrs.update({'placeholder': 'Enter your address here'})
         if 'company_street' in self.fields:
             self.fields['company_street'].widget = forms.HiddenInput()
         if self.user:
@@ -37,9 +55,9 @@ class SupplierDetailsForm(forms.ModelForm):
     class Meta:
         model = ManufacturerProfile
         fields = [
-            'user', 'companyname', 'email', 'phone', 'address', 'city', 'state', 'country',
+            'user', 'email', 'phone',
             'activity_type', 'company_street', 'company_postalcode', 'company_city',
-            'company_url', 'production_area', 'manufacturing_competency1', 'manufacturing_competency2',
+            'production_area', 'manufacturing_competency1', 'manufacturing_competency2',
             'info_source', 'amount_of_employees', 'turnover_per_year', 'certificates'
         ]
         widgets = {
@@ -79,6 +97,74 @@ class updateSupplierDetailsForm(forms.ModelForm):
             'certificates': forms.Select(choices=ManufacturerProfile.CERTIFICATES_CHOICES),
         }        
 
+class CompanyAboutForm(forms.ModelForm):
+    class Meta:
+        model = ManufacturerProfile
+        fields = ['about', 'cover_image']
+        widgets = {
+            'about': forms.Textarea(attrs={'class': 'field-input', 'rows': 4}),
+            'cover_image': forms.ClearableFileInput(attrs={'class': 'field-input'}),
+        }
+
+
+class CompanyContactForm(forms.ModelForm):
+    class Meta:
+        model = ManufacturerProfile
+        fields = ['contact_name', 'contact_role', 'contact_phone']
+        widgets = {
+            'contact_name': forms.TextInput(attrs={'class': 'field-input'}),
+            'contact_role': forms.TextInput(attrs={'class': 'field-input'}),
+            'contact_phone': forms.TextInput(attrs={'class': 'field-input'}),
+        }
+
+
+class CompanyCapacityForm(forms.ModelForm):
+    class Meta:
+        model = ManufacturerProfile
+        fields = ['minimum_order_qty', 'typical_lead_time_days', 'accepting_rfqs']
+        widgets = {
+            'minimum_order_qty': forms.NumberInput(attrs={'class': 'field-input'}),
+            'typical_lead_time_days': forms.NumberInput(attrs={'class': 'field-input'}),
+        }
+
+
+class MachineForm(forms.ModelForm):
+    class Meta:
+        model = Machine
+        fields = ['machine_type', 'make_model', 'quantity', 'work_envelope']
+        widgets = {
+            'machine_type': forms.TextInput(attrs={'class': 'field-input', 'placeholder': 'e.g. 5-axis VMC'}),
+            'make_model': forms.TextInput(attrs={'class': 'field-input', 'placeholder': 'e.g. DMG Mori DMU 50'}),
+            'quantity': forms.NumberInput(attrs={'class': 'field-input'}),
+            'work_envelope': forms.TextInput(attrs={'class': 'field-input', 'placeholder': 'e.g. 650 x 520 x 475 mm'}),
+        }
+
+
+class CertificationForm(forms.ModelForm):
+    class Meta:
+        model = Certification
+        fields = ['name', 'valid_until', 'document']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'field-input', 'placeholder': 'e.g. ISO 9001:2015'}),
+            'valid_until': forms.DateInput(attrs={'type': 'date', 'class': 'field-input'}),
+            'document': forms.ClearableFileInput(attrs={'class': 'field-input'}),
+        }
+
+
+class CapabilityAddForm(forms.Form):
+    capability = forms.ModelChoiceField(
+        queryset=ManufacturingTech.objects.all(),
+        widget=forms.Select(attrs={'class': 'field-input'}),
+    )
+
+
+class MaterialAddForm(forms.Form):
+    material = forms.ModelChoiceField(
+        queryset=MaterialCapability.objects.all(),
+        widget=forms.Select(attrs={'class': 'field-input'}),
+    )
+
+
 class SelectCustomer(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -91,11 +177,14 @@ class SelectCustomer(forms.ModelForm):
         self.fields['email'].widget.attrs.update({'class': 'form-control', 'required': 'true'})
         self.fields['EORI_number'].widget.attrs.update({'class': 'form-control', 'required': 'true'})
         self.fields['VAT_number'].widget.attrs.update({'class': 'form-control', 'required': 'true'})
-        self.fields['is_deleted'].widget.attrs.update({'class': 'form-check-input'})
 
     class Meta:
         model = ConsumerProfile
-        fields = ['Name','type_of_business','Address','phone','email','EORI_number','VAT_number','is_deleted','user']
+        # is_deleted intentionally excluded: this form is used for creating a
+        # customer (self-registration and admin "New Customer"), where a new
+        # record should always start active. Deactivating/reactivating an
+        # existing one goes through the dedicated activate/deactivate views.
+        fields = ['Name','type_of_business','Address','phone','email','EORI_number','VAT_number','user']
 
 class updateCustomer(forms.ModelForm):
     def __init__(self, *args, **kwargs):

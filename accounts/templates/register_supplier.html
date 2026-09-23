@@ -1,32 +1,20 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-gray-50">
+<html lang="en" class="bg-navy-50">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manufacturer Details — ManufactureHub</title>
     <link rel="stylesheet" href="{% load static %}{% static 'css/tailwind-built.css' %}">
+    <link rel="icon" type="image/svg+xml" href="{% static 'images/logo.svg' %}">
 </head>
-<body class="h-full flex flex-col">
-    <header class="shrink-0 border-b border-gray-200 bg-white">
-        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div class="flex h-16 justify-between items-center">
-                <a href="{% url 'home' %}" class="flex items-center gap-2">
-                    <img src="{% static 'images/logo.png' %}" alt="ManufactureHub" class="h-8 w-8 rounded-lg">
-                    <span class="text-lg font-bold text-gray-900">Manufacture<span class="text-orange-500">Hub</span></span>
-                </a>
-                <nav class="flex items-center gap-4 text-sm">
-                    <a href="{% url 'about' %}" class="{% if request.resolver_match.url_name == 'about' %}font-semibold text-gray-900 underline underline-offset-4{% else %}text-gray-600 hover:text-gray-900{% endif %}">About MH</a>
-                    <a href="{% url 'pricing' %}" class="{% if request.resolver_match.url_name == 'pricing' %}font-semibold text-gray-900 underline underline-offset-4{% else %}text-gray-600 hover:text-gray-900{% endif %}">Pricing</a>
-                    <a href="{% url 'contact' %}" class="{% if request.resolver_match.url_name == 'contact' %}font-semibold text-gray-900 underline underline-offset-4{% else %}text-gray-600 hover:text-gray-900{% endif %}">Contact</a>
-                    <a href="{% url 'login' %}" class="{% if request.resolver_match.url_name == 'login' %}font-semibold text-gray-900 underline underline-offset-4{% else %}text-gray-600 hover:text-gray-900{% endif %}">Login</a>
-                </nav>
-            </div>
-        </div>
-    </header>
+<body class="min-h-screen flex flex-col">
+    {% include "_nav.html" %}
     <div class="flex-1 flex items-center justify-center px-4 py-10">
     <div class="w-full max-w-3xl">
         <div class="text-center mb-8">
-            <p class="text-gray-500 text-sm mt-1">Welcome {{ session_first_name }}, tell us about your company</p>
+            <p class="eyebrow">Almost there</p>
+            <h1 class="mt-2 text-3xl font-extrabold tracking-tight text-navy-900">Tell us about your company</h1>
+            <p class="mt-2 text-sm text-gray-500">Welcome, {{ session_first_name }} — verified company details help you win more RFQs.</p>
         </div>
         <div class="card">
             {% load widget_tweaks %}
@@ -54,6 +42,50 @@
             {% endif %}
             <form method="post" action="{% url 'register-supplier' %}" class="space-y-4">
                 {% csrf_token %}
+
+                <div class="rounded-lg border border-gray-200 p-4">
+                    <h3 class="text-sm font-semibold text-navy-900 mb-3">Company Details</h3>
+
+                    <div id="gst-verified-panel" class="hidden mb-4 rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+                        <p class="font-medium mb-2">&check; Company verified</p>
+                        <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+                            <div>
+                                <dt class="text-xs text-green-700">Legal Name</dt>
+                                <dd id="gst-legal-name" class="font-medium"></dd>
+                            </div>
+                            <div>
+                                <dt class="text-xs text-green-700">GST Status</dt>
+                                <dd id="gst-status" class="font-medium"></dd>
+                            </div>
+                            <div class="sm:col-span-2">
+                                <dt class="text-xs text-green-700">Registered Address</dt>
+                                <dd id="gst-address" class="font-medium"></dd>
+                            </div>
+                            <div>
+                                <dt class="text-xs text-green-700">State</dt>
+                                <dd id="gst-state" class="font-medium"></dd>
+                            </div>
+                        </dl>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
+                        <div class="sm:col-span-2">
+                            <label for="company-name-input" class="field-label">Legal / Company Name</label>
+                            <input type="text" id="company-name-input" class="field-input" placeholder="e.g. ABC Engineering Pvt Ltd"
+                                value="{{ verified_company.legal_name|default:'' }}" {% if verified_company %}readonly{% endif %}>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label for="gstin-input" class="field-label">GSTIN</label>
+                            <div class="flex gap-2">
+                                <input type="text" id="gstin-input" class="field-input flex-1" maxlength="15" placeholder="e.g. 33ABCDE1234F1Z5"
+                                    value="{{ verified_company.gstin|default:'' }}" {% if verified_company %}readonly{% endif %}>
+                                <button type="button" id="verify-gstin-btn" class="btn-secondary whitespace-nowrap">{% if verified_company %}Verified{% else %}Verify Company{% endif %}</button>
+                            </div>
+                            <p id="gst-verify-message" class="text-xs mt-1{% if verified_company %} text-green-700{% endif %}">{% if verified_company %}Company verified.{% endif %}</p>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
                     {% for field in form %}
                         {% if field.is_hidden %}
@@ -70,23 +102,95 @@
                 </div>
                 <div class="flex gap-3">
                     <button type="reset" class="btn-secondary flex-1">Clear</button>
-                    <button type="submit" class="btn-primary flex-1">Submit</button>
+                    <button type="submit" id="supplier-submit-btn" class="btn-primary flex-1" {% if not verified_company %}disabled{% endif %}>Submit</button>
                 </div>
             </form>
+
+            <script>
+            (function () {
+                var verifyBtn = document.getElementById('verify-gstin-btn');
+                var gstinInput = document.getElementById('gstin-input');
+                var nameInput = document.getElementById('company-name-input');
+                var messageEl = document.getElementById('gst-verify-message');
+                var panel = document.getElementById('gst-verified-panel');
+                var submitBtn = document.getElementById('supplier-submit-btn');
+                var csrfToken = document.querySelector('input[name=csrfmiddlewaretoken]').value;
+
+                function setSubmitEnabled(enabled) {
+                    submitBtn.disabled = !enabled;
+                    submitBtn.classList.toggle('opacity-50', !enabled);
+                    submitBtn.classList.toggle('cursor-not-allowed', !enabled);
+                }
+
+                function setMessage(text, isError) {
+                    messageEl.textContent = text || '';
+                    messageEl.className = 'text-xs mt-1 ' + (isError ? 'text-red-600' : 'text-green-700');
+                }
+
+                function showVerified(company) {
+                    document.getElementById('gst-legal-name').textContent = company.legal_name;
+                    document.getElementById('gst-status').textContent = company.gst_status;
+                    document.getElementById('gst-address').textContent = company.registered_address;
+                    document.getElementById('gst-state').textContent = company.state;
+                    panel.classList.remove('hidden');
+                    nameInput.value = company.legal_name;
+                    nameInput.readOnly = true;
+                    gstinInput.readOnly = true;
+                }
+
+                {% if not verified_company %}setSubmitEnabled(false);{% endif %}
+
+                verifyBtn.addEventListener('click', function () {
+                    var gstin = gstinInput.value.trim();
+                    var companyName = nameInput.value.trim();
+                    if (!companyName) {
+                        setMessage('Enter your company name first.', true);
+                        return;
+                    }
+                    if (!gstin) {
+                        setMessage('Enter a GSTIN to verify.', true);
+                        return;
+                    }
+
+                    verifyBtn.disabled = true;
+                    verifyBtn.textContent = 'Verifying...';
+                    setSubmitEnabled(false);
+                    panel.classList.add('hidden');
+                    setMessage('', false);
+
+                    fetch("{% url 'verify-gstin' %}", {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                        body: JSON.stringify({ gstin: gstin, company_name: companyName }),
+                    })
+                        .then(function (res) { return res.json(); })
+                        .then(function (data) {
+                            if (data.verified) {
+                                showVerified(data.company);
+                                setMessage(data.message, false);
+                                setSubmitEnabled(true);
+                                verifyBtn.textContent = 'Verified';
+                            } else {
+                                setSubmitEnabled(false);
+                                setMessage(data.message || 'Verification failed.', true);
+                                verifyBtn.textContent = (data.verification_status === 'manual_review') ? 'Name mismatch — retry' : 'Verify Company';
+                                verifyBtn.disabled = false;
+                            }
+                        })
+                        .catch(function () {
+                            setMessage('Something went wrong. Please try again.', true);
+                            verifyBtn.textContent = 'Verify Company';
+                            verifyBtn.disabled = false;
+                        });
+                });
+            })();
+            </script>
         </div>
         <p class="text-center text-sm text-gray-500 mt-6">
-            <a href="javascript:void(0)" onclick="history.back()" class="text-brand-600 hover:underline">&larr; Back</a>
+            <a href="javascript:void(0)" onclick="history.back()" class="text-accent-500 hover:underline">&larr; Back</a>
         </p>
     </div>
     </div>
-    <footer class="shrink-0 border-t border-gray-200">
-        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 flex flex-col sm:flex-row justify-between items-center gap-2">
-            <p class="text-sm text-gray-500">&copy; {% now "Y" %} ManufactureHub, Inc.</p>
-            <div class="flex gap-4 text-sm text-gray-500">
-                <a href="{% url 'privacy-policy' %}" class="hover:text-gray-700">Privacy Policy</a>
-                <a href="{% url 'terms-of-service' %}" class="hover:text-gray-700">Terms of Service</a>
-            </div>
-        </div>
-    </footer>
+    {% include "_footer.html" %}
 </body>
 </html>

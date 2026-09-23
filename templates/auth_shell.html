@@ -1,0 +1,75 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en" class="bg-white">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ManufactureHub{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/tailwind-built.css' %}">
+    <link rel="icon" type="image/svg+xml" href="{% static 'images/logo.svg' %}">
+</head>
+<body class="min-h-screen flex flex-col antialiased text-navy-900">
+    {% include "_nav.html" %}
+
+    <section class="relative isolate flex-1 overflow-hidden bg-navy-900">
+        <div class="absolute inset-0 bg-gradient-to-br from-navy-800 via-navy-900 to-navy-950"></div>
+        <div class="pointer-events-none absolute inset-y-0 right-0 hidden w-[560px] opacity-30 lg:block"
+             style="background-image:url('{% static "images/hero-machining.jpg" %}'); background-size:cover; background-position:center;"></div>
+        <div class="pointer-events-none absolute inset-y-0 right-0 hidden w-[560px] bg-gradient-to-r from-navy-900 via-navy-900/50 to-transparent lg:block"></div>
+        <svg class="pointer-events-none absolute inset-0 h-full w-full text-white/[0.07]" aria-hidden="true">
+            <defs>
+                <pattern id="auth-grid" width="56" height="56" patternUnits="userSpaceOnUse">
+                    <path d="M56 0H0V56" fill="none" stroke="currentColor" stroke-width="1"/>
+                </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#auth-grid)"/>
+        </svg>
+        <svg class="pointer-events-none absolute bottom-0 right-0 h-[26rem] w-[26rem] text-white/[0.06]" viewBox="0 0 400 400" fill="none" aria-hidden="true">
+            <circle cx="250" cy="200" r="120" stroke="currentColor" stroke-width="2"/>
+            <circle cx="250" cy="200" r="78" stroke="currentColor" stroke-width="2"/>
+            <circle cx="250" cy="200" r="36" stroke="currentColor" stroke-width="2"/>
+            <rect x="40" y="60" width="120" height="120" stroke="currentColor" stroke-width="2"/>
+        </svg>
+
+        <div class="relative mx-auto grid max-w-7xl px-6 lg:grid-cols-[1.35fr_1fr] lg:gap-16 lg:px-8">
+            <div class="flex flex-col justify-center py-14 text-white lg:py-16 lg:pr-12">
+                <p class="text-xs font-bold uppercase tracking-[0.22em] text-white/70">{% block hero_eyebrow %}{% endblock %}</p>
+                <h1 class="mt-5 text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl">{% block hero_title %}{% endblock %}</h1>
+                <p class="mt-5 max-w-md text-base leading-relaxed text-white/75">{% block hero_subtitle %}{% endblock %}</p>
+                {% block hero_extra %}{% endblock %}
+            </div>
+
+            <div class="flex items-center justify-start pb-14 lg:py-16">
+            <div class="w-full rounded-2xl bg-white p-7 shadow-2xl ring-1 ring-black/5 sm:p-8 lg:max-w-sm">
+                {% if messages %}
+                <div id="toast-messages" class="mb-5 flex flex-col gap-2">
+                    {% for message in messages %}
+                    <div class="flex items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm {% if message.tags == 'error' %}border-red-200 bg-red-50 text-red-700{% else %}border-green-200 bg-green-50 text-green-700{% endif %}">
+                        <span>{{ message }}</span>
+                        <button type="button" onclick="this.closest('div').remove()" class="shrink-0 opacity-60 hover:opacity-100" aria-label="Dismiss">&times;</button>
+                    </div>
+                    {% endfor %}
+                </div>
+                <script>
+                    setTimeout(function () {
+                        var el = document.getElementById('toast-messages');
+                        if (el) el.remove();
+                    }, 4000);
+                </script>
+                {% endif %}
+
+                <div class="flex items-center justify-center gap-2.5">
+                    <img src="{% static 'images/logo.svg' %}" alt="" class="h-8 w-8">
+                    <span class="text-lg font-extrabold tracking-tight text-navy-900">Manufacture<span class="text-accent-500">Hub</span></span>
+                </div>
+
+                <div class="mt-7">
+                    {% block panel %}{% endblock %}
+                </div>
+            </div>
+            </div>
+        </div>
+    </section>
+
+    {% include "_footer.html" %}
+</body>
+</html>

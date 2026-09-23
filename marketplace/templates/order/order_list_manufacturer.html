@@ -1,0 +1,68 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Production — ManufactureHub{% endblock %}
+{% block page_header %}
+<div class="mb-6">
+    <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">Production</h1>
+    <p class="mt-1 text-sm text-gray-500">Every order you're fulfilling, from confirmation to delivery.</p>
+</div>
+{% endblock %}
+{% block content %}
+{% if bills %}
+<div class="card p-0 overflow-hidden">
+    <div class="divide-y divide-gray-100">
+        {% for order in bills %}
+        <a href="{% url 'order-detail' order.billno %}" class="flex flex-col gap-3 p-5 hover:bg-gray-50 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <div class="flex items-center gap-2">
+                    <p class="font-bold text-navy-900">{{ order.requirement.title }}</p>
+                    <span class="text-xs text-gray-400">ORD-{{ order.billno }}</span>
+                </div>
+                <p class="text-sm text-gray-500">
+                    {{ order.customer.Name }}
+                    {% if order.status == 'cancelled' %}
+                    <span class="badge bg-red-50 text-red-700 ml-1">{{ order.get_status_display }}</span>
+                    {% elif order.status == 'paid' or order.status == 'completed' %}
+                    <span class="badge bg-green-50 text-green-700 ml-1">{{ order.get_status_display }}</span>
+                    {% else %}
+                    <span class="badge bg-yellow-50 text-yellow-700 ml-1">{{ order.get_status_display }}</span>
+                    {% endif %}
+                </p>
+            </div>
+            <div class="w-full sm:w-64">
+                <div class="flex items-center justify-between text-xs text-gray-500">
+                    <span>{{ order.get_production_stage_display }}</span>
+                    {% if order.ship_by_date %}<span>Ship by {{ order.ship_by_date|date:"d M" }}</span>{% endif %}
+                </div>
+                <div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+                    <div class="h-full rounded-full bg-accent-500" style="width: {{ order.production_progress_percent }}%"></div>
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+
+{% if is_paginated %}
+<div class="mt-6 flex flex-wrap gap-2">
+    {% if page_obj.has_previous %}
+    <a class="btn-outline" href="?page=1">First</a>
+    <a class="btn-outline" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+    {% endif %}
+    {% for num in page_obj.paginator.page_range %}
+        {% if page_obj.number == num %}
+        <span class="btn-primary">{{ num }}</span>
+        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+        <a class="btn-outline" href="?page={{ num }}">{{ num }}</a>
+        {% endif %}
+    {% endfor %}
+    {% if page_obj.has_next %}
+    <a class="btn-outline" href="?page={{ page_obj.next_page_number }}">Next</a>
+    <a class="btn-outline" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+    {% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<div class="card text-center text-gray-500">No orders yet.</div>
+{% endif %}
+{% endblock %}

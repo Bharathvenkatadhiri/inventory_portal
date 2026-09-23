@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Careers — ManufactureHub{% endblock %}
+{% block hero %}
+{% include "_page_hero.html" with eyebrow="Careers" heading="Build the future of <span class='text-accent-500'>manufacturing.</span>" sub="We're building the platform that connects engineering buyers with the manufacturers who make their parts." %}
+{% endblock %}
+{% block content %}
+<div class="card max-w-3xl mx-auto space-y-4">
+    <p class="text-gray-600">
+        If you care about supply chains, marketplaces or manufacturing, we'd like to hear from you.
+    </p>
+
+    <div>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">Open roles</h2>
+        <p class="text-gray-600">
+            We don't have open positions listed here right now, but we're always happy to hear from people
+            who'd be a strong fit for the team. Reach out and tell us what you'd want to work on.
+        </p>
+    </div>
+
+    <div>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">Get in touch</h2>
+        <p class="text-gray-600">
+            Send your resume and a short note to
+            <a href="mailto:bharathvenkatadhiri@gmail.com" class="text-accent-500 hover:underline">bharathvenkatadhiri@gmail.com</a>,
+            or <a href="{% url 'contact' %}" class="text-accent-500 hover:underline">contact us</a> with any questions.
+        </p>
+    </div>
+</div>
+{% endblock %}

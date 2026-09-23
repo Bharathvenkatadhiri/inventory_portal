@@ -1,7 +1,7 @@
 from django import forms
 from django.forms import formset_factory, inlineformset_factory
 
-from .models import Requirement, RequirementPart, Quote
+from .models import Requirement, RequirementPart, Quote, Order, ProductionUpdate, RequirementQuestion
 
 
 class SelectRequirement(forms.ModelForm):
@@ -58,17 +58,58 @@ RequirementPartInlineFormSet = inlineformset_factory(
 )
 
 
-class SelectQuote(forms.ModelForm):
+class QuoteForm(forms.ModelForm):
+    """Quote creation/edit form. Deliberately excludes `requirement` and
+    `supplier` — those are assigned server-side by the view from the URL
+    and the logged-in manufacturer's own profile, never taken from
+    submitted form data (closing a tamper vector the old, unused
+    `SelectQuote`/manual-construction pair left open)."""
+
     class Meta:
         model = Quote
         fields = [
-            'requirement',
-            'supplier',
-            'quote_price',
-            'note',
+            'quote_price', 'tooling_cost', 'lead_time_value', 'lead_time_unit',
+            'payment_terms', 'valid_until', 'note', 'quote_file',
         ]
+        widgets = {
+            'quote_price': forms.NumberInput(attrs={'class': 'field-input', 'step': '0.01', 'required': 'true'}),
+            'tooling_cost': forms.NumberInput(attrs={'class': 'field-input', 'step': '0.01'}),
+            'lead_time_value': forms.NumberInput(attrs={'class': 'field-input'}),
+            'lead_time_unit': forms.Select(attrs={'class': 'field-input'}),
+            'payment_terms': forms.Select(attrs={'class': 'field-input'}),
+            'valid_until': forms.DateInput(attrs={'type': 'date', 'class': 'field-input'}),
+            'note': forms.Textarea(attrs={'class': 'field-input', 'rows': 4}),
+            'quote_file': forms.ClearableFileInput(attrs={'class': 'field-input'}),
+        }
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['quote_price'].widget.attrs.update({'class': 'form-control', 'required': 'true'})
-        self.fields['note'].widget.attrs.update({'class': 'form-control'})
+
+class ShipmentForm(forms.ModelForm):
+    class Meta:
+        model = Order
+        fields = ['courier', 'courier_other', 'tracking_number', 'eway_bill_number']
+        widgets = {
+            'courier': forms.Select(attrs={'class': 'field-input'}),
+            'courier_other': forms.TextInput(attrs={'class': 'field-input'}),
+            'tracking_number': forms.TextInput(attrs={'class': 'field-input'}),
+            'eway_bill_number': forms.TextInput(attrs={'class': 'field-input'}),
+        }
+
+
+class ProductionUpdateForm(forms.ModelForm):
+    class Meta:
+        model = ProductionUpdate
+        fields = ['body', 'photo', 'document']
+        widgets = {
+            'body': forms.Textarea(attrs={'class': 'field-input', 'rows': 3, 'placeholder': "What changed on the shop floor?"}),
+            'photo': forms.ClearableFileInput(attrs={'class': 'field-input'}),
+            'document': forms.ClearableFileInput(attrs={'class': 'field-input'}),
+        }
+
+
+class RequirementQuestionForm(forms.ModelForm):
+    class Meta:
+        model = RequirementQuestion
+        fields = ['question']
+        widgets = {
+            'question': forms.TextInput(attrs={'class': 'field-input', 'placeholder': 'e.g. Is a clear anodize acceptable if black is delayed?'}),
+        }

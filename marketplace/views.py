@@ -18,8 +18,15 @@ from django_fsm import TransitionNotAllowed
 
 from accounts.models import ManufacturerProfile, ConsumerProfile
 
-from .models import Requirement, RequirementPart, Quote, Order
-from .forms import SelectRequirement, RequirementPartInlineFormSet, SelectQuote
+from . import services
+from .models import (
+    Requirement, RequirementPart, Quote, Order,
+    QCChecklistItem, RequirementQuestion, RFQDecline,
+)
+from .forms import (
+    SelectRequirement, RequirementPartInlineFormSet, QuoteForm,
+    ShipmentForm, ProductionUpdateForm, RequirementQuestionForm,
+)
 
 model_str = settings.AUTH_USER_MODEL
 app_label, model_name = model_str.split('.')
@@ -67,18 +74,43 @@ class RequirementListStatusView(LoginRequiredMixin, ListView):
 
 class RequirementListView(LoginRequiredMixin, ListView):
     model = Requirement
-    template_name = "requirement/requirement_list.html"
     paginate_by = 10
+
+    def get_template_names(self):
+        if self.request.user.role == 'manufacturer':
+            return ["requirement/rfq_inbox.html"]
+        return ["requirement/requirement_list.html"]
+
+    def _manufacturer_supplier(self):
+        return ManufacturerProfile.objects.filter(user=self.request.user).first()
 
     def get_queryset(self):
         user = self.request.user
         sort = self.request.GET.get('sort', '')
         industry_id = self.request.GET.get('industry', '')
         if user.role == 'manufacturer':
-            # RFQs that don't yet have a selected quote — still open for quoting.
-            queryset = Requirement.objects.filter(
-                end_date__gte=timezone.now(), is_deleted=False
-            ).exclude(quote__is_selected=True).distinct()
+            supplier = self._manufacturer_supplier()
+            tab = self.request.GET.get('tab', 'new')
+            if tab == 'quoted':
+                queryset = Requirement.objects.filter(
+                    is_deleted=False, quote__supplier=supplier,
+                    quote__is_selected=False, quote__status__isnull=True,
+                ).distinct()
+            elif tab == 'won':
+                queryset = Requirement.objects.filter(
+                    is_deleted=False, quote__supplier=supplier, quote__is_selected=True,
+                ).distinct()
+            elif tab == 'lost':
+                queryset = Requirement.objects.filter(
+                    is_deleted=False, quote__supplier=supplier, quote__status='Rejected',
+                ).distinct()
+            else:
+                queryset = services.open_requirements_for(supplier)
+                if supplier:
+                    queryset = queryset.exclude(quote__supplier=supplier).exclude(declines__supplier=supplier)
+            process = self.request.GET.get('process', '')
+            if process:
+                queryset = queryset.filter(requirement_parts__technology=process).distinct()
         else:
             queryset = Requirement.objects.filter(user=user, is_deleted=False)
         if industry_id:
@@ -91,10 +123,19 @@ class RequirementListView(LoginRequiredMixin, ListView):
             queryset = queryset.order_by('parts')
         elif sort == 'parts_desc':
             queryset = queryset.order_by('-parts')
-        if sort == 'cr_date_asc':
+        elif sort == 'cr_date_asc':
             queryset = queryset.order_by('created_at')
         elif sort == 'cr_date_desc':
             queryset = queryset.order_by('-created_at')
+        elif sort == 'match_desc' and user.role == 'manufacturer':
+            # Match% is computed in Python, not stored — sort over the full
+            # tab result set before pagination (documented trade-off: other
+            # sorts stay lazy/DB-ordered, this one materializes the list).
+            supplier = self._manufacturer_supplier()
+            scored = list(queryset)
+            match_map = services.bulk_match_percent(scored, supplier) if supplier else {}
+            scored.sort(key=lambda r: match_map.get(r.pk) or -1, reverse=True)
+            return scored
         else:
             queryset = queryset.order_by('-pk')
         return queryset
@@ -102,6 +143,31 @@ class RequirementListView(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['sort'] = self.request.GET.get('sort', '')
+        user = self.request.user
+        if user.role == 'manufacturer':
+            supplier = self._manufacturer_supplier()
+            context['tab'] = self.request.GET.get('tab', 'new')
+            context['process'] = self.request.GET.get('process', '')
+            context['tab_counts'] = {'new': 0, 'quoted': 0, 'won': 0, 'lost': 0}
+            if supplier:
+                context['tab_counts'] = {
+                    'new': services.open_requirements_for(supplier).exclude(
+                        quote__supplier=supplier
+                    ).exclude(declines__supplier=supplier).count(),
+                    'quoted': Requirement.objects.filter(
+                        is_deleted=False, quote__supplier=supplier,
+                        quote__is_selected=False, quote__status__isnull=True,
+                    ).distinct().count(),
+                    'won': Requirement.objects.filter(
+                        is_deleted=False, quote__supplier=supplier, quote__is_selected=True,
+                    ).distinct().count(),
+                    'lost': Requirement.objects.filter(
+                        is_deleted=False, quote__supplier=supplier, quote__status='Rejected',
+                    ).distinct().count(),
+                }
+                match_map = services.bulk_match_percent(context['object_list'], supplier)
+                for requirement in context['object_list']:
+                    requirement.match_percent = match_map.get(requirement.pk)
         return context
 
 
@@ -209,6 +275,56 @@ class RequirementView(View):
         })
 
 
+class RFQDeclineView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        requirement = get_object_or_404(Requirement, pk=pk)
+        supplier = get_object_or_404(ManufacturerProfile, user=request.user)
+        RFQDecline.objects.get_or_create(
+            requirement=requirement, supplier=supplier,
+            defaults={'reason': request.POST.get('reason', '')},
+        )
+        logger.info("Requirement #%s declined by supplier #%s", requirement.pk, supplier.pk)
+        messages.success(request, "RFQ declined.")
+        return redirect(reverse('requirement-list'))
+
+
+class RequirementQuestionListCreateView(LoginRequiredMixin, View):
+    def get(self, request, pk):
+        requirement = get_object_or_404(Requirement, pk=pk)
+        supplier = ManufacturerProfile.objects.filter(user=request.user).first()
+        questions = RequirementQuestion.objects.filter(requirement=requirement, supplier=supplier) if supplier else []
+        return render(request, 'requirement/_questions_section.html', {
+            'demand': requirement, 'questions': questions, 'question_form': RequirementQuestionForm(),
+        })
+
+    def post(self, request, pk):
+        requirement = get_object_or_404(Requirement, pk=pk)
+        supplier = get_object_or_404(ManufacturerProfile, user=request.user)
+        form = RequirementQuestionForm(request.POST)
+        if form.is_valid():
+            question = form.save(commit=False)
+            question.requirement = requirement
+            question.supplier = supplier
+            question.asked_by = request.user
+            question.save()
+        questions = RequirementQuestion.objects.filter(requirement=requirement, supplier=supplier)
+        return render(request, 'requirement/_questions_section.html', {
+            'demand': requirement, 'questions': questions, 'question_form': RequirementQuestionForm(),
+        })
+
+
+class RequirementQuestionAnswerView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        question = get_object_or_404(RequirementQuestion, pk=pk)
+        if request.user != question.requirement.user:
+            messages.error(request, "Only the buyer who posted this RFQ can answer questions on it.")
+            return redirect(reverse('requirement', kwargs={'pk': question.requirement.pk}))
+        question.answer = request.POST.get('answer', '')
+        question.answered_at = timezone.now()
+        question.save()
+        return redirect(reverse('requirement', kwargs={'pk': question.requirement.pk}))
+
+
 class QuoteListView(ListView):
     model = Quote
     template_name = "quote/quote_list.html"
@@ -221,35 +337,47 @@ class QuoteListView(ListView):
         return queryset
 
 
-class QuoteCreateView(SuccessMessageMixin, CreateView):
+class QuoteCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView):
     model = Quote
-    form_class = SelectQuote
+    form_class = QuoteForm
     success_url = '/marketplace/quote'
     success_message = "Quotation has been created successfully"
-    template_name = "quote/edit_quote.html"
+    template_name = "quote/quote_form.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["title"] = 'New Quote'
-        context["savebtn"] = 'Add Quote'
-        context["demand"] = Requirement.objects.filter(pk=self.kwargs.get('pk')).first()
+        context["savebtn"] = 'Submit quote'
+        requirement = Requirement.objects.filter(pk=self.kwargs.get('pk')).first()
+        context["demand"] = requirement
+        context["parts"] = requirement.requirement_parts.all() if requirement else []
+        context["total_quantity"] = requirement.total_parts_quantity() if requirement else 0
+        supplier = ManufacturerProfile.objects.filter(user=self.request.user).first()
+        context["match_percent"] = services.compute_match_percent(requirement, supplier) if (requirement and supplier) else None
+        context["questions"] = RequirementQuestion.objects.filter(requirement=requirement, supplier=supplier) if (requirement and supplier) else []
+        context["question_form"] = RequirementQuestionForm()
         return context
 
     def post(self, request, *args, **kwargs):
-        quote_price = request.POST.get('quote_price')
-        note = request.POST.get('note')
-        pk = self.kwargs.get('pk')
-        requirement = get_object_or_404(Requirement, pk=pk)
+        # Fixed bug: this view used to bypass form validation entirely,
+        # hand-building a Quote from raw POST data with no validation on
+        # quote_price. `requirement`/`supplier` are assigned here from the
+        # URL/session — never taken from the form — so a manufacturer can't
+        # submit a quote as someone else or against a requirement they
+        # didn't open.
+        self.object = None
+        requirement = get_object_or_404(Requirement, pk=self.kwargs.get('pk'))
         supplier_details = get_object_or_404(ManufacturerProfile, user=request.user)
-        quote = Quote(
-            requirement=requirement,
-            supplier=supplier_details,
-            quote_price=quote_price,
-            note=note
-        )
+        form = self.get_form()
+        if not form.is_valid():
+            return self.render_to_response(self.get_context_data(form=form))
+        quote = form.save(commit=False)
+        quote.requirement = requirement
+        quote.supplier = supplier_details
+        quote.is_draft = request.POST.get('action') == 'draft'
         quote.save()
         logger.info("Quote #%s submitted for requirement #%s by %s", quote.pk, requirement.pk, request.user)
-        messages.success(request, self.success_message)
+        messages.success(request, "Quote saved as draft." if quote.is_draft else self.success_message)
         if getattr(request, 'htmx', False):
             response = render(request, 'requirement/_quotes_section.html', {
                 'demand': requirement,
@@ -262,19 +390,37 @@ class QuoteCreateView(SuccessMessageMixin, CreateView):
         return redirect(reverse('requirement', kwargs={'pk': requirement.pk}))
 
 
-class QuoteUpdateView(SuccessMessageMixin, UpdateView):
+class QuoteUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
     model = Quote
-    form_class = SelectQuote
+    form_class = QuoteForm
     success_url = '/marketplace/quote'
     success_message = "Quotation details has been updated successfully"
-    template_name = "quote/edit_quote.html"
+    template_name = "quote/quote_form.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["title"] = 'Edit Quote'
-        context["savebtn"] = 'Save Changes'
+        context["savebtn"] = 'Save changes'
         context["delbtn"] = 'Delete Quote'
+        requirement = self.object.requirement
+        context["demand"] = requirement
+        context["parts"] = requirement.requirement_parts.all()
+        context["total_quantity"] = requirement.total_parts_quantity()
+        context["match_percent"] = services.compute_match_percent(requirement, self.object.supplier)
+        context["questions"] = RequirementQuestion.objects.filter(requirement=requirement, supplier=self.object.supplier)
+        context["question_form"] = RequirementQuestionForm()
         return context
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form = self.get_form()
+        if not form.is_valid():
+            return self.render_to_response(self.get_context_data(form=form))
+        quote = form.save(commit=False)
+        quote.is_draft = request.POST.get('action') == 'draft'
+        quote.save()
+        messages.success(request, "Quote saved as draft." if quote.is_draft else self.success_message)
+        return redirect(reverse('requirement', kwargs={'pk': quote.requirement.pk}))
 
 
 class QuoteDeleteView(View):
@@ -386,7 +532,6 @@ class RequirementStatusUpdateView(View):
 
 class OrderListView(ListView):
     model = Order
-    template_name = "order/order_list.html"
     context_object_name = 'bills'
     ordering = ['-created_at']
     paginate_by = 10
@@ -396,11 +541,13 @@ class OrderListView(ListView):
         if user.role == 'manufacturer':
             supplier = ManufacturerProfile.objects.filter(user=user).first()
             orders = Order.objects.filter(supplier=supplier)
+            template_name = "order/order_list_manufacturer.html"
         else:
             customer = ConsumerProfile.objects.filter(user=user).first()
             orders = Order.objects.filter(customer=customer)
+            template_name = "order/order_list.html"
         context = {'bills': orders.order_by('-created_at')}
-        return render(request, self.template_name, context)
+        return render(request, template_name, context)
 
 
 class OrderDetailView(View):
@@ -413,14 +560,13 @@ class OrderDetailView(View):
         quote = order.quote
         supplier = order.supplier
         customer = order.customer
-        total = 0
-        for each in items:
-            total += each.quantity
-        total = total * quote.quote_price
+        breakdown = quote.get_breakdown()
         next_status = _next_order_status(order)
+        is_supplier = request.user.is_authenticated and request.user == order.supplier.user
         can_advance = request.user.is_authenticated and (
             request.user == order.supplier.user or request.user == order.customer.user
         )
+        can_manage_production = is_supplier and order.status in ('in_production', 'payment_pending', 'paid')
         context = {
             'bill': order,
             'demand': requirement,
@@ -428,11 +574,96 @@ class OrderDetailView(View):
             'quote': quote,
             'supplier': supplier,
             'customer': customer,
-            'total': total,
+            'breakdown': breakdown,
+            'total': breakdown['total'],
             'next_status': next_status,
             'can_advance': can_advance,
+            'is_supplier': is_supplier,
+            'can_manage_production': can_manage_production,
+            'production_stages': Order.PRODUCTION_STAGE_CHOICES,
+            'current_stage_index': Order.PRODUCTION_STAGES.index(order.production_stage),
+            'next_production_stage': order.next_production_stage(),
+            'production_progress_percent': order.production_progress_percent(),
+            'qc_items': order.qc_items.all(),
+            'updates': order.updates.select_related('author').all(),
+            'update_form': ProductionUpdateForm(),
+            'shipment_form': ShipmentForm(instance=order),
         }
         return render(request, self.template_name, context)
+
+
+class OrderProductionAdvanceView(LoginRequiredMixin, View):
+    def post(self, request, billno):
+        order = get_object_or_404(Order, billno=billno)
+        if request.user != order.supplier.user:
+            messages.error(request, "Only the manufacturer on this order can update production.")
+            return redirect(reverse('order-detail', kwargs={'billno': order.billno}))
+        advanced = order.advance_production_stage(note=request.POST.get('note', ''))
+        if advanced:
+            messages.success(request, f"Marked '{order.get_production_stage_display()}' complete.")
+        if getattr(request, 'htmx', False):
+            return render(request, 'order/_production_tracker.html', {
+                'bill': order,
+                'production_stages': Order.PRODUCTION_STAGE_CHOICES,
+                'current_stage_index': Order.PRODUCTION_STAGES.index(order.production_stage),
+                'next_production_stage': order.next_production_stage(),
+                'production_progress_percent': order.production_progress_percent(),
+                'can_manage_production': order.status in ('in_production', 'payment_pending', 'paid'),
+            })
+        return redirect(reverse('order-detail', kwargs={'billno': order.billno}))
+
+
+class OrderUpdateCreateView(LoginRequiredMixin, View):
+    def post(self, request, billno):
+        order = get_object_or_404(Order, billno=billno)
+        if request.user != order.supplier.user:
+            messages.error(request, "Only the manufacturer on this order can post updates.")
+            return redirect(reverse('order-detail', kwargs={'billno': order.billno}))
+        form = ProductionUpdateForm(request.POST, request.FILES)
+        if form.is_valid():
+            update = form.save(commit=False)
+            update.order = order
+            update.author = request.user
+            update.save()
+        if getattr(request, 'htmx', False):
+            return render(request, 'order/_updates_feed.html', {
+                'updates': order.updates.select_related('author').all(),
+                'update_form': ProductionUpdateForm(),
+                'bill': order,
+                'is_supplier': True,
+            })
+        return redirect(reverse('order-detail', kwargs={'billno': order.billno}))
+
+
+class QCChecklistToggleView(LoginRequiredMixin, View):
+    def post(self, request, billno, item_pk):
+        order = get_object_or_404(Order, billno=billno)
+        item = get_object_or_404(QCChecklistItem, pk=item_pk, order=order)
+        if request.user != order.supplier.user:
+            messages.error(request, "Only the manufacturer on this order can update the QC checklist.")
+            return redirect(reverse('order-detail', kwargs={'billno': order.billno}))
+        item.is_checked = not item.is_checked
+        item.checked_at = timezone.now() if item.is_checked else None
+        item.checked_by = request.user if item.is_checked else None
+        item.save()
+        if getattr(request, 'htmx', False):
+            return render(request, 'order/_qc_checklist.html', {'qc_items': order.qc_items.all(), 'bill': order, 'is_supplier': True})
+        return redirect(reverse('order-detail', kwargs={'billno': order.billno}))
+
+
+class OrderShipmentUpdateView(LoginRequiredMixin, View):
+    def post(self, request, billno):
+        order = get_object_or_404(Order, billno=billno)
+        if request.user != order.supplier.user:
+            messages.error(request, "Only the manufacturer on this order can update shipment details.")
+            return redirect(reverse('order-detail', kwargs={'billno': order.billno}))
+        form = ShipmentForm(request.POST, instance=order)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Shipment details updated.")
+        if getattr(request, 'htmx', False):
+            return render(request, 'order/_shipment_form.html', {'bill': order, 'shipment_form': ShipmentForm(instance=order), 'is_supplier': True})
+        return redirect(reverse('order-detail', kwargs={'billno': order.billno}))
 
 
 class OrderStatusUpdateView(LoginRequiredMixin, View):

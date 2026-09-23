@@ -1,0 +1,261 @@
+{% extends "dashboard_base.html" %}
+{% load widget_tweaks %}
+{% block title %}Company Profile — ManufactureHub{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex items-center justify-between">
+    <div>
+        <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">Company profile</h1>
+        <p class="mt-1 text-sm text-gray-500">This is what buyers see when you quote or appear in search.</p>
+    </div>
+</div>
+{% endblock %}
+{% block content %}
+<div class="mb-6 overflow-hidden rounded-xl border border-gray-200 bg-white">
+    <div class="relative h-36 bg-navy-900">
+        {% if supplier.cover_image %}
+        <img src="{{ supplier.cover_image.url }}" alt="" class="h-full w-full object-cover">
+        {% endif %}
+        <form method="post" action="{% url 'company-about-update' %}" enctype="multipart/form-data" class="absolute right-3 top-3">
+            {% csrf_token %}
+            <input type="hidden" name="about" value="{{ supplier.about }}">
+            <label class="btn-outline cursor-pointer bg-white text-sm">
+                Change cover
+                {{ about_form.cover_image|add_class:"hidden"|attr:"onchange:this.form.submit()" }}
+            </label>
+        </form>
+    </div>
+    <div class="flex flex-col gap-4 px-6 pb-6 pt-4 sm:flex-row sm:items-end sm:justify-between">
+        <div class="flex items-end gap-4">
+            <span class="-mt-12 flex h-20 w-20 shrink-0 items-center justify-center rounded-xl border-4 border-white bg-navy-900 text-xl font-extrabold text-white">
+                {{ supplier.companyname|slice:":2"|upper }}
+            </span>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h2 class="text-xl font-extrabold text-navy-900">{{ supplier.companyname }}</h2>
+                    {% if supplier.company.verification_status == 'verified' %}<span class="badge bg-green-50 text-green-700">Verified</span>{% endif %}
+                </div>
+                <p class="text-sm text-gray-500">{{ supplier.city }}, {{ supplier.state }} &middot; Member since {{ supplier.created_at|date:"Y" }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="grid gap-6 lg:grid-cols-[1.7fr_1fr]">
+    <div class="space-y-6">
+        <div class="card">
+            <div class="mb-2 flex items-center justify-between">
+                <h2 class="text-lg font-bold text-navy-900">About</h2>
+            </div>
+            <form method="post" action="{% url 'company-about-update' %}" class="space-y-3">
+                {% csrf_token %}
+                {{ about_form.about|add_class:"field-input" }}
+                <button type="submit" class="btn-outline">Save changes</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <div class="mb-3 flex items-center justify-between">
+                <h2 class="text-lg font-bold text-navy-900">Capabilities</h2>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                {% for capability in supplier.capabilities.all %}
+                <span class="badge bg-accent-50 text-accent-700">
+                    {{ capability }}
+                    <form method="post" action="{% url 'company-capability-remove' capability.pk %}" class="ml-1 inline">
+                        {% csrf_token %}
+                        <button type="submit" class="text-accent-500 hover:text-accent-700">&times;</button>
+                    </form>
+                </span>
+                {% empty %}
+                <p class="text-sm text-gray-500">No capabilities added yet.</p>
+                {% endfor %}
+            </div>
+            <form method="post" action="{% url 'company-capability-add' %}" class="mt-3 flex gap-2">
+                {% csrf_token %}
+                {{ capability_form.capability|add_class:"field-input flex-1" }}
+                <button type="submit" class="btn-outline shrink-0">+ Add</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <div class="mb-3 flex items-center justify-between">
+                <h2 class="text-lg font-bold text-navy-900">Machines</h2>
+            </div>
+            {% if supplier.machines.all %}
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead>
+                        <tr class="text-xs uppercase tracking-wide text-gray-400">
+                            <th class="pb-2 font-semibold">Machine</th>
+                            <th class="pb-2 font-semibold">Make / Model</th>
+                            <th class="pb-2 font-semibold">Qty</th>
+                            <th class="pb-2 font-semibold">Work envelope</th>
+                            <th class="pb-2"></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for machine in supplier.machines.all %}
+                        <tr>
+                            <td class="py-2 font-bold text-navy-900">{{ machine.machine_type }}</td>
+                            <td class="py-2 text-gray-600">{{ machine.make_model|default:"—" }}</td>
+                            <td class="py-2 text-gray-600">{{ machine.quantity }}</td>
+                            <td class="py-2 text-gray-600">{{ machine.work_envelope|default:"—" }}</td>
+                            <td class="py-2 text-right">
+                                <form method="post" action="{% url 'company-machine-remove' machine.pk %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="text-xs text-red-600 hover:underline">Remove</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-sm text-gray-500">No machines added yet.</p>
+            {% endif %}
+            <form method="post" action="{% url 'company-machine-add' %}" class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {% csrf_token %}
+                {{ machine_form.machine_type|add_class:"field-input" }}
+                {{ machine_form.make_model|add_class:"field-input" }}
+                {{ machine_form.quantity|add_class:"field-input" }}
+                {{ machine_form.work_envelope|add_class:"field-input" }}
+                <button type="submit" class="btn-outline col-span-2 sm:col-span-4">+ Add machine</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2 class="mb-3 text-lg font-bold text-navy-900">Materials</h2>
+            <div class="flex flex-wrap gap-2">
+                {% for material in supplier.materials.all %}
+                <span class="badge bg-gray-100 text-gray-700">
+                    {{ material }}
+                    <form method="post" action="{% url 'company-material-remove' material.pk %}" class="ml-1 inline">
+                        {% csrf_token %}
+                        <button type="submit" class="text-gray-500 hover:text-gray-700">&times;</button>
+                    </form>
+                </span>
+                {% empty %}
+                <p class="text-sm text-gray-500">No materials tagged yet.</p>
+                {% endfor %}
+            </div>
+            <form method="post" action="{% url 'company-material-add' %}" class="mt-3 flex gap-2">
+                {% csrf_token %}
+                {{ material_form.material|add_class:"field-input flex-1" }}
+                <button type="submit" class="btn-outline shrink-0">+ Add</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2 class="mb-3 text-lg font-bold text-navy-900">Shop-floor photos</h2>
+            <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {% for photo in supplier.photos.all %}
+                <div class="group relative aspect-square overflow-hidden rounded-lg">
+                    <img src="{{ photo.image.url }}" alt="{{ photo.caption }}" class="h-full w-full object-cover">
+                    <form method="post" action="{% url 'company-photo-delete' photo.pk %}" class="absolute right-1 top-1 opacity-0 transition-opacity group-hover:opacity-100">
+                        {% csrf_token %}
+                        <button type="submit" class="flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white">&times;</button>
+                    </form>
+                </div>
+                {% endfor %}
+                <form method="post" action="{% url 'company-photo-upload' %}" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <label class="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-gray-200 text-gray-400 hover:border-accent-400 hover:text-accent-500">
+                        <span class="text-2xl leading-none">+</span>
+                        <span class="text-xs">Add photo</span>
+                        <input type="file" name="image" accept="image/*" class="hidden" onchange="this.form.submit()">
+                    </label>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="space-y-6">
+        <div class="rounded-xl bg-navy-900 p-5 text-white">
+            <div class="flex items-center justify-between">
+                <p class="text-sm font-bold">Profile strength</p>
+                <p class="text-xl font-extrabold text-accent-400">{{ profile_strength_percent }}%</p>
+            </div>
+            <div class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/15">
+                <div class="h-full rounded-full bg-accent-500" style="width: {{ profile_strength_percent }}%"></div>
+            </div>
+            <ul class="mt-4 space-y-2 text-sm">
+                {% for item in profile_strength_checklist %}
+                <li class="flex items-center gap-2">
+                    {% if item.done %}
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 text-green-400" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span class="text-white/70">{{ item.label }}</span>
+                    {% else %}
+                    <span class="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-white/30 text-[10px] text-white/50">+</span>
+                    <span class="text-white/70">{{ item.label }}</span>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="card">
+            <h2 class="mb-3 text-lg font-bold text-navy-900">Certifications</h2>
+            <ul class="space-y-3">
+                {% for cert in supplier.certifications.all %}
+                <li class="flex items-center justify-between text-sm">
+                    <div>
+                        <p class="font-bold text-navy-900">{{ cert.name }}</p>
+                        {% if cert.valid_until %}<p class="text-xs text-gray-500">Valid until {{ cert.valid_until|date:"M Y" }}</p>{% endif %}
+                    </div>
+                    <div class="flex items-center gap-2">
+                        {% if cert.is_verified %}<span class="badge bg-green-50 text-green-700">Verified</span>{% endif %}
+                        <form method="post" action="{% url 'company-certification-delete' cert.pk %}">
+                            {% csrf_token %}
+                            <button type="submit" class="text-xs text-red-600 hover:underline">Remove</button>
+                        </form>
+                    </div>
+                </li>
+                {% empty %}
+                <li class="text-sm text-gray-500">No certifications on file.</li>
+                {% endfor %}
+            </ul>
+            <form method="post" action="{% url 'company-certification-upload' %}" enctype="multipart/form-data" class="mt-4 space-y-2 border-t border-gray-100 pt-4">
+                {% csrf_token %}
+                {{ certification_form.name|add_class:"field-input" }}
+                {{ certification_form.valid_until|add_class:"field-input" }}
+                {{ certification_form.document|add_class:"field-input" }}
+                <button type="submit" class="btn-outline w-full">Upload certificate</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2 class="mb-3 text-lg font-bold text-navy-900">Capacity</h2>
+            <form method="post" action="{% url 'company-capacity-update' %}" class="space-y-3">
+                {% csrf_token %}
+                <div>
+                    <label class="field-label" for="{{ capacity_form.minimum_order_qty.id_for_label }}">Minimum order</label>
+                    {{ capacity_form.minimum_order_qty|add_class:"field-input" }}
+                </div>
+                <div>
+                    <label class="field-label" for="{{ capacity_form.typical_lead_time_days.id_for_label }}">Typical lead time (days)</label>
+                    {{ capacity_form.typical_lead_time_days|add_class:"field-input" }}
+                </div>
+                <label class="flex items-center gap-2 text-sm text-gray-600">
+                    {{ capacity_form.accepting_rfqs }}
+                    Accepting new RFQs
+                </label>
+                <button type="submit" class="btn-outline w-full">Save capacity</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <div class="mb-3 flex items-center justify-between">
+                <h2 class="text-lg font-bold text-navy-900">Primary contact</h2>
+            </div>
+            <form method="post" action="{% url 'company-contact-update' %}" class="space-y-3">
+                {% csrf_token %}
+                {{ contact_form.contact_name|add_class:"field-input"|attr:"placeholder:Name" }}
+                {{ contact_form.contact_role|add_class:"field-input"|attr:"placeholder:Role" }}
+                {{ contact_form.contact_phone|add_class:"field-input"|attr:"placeholder:Phone" }}
+                <button type="submit" class="btn-outline w-full">Save contact</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% load static %}
+<header class="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-gray-200 bg-white px-6">
+    <div class="hidden max-w-md flex-1 items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 sm:flex">
+        <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input type="text" placeholder="Search RFQs, orders, buyers..." class="w-full border-0 p-0 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-0">
+    </div>
+    <div class="flex flex-1 items-center justify-end gap-4">
+        <a href="{% url 'requirement-list' %}" class="btn-primary hidden sm:inline-flex">
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v12H7l-3 3z"/></svg>
+            RFQ inbox
+        </a>
+        <div class="flex items-center gap-3">
+            <span class="flex h-9 w-9 items-center justify-center rounded-full bg-navy-900 text-sm font-bold text-white">
+                {{ request.user.first_name|slice:":1"|upper }}{{ request.user.last_name|slice:":1"|upper }}
+            </span>
+            <div class="hidden text-sm leading-tight sm:block">
+                <p class="font-bold text-navy-900">{{ request.user.first_name }} {{ request.user.last_name }}</p>
+                <p class="text-xs text-gray-500">{{ supplier.companyname|default:"" }}</p>
+            </div>
+            <form method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="text-sm text-gray-500 hover:text-gray-700">Log out</button>
+            </form>
+        </div>
+    </div>
+</header>

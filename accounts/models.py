@@ -44,15 +44,107 @@ class ManufacturingTech(models.Model):
         ('deep_hole_drilling', 'Deep-hole drilling'),
         ('ultrasonic_milling', 'Ultrasonic milling'),
         ('engraver_milling', 'Engraver milling'),
+        ('turning', 'Turning'),
+        ('full_range_turning', 'Full-range turning'),
+        ('anodizing', 'Anodizing'),
+        ('cnc_turning', 'CNC turning'),
+        ('cmm_inspection', 'CMM inspection'),
+        ('sheet_metal', 'Sheet metal fabrication'),
+        ('injection_molding', 'Injection molding'),
+        ('anodizing_partner', 'Anodizing (via partner)'),
     ]
     technology_type = models.CharField(
         max_length=50,
         choices=TECH_CHOICES,
-        default='Milling',
+        default='milling',
     )
 
     def __str__(self):
         return dict(self.TECH_CHOICES).get(self.technology_type, 'Other Technology')
+
+
+class MaterialCapability(models.Model):
+    MATERIAL_CHOICES = [
+        ('structural_steel', 'Structural steel'),
+        ('stainless_steel', 'Stainless steel'),
+        ('aluminium', 'Aluminium'),
+        ('case_hardening', 'Case hardening'),
+        ('titanium', 'Titanium'),
+        ('brass', 'Brass'),
+        ('copper', 'Copper'),
+        ('plastics', 'Plastics / polymers'),
+    ]
+    material_type = models.CharField(max_length=50, choices=MATERIAL_CHOICES, unique=True)
+
+    def __str__(self):
+        return dict(self.MATERIAL_CHOICES).get(self.material_type, 'Other Material')
+
+
+class Company(models.Model):
+    """
+    A GST-verified business entity. Kept separate from ManufacturerProfile
+    (which holds the supplier's marketplace-facing details) so the same
+    verified-identity record can later be reused by other roles (e.g. a
+    buyer's company) without duplicating GST verification.
+
+    No continuous GST monitoring for the MVP — `gst_verified_at` is a
+    point-in-time snapshot from the last verify/refresh call, not a live
+    status. Historical documents (e.g. future invoices) must copy the
+    fields they need at creation time rather than referencing this row,
+    since this row can change on a manual re-verify.
+    """
+
+    ENTITY_TYPE_CHOICES = [
+        ('private_limited', 'Private Limited'),
+        ('public_limited', 'Public Limited'),
+        ('llp', 'LLP'),
+        ('partnership', 'Partnership'),
+        ('proprietorship', 'Proprietorship'),
+        ('other', 'Other'),
+    ]
+
+    GST_STATUS_CHOICES = [
+        ('ACTIVE', 'Active'),
+        ('CANCELLED', 'Cancelled'),
+        ('SUSPENDED', 'Suspended'),
+        ('INACTIVE', 'Inactive'),
+        ('UNKNOWN', 'Unknown'),
+    ]
+
+    VERIFICATION_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('verified', 'Verified'),
+        ('failed', 'Failed'),
+        ('manual_review', 'Manual Review'),
+    ]
+
+    legal_name = models.CharField(max_length=255)
+    trade_name = models.CharField(max_length=255, blank=True)
+    gstin = models.CharField(max_length=15, unique=True, null=True, blank=True)
+    gst_status = models.CharField(max_length=20, choices=GST_STATUS_CHOICES, blank=True)
+    gst_verified = models.BooleanField(default=False)
+    gst_verified_at = models.DateTimeField(null=True, blank=True)
+    registered_address = models.TextField(blank=True)
+    state = models.CharField(max_length=50, blank=True)
+    city = models.CharField(max_length=100, blank=True)
+    pincode = models.CharField(max_length=10, blank=True)
+    # Not every Indian business entity has a CIN (e.g. proprietorships,
+    # partnerships) — kept nullable and out of the mandatory flow.
+    cin = models.CharField(max_length=21, unique=True, null=True, blank=True)
+    mca_status = models.CharField(max_length=30, null=True, blank=True)
+    entity_type = models.CharField(max_length=30, choices=ENTITY_TYPE_CHOICES, blank=True)
+    verification_status = models.CharField(max_length=20, choices=VERIFICATION_STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['gstin']),
+            models.Index(fields=['verification_status']),
+        ]
+
+    def __str__(self):
+        return self.legal_name or self.trade_name or f"Company #{self.pk}"
 
 
 class ManufacturerProfile(models.Model):
@@ -167,7 +259,10 @@ class ManufacturerProfile(models.Model):
         ('96', 'Other'),
     ]
 
+    PAYMENT_LEAD_TIME_HELP = "Typical days from order confirmation to dispatch"
+
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    company = models.OneToOneField(Company, on_delete=models.PROTECT, null=True, blank=True, related_name='manufacturer_profile')
     companyname = models.CharField(max_length=40, blank=True, null=True)
     phone = models.CharField(max_length=12, unique=True)
     address = models.CharField(max_length=200)
@@ -189,10 +284,118 @@ class ManufacturerProfile(models.Model):
     email = models.EmailField(max_length=254, unique=True, blank=False, null=False)
     is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)    
+    updated_at = models.DateTimeField(auto_now=True)
+
+    # --- Company profile dashboard (screen 5) ---------------------------
+    capabilities = models.ManyToManyField(ManufacturingTech, blank=True, related_name='manufacturers')
+    materials = models.ManyToManyField(MaterialCapability, blank=True, related_name='manufacturers')
+    about = models.TextField(blank=True)
+    cover_image = models.ImageField(upload_to='manufacturer/covers/', blank=True, null=True)
+    minimum_order_qty = models.PositiveIntegerField(blank=True, null=True)
+    typical_lead_time_days = models.PositiveIntegerField(blank=True, null=True, help_text=PAYMENT_LEAD_TIME_HELP)
+    accepting_rfqs = models.BooleanField(default=True)
+    contact_name = models.CharField(max_length=100, blank=True)
+    contact_role = models.CharField(max_length=100, blank=True)
+    contact_phone = models.CharField(max_length=20, blank=True)
 
     def __str__(self):
         return f"{self.user} - CompanyDetails({self.amount_of_employees}, {self.turnover_per_year}, {self.certificates})"
+
+    def profile_strength(self):
+        """Real, weighted completeness score for the company profile page —
+        never fabricated. Weights sum to 100; each entry doubles as a
+        template-driven checklist row with an action link for anything
+        still missing."""
+        checklist = [
+            {
+                'label': 'Capabilities and machines',
+                'done': self.capabilities.exists() and self.machines.exists(),
+                'weight': 20,
+                'cta_label': 'Add capabilities',
+                'cta_url_name': 'company-profile',
+            },
+            {
+                'label': 'Materials',
+                'done': self.materials.exists(),
+                'weight': 10,
+                'cta_label': 'Add materials',
+                'cta_url_name': 'company-profile',
+            },
+            {
+                'label': 'Certification on file',
+                'done': self.certifications.exists(),
+                'weight': 15,
+                'cta_label': 'Upload certificate',
+                'cta_url_name': 'company-profile',
+            },
+            {
+                'label': 'About your company',
+                'done': bool(self.about.strip()),
+                'weight': 10,
+                'cta_label': 'Write about',
+                'cta_url_name': 'company-profile',
+            },
+            {
+                'label': 'Shop-floor photos',
+                'done': self.photos.exists(),
+                'weight': 15,
+                'cta_label': 'Add shop-floor photos',
+                'cta_url_name': 'company-profile',
+            },
+            {
+                'label': 'Primary contact',
+                'done': bool(self.contact_name and self.contact_phone),
+                'weight': 15,
+                'cta_label': 'Add contact',
+                'cta_url_name': 'company-profile',
+            },
+            {
+                'label': 'Capacity settings',
+                'done': self.minimum_order_qty is not None and self.typical_lead_time_days is not None,
+                'weight': 15,
+                'cta_label': 'Set capacity',
+                'cta_url_name': 'company-profile',
+            },
+        ]
+        percent = sum(item['weight'] for item in checklist if item['done'])
+        return percent, checklist
+
+
+class Machine(models.Model):
+    manufacturer = models.ForeignKey(ManufacturerProfile, on_delete=models.CASCADE, related_name='machines')
+    machine_type = models.CharField(max_length=100)
+    make_model = models.CharField(max_length=100, blank=True)
+    quantity = models.PositiveIntegerField(default=1)
+    work_envelope = models.CharField(max_length=100, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.machine_type} ({self.manufacturer_id})"
+
+
+class ManufacturerPhoto(models.Model):
+    manufacturer = models.ForeignKey(ManufacturerProfile, on_delete=models.CASCADE, related_name='photos')
+    image = models.ImageField(upload_to='manufacturer/photos/')
+    caption = models.CharField(max_length=150, blank=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.caption or f"Photo #{self.pk}"
+
+
+class Certification(models.Model):
+    manufacturer = models.ForeignKey(ManufacturerProfile, on_delete=models.CASCADE, related_name='certifications')
+    name = models.CharField(max_length=100)
+    valid_until = models.DateField(blank=True, null=True)
+    document = models.FileField(upload_to='manufacturer/certifications/', blank=True, null=True)
+    # Manually flipped by staff for now — no automated certificate
+    # verification in scope yet, same point-in-time-manual-flag pattern as
+    # Company.verification_status.
+    is_verified = models.BooleanField(default=False)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.manufacturer_id})"
 
 
 # Contains customers

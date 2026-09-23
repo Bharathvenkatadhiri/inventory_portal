@@ -1,96 +1,139 @@
 {% extends "base.html" %}
 {% block title %}Pricing — ManufactureHub{% endblock %}
+{% block hero %}
+{% include "_page_hero.html" with eyebrow="Pricing" heading="Simple, <span class='text-accent-500'>transparent</span> pricing." sub="Start free and upgrade as your sourcing grows. No setup fees, cancel anytime." %}
+{% endblock %}
 {% block content %}
-<div x-data="{ buyer: true }">
-    <div class="text-center max-w-2xl mx-auto py-4">
-        <p class="text-xs font-semibold uppercase tracking-wide text-orange-500 mb-3">Pricing</p>
-        <h1 class="font-serif text-4xl text-gray-900 leading-tight">Simple, transparent pricing</h1>
-        <p class="mt-4 italic text-sm text-gray-500">
-            Whether you're sourcing parts or fulfilling them, pick the plan that matches your volume.
-        </p>
-    </div>
-
-    <div class="flex justify-center mb-10">
-        <div class="inline-flex rounded-md bg-gray-100 p-1 text-sm">
-            <button type="button" @click="buyer = true" class="px-4 py-2 rounded-md font-medium transition-colors" :class="buyer ? 'bg-white text-gray-900 shadow' : 'text-gray-500'">For Buyers</button>
-            <button type="button" @click="buyer = false" class="px-4 py-2 rounded-md font-medium transition-colors" :class="!buyer ? 'bg-white text-gray-900 shadow' : 'text-gray-500'">For Manufacturers</button>
+<div x-data="{ buyer: true, annual: false }">
+    <div class="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div class="inline-flex self-start rounded-lg bg-gray-100 p-1 text-sm">
+            <button type="button" @click="buyer = true" class="rounded-md px-5 py-2 font-semibold transition-colors" :class="buyer ? 'bg-navy-900 text-white shadow' : 'text-gray-500'">For Buyers</button>
+            <button type="button" @click="buyer = false" class="rounded-md px-5 py-2 font-semibold transition-colors" :class="!buyer ? 'bg-navy-900 text-white shadow' : 'text-gray-500'">For Manufacturers</button>
+        </div>
+        <div class="flex items-center gap-3 text-sm">
+            <span class="font-medium" :class="annual ? 'text-gray-400' : 'text-navy-900'">Monthly</span>
+            <button type="button" role="switch" :aria-checked="annual ? 'true' : 'false'" @click="annual = !annual"
+                    class="relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent-500 focus:ring-offset-2"
+                    :class="annual ? 'bg-accent-500' : 'bg-gray-300'">
+                <span class="sr-only">Bill annually</span>
+                <span class="my-1 h-4 w-4 rounded-full bg-white transition-transform" :class="annual ? 'translate-x-6' : 'translate-x-1'"></span>
+            </button>
+            <span class="font-medium" :class="annual ? 'text-navy-900' : 'text-gray-400'">Annual</span>
+            <span class="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-bold text-green-700">Save [X]%</span>
         </div>
     </div>
 
     <div class="grid gap-6 sm:grid-cols-3 items-start">
-        <div class="card text-center">
-            <p class="italic text-sm text-gray-500 mb-3">Free</p>
-            <p class="text-3xl font-bold text-gray-900">$0<span class="text-sm font-normal text-gray-400">/month</span></p>
-            <p class="mt-1 italic text-xs text-gray-400">For occasional sourcing</p>
-            <hr class="my-4 border-gray-200">
-            <ul class="text-sm text-gray-600 space-y-2 text-left">
+        <div class="card p-7">
+            <p class="text-lg font-extrabold text-navy-900">Starter</p>
+            <p class="mt-1 text-sm text-gray-500">For individuals and small teams getting started.</p>
+            <p class="mt-6 text-4xl font-extrabold tracking-tight text-navy-900">Free<span class="ml-1.5 text-sm font-medium text-gray-400">forever</span></p>
+            <a href="{% url 'register' %}" class="btn-outline mt-6 w-full">Get started</a>
+            <ul class="mt-7 space-y-3 text-sm text-gray-600">
                 <li class="flex items-start gap-2">
-                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-orange-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
-                    <span x-text="buyer ? '5 RFQs per month' : 'Respond to 5 RFQs per month'"></span>
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span x-text="buyer ? 'Up to 3 open RFQs' : 'Respond to up to 3 RFQs per month'"></span>
                 </li>
                 <li class="flex items-start gap-2">
-                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-orange-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
-                    <span>1 user</span>
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span x-text="buyer ? 'Quotes from verified manufacturers' : 'A verified manufacturer profile'"></span>
                 </li>
                 <li class="flex items-start gap-2">
-                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-orange-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
-                    <span>Basic support</span>
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span>Side-by-side quote comparison</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span>Order tracking</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span>Email support</span>
                 </li>
             </ul>
-            <a href="{% url 'register' %}" class="btn-secondary w-full mt-6">Get started</a>
         </div>
 
-        <div class="relative card text-center border-2 border-orange-400">
-            <span class="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-orange-500 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">Most Popular</span>
-            <p class="italic text-sm text-orange-500 mb-3">Professional</p>
-            <p class="text-3xl font-bold text-gray-900">$2,000<span class="text-sm font-normal text-gray-400">/month</span></p>
-            <p class="mt-1 italic text-xs text-gray-400">For active buying teams</p>
-            <hr class="my-4 border-gray-200">
-            <ul class="text-sm text-gray-600 space-y-2 text-left">
+        <div class="relative rounded-xl bg-navy-900 p-7 text-white shadow-xl">
+            <span class="absolute -top-3 left-7 rounded-full bg-accent-500 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white">Most Popular</span>
+            <p class="text-lg font-extrabold">Growth</p>
+            <p class="mt-1 text-sm text-white/60">For teams sourcing parts every month.</p>
+            <p class="mt-6 text-4xl font-extrabold tracking-tight">&#8377;[price]<span class="ml-1.5 text-sm font-medium text-white/60" x-text="annual ? '/ year' : '/ month'"></span></p>
+            <a href="{% url 'register' %}" class="btn-primary mt-6 w-full">Start Growth</a>
+            <ul class="mt-7 space-y-3 text-sm text-white/85">
                 <li class="flex items-start gap-2">
-                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-orange-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
-                    <span x-text="buyer ? '20 RFQs per month' : 'Respond to 20 RFQs per month'"></span>
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span x-text="buyer ? 'Unlimited RFQs' : 'Respond to unlimited RFQs'"></span>
                 </li>
                 <li class="flex items-start gap-2">
-                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-orange-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
-                    <span>5 users</span>
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span x-text="buyer ? 'Invite your own suppliers' : 'Priority placement on matching RFQs'"></span>
                 </li>
                 <li class="flex items-start gap-2">
-                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-orange-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span>NDA-protected file sharing</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span>Team seats and approvals</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span>Spend and supplier reports</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
                     <span>Priority support</span>
                 </li>
-                <li class="flex items-start gap-2">
-                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-orange-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
-                    <span>Order tracking dashboard</span>
-                </li>
             </ul>
-            <a href="{% url 'register' %}" class="inline-flex items-center justify-center rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-black w-full mt-6">Get started</a>
         </div>
 
-        <div class="card text-center">
-            <p class="italic text-sm text-gray-500 mb-3">Enterprise</p>
-            <p class="text-3xl font-bold text-gray-900">$3,500<span class="text-sm font-normal text-gray-400">/month</span></p>
-            <p class="mt-1 italic text-xs text-gray-400">For high-volume sourcing</p>
-            <hr class="my-4 border-gray-200">
-            <ul class="text-sm text-gray-600 space-y-2 text-left">
+        <div class="card p-7">
+            <p class="text-lg font-extrabold text-navy-900">Enterprise</p>
+            <p class="mt-1 text-sm text-gray-500">For procurement teams with complex needs.</p>
+            <p class="mt-6 text-4xl font-extrabold tracking-tight text-navy-900">Custom</p>
+            <a href="{% url 'contact' %}" class="btn-outline mt-6 w-full">Talk to sales</a>
+            <ul class="mt-7 space-y-3 text-sm text-gray-600">
                 <li class="flex items-start gap-2">
-                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-orange-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
-                    <span x-text="buyer ? 'Unlimited RFQs per month' : 'Respond to unlimited RFQs per month'"></span>
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span>Everything in Growth</span>
                 </li>
                 <li class="flex items-start gap-2">
-                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-orange-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
-                    <span>Unlimited users</span>
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span x-text="buyer ? 'Dedicated sourcing specialist' : 'Dedicated account manager'"></span>
                 </li>
                 <li class="flex items-start gap-2">
-                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-orange-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
-                    <span>Dedicated support</span>
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span>ERP and SSO integration</span>
                 </li>
                 <li class="flex items-start gap-2">
-                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-orange-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
-                    <span>API access</span>
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span>Custom approval workflows</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    <span>Volume pricing and SLAs</span>
                 </li>
             </ul>
-            <a href="{% url 'register' %}" class="btn-secondary w-full mt-6">Get started</a>
+        </div>
+    </div>
+
+    <p class="mt-8 text-center text-xs text-gray-400">
+        Prices exclude GST. Need something custom? <a href="{% url 'contact' %}" class="font-semibold text-accent-500 hover:underline">Talk to sales</a>.
+    </p>
+
+    <h2 class="mt-20 mb-6 text-2xl font-extrabold tracking-tight text-navy-900 sm:text-3xl">Pricing questions</h2>
+    <div class="grid gap-6 sm:grid-cols-3">
+        <div class="card">
+            <p class="font-semibold text-navy-900">Can I change plans later?</p>
+            <p class="mt-1 text-sm text-gray-500">Yes. Upgrade or downgrade anytime — changes apply from your next billing cycle.</p>
+        </div>
+        <div class="card">
+            <p class="font-semibold text-navy-900">Are there any transaction fees?</p>
+            <p class="mt-1 text-sm text-gray-500">No transaction fees on awarded orders — your plan covers everything listed above.</p>
+        </div>
+        <div class="card">
+            <p class="font-semibold text-navy-900">Do you offer a free trial of paid plans?</p>
+            <p class="mt-1 text-sm text-gray-500">Yes — 14 days of Growth, no card required.</p>
         </div>
     </div>
 </div>

@@ -1,0 +1,127 @@
+{% extends "dashboard_base.html" %}
+{% block title %}RFQ Inbox — ManufactureHub{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+        <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">RFQ inbox</h1>
+        <p class="mt-1 text-sm text-gray-500">Requests matched to your processes, materials and capacity.</p>
+    </div>
+    <form method="get" class="flex flex-wrap items-end gap-3">
+        <input type="hidden" name="tab" value="{{ tab }}">
+        <div>
+            <select name="process" class="field-input" onchange="this.form.submit()">
+                <option value="">All processes</option>
+                <option value="Milling" {% if process == 'Milling' %}selected{% endif %}>Milling</option>
+                <option value="Turning" {% if process == 'Turning' %}selected{% endif %}>Turning</option>
+                <option value="Full-range turning" {% if process == 'Full-range turning' %}selected{% endif %}>Full-range turning</option>
+                <option value="Anodizing" {% if process == 'Anodizing' %}selected{% endif %}>Anodizing</option>
+            </select>
+        </div>
+        <div>
+            <select name="sort" class="field-input" onchange="this.form.submit()">
+                <option value="">Deadline soonest</option>
+                <option value="date_desc" {% if sort == 'date_desc' %}selected{% endif %}>Deadline latest</option>
+                <option value="match_desc" {% if sort == 'match_desc' %}selected{% endif %}>Best match</option>
+                <option value="cr_date_desc" {% if sort == 'cr_date_desc' %}selected{% endif %}>Newest</option>
+            </select>
+        </div>
+    </form>
+</div>
+{% endblock %}
+{% block content %}
+<div class="card p-0">
+    <div class="flex gap-1 border-b border-gray-100 px-4">
+        <a href="?tab=new{% if process %}&process={{ process }}{% endif %}"
+           class="border-b-2 px-4 py-3 text-sm font-bold transition-colors {% if tab == 'new' %}border-accent-500 text-navy-900{% else %}border-transparent text-gray-500 hover:text-navy-900{% endif %}">
+            New
+            <span class="ml-1 rounded-full {% if tab == 'new' %}bg-accent-50 text-accent-600{% else %}bg-gray-100 text-gray-500{% endif %} px-2 py-0.5 text-xs">{{ tab_counts.new }}</span>
+        </a>
+        <a href="?tab=quoted{% if process %}&process={{ process }}{% endif %}"
+           class="border-b-2 px-4 py-3 text-sm font-bold transition-colors {% if tab == 'quoted' %}border-accent-500 text-navy-900{% else %}border-transparent text-gray-500 hover:text-navy-900{% endif %}">
+            Quoted
+            <span class="ml-1 rounded-full {% if tab == 'quoted' %}bg-accent-50 text-accent-600{% else %}bg-gray-100 text-gray-500{% endif %} px-2 py-0.5 text-xs">{{ tab_counts.quoted }}</span>
+        </a>
+        <a href="?tab=won{% if process %}&process={{ process }}{% endif %}"
+           class="border-b-2 px-4 py-3 text-sm font-bold transition-colors {% if tab == 'won' %}border-accent-500 text-navy-900{% else %}border-transparent text-gray-500 hover:text-navy-900{% endif %}">
+            Won
+            <span class="ml-1 rounded-full {% if tab == 'won' %}bg-accent-50 text-accent-600{% else %}bg-gray-100 text-gray-500{% endif %} px-2 py-0.5 text-xs">{{ tab_counts.won }}</span>
+        </a>
+        <a href="?tab=lost{% if process %}&process={{ process }}{% endif %}"
+           class="border-b-2 px-4 py-3 text-sm font-bold transition-colors {% if tab == 'lost' %}border-accent-500 text-navy-900{% else %}border-transparent text-gray-500 hover:text-navy-900{% endif %}">
+            Lost
+            <span class="ml-1 rounded-full {% if tab == 'lost' %}bg-accent-50 text-accent-600{% else %}bg-gray-100 text-gray-500{% endif %} px-2 py-0.5 text-xs">{{ tab_counts.lost }}</span>
+        </a>
+    </div>
+
+    <div class="divide-y divide-gray-100">
+        {% for demand in object_list %}
+        <div class="p-5 sm:p-6">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div class="flex gap-4">
+                    <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-400">
+                        <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg>
+                    </span>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <a href="{% url 'requirement' demand.pk %}" class="font-bold text-navy-900 hover:text-accent-500">{{ demand.title }}</a>
+                            <span class="text-xs text-gray-400">RFQ-{{ demand.pk }}</span>
+                            {% if tab == 'new' %}<span class="badge bg-accent-50 text-accent-600">NEW</span>{% endif %}
+                        </div>
+                        <p class="text-sm text-gray-500">{{ demand.user.first_name }} {{ demand.user.last_name }}{% if demand.industry %} &middot; {{ demand.industry }}{% endif %}</p>
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            {% for part in demand.requirement_parts.all %}
+                            <span class="badge bg-gray-100 text-gray-600">{{ part.technology }}</span>
+                            <span class="badge bg-gray-100 text-gray-600">{{ part.Material }}</span>
+                            <span class="badge bg-gray-100 text-gray-600">{{ part.quantity }} pcs</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="flex shrink-0 flex-col items-start gap-2 sm:items-end">
+                    {% if demand.end_date %}
+                    <span class="text-sm font-bold text-accent-600">Due {{ demand.end_date|timeuntil }}</span>
+                    {% endif %}
+                    {% if demand.match_percent is not None %}
+                    <span class="badge bg-green-50 text-green-700">{{ demand.match_percent }}% match</span>
+                    {% endif %}
+                    <div class="flex gap-2">
+                        {% if tab == 'new' %}
+                        <form method="post" action="{% url 'requirement-decline' demand.pk %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-outline">Decline</button>
+                        </form>
+                        <a href="{% url 'new-quote' demand.pk %}" class="btn-primary">Prepare quote</a>
+                        {% else %}
+                        <a href="{% url 'requirement' demand.pk %}" class="btn-outline">View</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="p-10 text-center text-sm text-gray-500">No RFQs in this tab right now.</div>
+        {% endfor %}
+    </div>
+
+    {% if is_paginated %}
+    <div class="flex items-center justify-between border-t border-gray-100 px-6 py-4 text-sm">
+        <p class="text-gray-500">Showing {{ object_list|length }} RFQ{{ object_list|length|pluralize }}</p>
+        <div class="flex gap-2">
+            {% if page_obj.has_previous %}
+            <a class="btn-outline" href="?page={{ page_obj.previous_page_number }}&tab={{ tab }}{% if process %}&process={{ process }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}">&lsaquo;</a>
+            {% endif %}
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                <span class="btn-primary">{{ num }}</span>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <a class="btn-outline" href="?page={{ num }}&tab={{ tab }}{% if process %}&process={{ process }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}">{{ num }}</a>
+                {% endif %}
+            {% endfor %}
+            {% if page_obj.has_next %}
+            <a class="btn-outline" href="?page={{ page_obj.next_page_number }}&tab={{ tab }}{% if process %}&process={{ process }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}">&rsaquo;</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

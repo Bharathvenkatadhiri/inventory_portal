@@ -54,6 +54,14 @@
                 </tbody>
                 <tfoot>
                     <tr>
+                        <td colspan="4" class="py-2 pr-4 text-right text-gray-500">Tooling / setup</td>
+                        <td class="py-2 pr-4 text-gray-600">{{ demand.quote_currency }} {{ breakdown.tooling_cost }}</td>
+                    </tr>
+                    <tr>
+                        <td colspan="4" class="py-2 pr-4 text-right text-gray-500">GST (18%)</td>
+                        <td class="py-2 pr-4 text-gray-600">{{ demand.quote_currency }} {{ breakdown.gst }}</td>
+                    </tr>
+                    <tr>
                         <td colspan="4" class="py-2 pr-4 text-right font-semibold text-gray-900">Total</td>
                         <td class="py-2 pr-4 font-semibold text-gray-900">{{ demand.quote_currency }} {{ total }}</td>
                     </tr>
@@ -64,6 +72,24 @@
 
     <div class="card">
         {% include "order/_order_status.html" %}
+    </div>
+</div>
+
+<div class="card mb-6" id="production-tracker-block">
+    {% include "order/_production_tracker.html" %}
+</div>
+
+<div class="grid gap-6 lg:grid-cols-3">
+    <div class="card lg:col-span-2" id="updates-feed-block">
+        {% include "order/_updates_feed.html" %}
+    </div>
+    <div class="space-y-6">
+        <div class="card" id="qc-checklist-block">
+            {% include "order/_qc_checklist.html" %}
+        </div>
+        <div class="card" id="shipment-form-block">
+            {% include "order/_shipment_form.html" %}
+        </div>
     </div>
 </div>
 

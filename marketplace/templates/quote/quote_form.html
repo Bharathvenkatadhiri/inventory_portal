@@ -1,0 +1,144 @@
+{% extends "dashboard_base.html" %}
+{% load widget_tweaks %}
+{% block title %}Quote &middot; {{ demand.title }} — ManufactureHub{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+        <p class="text-xs text-gray-500">
+            <a href="{% url 'home' %}" class="hover:text-accent-500">Dashboard</a> &middot;
+            <a href="{% url 'requirement-list' %}" class="hover:text-accent-500">RFQ inbox</a> &middot;
+            RFQ-{{ demand.pk }}
+        </p>
+        <h1 class="mt-1 text-2xl font-extrabold tracking-tight text-navy-900">Quote &middot; {{ demand.title }}</h1>
+        <p class="mt-1 text-sm text-gray-500">
+            RFQ-{{ demand.pk }} from {{ demand.user.first_name }} {{ demand.user.last_name }}
+            {% if demand.end_date %} &middot; quotes close {{ demand.end_date|date:"d M, g:i A" }}{% endif %}
+        </p>
+    </div>
+    {% if demand.end_date %}
+    <span class="badge bg-accent-50 text-accent-600 shrink-0">Closes {{ demand.end_date|timeuntil }}</span>
+    {% endif %}
+</div>
+{% endblock %}
+{% block content %}
+<div class="grid gap-6 lg:grid-cols-[1.4fr_1fr] lg:items-start">
+    <div class="space-y-6">
+        <div class="card">
+            <h2 class="text-lg font-bold text-navy-900">Part requirements</h2>
+            <div class="mt-4 flex aspect-video items-center justify-center rounded-lg bg-gray-50 text-sm text-gray-400">
+                [3D preview not available]
+            </div>
+            <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                {% for part in parts %}
+                <div><p class="field-label">Process</p><p class="text-sm text-navy-900">{{ part.technology }}</p></div>
+                <div><p class="field-label">Quantity</p><p class="text-sm text-navy-900">{{ part.quantity }} pcs</p></div>
+                <div><p class="field-label">Material</p><p class="text-sm text-navy-900">{{ part.Material }}</p></div>
+                {% if part.Part_desc %}<div class="sm:col-span-2"><p class="field-label">Notes</p><p class="text-sm text-navy-900">{{ part.Part_desc }}</p></div>{% endif %}
+                {% empty %}
+                <p class="text-sm text-gray-500 sm:col-span-2">No part details attached to this RFQ.</p>
+                {% endfor %}
+            </div>
+            {% if demand.rfq_desc %}
+            <div class="mt-4 rounded-lg bg-accent-50 px-4 py-3 text-sm text-accent-700">
+                <span class="font-bold">Buyer notes:</span> {{ demand.rfq_desc }}
+            </div>
+            {% endif %}
+            {% if demand.file %}
+            <a href="{{ demand.file.url }}" target="_blank" class="mt-4 flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm hover:bg-gray-50">
+                <span class="text-navy-900">{{ demand.file.name }}</span>
+                <svg viewBox="0 0 24 24" class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
+            </a>
+            {% endif %}
+            {% for part in parts %}
+            {% if part.file %}
+            <a href="{{ part.file.url }}" target="_blank" class="mt-2 flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm hover:bg-gray-50">
+                <span class="text-navy-900">{{ part.file.name }}</span>
+                <svg viewBox="0 0 24 24" class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
+            </a>
+            {% endif %}
+            {% endfor %}
+        </div>
+
+        <div id="questions-section">
+            {% include "requirement/_questions_section.html" %}
+        </div>
+    </div>
+
+    <div class="card lg:sticky lg:top-6"
+         x-data="{
+            unitPrice: {{ form.quote_price.value|default:0 }},
+            quantity: {{ total_quantity|default:0 }},
+            tooling: {{ form.tooling_cost.value|default:0 }},
+            get subtotal() { return (parseFloat(this.unitPrice || 0) * this.quantity) + parseFloat(this.tooling || 0) },
+            get gst() { return this.subtotal * 0.18 },
+            get total() { return this.subtotal + this.gst },
+         }">
+        <h2 class="text-lg font-bold text-navy-900">Your quote</h2>
+        {% if match_percent is not None %}
+        <p class="mt-1 text-sm text-gray-500">Match score: <span class="font-bold text-green-600">{{ match_percent }}%</span></p>
+        {% endif %}
+
+        {% if form.non_field_errors %}
+        <div class="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+            {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data" class="mt-4 space-y-4">
+            {% csrf_token %}
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="field-label" for="{{ form.quote_price.id_for_label }}">Unit price (&#8377;)</label>
+                    {{ form.quote_price|add_class:"field-input"|attr:"x-model:unitPrice" }}
+                    {% for error in form.quote_price.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+                </div>
+                <div>
+                    <label class="field-label">Quantity</label>
+                    <input type="text" class="field-input bg-gray-50" value="{{ total_quantity }} pcs" readonly>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="field-label" for="{{ form.tooling_cost.id_for_label }}">Tooling / setup (&#8377;)</label>
+                    {{ form.tooling_cost|add_class:"field-input"|attr:"x-model:tooling" }}
+                </div>
+                <div>
+                    <label class="field-label">Lead time</label>
+                    <div class="flex gap-2">
+                        {{ form.lead_time_value|add_class:"field-input" }}
+                        {{ form.lead_time_unit|add_class:"field-input" }}
+                    </div>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="field-label" for="{{ form.payment_terms.id_for_label }}">Payment terms</label>
+                    {{ form.payment_terms|add_class:"field-input" }}
+                </div>
+                <div>
+                    <label class="field-label" for="{{ form.valid_until.id_for_label }}">Quote valid until</label>
+                    {{ form.valid_until|add_class:"field-input" }}
+                </div>
+            </div>
+            <div>
+                <label class="field-label" for="{{ form.note.id_for_label }}">Notes to buyer</label>
+                {{ form.note|add_class:"field-input" }}
+            </div>
+            <div>
+                <label class="field-label" for="{{ form.quote_file.id_for_label }}">Attach detailed quote (PDF)</label>
+                {{ form.quote_file|add_class:"field-input" }}
+            </div>
+
+            <div class="rounded-lg bg-gray-50 p-4 text-sm">
+                <div class="flex justify-between py-1"><span class="text-gray-500">{{ total_quantity }} pcs &times; unit price</span><span class="text-navy-900" x-text="'₹' + (unitPrice * quantity).toLocaleString('en-IN', {maximumFractionDigits: 2})"></span></div>
+                <div class="flex justify-between py-1"><span class="text-gray-500">Tooling / setup</span><span class="text-navy-900" x-text="'₹' + parseFloat(tooling || 0).toLocaleString('en-IN', {maximumFractionDigits: 2})"></span></div>
+                <div class="flex justify-between py-1"><span class="text-gray-500">GST (18%)</span><span class="text-navy-900" x-text="'₹' + gst.toLocaleString('en-IN', {maximumFractionDigits: 2})"></span></div>
+                <div class="mt-1 flex justify-between border-t border-gray-200 pt-2 font-bold"><span class="text-navy-900">Total to buyer</span><span class="text-navy-900" x-text="'₹' + total.toLocaleString('en-IN', {maximumFractionDigits: 2})"></span></div>
+            </div>
+
+            <button type="submit" name="action" value="submit" class="btn-primary w-full">{{ savebtn|default:"Submit quote" }}</button>
+            <button type="submit" name="action" value="draft" class="btn-outline w-full">Save draft</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% load static %}
+<footer class="bg-navy-900 text-white/70">
+    <div class="mx-auto grid max-w-7xl gap-10 px-6 py-14 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr] lg:px-8">
+        <div>
+            <a href="{% url 'home' %}" class="flex items-center gap-2.5">
+                <img src="{% static 'images/logo.svg' %}" alt="ManufactureHub" class="h-8 w-8">
+                <span class="text-lg font-extrabold tracking-tight text-white">Manufacture<span class="text-accent-500">Hub</span></span>
+            </a>
+            <p class="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-white/45">Connect &middot; Quote &middot; Manufacture</p>
+            <p class="mt-4 max-w-xs text-sm leading-relaxed text-white/60">Source custom manufacturing without the endless emails, spreadsheets, and follow-ups.</p>
+        </div>
+        <div>
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-white/45">Platform</p>
+            <ul class="mt-4 space-y-3 text-sm text-white/70">
+                <li><a href="{% url 'how-it-works' %}" class="hover:text-white">How it works</a></li>
+                <li><a href="{% url 'pricing' %}" class="hover:text-white">Pricing</a></li>
+                <li><a href="{% url 'register' %}" class="hover:text-white">Register</a></li>              
+            </ul>
+        </div>
+        <div>
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-white/45">Company</p>
+            <ul class="mt-4 space-y-3 text-sm text-white/70">
+                <li><a href="{% url 'about' %}" class="hover:text-white">About us</a></li>
+                <li><a href="{% url 'contact' %}" class="hover:text-white">Contact</a></li>
+            </ul>
+        </div>
+        <div>
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-white/45">Legal</p>
+            <ul class="mt-4 space-y-3 text-sm text-white/70">
+                <li><a href="{% url 'terms-of-service' %}" class="hover:text-white">Terms of service</a></li>
+                <li><a href="{% url 'privacy-policy' %}" class="hover:text-white">Privacy policy</a></li>
+                <li><a href="{% url 'supplier-code-of-conduct' %}" class="hover:text-white">Supplier code of conduct</a></li>
+            </ul>
+        </div>
+    </div>
+    <div class="border-t border-white/10">
+        <div class="mx-auto flex max-w-7xl flex-col gap-2 px-6 py-5 text-xs text-white/50 sm:flex-row sm:items-center sm:justify-between lg:px-8">
+            <p>&copy; {% now "Y" %} ManufactureHub. All rights reserved.</p>
+            <p>Chennai, Tamil Nadu &middot; GSTIN 33ABCDE1234F1Z5</p>
+        </div>
+    </div>
+</footer>

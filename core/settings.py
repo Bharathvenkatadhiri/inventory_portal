@@ -65,6 +65,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "homepage.context_processors.dashboard_sidebar_counts",
             ],
         },
     },
@@ -161,6 +162,32 @@ LOGGING = {
         },
     },
 }
+
+# --- Email ------------------------------------------------------------------
+# Used for password-reset emails. Defaults to the console backend in DEBUG
+# (emails print to stdout, nothing sent) so local dev needs no SMTP setup;
+# production must set EMAIL_BACKEND (and the SMTP settings below) via env.
+EMAIL_BACKEND = env(
+    "EMAIL_BACKEND",
+    default="django.core.mail.backends.console.EmailBackend" if DEBUG else "django.core.mail.backends.smtp.EmailBackend",
+)
+EMAIL_HOST = env("EMAIL_HOST", default="")
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="ManufactureHub <no-reply@manufacturehub.example>")
+
+# --- GST verification -------------------------------------------------------
+# "mock" (default) uses accounts.services.gst_verification.MockGSTProvider —
+# no external calls, deterministic results, safe for dev/test. Set to a
+# registered real-provider name (and add it to get_provider()) to go live;
+# real provider credentials belong in env vars only, never in code or
+# committed to the frontend.
+GST_VERIFICATION_PROVIDER = env("GST_VERIFICATION_PROVIDER", default="mock")
+GST_VERIFICATION_API_KEY = env("GST_VERIFICATION_API_KEY", default="")
+GST_VERIFICATION_API_BASE_URL = env("GST_VERIFICATION_API_BASE_URL", default="")
+GST_VERIFICATION_TIMEOUT_SECONDS = env.int("GST_VERIFICATION_TIMEOUT_SECONDS", default=10)
 
 # --- Subscription plans ---------------------------------------------------
 # Referenced by accounts.forms/accounts.views when creating/updating a

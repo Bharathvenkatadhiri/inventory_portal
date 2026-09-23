@@ -1,9 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Privacy Policy — ManufactureHub{% endblock %}
+{% block hero %}
+{% include "_page_hero.html" with eyebrow="Legal" heading="Privacy <span class='text-accent-500'>Policy</span>" sub="How we collect, use and protect your data on ManufactureHub." %}
+{% endblock %}
 {% block content %}
 <div class="card max-w-3xl mx-auto space-y-4">
-    <h1 class="text-2xl font-semibold text-gray-900 mb-2">Privacy Policy</h1>
-
     <p class="text-gray-600">
         At ManufactureHub, we prioritize your privacy and are committed to protecting your personal data.
         This Privacy Policy outlines the types of information we collect from our users, how we use and
@@ -12,7 +13,7 @@
     </p>
 
     <div>
-        <h2 class="text-lg font-semibold text-gray-900 mb-1">Information Collection and Use</h2>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">Information Collection and Use</h2>
         <p class="text-gray-600">
             We collect personal information that you provide to us directly, such as your name, email
             address, contact details, and company information when you register, place an RFQ, or interact
@@ -25,7 +26,7 @@
     </div>
 
     <div>
-        <h2 class="text-lg font-semibold text-gray-900 mb-1">Data Protection and Security</h2>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">Data Protection and Security</h2>
         <p class="text-gray-600">
             ManufactureHub employs robust security measures to protect your personal data against
             unauthorized access, alteration, disclosure, or destruction. We use encryption technologies and
@@ -37,7 +38,7 @@
     </div>
 
     <div>
-        <h2 class="text-lg font-semibold text-gray-900 mb-1">Your Rights</h2>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">Your Rights</h2>
         <p class="text-gray-600">
             You have the right to access, modify, or delete your personal data at any time by logging into
             your account or contacting our support team. We also provide options to manage your

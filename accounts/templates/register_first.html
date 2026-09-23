@@ -1,182 +1,220 @@
-<!DOCTYPE html>
-<html lang="en" class="h-full bg-gray-50">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create an account — ManufactureHub</title>
-    <link rel="stylesheet" href="{% load static %}{% static 'css/tailwind-built.css' %}">
-</head>
-<body class="h-full flex flex-col">
-    <header class="shrink-0 border-b border-gray-200 bg-white">
-        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div class="flex h-16 justify-between items-center">
-                <a href="{% url 'home' %}" class="flex items-center gap-2">
-                    <img src="{% static 'images/logo.png' %}" alt="ManufactureHub" class="h-8 w-8 rounded-lg">
-                    <span class="text-lg font-bold text-gray-900">Manufacture<span class="text-orange-500">Hub</span></span>
-                </a>
-                <nav class="flex items-center gap-4 text-sm">
-                    <a href="{% url 'about' %}" class="{% if request.resolver_match.url_name == 'about' %}font-semibold text-gray-900 underline underline-offset-4{% else %}text-gray-600 hover:text-gray-900{% endif %}">About MH</a>
-                    <a href="{% url 'pricing' %}" class="{% if request.resolver_match.url_name == 'pricing' %}font-semibold text-gray-900 underline underline-offset-4{% else %}text-gray-600 hover:text-gray-900{% endif %}">Pricing</a>
-                    <a href="{% url 'contact' %}" class="{% if request.resolver_match.url_name == 'contact' %}font-semibold text-gray-900 underline underline-offset-4{% else %}text-gray-600 hover:text-gray-900{% endif %}">Contact</a>
-                    <a href="{% url 'login' %}" class="{% if request.resolver_match.url_name == 'login' %}font-semibold text-gray-900 underline underline-offset-4{% else %}text-gray-600 hover:text-gray-900{% endif %}">Login</a>
-                </nav>
-            </div>
+{% extends "auth_shell.html" %}
+{% load widget_tweaks %}
+{% block title %}Create an account — ManufactureHub{% endblock %}
+{% block hero_eyebrow %}Join ManufactureHub{% endblock %}
+{% block hero_title %}Start sourcing<br><span class="text-accent-500">in minutes.</span>{% endblock %}
+{% block hero_subtitle %}One account to source custom parts — or, if you make them, to find new buyers.{% endblock %}
+{% block hero_extra %}
+<div class="mt-10 space-y-6">
+    <div class="flex items-start gap-4">
+        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/25 text-accent-400">
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 4v12"/><path d="M7 9l5-5 5 5"/><path d="M4 20h16"/></svg>
+        </span>
+        <div>
+            <p class="font-semibold">Upload once</p>
+            <p class="text-sm text-white/65">Reach verified manufacturers with a single RFQ</p>
         </div>
-    </header>
-    <div class="flex-1 flex items-center justify-center px-4 py-10">
-    <div class="w-full max-w-lg">
-        <div class="text-center mb-8">
-            <p class="text-gray-500 text-sm mt-1">Create your account</p>
-        </div>
-        <div class="card">
-            {% load widget_tweaks %}
-            {% if form.non_field_errors %}
-            <div class="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">
-                {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
-            </div>
-            {% endif %}
-            <form method="post" class="space-y-4" id="register-form">
-                {% csrf_token %}
-                <div>
-                    <label for="{{ form.username.id_for_label }}" class="field-label">Username</label>
-                    {{ form.username|add_class:"field-input" }}
-                    {% for error in form.username.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label for="{{ form.first_name.id_for_label }}" class="field-label">First Name</label>
-                        {{ form.first_name|add_class:"field-input" }}
-                        {% for error in form.first_name.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
-                    </div>
-                    <div>
-                        <label for="{{ form.last_name.id_for_label }}" class="field-label">Last Name</label>
-                        {{ form.last_name|add_class:"field-input" }}
-                        {% for error in form.last_name.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
-                    </div>
-                </div>
-                <div>
-                    <label for="{{ form.email.id_for_label }}" class="field-label">Email address</label>
-                    {{ form.email|add_class:"field-input" }}
-                    {% for error in form.email.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label for="{{ form.password1.id_for_label }}" class="field-label">Password</label>
-                        {{ form.password1|add_class:"field-input" }}
-                        <div class="mt-1.5 flex items-center gap-2">
-                            <div class="h-1.5 flex-1 rounded-full bg-gray-200 overflow-hidden">
-                                <div id="password-strength-bar" class="h-full w-0 rounded-full transition-all"></div>
-                            </div>
-                            <span id="password-strength-label" class="text-xs text-gray-400 w-12 shrink-0"></span>
-                        </div>
-                        {% for error in form.password1.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
-                    </div>
-                    <div>
-                        <label for="{{ form.password2.id_for_label }}" class="field-label">Confirm Password</label>
-                        {{ form.password2|add_class:"field-input" }}
-                        {% for error in form.password2.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
-                    </div>
-                </div>
-                <fieldset>
-                    <legend class="field-label">I am a...</legend>
-                    <div class="grid grid-cols-2 gap-3">
-                        <label class="flex items-center justify-center gap-2 rounded-md border border-gray-300 px-4 py-2 text-sm cursor-pointer hover:bg-gray-50">
-                            <input type="radio" name="is_staff" value="1" {% if form.is_staff.value == '1' %}checked{% endif %} class="text-brand-600 focus:ring-brand-500">
-                            Supplier
-                        </label>
-                        <label class="flex items-center justify-center gap-2 rounded-md border border-gray-300 px-4 py-2 text-sm cursor-pointer hover:bg-gray-50">
-                            <input type="radio" name="is_staff" value="0" {% if form.is_staff.value == '0' %}checked{% endif %} class="text-brand-600 focus:ring-brand-500">
-                            Buyer
-                        </label>
-                    </div>
-                    {% for error in form.is_staff.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
-                </fieldset>
-                <div class="flex gap-3">
-                    <button type="reset" class="btn-secondary flex-1">Clear</button>
-                    <button type="submit" class="btn-primary flex-1">Register</button>
-                </div>
-            </form>
-        </div>
-        <p class="text-center text-sm text-gray-500 mt-6">
-            <a href="{% url 'home' %}" class="text-brand-600 hover:underline">Back to homepage</a>
-        </p>
     </div>
-    </div>
-    <footer class="shrink-0 border-t border-gray-200">
-        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 flex flex-col sm:flex-row justify-between items-center gap-2">
-            <p class="text-sm text-gray-500">&copy; {% now "Y" %} ManufactureHub, Inc.</p>
-            <div class="flex gap-4 text-sm text-gray-500">
-                <a href="{% url 'privacy-policy' %}" class="hover:text-gray-700">Privacy Policy</a>
-                <a href="{% url 'terms-of-service' %}" class="hover:text-gray-700">Terms of Service</a>
-            </div>
+    <div class="flex items-start gap-4">
+        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/25 text-accent-400">
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h7v7H4z"/><path d="M13 13h7v7h-7z"/></svg>
+        </span>
+        <div>
+            <p class="font-semibold">Compare side by side</p>
+            <p class="text-sm text-white/65">Price, lead time and certifications in one view</p>
         </div>
-    </footer>
-    <script>
-        (function () {
-            var pw = document.getElementById('{{ form.password1.id_for_label }}');
-            var bar = document.getElementById('password-strength-bar');
-            var label = document.getElementById('password-strength-label');
-            var form = document.getElementById('register-form');
-            var currentStrength = '';
+    </div>
+    <div class="flex items-start gap-4">
+        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/25 text-accent-400">
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h11l4 4v6a1 1 0 01-1 1H3a1 1 0 01-1-1V8a1 1 0 011-1z"/><circle cx="7" cy="18" r="1.5"/><circle cx="16" cy="18" r="1.5"/></svg>
+        </span>
+        <div>
+            <p class="font-semibold">Track to delivery</p>
+            <p class="text-sm text-white/65">Production updates, documents and messages in one place</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block panel %}
+<div class="mb-6">
+    <h2 class="text-2xl font-extrabold tracking-tight text-navy-900">Create your account</h2>
+    <p class="mt-1 text-sm text-gray-500">It takes about two minutes</p>
+</div>
 
-            function scorePassword(value) {
-                var score = 0;
-                if (value.length >= 8) score++;
-                if (value.length >= 12) score++;
-                if (/[a-z]/.test(value)) score++;
-                if (/[A-Z]/.test(value)) score++;
-                if (/[0-9]/.test(value)) score++;
-                if (/[^A-Za-z0-9]/.test(value)) score++;
-                return score;
-            }
+{% if form.non_field_errors %}
+<div class="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">
+    {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+</div>
+{% endif %}
 
-            function strengthOf(value) {
-                if (!value) return '';
-                var score = scorePassword(value);
-                if (score <= 2) return 'Poor';
-                if (score <= 4) return 'Good';
-                return 'Strong';
-            }
+<form method="post" class="space-y-4" id="register-form">
+    {% csrf_token %}
 
-            var colors = {
-                Poor: { bar: 'bg-red-500', text: 'text-red-600' },
-                Good: { bar: 'bg-yellow-500', text: 'text-yellow-600' },
-                Strong: { bar: 'bg-green-500', text: 'text-green-600' }
-            };
+    <fieldset class="grid grid-cols-2 gap-3">
+        <legend class="sr-only">I am a...</legend>
+        <label class="rounded-md border-2 border-gray-200 px-4 py-3 text-sm cursor-pointer transition-colors has-[:checked]:border-accent-500 has-[:checked]:bg-accent-50">
+            <input type="radio" name="is_staff" value="0" class="sr-only" {% if form.is_staff.value == '0' or not form.is_staff.value %}checked{% endif %}>
+            <span class="block font-semibold text-navy-900">I'm a buyer</span>
+            <span class="block text-xs text-gray-500">Source custom parts</span>
+        </label>
+        <label class="rounded-md border-2 border-gray-200 px-4 py-3 text-sm cursor-pointer transition-colors has-[:checked]:border-accent-500 has-[:checked]:bg-accent-50">
+            <input type="radio" name="is_staff" value="1" class="sr-only" {% if form.is_staff.value == '1' %}checked{% endif %}>
+            <span class="block font-semibold text-navy-900">I'm a manufacturer</span>
+            <span class="block text-xs text-gray-500">Receive RFQs, win orders</span>
+        </label>
+    </fieldset>
+    {% for error in form.is_staff.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
 
-            if (pw && bar && label) {
-                pw.addEventListener('input', function () {
-                    currentStrength = strengthOf(pw.value);
-                    var score = scorePassword(pw.value);
-                    bar.style.width = (pw.value ? Math.min(100, (score / 6) * 100) : 0) + '%';
-                    bar.className = 'h-full rounded-full transition-all ' + (colors[currentStrength] ? colors[currentStrength].bar : '');
-                    label.textContent = currentStrength;
-                    label.className = 'text-xs w-12 shrink-0 ' + (colors[currentStrength] ? colors[currentStrength].text : 'text-gray-400');
-                });
-            }
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div>
+            <label for="{{ form.first_name.id_for_label }}" class="sr-only">First name</label>
+            <div class="relative">
+                <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400">
+                    <svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg>
+                </span>
+                {{ form.first_name|add_class:"field-input-icon"|attr:"placeholder:First name" }}
+            </div>
+            {% for error in form.first_name.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+        </div>
+        <div>
+            <label for="{{ form.last_name.id_for_label }}" class="sr-only">Last name</label>
+            <div class="relative">
+                <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400">
+                    <svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg>
+                </span>
+                {{ form.last_name|add_class:"field-input-icon"|attr:"placeholder:Last name" }}
+            </div>
+            {% for error in form.last_name.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+        </div>
+    </div>
 
-            if (form) {
-                form.addEventListener('submit', function (e) {
-                    if (pw && pw.value && currentStrength === 'Poor') {
-                        e.preventDefault();
-                        label.textContent = 'Too weak';
-                        label.className = 'text-xs w-12 shrink-0 text-red-600';
-                        pw.focus();
-                    }
-                });
-                form.addEventListener('reset', function () {
-                    currentStrength = '';
-                    if (bar) {
-                        bar.style.width = '0%';
-                        bar.className = 'h-full rounded-full transition-all';
-                    }
-                    if (label) {
-                        label.textContent = '';
-                        label.className = 'text-xs w-12 shrink-0 text-gray-400';
-                    }
-                });
-            }
-        })();
-    </script>
-</body>
-</html>
+    <div>
+        <label for="{{ form.username.id_for_label }}" class="sr-only">Username</label>
+        <div class="relative">
+            <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400">
+                <svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="4"/><path d="M16 12v1.5a2.5 2.5 0 005 0V12a9 9 0 10-3.5 7.1"/></svg>
+            </span>
+            {{ form.username|add_class:"field-input-icon"|attr:"placeholder:Username" }}
+        </div>
+        {% for error in form.username.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+    </div>
+
+    <div>
+        <label for="{{ form.email.id_for_label }}" class="sr-only">Work email</label>
+        <div class="relative">
+            <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400">
+                <svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
+            </span>
+            {{ form.email|add_class:"field-input-icon"|attr:"placeholder:Work email" }}
+        </div>
+        {% for error in form.email.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+    </div>
+
+    <div>
+        <label for="{{ form.password1.id_for_label }}" class="sr-only">Password</label>
+        <div class="relative">
+            <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400">
+                <svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>
+            </span>
+            {{ form.password1|add_class:"field-input-icon"|attr:"placeholder:Create a password" }}
+        </div>
+        <div class="mt-2 flex items-center gap-2">
+            <div class="h-1.5 flex-1 rounded-full bg-gray-200 overflow-hidden">
+                <div id="password-strength-bar" class="h-full w-0 rounded-full transition-all"></div>
+            </div>
+            <span id="password-strength-label" class="text-xs text-gray-400 w-12 shrink-0"></span>
+        </div>
+        {% for error in form.password1.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+    </div>
+
+    <div>
+        <label for="{{ form.password2.id_for_label }}" class="sr-only">Confirm password</label>
+        <div class="relative">
+            <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400">
+                <svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/><path d="M10 15l1.5 1.5L14.5 14"/></svg>
+            </span>
+            {{ form.password2|add_class:"field-input-icon"|attr:"placeholder:Confirm password" }}
+        </div>
+        {% for error in form.password2.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+    </div>
+
+    <label class="flex items-start gap-2 pt-1 text-sm text-gray-600">
+        <input type="checkbox" required class="mt-0.5 h-4 w-4 rounded border-gray-300 text-accent-500 focus:ring-accent-500">
+        <span>I agree to the <a href="{% url 'terms-of-service' %}" class="font-semibold text-accent-500 hover:underline">Terms</a> and <a href="{% url 'privacy-policy' %}" class="font-semibold text-accent-500 hover:underline">Privacy Policy</a></span>
+    </label>
+
+    <button type="submit" id="register-submit-btn" class="btn-primary w-full">Create buyer account</button>
+</form>
+
+<p class="text-center text-sm text-gray-500 mt-6">
+    Already have an account? <a href="{% url 'login' %}" class="font-semibold text-navy-900 hover:underline">Log in &rarr;</a>
+</p>
+
+<script>
+    (function () {
+        var pw = document.getElementById('{{ form.password1.id_for_label }}');
+        var bar = document.getElementById('password-strength-bar');
+        var label = document.getElementById('password-strength-label');
+        var form = document.getElementById('register-form');
+        var submitBtn = document.getElementById('register-submit-btn');
+        var roleInputs = form.querySelectorAll('input[name="is_staff"]');
+        var currentStrength = '';
+
+        function updateSubmitLabel() {
+            var checked = form.querySelector('input[name="is_staff"]:checked');
+            submitBtn.textContent = (checked && checked.value === '1') ? 'Create manufacturer account' : 'Create buyer account';
+        }
+        roleInputs.forEach(function (input) {
+            input.addEventListener('change', updateSubmitLabel);
+        });
+        updateSubmitLabel();
+
+        function scorePassword(value) {
+            var score = 0;
+            if (value.length >= 8) score++;
+            if (value.length >= 12) score++;
+            if (/[a-z]/.test(value)) score++;
+            if (/[A-Z]/.test(value)) score++;
+            if (/[0-9]/.test(value)) score++;
+            if (/[^A-Za-z0-9]/.test(value)) score++;
+            return score;
+        }
+
+        function strengthOf(value) {
+            if (!value) return '';
+            var score = scorePassword(value);
+            if (score <= 2) return 'Poor';
+            if (score <= 4) return 'Good';
+            return 'Strong';
+        }
+
+        var colors = {
+            Poor: { bar: 'bg-red-500', text: 'text-red-600' },
+            Good: { bar: 'bg-yellow-500', text: 'text-yellow-600' },
+            Strong: { bar: 'bg-green-500', text: 'text-green-600' }
+        };
+
+        if (pw && bar && label) {
+            pw.addEventListener('input', function () {
+                currentStrength = strengthOf(pw.value);
+                var score = scorePassword(pw.value);
+                bar.style.width = (pw.value ? Math.min(100, (score / 6) * 100) : 0) + '%';
+                bar.className = 'h-full rounded-full transition-all ' + (colors[currentStrength] ? colors[currentStrength].bar : '');
+                label.textContent = currentStrength;
+                label.className = 'text-xs w-12 shrink-0 ' + (colors[currentStrength] ? colors[currentStrength].text : 'text-gray-400');
+            });
+        }
+
+        if (form) {
+            form.addEventListener('submit', function (e) {
+                if (pw && pw.value && currentStrength === 'Poor') {
+                    e.preventDefault();
+                    label.textContent = 'Too weak';
+                    label.className = 'text-xs w-12 shrink-0 text-red-600';
+                    pw.focus();
+                }
+            });
+        }
+    })();
+</script>
+{% endblock %}

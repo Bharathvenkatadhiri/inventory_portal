@@ -1,31 +1,36 @@
-{% extends "base.html" %}
+{% extends "dashboard_base.html" %}
 {% block title %}My Quotes — ManufactureHub{% endblock %}
+{% block page_header %}
+<div class="mb-6">
+    <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">My quotes</h1>
+    <p class="mt-1 text-sm text-gray-500">Every quote you've submitted, across every RFQ.</p>
+</div>
+{% endblock %}
 {% block content %}
-
-<h1 class="text-2xl font-semibold text-gray-900 mb-6">My Quotes</h1>
-
 {% if object_list %}
 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
     {% for quote in object_list %}
     <div class="card">
-        <a href="{% url 'quote' quote.pk %}" class="font-medium text-gray-900 hover:text-brand-600">Quote #{{ quote.pk }}</a>
-        <p class="text-sm text-gray-500 mt-1">{{ quote.requirement.title }}</p>
-        <p class="text-lg font-semibold text-gray-900 mt-2">{{ quote.requirement.quote_currency }} {{ quote.quote_price }}</p>
-        {% if quote.note %}<p class="text-sm text-gray-600 mt-1">{{ quote.note }}</p>{% endif %}
-        <div class="mt-3">
+        <div class="flex items-start justify-between gap-2">
+            <div>
+                <a href="{% url 'quote' quote.pk %}" class="font-bold text-navy-900 hover:text-accent-500">{{ quote.requirement.title }}</a>
+                <p class="text-xs text-gray-400">Quote #{{ quote.pk }}</p>
+            </div>
             {% if quote.is_selected %}
-            <span class="badge bg-green-50 text-green-700">Selected</span>
+            <span class="badge bg-green-50 text-green-700">Won</span>
             {% elif quote.status == 'Rejected' %}
-            <span class="badge bg-red-50 text-red-700">Rejected</span>
-            {% elif quote.status == 'Approved' %}
-            <span class="badge bg-green-50 text-green-700">Approved</span>
+            <span class="badge bg-red-50 text-red-700">Lost</span>
+            {% elif quote.is_draft %}
+            <span class="badge bg-gray-100 text-gray-600">Draft</span>
             {% else %}
-            <span class="badge bg-yellow-50 text-yellow-700">Pending</span>
+            <span class="badge bg-yellow-50 text-yellow-700">Awaiting decision</span>
             {% endif %}
         </div>
-        <div class="flex justify-between mt-4">
-            <a href="{% url 'edit-quote' quote.pk %}" class="btn-secondary text-xs">Edit</a>
-            <a href="{% url 'delete-quote' quote.pk %}" class="btn-danger text-xs">Delete</a>
+        <p class="mt-3 text-2xl font-extrabold text-navy-900">{{ quote.requirement.quote_currency }} {{ quote.quote_price }}<span class="text-sm font-normal text-gray-400"> / unit</span></p>
+        {% if quote.note %}<p class="mt-1 text-sm text-gray-500 line-clamp-2">{{ quote.note }}</p>{% endif %}
+        <div class="mt-4 flex items-center justify-between border-t border-gray-100 pt-3">
+            <a href="{% url 'edit-quote' quote.pk %}" class="text-sm font-bold text-accent-500 hover:text-accent-600">Edit</a>
+            <a href="{% url 'delete-quote' quote.pk %}" class="text-sm text-red-600 hover:underline">Delete</a>
         </div>
     </div>
     {% endfor %}
@@ -34,19 +39,19 @@
 {% if is_paginated %}
 <div class="mt-6 flex flex-wrap gap-2">
     {% if page_obj.has_previous %}
-    <a class="btn-secondary" href="?page=1">First</a>
-    <a class="btn-secondary" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+    <a class="btn-outline" href="?page=1">First</a>
+    <a class="btn-outline" href="?page={{ page_obj.previous_page_number }}">Previous</a>
     {% endif %}
     {% for num in page_obj.paginator.page_range %}
         {% if page_obj.number == num %}
         <span class="btn-primary">{{ num }}</span>
         {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-        <a class="btn-secondary" href="?page={{ num }}">{{ num }}</a>
+        <a class="btn-outline" href="?page={{ num }}">{{ num }}</a>
         {% endif %}
     {% endfor %}
     {% if page_obj.has_next %}
-    <a class="btn-secondary" href="?page={{ page_obj.next_page_number }}">Next</a>
-    <a class="btn-secondary" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+    <a class="btn-outline" href="?page={{ page_obj.next_page_number }}">Next</a>
+    <a class="btn-outline" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
     {% endif %}
 </div>
 {% endif %}
@@ -54,4 +59,4 @@
 {% else %}
 <div class="card text-center text-gray-500">You haven't submitted any quotes yet.</div>
 {% endif %}
-{% endblock content %}
+{% endblock %}

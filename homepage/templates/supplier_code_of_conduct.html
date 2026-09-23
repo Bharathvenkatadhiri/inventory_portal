@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Supplier Code of Conduct — ManufactureHub{% endblock %}
+{% block hero %}
+{% include "_page_hero.html" with eyebrow="Legal" heading="Supplier Code of <span class='text-accent-500'>Conduct</span>" sub="The standards every manufacturer on ManufactureHub is expected to meet." %}
+{% endblock %}
+{% block content %}
+<div class="card max-w-3xl mx-auto space-y-4">
+    <p class="text-gray-600">
+        Every manufacturer on ManufactureHub is expected to meet the standards below. Buyers rely on this
+        code to source with confidence, and we verify against it as part of onboarding.
+    </p>
+
+    <div>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">Quality and capability</h2>
+        <p class="text-gray-600">
+            Represent your processes, materials, tolerances and capacity accurately. Only quote on
+            requirements you can deliver to the stated specification and timeline.
+        </p>
+    </div>
+
+    <div>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">Fair dealing</h2>
+        <p class="text-gray-600">
+            Quote transparently, honor agreed prices and lead times, and communicate promptly if a delivery
+            date is at risk. Do not use a buyer's drawings or specifications outside the scope of the order.
+        </p>
+    </div>
+
+    <div>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">Confidentiality</h2>
+        <p class="text-gray-600">
+            Files shared through the platform are confidential. Access them only to prepare a quote or
+            fulfil an awarded order, and respect any NDA terms attached to a requirement.
+        </p>
+    </div>
+
+    <div>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">Compliance</h2>
+        <p class="text-gray-600">
+            Operate in accordance with applicable labor, safety and environmental regulations. Keep your
+            business, GST and certification details current in your ManufactureHub profile.
+        </p>
+    </div>
+
+    <div>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">Questions</h2>
+        <p class="text-gray-600">
+            If you have questions about this code, please
+            <a href="{% url 'contact' %}" class="text-accent-500 hover:underline">contact us</a>.
+        </p>
+    </div>
+</div>
+{% endblock %}

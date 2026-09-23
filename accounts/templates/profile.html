@@ -114,6 +114,59 @@
                 </div>
             </dl>
         </div>
+
+        {% if supplier.company %}
+        <div class="card">
+            <div class="flex items-center justify-between mb-4">
+                <h6 class="text-sm font-semibold text-gray-900">GST Verification</h6>
+                {% if supplier.company.verification_status == 'verified' %}
+                <span class="badge bg-green-50 text-green-700">Verified</span>
+                {% elif supplier.company.verification_status == 'manual_review' %}
+                <span class="badge bg-amber-50 text-amber-700">Manual Review</span>
+                {% else %}
+                <span class="badge bg-red-50 text-red-700">{{ supplier.company.get_verification_status_display }}</span>
+                {% endif %}
+            </div>
+            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div>
+                    <dt class="text-gray-500">Legal Name</dt>
+                    <dd class="text-gray-900">{{ supplier.company.legal_name }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Trade Name</dt>
+                    <dd class="text-gray-900">{{ supplier.company.trade_name|default:"—" }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">GSTIN</dt>
+                    <dd class="text-gray-900">{{ supplier.company.gstin }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">GST Status</dt>
+                    <dd class="text-gray-900">{{ supplier.company.get_gst_status_display|default:"—" }}</dd>
+                </div>
+                <div class="sm:col-span-2">
+                    <dt class="text-gray-500">Registered Address</dt>
+                    <dd class="text-gray-900">{{ supplier.company.registered_address|default:"—" }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">State</dt>
+                    <dd class="text-gray-900">{{ supplier.company.state|default:"—" }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Entity Type</dt>
+                    <dd class="text-gray-900">{{ supplier.company.get_entity_type_display|default:"—" }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">CIN</dt>
+                    <dd class="text-gray-900">{{ supplier.company.cin|default:"—" }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Verified At</dt>
+                    <dd class="text-gray-900">{{ supplier.company.gst_verified_at|default:"—" }}</dd>
+                </div>
+            </dl>
+        </div>
+        {% endif %}
         {% endif %}
 
         {% if customer %}

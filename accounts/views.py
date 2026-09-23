@@ -1,8 +1,25 @@
+import json
+import logging
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.contrib.auth.decorators import login_not_required
-from .forms import SupplierDetailsForm, updateSupplierDetailsForm, UserRegistrationForm, SelectCustomer, UpdateSubscription, updateCustomer
-from .models import ManufacturerProfile, ConsumerProfile, SubscriptionPlan
+from django.core.cache import cache
+from django.http import JsonResponse
+from django.utils import timezone
+from django.views.decorators.http import require_POST
+from django.core.exceptions import PermissionDenied
+from .forms import (
+    SupplierDetailsForm, updateSupplierDetailsForm, UserRegistrationForm, SelectCustomer,
+    UpdateSubscription, updateCustomer, CompanyAboutForm, CompanyContactForm, CompanyCapacityForm,
+    MachineForm, CertificationForm, CapabilityAddForm, MaterialAddForm,
+)
+from .models import (
+    ManufacturerProfile, ConsumerProfile, SubscriptionPlan, Company,
+    Machine, ManufacturerPhoto, Certification,
+)
+from .services.gst_verification import verify_gstin
+from .services.company_matching import company_names_match
 from django.views.generic import (View, ListView, CreateView, UpdateView, DeleteView)
 from django.contrib.messages.views import SuccessMessageMixin
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -14,6 +31,130 @@ from core.settings import subscription_plan_details
 model_str = settings.AUTH_USER_MODEL
 app_label, model_name = model_str.split('.')
 User = apps.get_model(app_label, model_name)
+
+logger = logging.getLogger(__name__)
+
+GST_VERIFY_RATE_LIMIT = 5
+GST_VERIFY_RATE_WINDOW_SECONDS = 60
+
+
+def _gst_verify_rate_limited(request):
+    """Simple fixed-window throttle keyed by client IP, backed by Django's cache."""
+    ident = request.META.get('REMOTE_ADDR', 'unknown')
+    key = f"gst-verify-throttle:{ident}"
+    count = cache.get(key, 0)
+    if count >= GST_VERIFY_RATE_LIMIT:
+        return True
+    cache.set(key, count + 1, timeout=GST_VERIFY_RATE_WINDOW_SECONDS)
+    return False
+
+
+@login_not_required
+@require_POST
+def verify_gstin_view(request):
+    """
+    POST /api/companies/verify-gstin/
+    Body: {"gstin": "...", "company_name": "..."}
+
+    Verifies the GSTIN through the GST verification service, persists (or
+    refreshes) the resulting Company row, and — only when the result is
+    ACTIVE — records it in the session as this browser's verified company
+    for the registration step to pick up. Nothing about "verified" is ever
+    trusted from the request body on the registration submit; this endpoint
+    is the only place that flips it on.
+    """
+    if _gst_verify_rate_limited(request):
+        return JsonResponse(
+            {"verified": False, "message": "Too many verification attempts. Please try again in a minute."},
+            status=429,
+        )
+
+    try:
+        payload = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"verified": False, "message": "Invalid request."}, status=400)
+
+    gstin = (payload.get('gstin') or '').strip()
+    company_name = (payload.get('company_name') or '').strip()
+
+    if not company_name:
+        return JsonResponse({"verified": False, "message": "Company name is required."}, status=400)
+
+    result = verify_gstin(gstin)
+    if not result['success']:
+        return JsonResponse(
+            {"verified": False, "message": result['message']},
+            status=result.get('http_status', 422),
+        )
+
+    normalized_gstin = result['gstin']
+    existing = Company.objects.filter(gstin=normalized_gstin).first()
+    if existing is not None and hasattr(existing, 'manufacturer_profile'):
+        return JsonResponse(
+            {"verified": False, "message": "This GSTIN is already registered with an existing account."},
+            status=409,
+        )
+
+    gst_active = result['status'] == 'ACTIVE'
+    name_match = company_names_match(company_name, result['legal_name'])
+
+    if gst_active:
+        verification_status = 'verified' if name_match else 'manual_review'
+    elif result['status'] in ('SUSPENDED', 'UNKNOWN'):
+        verification_status = 'manual_review'
+    else:
+        verification_status = 'failed'
+
+    company, _created = Company.objects.update_or_create(
+        gstin=normalized_gstin,
+        defaults=dict(
+            legal_name=result['legal_name'],
+            trade_name=result['trade_name'],
+            gst_status=result['status'],
+            gst_verified=gst_active,
+            gst_verified_at=timezone.now() if gst_active else None,
+            registered_address=result['registered_address'],
+            state=result['state'],
+            city=result['city'],
+            pincode=result['pincode'],
+            cin=result['cin'],
+            mca_status=result['mca_status'],
+            entity_type=result['entity_type'],
+            verification_status=verification_status,
+        ),
+    )
+
+    if verification_status == 'verified':
+        request.session['verified_company_id'] = company.id
+    else:
+        request.session.pop('verified_company_id', None)
+
+    if verification_status == 'verified':
+        message = "Company verified successfully."
+    elif verification_status == 'manual_review' and gst_active:
+        message = "GSTIN is active, but the company name doesn't closely match GST records. This will need manual review."
+    elif verification_status == 'manual_review':
+        message = "We couldn't confirm this GSTIN's status automatically. This will need manual review."
+    else:
+        message = "This GSTIN's registration is not currently active."
+
+    return JsonResponse({
+        "verified": verification_status == 'verified',
+        "verification_status": verification_status,
+        "name_match": name_match,
+        "message": message,
+        "company": {
+            "legal_name": company.legal_name,
+            "trade_name": company.trade_name,
+            "gstin": company.gstin,
+            "gst_status": company.gst_status,
+            "registered_address": company.registered_address,
+            "state": company.state,
+            "city": company.city,
+            "pincode": company.pincode,
+            "entity_type": company.entity_type,
+        },
+    }, status=200 if gst_active else 422)
 
 
 class CreateSupplier(SuccessMessageMixin, CreateView):
@@ -39,9 +180,49 @@ class CreateSupplier(SuccessMessageMixin, CreateView):
         context["session_last_name"] = self.request.session.get('session_last_name')
         context["session_email"] = self.request.session.get('session_email')
         context["session_is_staff"] = self.request.session.get('session_is_staff')
+        # Drives the pre-filled, read-only "verified company" panel if the
+        # user already verified a GSTIN earlier in this session.
+        context["verified_company"] = Company.objects.filter(
+            pk=self.request.session.get('verified_company_id'),
+            verification_status='verified',
+        ).first()
         return context
+
     def form_invalid(self, form):
         return super().form_invalid(form)
+
+    def form_valid(self, form):
+        # The frontend never gets to assert "this company is GST verified" —
+        # the only source of truth is a Company row this session verified
+        # server-side (see verify_gstin_view). Legal name / address / GST
+        # status are copied from that row, never from posted form data.
+        company = Company.objects.filter(
+            pk=self.request.session.get('verified_company_id'),
+            verification_status='verified',
+            gst_verified=True,
+        ).first()
+        if company is None:
+            form.add_error(None, "Please verify your company's GSTIN before submitting.")
+            return self.form_invalid(form)
+        if hasattr(company, 'manufacturer_profile'):
+            form.add_error(None, "This GSTIN is already registered with an existing account.")
+            return self.form_invalid(form)
+
+        profile = form.save(commit=False)
+        profile.company = company
+        profile.companyname = (company.trade_name or company.legal_name)[:40]
+        profile.address = company.registered_address
+        profile.city = company.city
+        profile.state = company.state
+        profile.country = "India"
+        profile.save()
+        self.object = profile
+
+        # One verification -> one registration; drop the session marker so
+        # it can't be replayed for a second account.
+        self.request.session.pop('verified_company_id', None)
+        messages.success(self.request, self.success_message)
+        return redirect(self.get_success_url())
 
 
 @login_not_required
@@ -49,34 +230,52 @@ def register(request):
     if request.method == 'POST':
         email = request.POST.get('email')
         is_staff = request.POST.get('is_staff')
+
         if ConsumerProfile.objects.filter(email=email).exists() \
-            or ManufacturerProfile.objects.filter(email=email).exists():
-                form = UserRegistrationForm(request.POST)
-        else:
-            if User.objects.filter(email=email).exists():
-                if is_staff=='1':
-                    return redirect('register-supplier')
-                else:
-                    return redirect('register-customer')
+                or ManufacturerProfile.objects.filter(email=email).exists():
+            # An account under this email already completed registration.
+            # Previously this fell through to a silent re-render with no
+            # error — the user would click Register and nothing would
+            # visibly happen.
+            form = UserRegistrationForm(request.POST)
+            form.add_error('email', 'An account with this email already exists. Please log in instead.')
+            return render(request, 'register_first.html', {'form': form})
+
+        existing_user = User.objects.filter(email=email).first()
+        if existing_user is not None:
+            # A User row exists but registration wasn't finished (the
+            # supplier/customer profile step was abandoned) — resume from
+            # there instead of erroring, and repopulate the session the
+            # next step reads from.
+            request.session['session_user_id'] = existing_user.id
+            request.session['session_username'] = existing_user.username
+            request.session['session_first_name'] = existing_user.first_name
+            request.session['session_last_name'] = existing_user.last_name
+            request.session['session_is_staff'] = existing_user.is_staff
+            request.session['session_email'] = existing_user.email
+            if is_staff == '1':
+                return redirect('register-supplier')
             else:
-                form = UserRegistrationForm(request.POST)
-                if form.is_valid():
-                    user = form.save()
-                    request.session['session_user_id'] = user.id
-                    request.session['session_username'] = user.username
-                    request.session['session_first_name'] = user.first_name
-                    request.session['session_last_name'] = user.last_name
-                    request.session['session_is_staff'] = user.is_staff
-                    request.session['session_email'] = user.email
-                    subscription_plan = SubscriptionPlan(plan_type='basic',
-                        price=subscription_plan_details['basic']['price'],
-                        rfq_limit = subscription_plan_details['basic']['rfq_limit'],
-                        user_profile_id = email)
-                    subscription_plan.save()
-                    if user.is_staff:
-                        return redirect('register-supplier')
-                    else:
-                        return redirect('register-customer')
+                return redirect('register-customer')
+
+        form = UserRegistrationForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            request.session['session_user_id'] = user.id
+            request.session['session_username'] = user.username
+            request.session['session_first_name'] = user.first_name
+            request.session['session_last_name'] = user.last_name
+            request.session['session_is_staff'] = user.is_staff
+            request.session['session_email'] = user.email
+            subscription_plan = SubscriptionPlan(plan_type='basic',
+                price=subscription_plan_details['basic']['price'],
+                rfq_limit = subscription_plan_details['basic']['rfq_limit'],
+                user_profile_id = email)
+            subscription_plan.save()
+            if user.is_staff:
+                return redirect('register-supplier')
+            else:
+                return redirect('register-customer')
     else:
         form = UserRegistrationForm()
     return render(request, 'register_first.html', {'form': form})
@@ -104,15 +303,18 @@ class CreateCustomer(SuccessMessageMixin, CreateView):
 
 
 def ViewProfileDetails(request):
+    # Fixed: this used to branch on `request.user.is_staff` (a Django
+    # permission flag being repurposed as "is this a manufacturer"),
+    # inconsistent with the rest of the app's `request.user.role ==
+    # 'manufacturer'` convention (see marketplace/views.py). A staff user
+    # who isn't a manufacturer used to be wrongly sent down the supplier
+    # branch here.
+    if request.user.role == 'manufacturer':
+        return CompanyProfileView.as_view()(request)
     context = {}
-    if request.user.is_staff:
-        supplier = ManufacturerProfile.objects.filter(user=request.user).first()
-        if supplier:
-            context['supplier'] = supplier
-    else:
-        customer = ConsumerProfile.objects.filter(user=request.user.id).first()
-        if customer:
-            context['customer'] = customer
+    customer = ConsumerProfile.objects.filter(user=request.user.id).first()
+    if customer:
+        context['customer'] = customer
     return render(request, 'profile.html', context)
 
 
@@ -256,6 +458,17 @@ class SupplierUpdateView(SuccessMessageMixin, UpdateView):
     success_message = "Supplier details has been updated successfully"
     template_name = "suppliers/edit_supplier.html"
 
+    def get_object(self, queryset=None):
+        # Fixed: this had no ownership check at all — any authenticated (or
+        # even anonymous) user could edit any manufacturer's profile by
+        # guessing its pk. Staff keeps the existing "edit any supplier"
+        # capability (used from the admin suppliers-list); anyone else may
+        # only edit their own profile.
+        obj = super().get_object(queryset)
+        if not (self.request.user.is_staff or obj.user_id == self.request.user.id):
+            raise PermissionDenied("You can only edit your own manufacturer profile.")
+        return obj
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["title"] = 'Edit Supplier'
@@ -304,3 +517,158 @@ class SupplierView(View):
             'supplier': supplierobj,
         }
         return render(request, 'suppliers/supplier.html', context)
+
+
+class CompanyProfileView(LoginRequiredMixin, View):
+    """Screen 5 of the manufacturer dashboard. Always looks up the profile
+    from `request.user` — never a URL pk — which closes the SupplierUpdateView
+    ownership-bug class by construction for every action on this page."""
+    template_name = "suppliers/company_profile.html"
+
+    def get(self, request):
+        # Was a hard get_object_or_404 — any manufacturer-role user without
+        # a ManufacturerProfile row yet (e.g. an account whose registration
+        # never finished, or role flipped by hand in admin) got a real 404
+        # instead of a helpful message. The dashboard already handles this
+        # gracefully; this view now matches it instead of crashing.
+        supplier = ManufacturerProfile.objects.filter(user=request.user).first()
+        if supplier is None:
+            messages.info(request, "Your manufacturer profile isn't set up yet. Please contact support to finish setting up your account.")
+            return redirect(reverse('home'))
+        percent, checklist = supplier.profile_strength()
+        context = {
+            'supplier': supplier,
+            'profile_strength_percent': percent,
+            'profile_strength_checklist': checklist,
+            'about_form': CompanyAboutForm(instance=supplier),
+            'contact_form': CompanyContactForm(instance=supplier),
+            'capacity_form': CompanyCapacityForm(instance=supplier),
+            'machine_form': MachineForm(),
+            'certification_form': CertificationForm(),
+            'capability_form': CapabilityAddForm(),
+            'material_form': MaterialAddForm(),
+        }
+        return render(request, self.template_name, context)
+
+
+class _CompanyProfileSubActionView(LoginRequiredMixin, View):
+    """Shared helper: every sub-action below only ever touches the
+    logged-in manufacturer's own profile (and that profile's own child
+    rows), never a pk taken from elsewhere in the URL."""
+
+    def get_supplier(self):
+        return get_object_or_404(ManufacturerProfile, user=self.request.user)
+
+
+class CompanyAboutUpdateView(_CompanyProfileSubActionView):
+    def post(self, request):
+        supplier = self.get_supplier()
+        form = CompanyAboutForm(request.POST, request.FILES, instance=supplier)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "About section updated.")
+        return redirect(reverse('company-profile'))
+
+
+class CompanyContactUpdateView(_CompanyProfileSubActionView):
+    def post(self, request):
+        supplier = self.get_supplier()
+        form = CompanyContactForm(request.POST, instance=supplier)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Primary contact updated.")
+        return redirect(reverse('company-profile'))
+
+
+class CompanyCapacityUpdateView(_CompanyProfileSubActionView):
+    def post(self, request):
+        supplier = self.get_supplier()
+        form = CompanyCapacityForm(request.POST, instance=supplier)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Capacity settings updated.")
+        return redirect(reverse('company-profile'))
+
+
+class CompanyCapabilityAddView(_CompanyProfileSubActionView):
+    def post(self, request):
+        supplier = self.get_supplier()
+        form = CapabilityAddForm(request.POST)
+        if form.is_valid():
+            supplier.capabilities.add(form.cleaned_data['capability'])
+        return redirect(reverse('company-profile'))
+
+
+class CompanyCapabilityRemoveView(_CompanyProfileSubActionView):
+    def post(self, request, pk):
+        supplier = self.get_supplier()
+        supplier.capabilities.remove(pk)
+        return redirect(reverse('company-profile'))
+
+
+class CompanyMaterialAddView(_CompanyProfileSubActionView):
+    def post(self, request):
+        supplier = self.get_supplier()
+        form = MaterialAddForm(request.POST)
+        if form.is_valid():
+            supplier.materials.add(form.cleaned_data['material'])
+        return redirect(reverse('company-profile'))
+
+
+class CompanyMaterialRemoveView(_CompanyProfileSubActionView):
+    def post(self, request, pk):
+        supplier = self.get_supplier()
+        supplier.materials.remove(pk)
+        return redirect(reverse('company-profile'))
+
+
+class CompanyMachineAddView(_CompanyProfileSubActionView):
+    def post(self, request):
+        supplier = self.get_supplier()
+        form = MachineForm(request.POST)
+        if form.is_valid():
+            machine = form.save(commit=False)
+            machine.manufacturer = supplier
+            machine.save()
+        return redirect(reverse('company-profile'))
+
+
+class CompanyMachineRemoveView(_CompanyProfileSubActionView):
+    def post(self, request, pk):
+        supplier = self.get_supplier()
+        get_object_or_404(Machine, pk=pk, manufacturer=supplier).delete()
+        return redirect(reverse('company-profile'))
+
+
+class CompanyPhotoUploadView(_CompanyProfileSubActionView):
+    def post(self, request):
+        supplier = self.get_supplier()
+        image = request.FILES.get('image')
+        if image:
+            ManufacturerPhoto.objects.create(manufacturer=supplier, image=image, caption=request.POST.get('caption', ''))
+        return redirect(reverse('company-profile'))
+
+
+class CompanyPhotoDeleteView(_CompanyProfileSubActionView):
+    def post(self, request, pk):
+        supplier = self.get_supplier()
+        get_object_or_404(ManufacturerPhoto, pk=pk, manufacturer=supplier).delete()
+        return redirect(reverse('company-profile'))
+
+
+class CompanyCertificationUploadView(_CompanyProfileSubActionView):
+    def post(self, request):
+        supplier = self.get_supplier()
+        form = CertificationForm(request.POST, request.FILES)
+        if form.is_valid():
+            certification = form.save(commit=False)
+            certification.manufacturer = supplier
+            certification.save()
+        return redirect(reverse('company-profile'))
+
+
+class CompanyCertificationDeleteView(_CompanyProfileSubActionView):
+    def post(self, request, pk):
+        supplier = self.get_supplier()
+        get_object_or_404(Certification, pk=pk, manufacturer=supplier).delete()
+        return redirect(reverse('company-profile'))

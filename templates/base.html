@@ -1,15 +1,16 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-gray-50">
+<html lang="en" class="bg-white">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}ManufactureHub{% endblock %}</title>
     <link rel="stylesheet" href="{% load static %}{% static 'css/tailwind-built.css' %}">
+    <link rel="icon" type="image/svg+xml" href="{% static 'images/logo.svg' %}">
     <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
     <script src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
     {% block extra_head %}{% endblock %}
 </head>
-<body class="h-full" {% if request.htmx %}hx-boost="true"{% endif %} x-data="{ sidebarOpen: false }">
+<body class="min-h-screen antialiased text-navy-900" {% if request.htmx %}hx-boost="true"{% endif %} x-data="{ sidebarOpen: false }">
 
 {% if request.user.is_authenticated %}
 <header class="bg-white border-b border-gray-200">
@@ -19,9 +20,9 @@
                 <button @click="sidebarOpen = !sidebarOpen" class="lg:hidden text-gray-500">
                     <span class="sr-only">Toggle sidebar</span>&#9776;
                 </button>
-                <a href="{% url 'home' %}" class="flex items-center gap-2">
-                    <img src="{% static 'images/logo.png' %}" alt="ManufactureHub" class="h-8 w-8 rounded-lg">
-                    <span class="text-lg font-bold text-gray-900">Manufacture<span class="text-orange-500">Hub</span></span>
+                <a href="{% url 'home' %}" class="flex items-center gap-2.5">
+                    <img src="{% static 'images/logo.svg' %}" alt="ManufactureHub" class="h-9 w-9">
+                    <span class="text-xl font-extrabold tracking-tight text-navy-900">Manufacture<span class="text-accent-500">Hub</span></span>
                 </a>
             </div>
             <div class="flex items-center gap-4">
@@ -39,26 +40,12 @@
     </div>
 </header>
 {% else %}
-<header class="bg-white border-b border-gray-200">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div class="flex h-16 justify-between items-center">
-            <a href="{% url 'home' %}" class="flex items-center gap-2">
-                <img src="{% static 'images/logo.png' %}" alt="ManufactureHub" class="h-8 w-8 rounded-lg">
-                <span class="text-lg font-bold text-gray-900">Manufacture<span class="text-orange-500">Hub</span></span>
-            </a>
-            <nav class="flex items-center gap-4 text-sm">
-                <a href="{% url 'about' %}" class="{% if request.resolver_match.url_name == 'about' %}font-semibold text-gray-900 underline underline-offset-4{% else %}text-gray-600 hover:text-gray-900{% endif %}">About MH</a>
-                <a href="{% url 'pricing' %}" class="{% if request.resolver_match.url_name == 'pricing' %}font-semibold text-gray-900 underline underline-offset-4{% else %}text-gray-600 hover:text-gray-900{% endif %}">Pricing</a>
-                <a href="{% url 'contact' %}" class="{% if request.resolver_match.url_name == 'contact' %}font-semibold text-gray-900 underline underline-offset-4{% else %}text-gray-600 hover:text-gray-900{% endif %}">Contact</a>
-                <a href="{% url 'login' %}" class="{% if request.resolver_match.url_name == 'login' %}font-semibold text-gray-900 underline underline-offset-4{% else %}text-gray-600 hover:text-gray-900{% endif %}">Login</a>
-                <a href="{% url 'register' %}" class="{% if request.resolver_match.url_name == 'register' %}font-semibold text-gray-900 underline underline-offset-4{% else %}text-gray-600 hover:text-gray-900{% endif %}">Register</a>
-            </nav>
-        </div>
-    </div>
-</header>
+{% include "_nav.html" %}
 {% endif %}
 
-<div class="mx-auto max-w-7xl {% if request.user.is_authenticated %}lg:grid lg:grid-cols-[16rem_1fr] lg:gap-8{% endif %} px-4 sm:px-6 lg:px-8 py-6">
+{% block hero %}{% endblock %}
+
+<div class="mx-auto max-w-7xl {% if request.user.is_authenticated %}lg:grid lg:grid-cols-[16rem_1fr] lg:gap-8 py-6{% else %}{% block container_padding %}py-16{% endblock %}{% endif %} px-6 lg:px-8">
     {% if request.user.is_authenticated %}
     <aside :class="sidebarOpen ? 'block' : 'hidden'" class="lg:block mb-6 lg:mb-0">
         <nav class="card space-y-1">
@@ -101,15 +88,7 @@
 </div>
 
 {% if not request.user.is_authenticated %}
-<footer class="border-t border-gray-200 mt-6">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 flex flex-col sm:flex-row justify-between items-center gap-2">
-        <p class="text-sm text-gray-500">&copy; {% now "Y" %} ManufactureHub, Inc.</p>
-        <div class="flex gap-4 text-sm text-gray-500">
-            <a href="{% url 'privacy-policy' %}" class="hover:text-gray-700">Privacy Policy</a>
-            <a href="{% url 'terms-of-service' %}" class="hover:text-gray-700">Terms of Service</a>
-        </div>
-    </div>
-</footer>
+{% include "_footer.html" %}
 {% endif %}
 </body>
 </html>

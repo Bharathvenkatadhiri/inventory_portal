@@ -74,4 +74,53 @@
         {% endif %}
     </div>
 </div>
+
+{% if supplier.company %}
+<div class="card mt-6">
+    <div class="flex items-center justify-between mb-4">
+        <h6 class="text-sm font-semibold text-gray-900">GST Verification</h6>
+        {% if supplier.company.verification_status == 'verified' %}
+        <span class="badge bg-green-50 text-green-700">Verified</span>
+        {% elif supplier.company.verification_status == 'manual_review' %}
+        <span class="badge bg-amber-50 text-amber-700">Manual Review</span>
+        {% else %}
+        <span class="badge bg-red-50 text-red-700">{{ supplier.company.get_verification_status_display }}</span>
+        {% endif %}
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div>
+            <h6 class="field-label">Legal Name</h6>
+            <p class="text-sm text-gray-900">{{ supplier.company.legal_name }}</p>
+        </div>
+        <div>
+            <h6 class="field-label">Trade Name</h6>
+            <p class="text-sm text-gray-900">{{ supplier.company.trade_name|default:"—" }}</p>
+        </div>
+        <div>
+            <h6 class="field-label">GSTIN</h6>
+            <p class="text-sm text-gray-900">{{ supplier.company.gstin }}</p>
+        </div>
+        <div>
+            <h6 class="field-label">GST Status</h6>
+            <p class="text-sm text-gray-900">{{ supplier.company.get_gst_status_display|default:"—" }}</p>
+        </div>
+        <div>
+            <h6 class="field-label">Entity Type</h6>
+            <p class="text-sm text-gray-900">{{ supplier.company.get_entity_type_display|default:"—" }}</p>
+        </div>
+        <div>
+            <h6 class="field-label">CIN</h6>
+            <p class="text-sm text-gray-900">{{ supplier.company.cin|default:"—" }}</p>
+        </div>
+        <div class="sm:col-span-2 lg:col-span-3">
+            <h6 class="field-label">Registered Address</h6>
+            <p class="text-sm text-gray-900">{{ supplier.company.registered_address|default:"—" }}</p>
+        </div>
+        <div>
+            <h6 class="field-label">Verified At</h6>
+            <p class="text-sm text-gray-900">{{ supplier.company.gst_verified_at|default:"—" }}</p>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock content %}

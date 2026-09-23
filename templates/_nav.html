@@ -1,0 +1,22 @@
+{% load static %}
+<header class="shrink-0 border-b border-gray-200 bg-white">
+    <div class="mx-auto flex h-[72px] max-w-7xl items-center justify-between gap-6 px-6 lg:px-8">
+        <a href="{% url 'home' %}" class="flex shrink-0 items-center gap-2.5">
+            <img src="{% static 'images/logo.svg' %}" alt="ManufactureHub" class="h-9 w-9">
+            <span class="text-xl font-extrabold tracking-tight text-navy-900">Manufacture<span class="text-accent-500">Hub</span></span>
+        </a>
+
+        <nav class="hidden items-center gap-8 self-stretch lg:flex">
+            <a href="{% url 'home' %}" class="nav-link {% if request.resolver_match.url_name == 'home' %}nav-link-active{% endif %}">Home</a>
+            <a href="{% url 'about' %}" class="nav-link {% if request.resolver_match.url_name == 'about' %}nav-link-active{% endif %}">About Us</a>
+            <a href="{% url 'how-it-works' %}" class="nav-link {% if request.resolver_match.url_name == 'how-it-works' %}nav-link-active{% endif %}">How It Works</a>
+            <a href="{% url 'pricing' %}" class="nav-link {% if request.resolver_match.url_name == 'pricing' %}nav-link-active{% endif %}">Pricing</a>
+            <a href="{% url 'contact' %}" class="nav-link {% if request.resolver_match.url_name == 'contact' %}nav-link-active{% endif %}">Contact</a>
+        </nav>
+
+        <div class="flex shrink-0 items-center gap-3">
+            <a href="{% url 'login' %}" class="btn-outline hidden sm:inline-flex">Log In</a>
+            <a href="{% url 'register' %}" class="btn-primary">Get Started</a>
+        </div>
+    </div>
+</header>

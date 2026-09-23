@@ -1,57 +1,111 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}About — ManufactureHub{% endblock %}
+{% block hero %}
+{% include "_page_hero.html" with eyebrow="About Us" heading="Making custom<br>manufacturing <span class='text-accent-500'>simple.</span>" sub="ManufactureHub connects buyers who need custom parts with manufacturers who can make them — and keeps the whole journey in one place." %}
+{% endblock %}
 {% block content %}
-<div class="text-center max-w-2xl mx-auto py-8">
-    <p class="text-xs font-semibold uppercase tracking-wide text-orange-500 mb-3">About ManufactureHub</p>
-    <h1 class="font-serif text-4xl text-gray-900 leading-tight">Built for the people who make things.</h1>
-    <p class="mt-4 italic text-sm text-gray-500">
-        ManufactureHub is where engineering buyers and manufacturers meet — one place to turn a drawing into
-        a quote, and a quote into a finished part, without the back-and-forth of calls and spreadsheets.
-    </p>
-</div>
-
-<div class="relative overflow-hidden rounded-xl bg-slate-950 px-8 py-10 text-white grid gap-8 sm:grid-cols-2 items-center">
-    <svg class="pointer-events-none absolute -right-10 -bottom-10 h-56 w-56 text-white/10" viewBox="0 0 300 220" fill="none">
-        <rect x="150" y="120" width="70" height="70" stroke="currentColor" stroke-width="1.5"/>
-        <polygon points="260,90 300,150 260,210 220,150" stroke="currentColor" stroke-width="1.5"/>
-        <circle cx="230" cy="60" r="35" stroke="currentColor" stroke-width="1.5"/>
-    </svg>
-    <div class="relative">
-        <p class="text-xs font-semibold uppercase tracking-wide text-orange-500 mb-2">Our Mission</p>
-        <h2 class="font-serif text-2xl leading-snug">Make custom manufacturing as easy to buy as it is to build.</h2>
-    </div>
-    <p class="relative italic text-sm text-indigo-200/70">
-        Sourcing a custom part shouldn't take three weeks of emails and follow-up calls. We built
-        ManufactureHub to connect people who need parts made — for metal cutting, bending, CNC machining,
-        and more — with the manufacturers who can make them, so a requirement can become a quote, and a
-        quote can become a delivery, all in one place.
-    </p>
-</div>
-
-<h2 id="how-it-works" class="mt-16 mb-6 text-center font-serif text-2xl text-gray-900">How it works</h2>
-<div class="grid gap-6 sm:grid-cols-3">
-    <div class="card">
-        <p class="text-sm font-bold text-orange-500 mb-2">01</p>
-        <p class="font-semibold text-gray-900">Submit</p>
-        <p class="mt-1 text-sm text-gray-500">Upload drawings, specifications and requirements — we route them to the right process.</p>
-    </div>
-    <div class="card">
-        <p class="text-sm font-bold text-orange-500 mb-2">02</p>
-        <p class="font-semibold text-gray-900">Get Quotes</p>
-        <p class="mt-1 text-sm text-gray-500">Receive and compare quotes from verified manufacturers, side by side.</p>
-    </div>
-    <div class="card">
-        <p class="text-sm font-bold text-orange-500 mb-2">03</p>
-        <p class="font-semibold text-gray-900">Track</p>
-        <p class="mt-1 text-sm text-gray-500">Follow your order from confirmation through production to delivery.</p>
-    </div>
-</div>
-
-<div class="card mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+<div class="grid items-center gap-12 lg:grid-cols-2">
     <div>
-        <p class="font-semibold text-gray-900">Still have questions?</p>
-        <p class="text-sm text-gray-500">Our team usually replies within one business day.</p>
+        <p class="eyebrow">Our Story</p>
+        <h2 class="mt-3 text-3xl font-extrabold leading-tight tracking-tight text-navy-900">Sourcing parts shouldn't take a hundred emails</h2>
+        <p class="mt-5 text-sm leading-relaxed text-gray-500">
+            Getting a custom part made usually means chasing suppliers over email, comparing quotes in
+            spreadsheets, and calling for updates. We built ManufactureHub to replace that with one clear
+            flow: upload, compare, track.
+        </p>
+        <p class="mt-4 text-sm leading-relaxed text-gray-500">
+            For manufacturers, it means a steady stream of qualified RFQs that match what their shop floor
+            does best.
+        </p>
     </div>
-    <a href="mailto:bharathvenkatadhiri@gmail.com" class="inline-flex items-center justify-center rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-black">bharathvenkatadhiri@gmail.com</a>
+    <div class="relative aspect-[4/3] overflow-hidden rounded-2xl bg-navy-900">
+        <div class="absolute inset-0" style="background-image:url('{% static "images/hero-machining.jpg" %}'); background-size:cover; background-position:center;"></div>
+        <div class="absolute inset-0 bg-gradient-to-br from-navy-900/70 via-navy-900/40 to-navy-950/70"></div>
+        <svg class="absolute inset-0 h-full w-full text-white/10" viewBox="0 0 400 300" fill="none" aria-hidden="true">
+            <circle cx="220" cy="140" r="95" stroke="currentColor" stroke-width="2"/>
+            <circle cx="220" cy="140" r="60" stroke="currentColor" stroke-width="2"/>
+            <circle cx="220" cy="140" r="25" stroke="currentColor" stroke-width="2"/>
+            <rect x="40" y="60" width="90" height="90" stroke="currentColor" stroke-width="2"/>
+            <path d="M40 220h320" stroke="currentColor" stroke-width="2"/>
+        </svg>
+    </div>
 </div>
+
+<div class="mt-20 text-center max-w-2xl mx-auto">
+    <p class="eyebrow">What We Stand For</p>
+    <h2 class="mt-3 text-3xl font-extrabold tracking-tight text-navy-900 sm:text-4xl">Built on four promises</h2>
+</div>
+<div class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="card">
+        <span class="flex h-10 w-10 items-center justify-center rounded-full bg-accent-50 text-accent-500 mb-3">
+            <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 12a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0"/></svg>
+        </span>
+        <p class="font-semibold text-navy-900">Trusted partners</p>
+        <p class="mt-1 text-sm text-gray-500">Every manufacturer is verified for capability, quality systems and delivery record before they can quote.</p>
+    </div>
+    <div class="card">
+        <span class="flex h-10 w-10 items-center justify-center rounded-full bg-accent-50 text-accent-500 mb-3">
+            <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.6 11.1L12.9 3.4a2 2 0 00-1.4-.6H4.9a1 1 0 00-1 1v6.6c0 .5.2 1 .6 1.4l7.7 7.7a2 2 0 002.8 0l5.6-5.6a2 2 0 000-2.8z"/><circle cx="8" cy="8" r="1.5"/></svg>
+        </span>
+        <p class="font-semibold text-navy-900">Transparent pricing</p>
+        <p class="mt-1 text-sm text-gray-500">Quotes arrive in one format, so price, lead time and terms can be compared fairly.</p>
+    </div>
+    <div class="card">
+        <span class="flex h-10 w-10 items-center justify-center rounded-full bg-accent-50 text-accent-500 mb-3">
+            <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
+        </span>
+        <p class="font-semibold text-navy-900">End-to-end visibility</p>
+        <p class="mt-1 text-sm text-gray-500">From requirement to delivery, every update, document and message lives in one place.</p>
+    </div>
+    <div class="card">
+        <span class="flex h-10 w-10 items-center justify-center rounded-full bg-accent-50 text-accent-500 mb-3">
+            <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6"/></svg>
+        </span>
+        <p class="font-semibold text-navy-900">Built for every scale</p>
+        <p class="mt-1 text-sm text-gray-500">Ten prototypes or ten thousand production parts — the same simple process.</p>
+    </div>
+</div>
+
+<div class="mt-10 grid gap-6 sm:grid-cols-2">
+    <div class="card">
+        <p class="text-xs font-semibold uppercase tracking-wide text-accent-500 mb-2">For Buyers</p>
+        <h3 class="text-xl font-semibold text-navy-900 mb-4">Source parts with confidence</h3>
+        <ul class="text-sm text-gray-600 space-y-2">
+            <li class="flex items-start gap-2">
+                <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                <span>One requirement reaches many verified manufacturers</span>
+            </li>
+            <li class="flex items-start gap-2">
+                <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                <span>Compare quotes on price, lead time and certifications</span>
+            </li>
+            <li class="flex items-start gap-2">
+                <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                <span>Track production, documents and delivery in one view</span>
+            </li>
+        </ul>
+        <a href="{% url 'register' %}" class="inline-flex items-center justify-center rounded-md bg-navy-900 px-4 py-2 text-sm font-medium text-white hover:bg-navy-950 mt-6">Join as a buyer</a>
+    </div>
+    <div class="relative overflow-hidden rounded-lg bg-navy-900 p-6 text-white">
+        <p class="relative text-xs font-semibold uppercase tracking-wide text-accent-400 mb-2">For Manufacturers</p>
+        <h3 class="relative text-xl font-semibold mb-4">Grow with qualified orders</h3>
+        <ul class="relative text-sm text-white/70 space-y-2">
+            <li class="flex items-start gap-2">
+                <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-400" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                <span>Receive requirements matched to your processes and capacity</span>
+            </li>
+            <li class="flex items-start gap-2">
+                <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-400" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                <span>Quote quickly with drawings and specs in one place</span>
+            </li>
+            <li class="flex items-start gap-2">
+                <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-400" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                <span>Build a verified profile buyers can trust</span>
+            </li>
+        </ul>
+        <a href="{% url 'register' %}" class="relative inline-flex items-center justify-center rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-white hover:bg-accent-600 mt-6">Join as a manufacturer</a>
+    </div>
+</div>
+
 {% endblock %}
