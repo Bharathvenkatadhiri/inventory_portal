@@ -1,30 +1,60 @@
-{% extends "base.html" %}
+{% extends "dashboard_base.html" %}
 {% block title %}Orders — ManufactureHub{% endblock %}
+{% block page_header %}
+<div class="mb-6">
+    <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">Orders</h1>
+    <p class="mt-1 text-sm text-gray-500">Track every order from confirmation to delivery.</p>
+</div>
+{% endblock %}
 {% block content %}
 
-<h1 class="text-2xl font-semibold text-gray-900 mb-6">Orders</h1>
+<div class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="card">
+        <p class="text-sm text-gray-500">In production</p>
+        <p class="mt-2 text-3xl font-extrabold text-navy-900">{{ stat_in_production }}</p>
+    </div>
+    <div class="card">
+        <p class="text-sm text-gray-500">Awaiting your approval</p>
+        <p class="mt-2 text-3xl font-extrabold text-navy-900">{{ stat_needs_approval }}</p>
+    </div>
+    <div class="card">
+        <p class="text-sm text-gray-500">In transit</p>
+        <p class="mt-2 text-3xl font-extrabold text-navy-900">{{ stat_in_transit }}</p>
+    </div>
+    <div class="card">
+        <p class="text-sm text-gray-500">Delivered this month</p>
+        <p class="mt-2 text-3xl font-extrabold text-navy-900">{{ stat_delivered_this_month }}</p>
+    </div>
+</div>
 
 {% if bills %}
-<div class="card overflow-x-auto">
+<div class="card overflow-x-auto p-0">
     <table class="min-w-full divide-y divide-gray-200 text-sm">
         <thead>
-            <tr class="text-left text-gray-500">
-                <th class="py-2 pr-4">Order no</th>
-                <th class="py-2 pr-4">Requirement</th>
-                <th class="py-2 pr-4">Status</th>
-                <th class="py-2 pr-4">Order date</th>
-                <th class="py-2 pr-4"></th>
+            <tr class="text-left text-xs font-semibold uppercase tracking-wide text-gray-400">
+                <th class="px-6 py-3">Order</th>
+                <th class="px-6 py-3">Part</th>
+                <th class="px-6 py-3">Supplier</th>
+                <th class="px-6 py-3">Progress</th>
+                <th class="px-6 py-3">Due</th>
+                <th class="px-6 py-3">Status</th>
+                <th class="px-6 py-3"></th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
             {% for order in bills %}
-            <tr>
-                <td class="py-3 pr-4 font-medium text-gray-900">#{{ order.billno }}</td>
-                <td class="py-3 pr-4 text-gray-600">
-                    {{ order.requirement.user.first_name }} {{ order.requirement.user.last_name }}<br>
-                    <span class="text-xs text-gray-400">RFQ #{{ order.requirement.id }} — {{ order.requirement.title }}</span>
+            <tr class="hover:bg-gray-50">
+                <td class="px-6 py-3 font-medium text-navy-900">ORD-{{ order.billno }}</td>
+                <td class="px-6 py-3 text-gray-600">{{ order.requirement.title }}</td>
+                <td class="px-6 py-3 text-gray-600">{{ order.supplier.companyname|default:order.supplier }}</td>
+                <td class="px-6 py-3">
+                    <p class="text-xs text-gray-500">{{ order.get_production_stage_display }}</p>
+                    <div class="mt-1 h-1.5 w-32 overflow-hidden rounded-full bg-gray-100">
+                        <div class="h-full rounded-full bg-accent-500" style="width: {{ order.production_progress_percent }}%"></div>
+                    </div>
                 </td>
-                <td class="py-3 pr-4">
+                <td class="px-6 py-3 text-gray-600">{{ order.ship_by_date|date:"d M"|default:"—" }}</td>
+                <td class="px-6 py-3">
                     {% if order.status == 'cancelled' %}
                     <span class="badge bg-red-50 text-red-700">{{ order.get_status_display }}</span>
                     {% elif order.status == 'paid' or order.status == 'completed' %}
@@ -35,35 +65,13 @@
                     <span class="badge bg-yellow-50 text-yellow-700">{{ order.get_status_display }}</span>
                     {% endif %}
                 </td>
-                <td class="py-3 pr-4 text-gray-600">{{ order.created_at.date }}</td>
-                <td class="py-3 pr-4"><a href="{% url 'order-detail' order.billno %}" class="text-brand-600 hover:underline">View order</a></td>
+                <td class="px-6 py-3 text-right"><a href="{% url 'order-detail' order.billno %}" class="text-sm font-bold text-accent-500 hover:text-accent-600">View &rarr;</a></td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
-
-{% if is_paginated %}
-<div class="mt-6 flex flex-wrap gap-2">
-    {% if page_obj.has_previous %}
-    <a class="btn-secondary" href="?page=1">First</a>
-    <a class="btn-secondary" href="?page={{ page_obj.previous_page_number }}">Previous</a>
-    {% endif %}
-    {% for num in page_obj.paginator.page_range %}
-        {% if page_obj.number == num %}
-        <span class="btn-primary">{{ num }}</span>
-        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-        <a class="btn-secondary" href="?page={{ num }}">{{ num }}</a>
-        {% endif %}
-    {% endfor %}
-    {% if page_obj.has_next %}
-    <a class="btn-secondary" href="?page={{ page_obj.next_page_number }}">Next</a>
-    <a class="btn-secondary" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
-    {% endif %}
-</div>
-{% endif %}
-
 {% else %}
 <div class="card text-center text-gray-500">No orders yet.</div>
 {% endif %}
-{% endblock content %}
+{% endblock %}

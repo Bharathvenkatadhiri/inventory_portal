@@ -1,0 +1,51 @@
+{# Topbar notification bell. Re-rendered out-of-band by the live-update poll (marketplace LiveTopbarView). #}
+        <div id="notification-bell" class="relative" x-data="{ open: false }" @keydown.escape.window="open = false"{% if oob %} hx-swap-oob="true"{% endif %}>
+            <button type="button" @click="open = !open" :aria-expanded="open.toString()"
+                    class="relative flex h-9 w-9 items-center justify-center rounded-full {% if topbar_unread_notifications %}bg-accent-50 text-accent-600{% else %}text-gray-500 hover:bg-gray-100 hover:text-gray-700{% endif %}">
+                <span class="sr-only">Notifications{% if topbar_unread_notifications %} ({{ topbar_unread_notifications }} unread){% endif %}</span>
+                <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>
+                {% if topbar_unread_notifications %}
+                <span class="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-accent-500 px-1 text-[10px] font-bold text-white ring-2 ring-white">{% if topbar_unread_notifications > 9 %}9+{% else %}{{ topbar_unread_notifications }}{% endif %}</span>
+                {% endif %}
+            </button>
+
+            <div x-show="open" x-cloak @click.outside="open = false" x-transition.opacity
+                 class="absolute right-0 z-50 mt-2 w-[22rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
+                <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+                    <p class="text-sm font-bold text-navy-900">Notifications{% if topbar_unread_notifications %} <span class="text-accent-600">&middot; {{ topbar_unread_notifications }} new</span>{% endif %}</p>
+                    {% if topbar_unread_notifications %}
+                    <form method="post" action="{% url 'notification-mark-all-read' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ next_url|default:request.get_full_path }}">
+                        <button type="submit" class="text-xs font-bold text-accent-500 hover:text-accent-600">Mark all as read</button>
+                    </form>
+                    {% endif %}
+                </div>
+                <ul class="max-h-96 divide-y divide-gray-100 overflow-y-auto">
+                    {% for event in topbar_notifications %}
+                    <li class="flex items-start gap-2 px-4 py-3 {% if event.unread %}bg-accent-50/60{% endif %}">
+                        <span class="mt-1.5 h-2 w-2 shrink-0 rounded-full {% if event.unread %}bg-accent-500{% else %}bg-transparent{% endif %}"></span>
+                        <a href="{% url 'notification-open' %}?key={{ event.key|urlencode }}&next={{ event.url|urlencode }}" class="min-w-0 flex-1">
+                            <p class="truncate text-sm {% if event.unread %}font-bold text-navy-900{% else %}text-gray-600{% endif %}">{{ event.title }}</p>
+                            <p class="truncate text-xs text-gray-500">{{ event.detail }}</p>
+                            <p class="mt-0.5 text-[11px] text-gray-400">{{ event.timestamp|timesince }} ago</p>
+                        </a>
+                        {% if event.unread %}
+                        <form method="post" action="{% url 'notification-mark-read' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="key" value="{{ event.key }}">
+                            <input type="hidden" name="next" value="{{ next_url|default:request.get_full_path }}">
+                            <button type="submit" class="rounded p-1 text-gray-400 hover:bg-white hover:text-accent-600" title="Mark as read">
+                                <span class="sr-only">Mark as read</span>
+                                <svg viewBox="0 0 20 20" class="h-4 w-4" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </li>
+                    {% empty %}
+                    <li class="px-4 py-8 text-center text-sm text-gray-500">You're all caught up.</li>
+                    {% endfor %}
+                </ul>
+                <a href="{% url 'notification-list' %}" class="block border-t border-gray-100 px-4 py-2.5 text-center text-sm font-bold text-accent-500 hover:bg-gray-50">View all notifications</a>
+            </div>
+        </div>

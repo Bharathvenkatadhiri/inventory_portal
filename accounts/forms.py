@@ -16,10 +16,15 @@ app_label, model_name = model_str.split('.')
 User = apps.get_model(app_label, model_name)
 
 class UserRegistrationForm(UserCreationForm):
-    is_staff = forms.ChoiceField(choices=[(1, 'Supplier'), (0, 'Buyer')], widget=forms.RadioSelect)
+    # Deliberately not a model field: this used to be called `is_staff` and
+    # was listed in Meta.fields, so choosing "Supplier" also made the new
+    # user a Django staff member.
+    account_type = forms.ChoiceField(choices=[('supplier', 'Supplier'), ('buyer', 'Buyer')], widget=forms.RadioSelect, initial='buyer')
+
     class Meta:
         model = User
-        fields = ['username', 'first_name', 'last_name', 'password1', 'password2', 'email','is_staff']
+        fields = ['username', 'first_name', 'last_name', 'password1', 'password2', 'email']
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['first_name'].required = True
@@ -27,12 +32,8 @@ class UserRegistrationForm(UserCreationForm):
         self.fields['email'].required = True
 
     def save(self, commit=True):
-        # `is_staff` here doubles as the Supplier/Buyer choice (see the field
-        # above) but `role` was never being set from it, so every signup
-        # stayed at the model's "consumer" default regardless of the choice
-        # made on this form.
         user = super().save(commit=False)
-        user.role = 'manufacturer' if str(self.cleaned_data.get('is_staff')) == '1' else 'consumer'
+        user.role = 'manufacturer' if self.cleaned_data.get('account_type') == 'supplier' else 'consumer'
         if commit:
             user.save()
         return user
@@ -186,6 +187,22 @@ class SelectCustomer(forms.ModelForm):
         # existing one goes through the dedicated activate/deactivate views.
         fields = ['Name','type_of_business','Address','phone','email','EORI_number','VAT_number','user']
 
+class CustomerRegistrationForm(SelectCustomer):
+    """Public buyer sign-up step. Unlike the staff-only SelectCustomer, there
+    is no `user` field: the view attaches the account created in step one
+    (from the session), so visitors can neither see other users nor attach
+    a profile to someone else's account."""
+    class Meta(SelectCustomer.Meta):
+        fields = ['Name', 'type_of_business', 'Address', 'phone', 'email', 'EORI_number', 'VAT_number']
+
+    def __init__(self, *args, **kwargs):
+        forms.ModelForm.__init__(self, *args, **kwargs)
+        for name, field in self.fields.items():
+            field.widget.attrs.update({'class': 'form-control'})
+            if name != 'Address':
+                field.widget.attrs['required'] = 'true'
+
+
 class updateCustomer(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -245,7 +262,10 @@ class UpdateSubscription(forms.ModelForm):
         else:
             instance.price = subscription_plan_details[self.cleaned_data['plan_type']]['price']
             instance.rfq_limit = subscription_plan_details[self.cleaned_data['plan_type']]['rfq_limit']
-        
+        # Staff setting the plan resolves any pending upgrade request.
+        instance.pending_plan_type = ''
+        instance.pending_requested_at = None
+
         if commit:
             instance.save()
         return instance    

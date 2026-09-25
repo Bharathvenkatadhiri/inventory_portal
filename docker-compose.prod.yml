@@ -7,13 +7,17 @@
 # Usage:
 #   cp .env.prod.example .env   # fill in every value
 #   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Workers/threads/timeouts come from gunicorn.conf.py (tunable via .env).
+# createcachetable is a no-op unless CACHE_URL uses the database cache.
 services:
   web:
     build: .
     command: >
       sh -c "python manage.py migrate --noinput &&
+             python manage.py createcachetable &&
              python manage.py collectstatic --noinput &&
-             gunicorn core.wsgi:application --bind 0.0.0.0:8000"
+             gunicorn core.wsgi:application"
     env_file:
       - .env
     ports:

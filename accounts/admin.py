@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import ManufacturingSector, ManufacturingTech, ManufacturerProfile, ConsumerProfile, Company
+from .models import ManufacturingTech, ManufacturerProfile, ConsumerProfile, Company
 
 
 @admin.register(Company)
@@ -12,5 +12,4 @@ class CompanyAdmin(admin.ModelAdmin):
 
 admin.site.register(ManufacturerProfile)
 admin.site.register(ConsumerProfile)
-admin.site.register(ManufacturingSector)
 admin.site.register(ManufacturingTech)

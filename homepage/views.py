@@ -6,17 +6,21 @@ from django.contrib import messages
 from django.utils import timezone
 from marketplace import services
 from marketplace.models import Requirement, Quote, Order
-from accounts.models import ManufacturerProfile, ConsumerProfile
-
-
-def _quarter_start(now):
-    quarter = (now.month - 1) // 3
-    return now.replace(month=quarter * 3 + 1, day=1, hour=0, minute=0, second=0, microsecond=0)
+from accounts.models import ManufacturerProfile, ConsumerProfile, SubscriptionPlan
+from accounts.views import plan_catalog
 
 
 @login_not_required
 def custom_404_view(request, exception):
     return render(request, '404.html', status=404)
+
+
+def _subscription_context(user):
+    subscription = SubscriptionPlan.objects.filter(user_profile=user).first()
+    return {
+        'subscription': subscription,
+        'plan_catalog': plan_catalog(subscription),
+    }
 
 
 class HomeView(View):
@@ -26,22 +30,51 @@ class HomeView(View):
 
         if request.user.role == "manufacturer":
             return self._manufacturer_dashboard(request)
+        return self._buyer_dashboard(request)
 
-        my_requirements = Requirement.objects.filter(user=request.user, is_deleted=False)
+    def _buyer_dashboard(self, request):
+        hour = timezone.localtime().hour
+        greeting = "Good morning" if hour < 12 else "Good afternoon" if hour < 17 else "Good evening"
+        customer = ConsumerProfile.objects.filter(user=request.user).first()
+
+        open_requirements = services.buyer_open_requirements(request.user)
+        pending_quotes = services.buyer_pending_quotes(request.user)
+        pending_quotes_value = services.totals_by_currency(
+            (q.requirement.quote_currency, q.get_breakdown()['total']) for q in pending_quotes
+        )
+        active_orders = Order.objects.filter(customer__user=request.user).exclude(status__in=['completed', 'cancelled'])
+
+        quarter_start = services.quarter_start(timezone.now())
+        orders_this_quarter = list(
+            Order.objects.filter(customer__user=request.user, created_at__gte=quarter_start).select_related('quote', 'supplier', 'requirement')
+        )
+        spend_this_quarter = services.totals_by_currency(
+            (order.requirement.quote_currency, order.quote.get_breakdown()['total']) for order in orders_this_quarter
+        )
+        suppliers_this_quarter = len({order.supplier_id for order in orders_this_quarter})
+
         context = {
-            "my_requirements": my_requirements.order_by("-created_at")[:5],
-            "my_requirement_count": my_requirements.count(),
-            "requirements_with_quotes_count": my_requirements.filter(quote__isnull=False).distinct().count(),
-            "my_orders": Order.objects.filter(customer__user=request.user).order_by("-created_at")[:5],
-            "my_order_count": Order.objects.filter(customer__user=request.user).count(),
+            "greeting": greeting,
+            "customer": customer,
+            "stat_open_rfqs": open_requirements.count(),
+            "stat_quotes_to_review_count": pending_quotes.count(),
+            "stat_quotes_to_review_value": pending_quotes_value,
+            "stat_active_orders": active_orders.count(),
+            "stat_spend_this_quarter": spend_this_quarter,
+            "stat_suppliers_this_quarter": suppliers_this_quarter,
+            "recent_requirements": Requirement.objects.filter(user=request.user, is_deleted=False).order_by('-created_at')[:6],
+            "action_items": services.buyer_action_items(request.user)[:3],
+            "orders_in_progress": active_orders.order_by('ship_by_date')[:5],
         }
-        return render(request, "home.html", context)
+        context.update(_subscription_context(request.user))
+        return render(request, "home_buyer.html", context)
 
     def _manufacturer_dashboard(self, request):
         supplier = ManufacturerProfile.objects.filter(user=request.user).first()
         hour = timezone.localtime().hour
         greeting = "Good morning" if hour < 12 else "Good afternoon" if hour < 17 else "Good evening"
         context = {"supplier": supplier, "greeting": greeting}
+        context.update(_subscription_context(request.user))
 
         if supplier is None:
             return render(request, "home_manufacturer.html", context)
@@ -59,11 +92,13 @@ class HomeView(View):
             supplier=supplier, is_deleted=False, is_draft=False,
             is_selected=False, status__isnull=True,
         )
-        quotes_awaiting_value = sum((q.get_breakdown()['total'] for q in pending_quotes), start=0)
+        quotes_awaiting_value = services.totals_by_currency(
+            (q.requirement.quote_currency, q.get_breakdown()['total']) for q in pending_quotes.select_related('requirement')
+        )
 
         active_orders = Order.objects.filter(supplier=supplier).exclude(status__in=['completed', 'cancelled'])
 
-        quarter_start = _quarter_start(timezone.now())
+        quarter_start = services.quarter_start(timezone.now())
         quotes_this_quarter = Quote.objects.filter(supplier=supplier, is_deleted=False, created_at__gte=quarter_start)
         won_this_quarter = quotes_this_quarter.filter(is_selected=True).count()
 

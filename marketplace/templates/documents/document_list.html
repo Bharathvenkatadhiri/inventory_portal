@@ -1,0 +1,50 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Documents — ManufactureHub{% endblock %}
+{% block page_header %}
+<div class="mb-6">
+    <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">Documents</h1>
+    <p class="mt-1 text-sm text-gray-500">Drawings, quotes, certificates and message attachments across all your RFQs and orders.</p>
+</div>
+{% endblock %}
+{% block content %}
+<div class="card p-0" x-data="{ tab: 'all' }">
+    <div class="flex gap-1 overflow-x-auto whitespace-nowrap border-b border-gray-100 px-4">
+        <button @click="tab = 'all'" :class="tab === 'all' ? 'border-accent-500 text-navy-900' : 'border-transparent text-gray-500 hover:text-navy-900'" class="border-b-2 px-4 py-3 text-sm font-bold transition-colors">All files</button>
+        <button @click="tab = 'Drawing'" :class="tab === 'Drawing' ? 'border-accent-500 text-navy-900' : 'border-transparent text-gray-500 hover:text-navy-900'" class="border-b-2 px-4 py-3 text-sm font-bold transition-colors">Drawings</button>
+        <button @click="tab = 'Quote'" :class="tab === 'Quote' ? 'border-accent-500 text-navy-900' : 'border-transparent text-gray-500 hover:text-navy-900'" class="border-b-2 px-4 py-3 text-sm font-bold transition-colors">Quotes</button>
+        <button @click="tab = 'Certificate'" :class="tab === 'Certificate' ? 'border-accent-500 text-navy-900' : 'border-transparent text-gray-500 hover:text-navy-900'" class="border-b-2 px-4 py-3 text-sm font-bold transition-colors">Certificates</button>
+        <button @click="tab = 'Attachment'" :class="tab === 'Attachment' ? 'border-accent-500 text-navy-900' : 'border-transparent text-gray-500 hover:text-navy-900'" class="border-b-2 px-4 py-3 text-sm font-bold transition-colors">Message attachments</button>
+    </div>
+
+    {% if docs %}
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+            <thead>
+                <tr class="text-xs uppercase tracking-wide text-gray-400">
+                    <th class="px-6 pt-4 pb-2 font-semibold">Name</th>
+                    <th class="px-6 pt-4 pb-2 font-semibold">Linked to</th>
+                    <th class="px-6 pt-4 pb-2 font-semibold">Type</th>
+                    <th class="px-6 pt-4 pb-2 font-semibold">Uploaded by</th>
+                    <th class="px-6 pt-4 pb-2 font-semibold">Date</th>
+                    <th class="px-6 pt-4 pb-2"></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for doc in docs %}
+                <tr x-show="tab === 'all' || tab === '{{ doc.type }}'">
+                    <td class="px-6 py-3 font-medium text-navy-900">{{ doc.name }}</td>
+                    <td class="px-6 py-3"><a href="{{ doc.linked_url }}" class="text-accent-500 hover:underline">{{ doc.linked_label }}</a></td>
+                    <td class="px-6 py-3 text-gray-600">{{ doc.type }}</td>
+                    <td class="px-6 py-3 text-gray-600">{{ doc.uploaded_by }}</td>
+                    <td class="px-6 py-3 text-gray-600">{{ doc.date|date:"d M Y" }}</td>
+                    <td class="px-6 py-3 text-right"><a href="{{ doc.url }}" target="_blank" class="text-sm font-bold text-accent-500 hover:text-accent-600">Download</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="p-10 text-center text-sm text-gray-500">No files yet — they'll show up here as soon as you attach drawings, receive quotes or get certificates from suppliers.</div>
+    {% endif %}
+</div>
+{% endblock %}

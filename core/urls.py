@@ -5,10 +5,15 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.conf.urls import handler404
+from django.http import Http404
 from homepage.views import CustomLoginView, CustomLogoutView
 from accounts.views import verify_gstin_view
 
 handler404 = 'homepage.views.custom_404_view'
+
+
+def _not_public(request, path):
+    raise Http404
 
 urlpatterns = [
     path('admin/', admin.site.urls, name='admin'),
@@ -38,4 +43,9 @@ urlpatterns = [
 ]
 
 if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    # Message attachments are deliberately not served here: they must go
+    # through marketplace's MessageAttachmentDownloadView, which checks the
+    # viewer is part of the conversation.
+    urlpatterns += [
+        path(f"{settings.MEDIA_URL.lstrip('/')}message_attachments/<path:path>", _not_public),
+    ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

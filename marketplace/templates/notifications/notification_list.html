@@ -1,0 +1,60 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Notifications — ManufactureHub{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+        <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">Notifications</h1>
+        <p class="mt-1 text-sm text-gray-500">
+            Everything that needs your attention across RFQs and orders{% if unread_count %} &middot; <span class="font-bold text-accent-600">{{ unread_count }} unread</span>{% endif %}.
+        </p>
+    </div>
+    {% if unread_count %}
+    <form method="post" action="{% url 'notification-mark-all-read' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn-outline">
+            <svg viewBox="0 0 20 20" class="h-4 w-4" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+            Mark all as read
+        </button>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}
+{% block content %}
+<div class="card divide-y divide-gray-100 overflow-hidden p-0">
+    {% for event in events %}
+    <div class="flex items-start gap-4 p-5 {% if event.unread %}bg-accent-50/60{% endif %}">
+        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full
+            {% if event.kind == 'order' %}bg-blue-50 text-blue-500
+            {% elif event.kind == 'quote' %}bg-accent-50 text-accent-500
+            {% elif event.kind == 'message' %}bg-green-50 text-green-600
+            {% else %}bg-navy-50 text-navy-900{% endif %}">
+            {% if event.kind == 'order' %}
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg>
+            {% elif event.kind == 'quote' %}
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.6 11.1L12.9 3.4a2 2 0 00-1.4-.6H4.9a1 1 0 00-1 1v6.6c0 .5.2 1 .6 1.4l7.7 7.7a2 2 0 002.8 0l5.6-5.6a2 2 0 000-2.8z"/><circle cx="8" cy="8" r="1.4"/></svg>
+            {% elif event.kind == 'message' %}
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            {% else %}
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v12H7l-3 3z"/></svg>
+            {% endif %}
+        </span>
+        <a href="{% url 'notification-open' %}?key={{ event.key|urlencode }}&next={{ event.url|urlencode }}" class="min-w-0 flex-1">
+            <p class="{% if event.unread %}font-bold text-navy-900{% else %}text-gray-700{% endif %}">{{ event.title }}</p>
+            <p class="mt-0.5 truncate text-sm text-gray-600">{{ event.detail }}</p>
+        </a>
+        <div class="flex shrink-0 flex-col items-end gap-1">
+            <span class="text-xs text-gray-400">{{ event.timestamp|timesince }} ago</span>
+            {% if event.unread %}
+            <form method="post" action="{% url 'notification-mark-read' %}">
+                {% csrf_token %}
+                <input type="hidden" name="key" value="{{ event.key }}">
+                <button type="submit" class="text-xs font-bold text-accent-500 hover:text-accent-600">Mark as read</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+    {% empty %}
+    <div class="p-10 text-center text-sm text-gray-500">You're all caught up.</div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% load widget_tweaks %}
+{% include "messages/_message_list.html" %}
+
+{% if thread.is_closed %}
+<div class="flex items-center gap-2 border-t border-gray-100 bg-gray-50 p-4 text-sm text-gray-500">
+    <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 118 0v4"/></svg>
+    This conversation was closed on {{ thread.closed_at|date:"d M Y" }}{% if thread.closed_by %} by {{ thread.closed_by.first_name }} {{ thread.closed_by.last_name }}{% else %} when the RFQ was completed{% endif %}. It's read-only now.
+</div>
+{% else %}
+<form method="post" action="{% url 'message-thread' thread.pk %}" enctype="multipart/form-data"
+      hx-post="{% url 'message-thread' thread.pk %}" hx-encoding="multipart/form-data" hx-target="#thread-messages" hx-swap="innerHTML"
+      class="border-t border-gray-100 p-4" x-data="{ fileName: '' }">
+    {% csrf_token %}
+    {% if message_form.errors %}
+    <div class="mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
+        {% for field, errors in message_form.errors.items %}{% for error in errors %}<p>{{ error }}</p>{% endfor %}{% endfor %}
+    </div>
+    {% endif %}
+    <p x-show="fileName" x-cloak class="mb-2 flex items-center gap-2 text-xs text-gray-600">
+        <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21.4 11.1l-9.2 9.2a6 6 0 01-8.5-8.5l9.2-9.2a4 4 0 015.7 5.7l-9.2 9.2a2 2 0 01-2.8-2.8l8.5-8.5"/></svg>
+        <span x-text="fileName"></span>
+        <button type="button" class="text-gray-400 hover:text-gray-600" @click="fileName = ''; $refs.file.value = ''">&times;</button>
+    </p>
+    <div class="flex items-end gap-2">
+        <label class="btn-outline shrink-0 cursor-pointer px-3" title="Attach a file">
+            <span class="sr-only">Attach a file</span>
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21.4 11.1l-9.2 9.2a6 6 0 01-8.5-8.5l9.2-9.2a4 4 0 015.7 5.7l-9.2 9.2a2 2 0 01-2.8-2.8l8.5-8.5"/></svg>
+            <input type="file" name="attachment" class="hidden" x-ref="file" @change="fileName = $event.target.files.length ? $event.target.files[0].name : ''">
+        </label>
+        {{ message_form.body|add_class:"field-input flex-1"|attr:"rows:1" }}
+        <button type="submit" class="btn-primary shrink-0">Send</button>
+    </div>
+    <p class="mt-2 text-[11px] text-gray-400">PDF, images, CAD (STEP/IGES/STL/DXF/DWG), spreadsheets, docs or ZIP &middot; up to 10 MB</p>
+</form>
+{% endif %}

@@ -1,0 +1,5 @@
+{# Polls every 20s while the tab is visible; the server replies 204 unless the bell or a badge changed. #}
+<div id="live-topbar-poller" hidden
+     hx-get="{% url 'live-topbar' %}?sig={{ live_sig }}"
+     hx-trigger="every 20s [document.visibilityState === 'visible']"
+     hx-swap="outerHTML"></div>

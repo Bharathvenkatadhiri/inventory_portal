@@ -27,6 +27,7 @@ urlpatterns = [
     path('company/certifications/<int:pk>/delete/', views.CompanyCertificationDeleteView.as_view(), name='company-certification-delete'),
 
     path('suppliers/', views.SupplierListView.as_view(), name='suppliers-list'),
+    path('suppliers/directory/', views.SupplierDirectoryView.as_view(), name='supplier-directory'),
     path('suppliers/<pk>/edit', views.SupplierUpdateView.as_view(), name='edit-supplier'),
     path('suppliers/<pk>/delete', views.SupplierDeleteView.as_view(), name='delete-supplier'),
     path('suppliers/<pk>/activate', views.SupplieractivateView.as_view(), name='activate-supplier'),
@@ -42,5 +43,6 @@ urlpatterns = [
     path('subscription', views.SubscriptionView.as_view(), name='subscription-list'),
     path('subscription/<pk>/delete', views.SubscriptionDeleteView.as_view(), name='delete-subscription'),
     path('subscription/<pk>/edit', views.SubscriptionUpdateView.as_view(), name='edit-subscription'),
+    path('subscription/upgrade/', views.SubscriptionUpgradeView.as_view(), name='subscription-upgrade'),
 
 ]

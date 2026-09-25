@@ -1,91 +1,132 @@
-{% extends "base.html" %}
-{% block title %}Requirements — ManufactureHub{% endblock %}
-{% block content %}
-
-<div class="flex items-center justify-between mb-6">
-    <h1 class="text-2xl font-semibold text-gray-900">
-        {% if request.user.role == 'manufacturer' %}Open Requirements{% else %}My Requirements{% endif %}
-    </h1>
-    {% if request.user.role != 'manufacturer' %}
-    <a href="{% url 'new-requirement' %}" class="btn-primary">Submit Requirement</a>
-    {% endif %}
-</div>
-
-<form method="get" class="card mb-6 flex flex-wrap items-end gap-4">
+{% extends "dashboard_base.html" %}
+{% block title %}RFQs — ManufactureHub{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
     <div>
-        <label for="sort" class="field-label">Sort by</label>
-        <select name="sort" id="sort" class="field-input" onchange="this.form.submit()">
-            <option value="">Default</option>
-            <option value="date_asc" {% if request.GET.sort == 'date_asc' %}selected{% endif %}>End date: oldest to newest</option>
-            <option value="date_desc" {% if request.GET.sort == 'date_desc' %}selected{% endif %}>End date: newest to oldest</option>
-            <option value="parts_asc" {% if request.GET.sort == 'parts_asc' %}selected{% endif %}>Parts: low to high</option>
-            <option value="parts_desc" {% if request.GET.sort == 'parts_desc' %}selected{% endif %}>Parts: high to low</option>
-            <option value="cr_date_asc" {% if request.GET.sort == 'cr_date_asc' %}selected{% endif %}>Created: oldest to newest</option>
-            <option value="cr_date_desc" {% if request.GET.sort == 'cr_date_desc' %}selected{% endif %}>Created: newest to oldest</option>
-        </select>
+        <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">RFQs</h1>
+        <p class="mt-1 text-sm text-gray-500">All your requests for quote in one place.</p>
     </div>
-</form>
+    <div class="flex items-center gap-3">
+        <form method="get" class="flex items-center">
+            <input type="hidden" name="tab" value="{{ tab }}">
+            <input type="text" name="q" value="{{ q }}" placeholder="Search by part or RFQ number" class="field-input w-64">
+        </form>
+        <a href="{% url 'new-requirement' %}" class="btn-primary shrink-0">
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
+            New RFQ
+        </a>
+    </div>
+</div>
+{% endblock %}
+{% block content %}
+<div class="card p-0">
+    <div class="flex flex-wrap gap-1 border-b border-gray-100 px-4">
+        <a href="?tab=all{% if q %}&q={{ q }}{% endif %}"
+           class="border-b-2 px-4 py-3 text-sm font-bold transition-colors {% if tab == 'all' %}border-accent-500 text-navy-900{% else %}border-transparent text-gray-500 hover:text-navy-900{% endif %}">
+            All
+            <span class="ml-1 rounded-full {% if tab == 'all' %}bg-accent-50 text-accent-600{% else %}bg-gray-100 text-gray-500{% endif %} px-2 py-0.5 text-xs">{{ tab_counts.all }}</span>
+        </a>
+        <a href="?tab=collecting{% if q %}&q={{ q }}{% endif %}"
+           class="border-b-2 px-4 py-3 text-sm font-bold transition-colors {% if tab == 'collecting' %}border-accent-500 text-navy-900{% else %}border-transparent text-gray-500 hover:text-navy-900{% endif %}">
+            Collecting quotes
+            <span class="ml-1 rounded-full {% if tab == 'collecting' %}bg-accent-50 text-accent-600{% else %}bg-gray-100 text-gray-500{% endif %} px-2 py-0.5 text-xs">{{ tab_counts.collecting }}</span>
+        </a>
+        <a href="?tab=ready{% if q %}&q={{ q }}{% endif %}"
+           class="border-b-2 px-4 py-3 text-sm font-bold transition-colors {% if tab == 'ready' %}border-accent-500 text-navy-900{% else %}border-transparent text-gray-500 hover:text-navy-900{% endif %}">
+            Quotes ready
+            <span class="ml-1 rounded-full {% if tab == 'ready' %}bg-accent-50 text-accent-600{% else %}bg-gray-100 text-gray-500{% endif %} px-2 py-0.5 text-xs">{{ tab_counts.ready }}</span>
+        </a>
+        <a href="?tab=awarded{% if q %}&q={{ q }}{% endif %}"
+           class="border-b-2 px-4 py-3 text-sm font-bold transition-colors {% if tab == 'awarded' %}border-accent-500 text-navy-900{% else %}border-transparent text-gray-500 hover:text-navy-900{% endif %}">
+            Awarded
+            <span class="ml-1 rounded-full {% if tab == 'awarded' %}bg-accent-50 text-accent-600{% else %}bg-gray-100 text-gray-500{% endif %} px-2 py-0.5 text-xs">{{ tab_counts.awarded }}</span>
+        </a>
+        <form method="get" class="ml-auto flex items-center py-2">
+            <input type="hidden" name="tab" value="{{ tab }}">
+            {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
+            <select name="sort" class="field-input text-sm" onchange="this.form.submit()">
+                <option value="">Newest first</option>
+                <option value="date_asc" {% if request.GET.sort == 'date_asc' %}selected{% endif %}>Quotes due soonest</option>
+                <option value="parts_desc" {% if request.GET.sort == 'parts_desc' %}selected{% endif %}>Parts: high to low</option>
+            </select>
+        </form>
+    </div>
 
-{% if object_list %}
-<div class="space-y-4">
-    {% for demand in object_list %}
-    <div class="card">
-        <div class="flex items-start justify-between gap-4">
-            <div>
-                <a href="{% url 'requirement' demand.pk %}" class="text-lg font-medium text-gray-900 hover:text-brand-600">{{ demand.title }}</a>
-                <p class="text-sm text-gray-500 mt-1">{{ demand.parts }} part(s) &middot; {{ demand.industry|default:"—" }} &middot; ends {{ demand.end_date|date:"M j, Y"|default:"—" }}</p>
-                <p class="text-sm text-gray-600 mt-1">{{ demand.rfq_desc }}</p>
-            </div>
-            <div class="flex flex-col items-end gap-2 shrink-0">
-                {% if demand.status == 'Approved' %}
-                <span class="badge bg-green-50 text-green-700">Approved</span>
-                {% elif demand.status == 'Production' %}
-                <span class="badge bg-yellow-50 text-yellow-700">In Production</span>
-                {% elif demand.status == 'Completed' %}
-                <span class="badge bg-green-50 text-green-700">Completed</span>
-                {% elif demand.status == 'Rejected' %}
-                <span class="badge bg-red-50 text-red-700">Rejected</span>
-                {% else %}
-                <span class="badge bg-gray-100 text-gray-700">Submitted</span>
+    {% if object_list %}
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+            <thead>
+                <tr class="text-xs uppercase tracking-wide text-gray-400">
+                    <th class="px-6 pt-4 pb-2 font-semibold">RFQ</th>
+                    <th class="px-6 pt-4 pb-2 font-semibold">Process</th>
+                    <th class="px-6 pt-4 pb-2 font-semibold">Qty</th>
+                    <th class="px-6 pt-4 pb-2 font-semibold">Quotes</th>
+                    <th class="px-6 pt-4 pb-2 font-semibold">Quotes due</th>
+                    <th class="px-6 pt-4 pb-2 font-semibold">Status</th>
+                    <th class="px-6 pt-4 pb-2"></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for demand in object_list %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-3">
+                        <a href="{% url 'requirement' demand.pk %}" class="font-bold text-navy-900 hover:text-accent-500">{{ demand.title }}</a>
+                        <p class="text-xs text-gray-500">RFQ-{{ demand.pk }}{% if demand.industry %} &middot; {{ demand.industry }}{% endif %}</p>
+                    </td>
+                    <td class="px-6 py-3 text-gray-600">{{ demand.requirement_parts.first.technology|default:"—" }}</td>
+                    <td class="px-6 py-3 text-gray-600">{{ demand.total_parts_quantity }}</td>
+                    <td class="px-6 py-3 text-gray-600">{{ demand.quote.count }}</td>
+                    <td class="px-6 py-3 text-gray-600">{{ demand.end_date|date:"d M"|default:"—" }}</td>
+                    <td class="px-6 py-3">
+                        {% if demand.status == 'Approved' %}
+                        <span class="badge bg-green-50 text-green-700">Awarded</span>
+                        {% elif demand.status == 'Production' %}
+                        <span class="badge bg-yellow-50 text-yellow-700">In production</span>
+                        {% elif demand.status == 'Completed' %}
+                        <span class="badge bg-green-50 text-green-700">Completed</span>
+                        {% elif demand.status == 'Rejected' %}
+                        <span class="badge bg-red-50 text-red-700">Rejected</span>
+                        {% elif demand.is_expired_without_quotes %}
+                        <span class="badge bg-red-50 text-red-700">No quotes &middot; overdue</span>
+                        {% elif demand.quote.count %}
+                        <span class="badge bg-accent-50 text-accent-700">Quotes ready</span>
+                        {% else %}
+                        <span class="badge bg-gray-100 text-gray-700">Collecting quotes</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-3 text-right">
+                        {% if not demand.status %}
+                        <a href="{% url 'edit-requirement' demand.pk %}" class="text-xs text-gray-500 hover:text-gray-700">Edit</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if is_paginated %}
+    <div class="flex items-center justify-between border-t border-gray-100 px-6 py-4 text-sm">
+        <p class="text-gray-500">Showing {{ object_list|length }} RFQ{{ object_list|length|pluralize }}</p>
+        <div class="flex gap-2">
+            {% if page_obj.has_previous %}
+            <a class="btn-outline" href="?page={{ page_obj.previous_page_number }}&tab={{ tab }}{% if q %}&q={{ q }}{% endif %}">&lsaquo;</a>
+            {% endif %}
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                <span class="btn-primary">{{ num }}</span>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <a class="btn-outline" href="?page={{ num }}&tab={{ tab }}{% if q %}&q={{ q }}{% endif %}">{{ num }}</a>
                 {% endif %}
-                {% if request.user.role == 'manufacturer' and demand.status == 'Approved' %}
-                <a href="{% url 'requirement-update-status' demand.pk 'Production' %}" class="text-xs text-brand-600 hover:underline">+ Start production</a>
-                {% elif request.user.role == 'manufacturer' and demand.status == 'Production' %}
-                <a href="{% url 'requirement-update-status' demand.pk 'Completed' %}" class="text-xs text-brand-600 hover:underline">+ Complete RFQ</a>
-                {% endif %}
-                {% if demand.user == request.user and not demand.status %}
-                <div class="flex gap-3">
-                    <a href="{% url 'edit-requirement' demand.pk %}" class="text-xs text-gray-500 hover:text-gray-700">Edit</a>
-                    <a href="{% url 'delete-requirement' demand.pk %}" class="text-xs text-red-600 hover:text-red-700">Delete</a>
-                </div>
-                {% endif %}
-            </div>
+            {% endfor %}
+            {% if page_obj.has_next %}
+            <a class="btn-outline" href="?page={{ page_obj.next_page_number }}&tab={{ tab }}{% if q %}&q={{ q }}{% endif %}">&rsaquo;</a>
+            {% endif %}
         </div>
     </div>
-    {% endfor %}
-</div>
-
-{% if is_paginated %}
-<div class="mt-6 flex flex-wrap gap-2">
-    {% if page_obj.has_previous %}
-    <a class="btn-secondary" href="?page=1{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}">First</a>
-    <a class="btn-secondary" href="?page={{ page_obj.previous_page_number }}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}">Previous</a>
     {% endif %}
-    {% for num in page_obj.paginator.page_range %}
-        {% if page_obj.number == num %}
-        <span class="btn-primary">{{ num }}</span>
-        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-        <a class="btn-secondary" href="?page={{ num }}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}">{{ num }}</a>
-        {% endif %}
-    {% endfor %}
-    {% if page_obj.has_next %}
-    <a class="btn-secondary" href="?page={{ page_obj.next_page_number }}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}">Next</a>
-    <a class="btn-secondary" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}">Last</a>
+    {% else %}
+    <div class="p-10 text-center text-sm text-gray-500">No RFQs in this tab. <a href="{% url 'new-requirement' %}" class="font-bold text-accent-500 hover:text-accent-600">Create one &rarr;</a></div>
     {% endif %}
 </div>
-{% endif %}
-
-{% else %}
-<div class="card text-center text-gray-500">No requirements found.</div>
-{% endif %}
-{% endblock content %}
+{% endblock %}

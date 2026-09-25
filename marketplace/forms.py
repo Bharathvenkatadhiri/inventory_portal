@@ -1,7 +1,10 @@
+import os
+
 from django import forms
+from django.conf import settings
 from django.forms import formset_factory, inlineformset_factory
 
-from .models import Requirement, RequirementPart, Quote, Order, ProductionUpdate, RequirementQuestion
+from .models import Requirement, RequirementPart, Quote, Order, ProductionUpdate, Message, AmendmentResponse
 
 
 class SelectRequirement(forms.ModelForm):
@@ -14,20 +17,18 @@ class SelectRequirement(forms.ModelForm):
         for field_name in self.fields:
             self.fields[field_name].widget.attrs.update({'class': 'field-input'})
 
-        if self.instance and self.instance.is_deleted:
-            self.fields['title'].widget.attrs.update({'disabled': 'disabled'})
-
     class Meta:
         model = Requirement
+        # `user`, `is_deleted` and `parts` are set by the views, never taken
+        # from posted data: they used to be hidden fields, so a crafted POST
+        # could create or reassign an RFQ as another user.
         fields = [
-            'user', 'title', 'nda_required', 'quote_currency', 'request_reason', 'parts',
-            'end_date', 'industry', 'is_deleted', 'rfq_desc', 'file'
+            'title', 'nda_required', 'quote_currency', 'request_reason',
+            'end_date', 'industry', 'rfq_desc', 'file'
         ]
         widgets = {
             'end_date': forms.DateInput(attrs={'type': 'date', 'class': 'field-input'}),
             'nda_required': forms.Select(choices=[(True, 'Yes'), (False, 'No')]),
-            'is_deleted': forms.HiddenInput(),
-            'user': forms.HiddenInput(),
         }
 
 
@@ -106,10 +107,74 @@ class ProductionUpdateForm(forms.ModelForm):
         }
 
 
-class RequirementQuestionForm(forms.ModelForm):
+MESSAGE_ATTACHMENT_EXTENSIONS = {
+    '.pdf', '.png', '.jpg', '.jpeg', '.step', '.stp', '.iges', '.igs', '.stl', '.dxf', '.dwg',
+    '.xlsx', '.xls', '.csv', '.docx', '.doc', '.txt', '.zip',
+}
+
+
+class MessageForm(forms.ModelForm):
     class Meta:
-        model = RequirementQuestion
-        fields = ['question']
+        model = Message
+        fields = ['body', 'attachment']
         widgets = {
-            'question': forms.TextInput(attrs={'class': 'field-input', 'placeholder': 'e.g. Is a clear anodize acceptable if black is delayed?'}),
+            'body': forms.Textarea(attrs={'class': 'field-input', 'rows': 2, 'placeholder': 'Write a message...'}),
         }
+
+    def clean_attachment(self):
+        attachment = self.cleaned_data.get('attachment')
+        if not attachment:
+            return attachment
+        ext = os.path.splitext(attachment.name)[1].lower()
+        if ext not in MESSAGE_ATTACHMENT_EXTENSIONS:
+            raise forms.ValidationError("That file type isn't supported. Allowed: " + ", ".join(sorted(MESSAGE_ATTACHMENT_EXTENSIONS)))
+        if attachment.size > settings.MESSAGE_ATTACHMENT_MAX_BYTES:
+            limit_mb = settings.MESSAGE_ATTACHMENT_MAX_BYTES // (1024 * 1024)
+            raise forms.ValidationError(f"Attachments can be up to {limit_mb} MB.")
+        return attachment
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if not (cleaned_data.get('body') or '').strip() and not cleaned_data.get('attachment'):
+            raise forms.ValidationError("Write a message or attach a file.")
+        return cleaned_data
+
+    def save(self, commit=True):
+        message = super().save(commit=False)
+        if message.attachment:
+            upload = self.cleaned_data['attachment']
+            message.attachment_name = upload.name[:255]
+            message.attachment_content_type = (getattr(upload, 'content_type', '') or 'application/octet-stream')[:100]
+            message.attachment_size = upload.size
+        if commit:
+            message.save()
+        return message
+
+
+class AmendmentAcceptForm(forms.ModelForm):
+    """Supplier accepts a buyer's RFQ changes by re-pricing their quote.
+    Pre-filled from the current quote; nothing on the quote changes until
+    the buyer accepts this pricing."""
+
+    class Meta:
+        model = AmendmentResponse
+        fields = ['quote_price', 'tooling_cost', 'lead_time_value', 'lead_time_unit', 'payment_terms', 'valid_until', 'supplier_note']
+        labels = {'quote_price': 'Unit price', 'tooling_cost': 'Tooling / setup', 'lead_time_value': 'Lead time', 'supplier_note': 'Note to buyer'}
+        widgets = {
+            'quote_price': forms.NumberInput(attrs={'class': 'field-input', 'step': '0.01'}),
+            'tooling_cost': forms.NumberInput(attrs={'class': 'field-input', 'step': '0.01'}),
+            'lead_time_value': forms.NumberInput(attrs={'class': 'field-input'}),
+            'lead_time_unit': forms.Select(attrs={'class': 'field-input'}),
+            'payment_terms': forms.Select(attrs={'class': 'field-input'}),
+            'valid_until': forms.DateInput(attrs={'type': 'date', 'class': 'field-input'}),
+            'supplier_note': forms.Textarea(attrs={'class': 'field-input', 'rows': 2, 'placeholder': 'Optional: what changed in your pricing'}),
+        }
+
+    def __init__(self, *args, quote=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['quote_price'].required = True
+        self.fields['tooling_cost'].required = True
+        self.fields['lead_time_unit'].required = True
+        if quote is not None and not self.is_bound:
+            for field in AmendmentResponse.PRICING_FIELDS:
+                self.initial[field] = getattr(quote, field)

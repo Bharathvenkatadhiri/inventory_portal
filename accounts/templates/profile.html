@@ -1,239 +1,87 @@
-{% extends "base.html" %}
-{% block title %}Profile{% endblock title %}
-{% block content %}
-<div class="flex items-center justify-between mb-6">
-    <h1 class="text-xl font-semibold text-gray-900">Profile</h1>
+{% extends "dashboard_base.html" %}
+{% block title %}Settings — ManufactureHub{% endblock %}
+{% block page_header %}
+<div class="mb-6">
+    <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">Settings</h1>
+    <p class="mt-1 text-sm text-gray-500">Manage your profile, company and plan.</p>
 </div>
+{% endblock %}
+{% block content %}
+<div class="grid gap-6 lg:grid-cols-[220px_1fr]">
+    <nav class="card h-fit space-y-1 p-3">
+        <a href="?tab=profile" class="block rounded-lg px-3 py-2 text-sm font-bold {% if tab == 'profile' %}bg-accent-50 text-accent-700{% else %}text-gray-600 hover:bg-gray-50{% endif %}">Profile</a>
+        <a href="?tab=company" class="block rounded-lg px-3 py-2 text-sm font-bold {% if tab == 'company' %}bg-accent-50 text-accent-700{% else %}text-gray-600 hover:bg-gray-50{% endif %}">Company</a>
+        <a href="?tab=billing" class="block rounded-lg px-3 py-2 text-sm font-bold {% if tab == 'billing' %}bg-accent-50 text-accent-700{% else %}text-gray-600 hover:bg-gray-50{% endif %}">Plan &amp; billing</a>
+    </nav>
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <div class="lg:col-span-2 space-y-6">
-        <div class="card">
-            <h6 class="text-sm font-semibold text-gray-900 mb-4">General</h6>
-            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                <div>
-                    <dt class="text-gray-500">First Name</dt>
-                    <dd class="text-gray-900">{{ request.user.first_name }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">Last Name</dt>
-                    <dd class="text-gray-900">{{ request.user.last_name }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">Username</dt>
-                    <dd class="text-gray-900">{{ request.user.username }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">Email</dt>
-                    <dd class="text-gray-900">{{ request.user.email }}</dd>
-                </div>
-            </dl>
-        </div>
-
+    <div class="space-y-6">
+        {% if tab == 'company' %}
         {% if supplier %}
         <div class="card">
-            <div class="flex items-center justify-between mb-4">
-                <h6 class="text-sm font-semibold text-gray-900">Manufacturer Information</h6>
-                <a href="{% url 'edit-supplier' supplier.pk %}" class="text-sm text-brand-600 hover:underline">Edit</a>
+            <div class="mb-4 flex items-center justify-between">
+                <h2 class="text-lg font-bold text-navy-900">Company</h2>
+                <a href="{% url 'company-profile' %}" class="text-sm font-bold text-accent-500 hover:text-accent-600">Manage full company profile &rarr;</a>
             </div>
-            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+            <dl class="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
+                <div><dt class="text-gray-500">Company name</dt><dd class="text-navy-900">{{ supplier.companyname|default:"—" }}</dd></div>
                 <div>
-                    <dt class="text-gray-500">Company Name</dt>
-                    <dd class="text-gray-900">{{ supplier.companyname }}</dd>
+                    <dt class="text-gray-500">GST verification</dt>
+                    <dd class="text-navy-900">
+                        {% if supplier.company.verification_status == 'verified' %}<span class="badge bg-green-50 text-green-700">Verified</span>{% else %}{{ supplier.company.get_verification_status_display|default:"Not verified" }}{% endif %}
+                    </dd>
                 </div>
-                <div>
-                    <dt class="text-gray-500">Phone</dt>
-                    <dd class="text-gray-900">{{ supplier.phone }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">Address</dt>
-                    <dd class="text-gray-900">{{ supplier.address }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">City</dt>
-                    <dd class="text-gray-900">{{ supplier.city }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">State</dt>
-                    <dd class="text-gray-900">{{ supplier.state }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">Country</dt>
-                    <dd class="text-gray-900">{{ supplier.country }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">Activity Type</dt>
-                    <dd class="text-gray-900">{{ supplier.get_activity_type_display }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">Company Street</dt>
-                    <dd class="text-gray-900">{{ supplier.company_street|default:"—" }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">Company Postal Code</dt>
-                    <dd class="text-gray-900">{{ supplier.company_postalcode|default:"—" }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">Company City</dt>
-                    <dd class="text-gray-900">{{ supplier.company_city|default:"—" }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">Company URL</dt>
-                    <dd class="text-gray-900">{{ supplier.company_url|default:"—" }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">Production Area</dt>
-                    <dd class="text-gray-900">{{ supplier.production_area|default:"—" }} sq.ft</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">Manufacturing Competency 1</dt>
-                    <dd class="text-gray-900">{{ supplier.get_manufacturing_competency1_display|default:"—" }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">Manufacturing Competency 2</dt>
-                    <dd class="text-gray-900">{{ supplier.get_manufacturing_competency2_display|default:"—" }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">Info Source</dt>
-                    <dd class="text-gray-900">{{ supplier.get_info_source_display|default:"—" }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">Amount of Employees</dt>
-                    <dd class="text-gray-900">{{ supplier.get_amount_of_employees_display }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">Turnover per Year</dt>
-                    <dd class="text-gray-900">{{ supplier.get_turnover_per_year_display }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">Certificates</dt>
-                    <dd class="text-gray-900">{{ supplier.get_certificates_display|default:"—" }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">Created At</dt>
-                    <dd class="text-gray-900">{{ supplier.created_at }}</dd>
-                </div>
+                <div><dt class="text-gray-500">Address</dt><dd class="text-navy-900">{{ supplier.address|default:"—" }}</dd></div>
+                <div><dt class="text-gray-500">City</dt><dd class="text-navy-900">{{ supplier.city }}</dd></div>
+                <div><dt class="text-gray-500">State</dt><dd class="text-navy-900">{{ supplier.state }}</dd></div>
+                <div><dt class="text-gray-500">Country</dt><dd class="text-navy-900">{{ supplier.country }}</dd></div>
+                <div><dt class="text-gray-500">Phone</dt><dd class="text-navy-900">{{ supplier.phone }}</dd></div>
+                <div><dt class="text-gray-500">Email</dt><dd class="text-navy-900">{{ supplier.email }}</dd></div>
             </dl>
         </div>
+        {% else %}
+        <div class="card text-sm text-gray-500">Your manufacturer profile isn't set up yet.</div>
+        {% endif %}
 
-        {% if supplier.company %}
+        {% elif tab == 'billing' %}
         <div class="card">
-            <div class="flex items-center justify-between mb-4">
-                <h6 class="text-sm font-semibold text-gray-900">GST Verification</h6>
-                {% if supplier.company.verification_status == 'verified' %}
-                <span class="badge bg-green-50 text-green-700">Verified</span>
-                {% elif supplier.company.verification_status == 'manual_review' %}
-                <span class="badge bg-amber-50 text-amber-700">Manual Review</span>
-                {% else %}
-                <span class="badge bg-red-50 text-red-700">{{ supplier.company.get_verification_status_display }}</span>
+            <div class="mb-4 flex items-center justify-between">
+                <h2 class="text-lg font-bold text-navy-900">Plan &amp; billing</h2>
+                {% if subscription %}
+                <span class="badge {% if subscription.is_active %}bg-green-50 text-green-700{% else %}bg-gray-100 text-gray-600{% endif %}">{% if subscription.is_active %}Active{% else %}Inactive{% endif %}</span>
                 {% endif %}
             </div>
-            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                <div>
-                    <dt class="text-gray-500">Legal Name</dt>
-                    <dd class="text-gray-900">{{ supplier.company.legal_name }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">Trade Name</dt>
-                    <dd class="text-gray-900">{{ supplier.company.trade_name|default:"—" }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">GSTIN</dt>
-                    <dd class="text-gray-900">{{ supplier.company.gstin }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">GST Status</dt>
-                    <dd class="text-gray-900">{{ supplier.company.get_gst_status_display|default:"—" }}</dd>
-                </div>
-                <div class="sm:col-span-2">
-                    <dt class="text-gray-500">Registered Address</dt>
-                    <dd class="text-gray-900">{{ supplier.company.registered_address|default:"—" }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">State</dt>
-                    <dd class="text-gray-900">{{ supplier.company.state|default:"—" }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">Entity Type</dt>
-                    <dd class="text-gray-900">{{ supplier.company.get_entity_type_display|default:"—" }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">CIN</dt>
-                    <dd class="text-gray-900">{{ supplier.company.cin|default:"—" }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">Verified At</dt>
-                    <dd class="text-gray-900">{{ supplier.company.gst_verified_at|default:"—" }}</dd>
-                </div>
-            </dl>
+            {% if subscription and subscription.end_date %}
+            <p class="mb-4 text-xs text-gray-400">Renews / expires {{ subscription.end_date|date:"d M Y" }}</p>
+            {% endif %}
+            {% include "_subscription_plans.html" with next=request.get_full_path %}
         </div>
-        {% endif %}
-        {% endif %}
 
-        {% if customer %}
+        {% else %}
         <div class="card">
-            <div class="flex items-center justify-between mb-4">
-                <h6 class="text-sm font-semibold text-gray-900">Business Information</h6>
-                <a href="{% url 'edit-customer' customer.pk %}" class="text-sm text-brand-600 hover:underline">Edit</a>
+            <h2 class="text-lg font-bold text-navy-900 mb-4">Profile</h2>
+            <div class="flex items-center gap-4">
+                <span class="flex h-16 w-16 items-center justify-center rounded-full bg-navy-900 text-xl font-bold text-white">
+                    {{ request.user.first_name|slice:":1"|upper }}{{ request.user.last_name|slice:":1"|upper }}
+                </span>
+                <div>
+                    <p class="text-lg font-bold text-navy-900">{{ request.user.get_full_name|default:request.user.username }}</p>
+                    <p class="text-sm text-gray-500">{{ request.user.get_role_display|default:request.user.role }}{% if customer %} &middot; {{ customer.Name }}{% elif supplier %} &middot; {{ supplier.companyname }}{% endif %}</p>
+                </div>
             </div>
-            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                <div>
-                    <dt class="text-gray-500">Name</dt>
-                    <dd class="text-gray-900">{{ customer.Name }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">Type of Business</dt>
-                    <dd class="text-gray-900">{{ customer.get_type_of_business_display }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">Address</dt>
-                    <dd class="text-gray-900">{{ customer.Address|default:"—" }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">City</dt>
-                    <dd class="text-gray-900">{{ customer.city }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">State</dt>
-                    <dd class="text-gray-900">{{ customer.state }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">Country</dt>
-                    <dd class="text-gray-900">{{ customer.country }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">Phone</dt>
-                    <dd class="text-gray-900">{{ customer.phone }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">Email</dt>
-                    <dd class="text-gray-900">{{ customer.email }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">EORI Number</dt>
-                    <dd class="text-gray-900">{{ customer.EORI_number }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">VAT Number</dt>
-                    <dd class="text-gray-900">{{ customer.VAT_number }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">Industry</dt>
-                    <dd class="text-gray-900">{{ customer.get_industry_Choice_display }}</dd>
-                </div>
-                <div>
-                    <dt class="text-gray-500">Created At</dt>
-                    <dd class="text-gray-900">{{ customer.created_at }}</dd>
-                </div>
+            <dl class="mt-6 grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
+                <div><dt class="text-gray-500">First name</dt><dd class="text-navy-900">{{ request.user.first_name }}</dd></div>
+                <div><dt class="text-gray-500">Last name</dt><dd class="text-navy-900">{{ request.user.last_name }}</dd></div>
+                <div><dt class="text-gray-500">Username</dt><dd class="text-navy-900">{{ request.user.username }}</dd></div>
+                <div><dt class="text-gray-500">Work email</dt><dd class="text-navy-900">{{ request.user.email }}</dd></div>
+                {% if customer %}<div><dt class="text-gray-500">Phone</dt><dd class="text-navy-900">{{ customer.phone }}</dd></div>{% elif supplier %}<div><dt class="text-gray-500">Phone</dt><dd class="text-navy-900">{{ supplier.phone }}</dd></div>{% endif %}
             </dl>
         </div>
         {% endif %}
-    </div>
 
-    <div>
         <div class="card">
-            <h6 class="text-sm font-semibold text-gray-900 mb-2">Still can't find what you're looking for?</h6>
-            <p class="text-sm text-gray-600 mb-4">Call us: <a href="tel:0000000000" class="text-brand-600 hover:underline">(91) 999-9999-99</a></p>
-            <a href="#" class="btn-secondary">Contact Us</a>
+            <h2 class="text-sm font-bold text-navy-900 mb-2">Still can't find what you're looking for?</h2>
+            <p class="mb-4 text-sm text-gray-600">Call us: <a href="tel:0000000000" class="text-accent-500 hover:underline">(91) 999-9999-99</a></p>
+            <a href="{% url 'contact' %}" class="btn-outline">Contact us</a>
         </div>
     </div>
 </div>

@@ -1,0 +1,10 @@
+{% include "live/_topbar_poller.html" %}
+{% include "_notification_bell.html" with oob=True %}
+<span hx-swap-oob="innerHTML:.live-badge-messages">{% include "_live_badge.html" with count=sidebar_unread_message_threads %}</span>
+{% if request.user.role == 'manufacturer' %}
+<span hx-swap-oob="innerHTML:.live-badge-new-rfqs">{% include "_live_badge.html" with count=sidebar_new_rfq_count %}</span>
+<span hx-swap-oob="innerHTML:.live-badge-active-orders">{% include "_live_badge.html" with count=sidebar_active_orders_count muted=True %}</span>
+{% else %}
+<span hx-swap-oob="innerHTML:.live-badge-open-rfqs">{% include "_live_badge.html" with count=sidebar_open_rfq_count muted=True %}</span>
+<span hx-swap-oob="innerHTML:.live-badge-quotes">{% include "_live_badge.html" with count=sidebar_quotes_to_review_count %}</span>
+{% endif %}

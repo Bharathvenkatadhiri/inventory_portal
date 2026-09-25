@@ -1,32 +1,52 @@
-{% extends "base.html" %}
+{% extends "dashboard_base.html" %}
 {% load custom_filters %}
 {% block title %}{{ demand.title }} — ManufactureHub{% endblock %}
-{% block content %}
-
-<div class="flex items-start justify-between gap-4 mb-6">
+{% block page_header %}
+<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
     <div>
-        <h1 class="text-2xl font-semibold text-gray-900">{{ demand.title }}</h1>
-        <p class="text-sm text-gray-500 mt-1">Requested by {{ demand.user.first_name|default:demand.user.email }}</p>
+        <div class="flex flex-wrap items-center gap-2">
+            <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">{{ demand.title }}</h1>
+            {% if is_manufacturer and demand.status %}
+                {% if my_quote.is_selected %}
+                <span class="badge bg-green-50 text-green-700">Awarded to you</span>
+                {% elif my_quote %}
+                <span class="badge bg-red-50 text-red-700">Not selected</span>
+                {% else %}
+                <span class="badge bg-gray-100 text-gray-700">Closed &middot; awarded to another manufacturer</span>
+                {% endif %}
+            {% elif demand.status == 'Approved' %}
+            <span class="badge bg-green-50 text-green-700">Awarded</span>
+            {% elif demand.status == 'Production' %}
+            <span class="badge bg-yellow-50 text-yellow-700">In production</span>
+            {% elif demand.status == 'Completed' %}
+            <span class="badge bg-green-50 text-green-700">Completed</span>
+            {% elif demand.status == 'Rejected' %}
+            <span class="badge bg-red-50 text-red-700">Rejected</span>
+            {% elif quotes %}
+            <span class="badge bg-accent-50 text-accent-700">Quotes ready</span>
+            {% else %}
+            <span class="badge bg-gray-100 text-gray-700">Collecting quotes</span>
+            {% endif %}
+        </div>
+        <div class="mt-2 flex flex-wrap gap-2 text-sm text-gray-500">
+            <span>RFQ-{{ demand.pk }}</span>
+            {% if demanddetails %}<span>&middot; {{ demanddetails.first.technology }}</span>{% endif %}
+            <span>&middot; {{ demand.total_parts_quantity }} pcs</span>
+            {% if demand.end_date %}<span>&middot; Quotes due {{ demand.end_date|date:"d M Y" }}</span>{% endif %}
+        </div>
     </div>
-    <div class="flex flex-col items-end gap-2">
-        {% if demand.status == 'Approved' %}
-        <span class="badge bg-green-50 text-green-700">Approved</span>
-        {% elif demand.status == 'Production' %}
-        <span class="badge bg-yellow-50 text-yellow-700">In Production</span>
-        {% elif demand.status == 'Completed' %}
-        <span class="badge bg-green-50 text-green-700">Completed</span>
-        {% elif demand.status == 'Rejected' %}
-        <span class="badge bg-red-50 text-red-700">Rejected</span>
-        {% else %}
-        <span class="badge bg-gray-100 text-gray-700">Submitted</span>
+    <div class="flex shrink-0 flex-col items-end gap-2">
+        {% if selected_quote and selected_quote.supplier.user_id == request.user.id %}
+            {% if demand.status == 'Approved' or demand.status == 'Production' %}
+            <form method="post" action="{% if demand.status == 'Approved' %}{% url 'requirement-update-status' demand.pk 'Production' %}{% else %}{% url 'requirement-update-status' demand.pk 'Completed' %}{% endif %}">
+                {% csrf_token %}
+                <button type="submit" class="btn-secondary text-xs">{% if demand.status == 'Approved' %}Start production{% else %}Complete RFQ{% endif %}</button>
+            </form>
+            {% endif %}
         {% endif %}
-
-        {% if request.user.role == 'manufacturer' and demand.status == 'Approved' %}
-        <a href="{% url 'requirement-update-status' demand.pk 'Production' %}" class="btn-secondary text-xs">Start production</a>
-        {% elif request.user.role == 'manufacturer' and demand.status == 'Production' %}
-        <a href="{% url 'requirement-update-status' demand.pk 'Completed' %}" class="btn-secondary text-xs">Complete RFQ</a>
+        {% if demand.orders.exists and request.user.id == demand.user_id or demand.orders.exists and selected_quote.supplier.user_id == request.user.id %}
+        <a href="{% url 'order-detail' demand.orders.first.billno %}" class="text-sm font-bold text-accent-500 hover:text-accent-600">View order &rarr;</a>
         {% endif %}
-
         {% if demand.user == request.user and not demand.status %}
         <div class="flex gap-3">
             <a href="{% url 'edit-requirement' demand.pk %}" class="text-sm text-gray-500 hover:text-gray-700">Edit</a>
@@ -35,45 +55,64 @@
         {% endif %}
     </div>
 </div>
+{% endblock %}
+{% block content %}
+{% if expired_no_quotes %}
+<div class="mb-6 rounded-xl border border-red-200 bg-red-50 p-4">
+    <p class="font-bold text-red-800">No quotes by the due date</p>
+    <p class="mt-1 text-sm text-red-700">Quotes were due {{ demand.end_date|date:"d M Y" }} and no supplier quoted. Move the due date to reopen this RFQ to suppliers, or delete it.</p>
+    <div class="mt-3 flex flex-wrap items-end gap-3">
+        <form method="post" action="{% url 'requirement-extend' demand.pk %}" class="flex flex-wrap items-end gap-2">
+            {% csrf_token %}
+            <div>
+                <label for="extend-date" class="field-label">New due date</label>
+                <input type="date" id="extend-date" name="end_date" required min="{% now 'Y-m-d' %}" class="field-input bg-white">
+            </div>
+            <button type="submit" class="btn-primary">Reopen with new date</button>
+        </form>
+        <a href="{% url 'delete-requirement' demand.pk %}" class="btn-outline bg-white text-red-600 hover:border-red-600">Delete RFQ</a>
+    </div>
+</div>
+{% endif %}
 
 <div class="grid gap-6 lg:grid-cols-3 mb-6">
     <div class="card lg:col-span-2">
-        <h2 class="font-semibold text-gray-900 mb-4">Requirement details</h2>
+        <h2 class="text-lg font-bold text-navy-900 mb-4">Requirement details</h2>
         <dl class="grid grid-cols-2 gap-4 text-sm">
             <div>
                 <dt class="text-gray-500">Description</dt>
-                <dd class="text-gray-900">{{ demand.rfq_desc }}</dd>
+                <dd class="text-navy-900">{{ demand.rfq_desc }}</dd>
             </div>
             <div>
                 <dt class="text-gray-500">Currency</dt>
-                <dd class="text-gray-900">{{ demand.quote_currency }}</dd>
+                <dd class="text-navy-900">{{ demand.quote_currency }}</dd>
             </div>
             <div>
                 <dt class="text-gray-500">Reason for request</dt>
-                <dd class="text-gray-900">{{ demand.get_request_reason_display }}</dd>
+                <dd class="text-navy-900">{{ demand.get_request_reason_display }}</dd>
             </div>
             <div>
                 <dt class="text-gray-500">Parts</dt>
-                <dd class="text-gray-900">{{ demand.parts }}</dd>
+                <dd class="text-navy-900">{{ demand.requirement_parts.count }} part{{ demand.requirement_parts.count|pluralize }}, {{ demand.total_parts_quantity }} pcs total</dd>
             </div>
             <div>
-                <dt class="text-gray-500">End date</dt>
-                <dd class="text-gray-900">{{ demand.end_date|date:"M j, Y"|default:"—" }}</dd>
+                <dt class="text-gray-500">Quotes due</dt>
+                <dd class="text-navy-900">{{ demand.end_date|date:"M j, Y"|default:"—" }}</dd>
             </div>
             <div>
                 <dt class="text-gray-500">Industry</dt>
-                <dd class="text-gray-900">{{ demand.industry|default:"—" }}</dd>
+                <dd class="text-navy-900">{{ demand.industry|default:"—" }}</dd>
             </div>
             <div>
                 <dt class="text-gray-500">NDA required</dt>
-                <dd class="text-gray-900">{{ demand.nda_required|yesno:"Yes,No" }}</dd>
+                <dd class="text-navy-900">{{ demand.nda_required|yesno:"Yes,No" }}</dd>
             </div>
         </dl>
     </div>
     <div class="card">
-        <h2 class="font-semibold text-gray-900 mb-4">Master file</h2>
+        <h2 class="text-lg font-bold text-navy-900 mb-4">Master file</h2>
         {% if demand.file %}
-        <a href="{{ demand.file.url }}" target="_blank" class="btn-secondary w-full justify-center">Download file</a>
+        <a href="{{ demand.file.url }}" target="_blank" class="btn-outline w-full justify-center">Download file</a>
         {% else %}
         <p class="text-sm text-gray-500">No file attached.</p>
         {% endif %}
@@ -81,7 +120,7 @@
 </div>
 
 <div class="card mb-6">
-    <h2 class="font-semibold text-gray-900 mb-4">Parts</h2>
+    <h2 class="text-lg font-bold text-navy-900 mb-4">Parts</h2>
     {% if demanddetails %}
     <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200 text-sm">
@@ -98,14 +137,14 @@
             <tbody class="divide-y divide-gray-100">
                 {% for part in demanddetails %}
                 <tr>
-                    <td class="py-2 pr-4 text-gray-900">{{ part.part_name }}</td>
+                    <td class="py-2 pr-4 text-navy-900">{{ part.part_name }}</td>
                     <td class="py-2 pr-4 text-gray-600">{{ part.Part_desc|default:"—" }}</td>
                     <td class="py-2 pr-4 text-gray-600">{{ part.technology }}</td>
                     <td class="py-2 pr-4 text-gray-600">{{ part.Material }}</td>
                     <td class="py-2 pr-4 text-gray-600">{{ part.quantity }}</td>
                     <td class="py-2 pr-4">
                         {% if part.file %}
-                        <a href="{{ part.file.url }}" target="_blank" class="text-brand-600 hover:underline">Download</a>
+                        <a href="{{ part.file.url }}" target="_blank" class="text-accent-500 hover:underline">Download</a>
                         {% else %}
                         <span class="text-gray-400">—</span>
                         {% endif %}
@@ -121,5 +160,15 @@
 </div>
 
 {% include "requirement/_quotes_section.html" %}
+
+<div class="mt-6 scroll-mt-6">
+    {% include "requirement/_change_requests.html" %}
+</div>
+
+{% if is_buyer or is_manufacturer %}
+<div class="mt-6 scroll-mt-6" id="conversations">
+    {% include "requirement/_conversation_panel.html" %}
+</div>
+{% endif %}
 
 {% endblock content %}

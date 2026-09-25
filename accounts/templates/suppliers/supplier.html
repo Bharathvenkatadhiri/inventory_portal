@@ -7,8 +7,14 @@
         <p class="text-sm text-gray-500">{{ supplier.get_activity_type_display }} &middot; created {{ supplier.created_at|date:"Y-m-d" }}</p>
     </div>
     <div class="flex gap-2">
+        {% if request.user.is_staff or supplier.user_id == request.user.id %}
         <a href="{% url 'edit-supplier' supplier.pk %}" class="btn-secondary">Edit</a>
+        {% endif %}
+        {% if request.user.is_staff %}
         <a href="{% url 'suppliers-list' %}" class="btn-secondary">Back to list</a>
+        {% else %}
+        <a href="{% url 'supplier-directory' %}" class="btn-secondary">Back to suppliers</a>
+        {% endif %}
     </div>
 </div>
 

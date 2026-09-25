@@ -1,0 +1,176 @@
+{% extends "dashboard_base.html" %}
+{% load custom_filters %}
+{% block title %}Dashboard — ManufactureHub{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div>
+        <h1 class="text-2xl font-extrabold tracking-tight text-navy-900"><span id="greeting-word">{{ greeting }}</span>, {{ request.user.first_name }}</h1>
+        <p class="mt-1 text-sm text-gray-500">Here's what's moving across your RFQs and orders today.</p>
+    </div>
+    <script>
+        (function () {
+            var el = document.getElementById('greeting-word');
+            if (!el) return;
+            var hour = new Date().getHours();
+            el.textContent = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+        })();
+    </script>
+    <a href="{% url 'supplier-directory' %}" class="btn-outline shrink-0">
+        <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="7" width="18" height="14" rx="1"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+        Find suppliers
+    </a>
+</div>
+{% endblock %}
+{% block content %}
+{% if not customer %}
+<div class="card">
+    <p class="text-gray-600">Your buyer profile isn't set up yet. Please contact support to finish setting up your account.</p>
+    <a href="{% url 'contact' %}" class="btn-primary mt-4 inline-flex">Contact support</a>
+</div>
+{% else %}
+
+<div class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="card">
+        <div class="flex items-start justify-between">
+            <p class="text-sm text-gray-500">Open RFQs</p>
+            <span class="flex h-8 w-8 items-center justify-center rounded-full bg-accent-50 text-accent-500">
+                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v12H7l-3 3z"/></svg>
+            </span>
+        </div>
+        <p class="mt-2 text-3xl font-extrabold text-navy-900">{{ stat_open_rfqs }}</p>
+    </div>
+    <div class="card">
+        <div class="flex items-start justify-between">
+            <p class="text-sm text-gray-500">Quotes to review</p>
+            <span class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-500">
+                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.6 11.1L12.9 3.4a2 2 0 00-1.4-.6H4.9a1 1 0 00-1 1v6.6c0 .5.2 1 .6 1.4l7.7 7.7a2 2 0 002.8 0l5.6-5.6a2 2 0 000-2.8z"/><circle cx="8" cy="8" r="1.4"/></svg>
+            </span>
+        </div>
+        <p class="mt-2 text-3xl font-extrabold text-navy-900">{{ stat_quotes_to_review_count }}</p>
+        <p class="text-xs text-gray-500">Worth {{ stat_quotes_to_review_value|money_totals }} in total</p>
+    </div>
+    <div class="card">
+        <div class="flex items-start justify-between">
+            <p class="text-sm text-gray-500">Active orders</p>
+            <span class="flex h-8 w-8 items-center justify-center rounded-full bg-green-50 text-green-600">
+                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg>
+            </span>
+        </div>
+        <p class="mt-2 text-3xl font-extrabold text-navy-900">{{ stat_active_orders }}</p>
+    </div>
+    <div class="card">
+        <div class="flex items-start justify-between">
+            <p class="text-sm text-gray-500">Spend this quarter</p>
+            <span class="flex h-8 w-8 items-center justify-center rounded-full bg-navy-50 text-navy-900">
+                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+            </span>
+        </div>
+        <p class="mt-2 text-3xl font-extrabold text-navy-900">{{ stat_spend_this_quarter|money_totals }}</p>
+        <p class="text-xs text-gray-500">Across {{ stat_suppliers_this_quarter }} supplier{{ stat_suppliers_this_quarter|pluralize }}</p>
+    </div>
+</div>
+
+<div class="grid gap-6 lg:grid-cols-[1.7fr_1fr]">
+    <div class="card">
+        <div class="mb-4 flex items-center justify-between">
+            <h2 class="text-lg font-bold text-navy-900">Recent RFQs</h2>
+            <a href="{% url 'requirement-list' %}" class="text-sm font-bold text-accent-500 hover:text-accent-600">View all RFQs &rarr;</a>
+        </div>
+        {% if recent_requirements %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead>
+                    <tr class="border-b border-gray-100 text-xs uppercase tracking-wide text-gray-400">
+                        <th class="pb-2 font-semibold">Part</th>
+                        <th class="pb-2 font-semibold">Process</th>
+                        <th class="pb-2 font-semibold">Qty</th>
+                        <th class="pb-2 font-semibold">Quotes</th>
+                        <th class="pb-2 font-semibold">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for demand in recent_requirements %}
+                    <tr>
+                        <td class="py-3">
+                            <a href="{% url 'requirement' demand.pk %}" class="font-bold text-navy-900 hover:text-accent-500">{{ demand.title }}</a>
+                            <p class="text-xs text-gray-500">RFQ-{{ demand.pk }} &middot; {{ demand.created_at|date:"d M" }}</p>
+                        </td>
+                        <td class="py-3 text-gray-600">{{ demand.requirement_parts.first.technology|default:"—" }}</td>
+                        <td class="py-3 text-gray-600">{{ demand.total_parts_quantity }}</td>
+                        <td class="py-3 text-gray-600">{{ demand.quote.count }}</td>
+                        <td class="py-3">
+                            {% if demand.status == 'Approved' %}
+                            <span class="badge bg-green-50 text-green-700">Awarded</span>
+                            {% elif demand.status == 'Production' %}
+                            <span class="badge bg-yellow-50 text-yellow-700">In production</span>
+                            {% elif demand.status == 'Completed' %}
+                            <span class="badge bg-green-50 text-green-700">Completed</span>
+                            {% elif demand.status == 'Rejected' %}
+                            <span class="badge bg-red-50 text-red-700">Rejected</span>
+                            {% elif demand.is_expired_without_quotes %}
+                        <span class="badge bg-red-50 text-red-700">No quotes &middot; overdue</span>
+                        {% elif demand.quote.count %}
+                            <span class="badge bg-accent-50 text-accent-700">Quotes ready</span>
+                            {% else %}
+                            <span class="badge bg-gray-100 text-gray-700">Collecting quotes</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-sm text-gray-500">No RFQs yet. <a href="{% url 'new-requirement' %}" class="font-bold text-accent-500 hover:text-accent-600">Create your first one &rarr;</a></p>
+        {% endif %}
+    </div>
+
+    <div class="space-y-6">
+        {% if action_items %}
+        <div class="rounded-xl border border-accent-200 bg-accent-50 p-5">
+            <div class="mb-3 flex items-center gap-2">
+                <svg viewBox="0 0 24 24" class="h-5 w-5 text-accent-600" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>
+                <h2 class="text-lg font-bold text-navy-900">Action needed</h2>
+            </div>
+            <div class="space-y-4">
+                {% for item in action_items %}
+                <div{% if not forloop.first %} class="border-t border-accent-200 pt-4"{% endif %}>
+                    <p class="text-sm text-navy-900"><span class="font-bold">{{ item.title }}</span></p>
+                    <p class="mt-1 text-sm text-gray-600">{{ item.detail }}</p>
+                    <a href="{{ item.url }}" class="btn-primary mt-3 text-xs">{{ item.cta }}</a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="card">
+            <div class="mb-4 flex items-center justify-between">
+                <h2 class="text-lg font-bold text-navy-900">Orders in progress</h2>
+                <a href="{% url 'orders-list' %}" class="text-sm font-bold text-accent-500 hover:text-accent-600">All &rarr;</a>
+            </div>
+            {% if orders_in_progress %}
+            <ul class="space-y-4">
+                {% for order in orders_in_progress %}
+                <li>
+                    <div class="flex items-center justify-between text-sm">
+                        <a href="{% url 'order-detail' order.billno %}" class="font-bold text-navy-900 hover:text-accent-500">{{ order.requirement.title }}</a>
+                        <span class="text-xs text-gray-400">ORD-{{ order.billno }}</span>
+                    </div>
+                    <p class="text-xs text-gray-500">{{ order.get_production_stage_display }} &middot; {{ order.supplier.companyname|default:order.supplier }}{% if order.ship_by_date %} &middot; Due {{ order.ship_by_date|date:"d M" }}{% endif %}</p>
+                    <div class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+                        <div class="h-full rounded-full bg-accent-500" style="width: {{ order.production_progress_percent }}%"></div>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-sm text-gray-500">No orders in production yet.</p>
+            {% endif %}
+        </div>
+
+        {% include "_subscription_widget.html" %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

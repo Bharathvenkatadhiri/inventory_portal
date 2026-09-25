@@ -22,15 +22,31 @@
             <span class="badge bg-red-50 text-red-700">Lost</span>
             {% elif quote.is_draft %}
             <span class="badge bg-gray-100 text-gray-600">Draft</span>
+            {% elif quote.awaiting_revision %}
+            <span class="badge bg-blue-50 text-blue-700">Revision requested</span>
             {% else %}
             <span class="badge bg-yellow-50 text-yellow-700">Awaiting decision</span>
             {% endif %}
         </div>
         <p class="mt-3 text-2xl font-extrabold text-navy-900">{{ quote.requirement.quote_currency }} {{ quote.quote_price }}<span class="text-sm font-normal text-gray-400"> / unit</span></p>
         {% if quote.note %}<p class="mt-1 text-sm text-gray-500 line-clamp-2">{{ quote.note }}</p>{% endif %}
+        {% with change=quote.pending_amendment_response %}{% if change %}
+        <a href="{% url 'requirement' quote.requirement.pk %}#changes" class="mt-2 block rounded-md bg-blue-50 px-2.5 py-1.5 text-xs font-bold text-blue-800 hover:bg-blue-100">The buyer changed this RFQ &mdash; accept with new pricing or reject &rarr;</a>
+        {% endif %}{% endwith %}
+        {% if quote.awaiting_revision %}
+        <p class="mt-2 rounded-md bg-blue-50 px-2.5 py-1.5 text-xs text-blue-800"><span class="font-bold">Buyer asks:</span> {{ quote.revision_note }}</p>
+        <form method="post" action="{% url 'quote-decline-revision' quote.pk %}" class="mt-2">
+            {% csrf_token %}
+            <button type="submit" class="text-xs font-bold text-gray-500 hover:text-navy-900">Keep original quote</button>
+        </form>
+        {% endif %}
         <div class="mt-4 flex items-center justify-between border-t border-gray-100 pt-3">
-            <a href="{% url 'edit-quote' quote.pk %}" class="text-sm font-bold text-accent-500 hover:text-accent-600">Edit</a>
+            {% if not quote.is_selected and not quote.status %}
+            <a href="{% url 'edit-quote' quote.pk %}" class="text-sm font-bold text-accent-500 hover:text-accent-600">{% if quote.awaiting_revision %}Revise quote{% else %}Edit{% endif %}</a>
             <a href="{% url 'delete-quote' quote.pk %}" class="text-sm text-red-600 hover:underline">Delete</a>
+            {% else %}
+            <a href="{% url 'requirement' quote.requirement.pk %}" class="text-sm font-bold text-accent-500 hover:text-accent-600">View RFQ</a>
+            {% endif %}
         </div>
     </div>
     {% endfor %}

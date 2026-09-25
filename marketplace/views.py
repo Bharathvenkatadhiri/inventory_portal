@@ -1,7 +1,12 @@
+import datetime
 import logging
+import re
 
 from django.shortcuts import render, redirect, get_object_or_404
+from django.core.exceptions import PermissionDenied
+from django.http import FileResponse, Http404, HttpResponse
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic import (
     View,
     ListView,
@@ -13,6 +18,8 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.utils import timezone
 from django.conf import settings
+from django.db import transaction
+from django.db.models import Q
 from django.apps import apps
 from django_fsm import TransitionNotAllowed
 
@@ -21,11 +28,13 @@ from accounts.models import ManufacturerProfile, ConsumerProfile
 from . import services
 from .models import (
     Requirement, RequirementPart, Quote, Order,
-    QCChecklistItem, RequirementQuestion, RFQDecline,
+    RFQDecline,
+    MessageThread, Message,
+    RequirementAmendment, AmendmentResponse,
 )
 from .forms import (
     SelectRequirement, RequirementPartInlineFormSet, QuoteForm,
-    ShipmentForm, ProductionUpdateForm, RequirementQuestionForm,
+    ShipmentForm, ProductionUpdateForm, MessageForm, AmendmentAcceptForm,
 )
 
 model_str = settings.AUTH_USER_MODEL
@@ -113,6 +122,16 @@ class RequirementListView(LoginRequiredMixin, ListView):
                 queryset = queryset.filter(requirement_parts__technology=process).distinct()
         else:
             queryset = Requirement.objects.filter(user=user, is_deleted=False)
+            tab = self.request.GET.get('tab', 'all')
+            if tab == 'collecting':
+                queryset = queryset.filter(status__isnull=True, quote__isnull=True)
+            elif tab == 'ready':
+                queryset = queryset.filter(status__isnull=True, quote__isnull=False).distinct()
+            elif tab == 'awarded':
+                queryset = queryset.filter(status__in=['Approved', 'Production', 'Completed'])
+            search = self.request.GET.get('q', '')
+            if search:
+                queryset = queryset.filter(title__icontains=search)
         if industry_id:
             queryset = queryset.filter(industry_id=industry_id)
         if sort == 'date_asc':
@@ -168,20 +187,54 @@ class RequirementListView(LoginRequiredMixin, ListView):
                 match_map = services.bulk_match_percent(context['object_list'], supplier)
                 for requirement in context['object_list']:
                     requirement.match_percent = match_map.get(requirement.pk)
+        else:
+            own = Requirement.objects.filter(user=user, is_deleted=False)
+            context['tab'] = self.request.GET.get('tab', 'all')
+            context['q'] = self.request.GET.get('q', '')
+            context['tab_counts'] = {
+                'all': own.count(),
+                'collecting': own.filter(status__isnull=True, quote__isnull=True).count(),
+                'ready': own.filter(status__isnull=True, quote__isnull=False).distinct().count(),
+                'awarded': own.filter(status__in=['Approved', 'Production', 'Completed']).count(),
+            }
         return context
 
 
-class RequirementCreateView(SuccessMessageMixin, CreateView):
+def _own_open_requirement(request, pk):
+    """The logged-in buyer's own RFQ, still open for editing (not yet
+    awarded). Anyone else gets a 404, so RFQ ids can't be probed."""
+    requirement = get_object_or_404(Requirement, pk=pk, is_deleted=False)
+    if requirement.user_id != request.user.id:
+        raise Http404
+    if requirement.status:
+        raise PermissionDenied("This RFQ has already been awarded and can no longer be changed.")
+    return requirement
+
+
+def _sync_part_count(requirement):
+    requirement.parts = requirement.requirement_parts.count()
+    requirement.save(update_fields=['parts'])
+
+
+class RequirementCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView):
     model = Requirement
     form_class = SelectRequirement
     template_name = "requirement/edit_requirement.html"
     success_url = '/marketplace/requirement'
     success_message = "RFQ has been created successfully"
 
-    def get_initial(self):
-        initial = super().get_initial()
-        initial['user'] = self.request.user.pk
-        return initial
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated:
+            if request.user.role == 'manufacturer':
+                raise PermissionDenied("Only buyers can post RFQs.")
+            limit, used = services.rfq_allowance(request.user)
+            if limit is not None and used >= limit:
+                messages.error(
+                    request,
+                    f"You've used all {limit} RFQs included in your plan this month. Upgrade your plan to post more.",
+                )
+                return redirect(reverse('profile') + '?tab=billing')
+        return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -192,12 +245,16 @@ class RequirementCreateView(SuccessMessageMixin, CreateView):
         return context
 
     def post(self, request, *args, **kwargs):
+        self.object = None
         form = self.get_form()
         if form.is_valid():
-            requirement = form.save()
+            requirement = form.save(commit=False)
+            requirement.user = request.user
+            requirement.save()
             formset = RequirementPartInlineFormSet(request.POST, request.FILES, instance=requirement)
             if formset.is_valid():
                 formset.save()
+                _sync_part_count(requirement)
                 logger.info("Requirement #%s created by %s", requirement.pk, request.user)
                 messages.success(request, self.success_message)
                 return redirect(self.success_url)
@@ -211,18 +268,30 @@ class RequirementCreateView(SuccessMessageMixin, CreateView):
         return self.form_invalid(form)
 
 
-class RequirementUpdateView(SuccessMessageMixin, UpdateView):
+class RequirementUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
     model = Requirement
     form_class = SelectRequirement
     success_url = '/marketplace/requirement'
     success_message = "RFQ details has been updated successfully"
     template_name = "requirement/edit_requirement.html"
 
+    def get_object(self, queryset=None):
+        return _own_open_requirement(self.request, self.kwargs['pk'])
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated:
+            requirement = _own_open_requirement(request, kwargs['pk'])
+            if requirement.pending_amendment():
+                messages.error(request, "Suppliers are still responding to your last change request. Withdraw it first to make more changes.")
+                return redirect(reverse('requirement', kwargs={'pk': requirement.pk}) + '#changes')
+        return super().dispatch(request, *args, **kwargs)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["title"] = 'Edit Requirement'
         context["savebtn"] = 'Save Changes'
         context["delbtn"] = 'Delete Requirement'
+        context["live_quote_count"] = self.object.live_quotes().count()
         if "formset" not in context:
             context["formset"] = RequirementPartInlineFormSet(instance=self.object)
         return context
@@ -231,54 +300,241 @@ class RequirementUpdateView(SuccessMessageMixin, UpdateView):
         self.object = self.get_object()
         form = self.get_form()
         formset = RequirementPartInlineFormSet(request.POST, request.FILES, instance=self.object)
-        if form.is_valid() and formset.is_valid():
+        if not (form.is_valid() and formset.is_valid()):
+            return self.render_to_response(self.get_context_data(form=form, formset=formset))
+
+        live_quotes = list(self.object.live_quotes())
+        if not live_quotes:
             self.object = form.save()
             formset.instance = self.object
             formset.save()
+            _sync_part_count(self.object)
             messages.success(request, self.success_message)
             return redirect(self.success_url)
-        return self.render_to_response(self.get_context_data(form=form, formset=formset))
+
+        # Suppliers have priced the current version: stage the edit as a
+        # change request instead of changing the RFQ under their quotes.
+        changes, new_end_date, unsupported = services.diff_rfq_edit(self.object, form, formset)
+        if unsupported:
+            form.add_error(None, (
+                f"Suppliers have already quoted on this RFQ, so {', '.join(unsupported)} can't be changed here. "
+                "Message the suppliers, or post a new RFQ for the new parts or files."
+            ))
+            self.object = Requirement.objects.get(pk=self.object.pk)
+            return self.render_to_response(self.get_context_data(form=form, formset=formset))
+
+        back = reverse('requirement', kwargs={'pk': self.object.pk})
+        if new_end_date is not None:
+            Requirement.objects.filter(pk=self.object.pk).update(end_date=new_end_date)
+        if changes:
+            with transaction.atomic():
+                amendment = RequirementAmendment.objects.create(requirement_id=self.object.pk, proposed_by=request.user, changes=changes)
+                AmendmentResponse.objects.bulk_create([AmendmentResponse(amendment=amendment, quote=quote) for quote in live_quotes])
+            logger.info("Change request #%s on requirement #%s sent to %d supplier(s)", amendment.pk, self.object.pk, len(live_quotes))
+            messages.success(request, (
+                f"Changes sent to {len(live_quotes)} supplier{'s' if len(live_quotes) != 1 else ''} for confirmation. "
+                "The RFQ keeps its current details until you accept a supplier's updated pricing."
+                + (" The new due date is already in effect." if new_end_date is not None else "")
+            ))
+            return redirect(back + '#changes')
+        messages.success(request, "Due date updated." if new_end_date is not None else "Nothing changed.")
+        return redirect(back)
 
 
-class RequirementDeleteView(View):
+class RequirementExtendView(LoginRequiredMixin, View):
+    """Buyer moves an RFQ's due date (e.g. after it closed with no quotes).
+    A future date reopens it: it's back in suppliers' inboxes."""
+    http_method_names = ['post']
+
+    def post(self, request, pk):
+        requirement = _own_open_requirement(request, pk)
+        back = reverse('requirement', kwargs={'pk': requirement.pk})
+        try:
+            new_date = datetime.date.fromisoformat(request.POST.get('end_date', ''))
+        except ValueError:
+            messages.error(request, "Pick a new due date.")
+            return redirect(back)
+        new_end = timezone.make_aware(datetime.datetime.combine(new_date, datetime.time(23, 59)))
+        if new_end <= timezone.now():
+            messages.error(request, "The new due date must be in the future.")
+            return redirect(back)
+        requirement.end_date = new_end
+        requirement.save(update_fields=['end_date', 'updated_at'])
+        logger.info("Requirement #%s due date moved to %s by %s", requirement.pk, new_date, request.user)
+        messages.success(request, f"Due date moved to {new_date:%d %b %Y}. The RFQ is open to suppliers again.")
+        return redirect(back)
+
+
+class AmendmentWithdrawView(LoginRequiredMixin, View):
+    http_method_names = ['post']
+
+    def post(self, request, pk):
+        amendment = get_object_or_404(RequirementAmendment.objects.select_related('requirement'), pk=pk)
+        if amendment.requirement.user_id != request.user.id:
+            raise Http404
+        if amendment.status == RequirementAmendment.PENDING:
+            amendment.close(RequirementAmendment.WITHDRAWN)
+            messages.success(request, "Change request withdrawn. The RFQ keeps its current details.")
+        return redirect(reverse('requirement', kwargs={'pk': amendment.requirement_id}) + '#changes')
+
+
+class AmendmentRespondView(LoginRequiredMixin, View):
+    """Supplier accepts the buyer's changes with updated pricing, or rejects them."""
+    http_method_names = ['post']
+
+    def post(self, request, pk):
+        response = get_object_or_404(
+            AmendmentResponse.objects.select_related('amendment__requirement', 'quote__supplier'), pk=pk,
+        )
+        if response.quote.supplier.user_id != request.user.id:
+            raise Http404
+        back = reverse('requirement', kwargs={'pk': response.amendment.requirement_id}) + '#changes'
+        if response.status != AmendmentResponse.PENDING or not response.quote.is_undecided:
+            messages.error(request, "This change request is no longer open.")
+            return redirect(back)
+
+        if request.POST.get('action') == 'reject':
+            response.status = AmendmentResponse.REJECTED
+            response.supplier_note = request.POST.get('supplier_note', '').strip()[:1000]
+            response.responded_at = timezone.now()
+            response.save()
+            messages.success(request, "You rejected the changes. The buyer has been notified and your current quote stands.")
+            return redirect(back)
+
+        form = AmendmentAcceptForm(request.POST, instance=response)
+        if not form.is_valid():
+            for errors in form.errors.values():
+                messages.error(request, errors.as_text().lstrip('* '))
+            return redirect(back)
+        response = form.save(commit=False)
+        response.status = AmendmentResponse.ACCEPTED
+        response.responded_at = timezone.now()
+        response.save()
+        messages.success(request, "New pricing sent. Your quote updates only if the buyer accepts it.")
+        return redirect(back)
+
+
+class AmendmentDecisionView(LoginRequiredMixin, View):
+    """Buyer accepts a supplier's updated pricing or keeps the original
+    details. Accepting is choosing that supplier: the RFQ changes are
+    applied, the quote takes the new pricing, and the quote is awarded
+    exactly as "Select this quote" would (others rejected, order created)."""
+    http_method_names = ['post']
+
+    def post(self, request, pk):
+        response = get_object_or_404(
+            AmendmentResponse.objects.select_related('amendment__requirement', 'quote__supplier'), pk=pk,
+        )
+        amendment = response.amendment
+        requirement = amendment.requirement
+        if requirement.user_id != request.user.id:
+            raise Http404
+        back = reverse('requirement', kwargs={'pk': requirement.pk}) + '#changes'
+        if (response.status != AmendmentResponse.ACCEPTED or amendment.status != RequirementAmendment.PENDING
+                or requirement.status or not response.quote.is_undecided):
+            messages.error(request, "This pricing can no longer be accepted.")
+            return redirect(back)
+
+        supplier_name = response.quote.supplier.companyname or response.quote.supplier
+        if request.POST.get('decision') == 'accept':
+            with transaction.atomic():
+                amendment.apply()
+                response.apply_pricing()
+                response.status = AmendmentResponse.BUYER_ACCEPTED
+                response.buyer_decided_at = timezone.now()
+                response.save()
+                requirement.refresh_from_db()
+                order, rejected = services.award_quote(requirement, response.quote)
+            logger.info(
+                "Change request #%s applied and quote #%s awarded at new pricing by %s (%d other quote(s) rejected, order #%s)",
+                amendment.pk, response.quote_id, request.user, rejected, getattr(order, 'billno', None),
+            )
+            messages.success(request, f"RFQ updated and awarded to {supplier_name} at the new pricing. The order has been created.")
+        else:
+            response.status = AmendmentResponse.BUYER_DECLINED
+            response.buyer_decided_at = timezone.now()
+            response.save()
+            messages.success(request, f"Kept {supplier_name}'s original quote.")
+        return redirect(back)
+
+
+class RequirementDeleteView(LoginRequiredMixin, View):
     template_name = "requirement/delete_requirement.html"
     success_message = "Requirement Record has been deleted successfully"
 
     def get(self, request, pk):
-        requirement = get_object_or_404(Requirement, pk=pk)
+        requirement = _own_open_requirement(request, pk)
         return render(request, self.template_name, {'object': requirement})
 
     def post(self, request, pk):
-        requirement = get_object_or_404(Requirement, pk=pk)
+        requirement = _own_open_requirement(request, pk)
         requirement.is_deleted = True
         requirement.save()
         messages.success(request, self.success_message)
         return redirect('requirement-list')
 
 
-class RequirementView(View):
+class RequirementView(LoginRequiredMixin, View):
     def get(self, request, pk):
         requirement = get_object_or_404(Requirement, pk=pk)
-        requirement_parts = RequirementPart.objects.filter(requirement=requirement).all()
-        quotes = Quote.objects.filter(requirement=requirement, is_deleted=False)
-        is_manufacturer = request.user.is_authenticated and request.user.role == 'manufacturer'
-        my_quote = None
-        if is_manufacturer:
-            supplier = ManufacturerProfile.objects.filter(user=request.user).first()
-            my_quote = quotes.filter(supplier=supplier).first()
-        return render(request, 'requirement/requirement.html', {
-            'demand': requirement,
-            'quotes': quotes,
-            'demanddetails': requirement_parts,
-            'is_manufacturer': is_manufacturer,
-            'my_quote': my_quote,
-        })
+        # Manufacturers browse RFQs to quote on them; a buyer may only open
+        # their own.
+        if request.user.role != 'manufacturer' and not request.user.is_staff and requirement.user_id != request.user.id:
+            raise Http404
+        context = quotes_section_context(request, requirement)
+        context['demanddetails'] = RequirementPart.objects.filter(requirement=requirement).all()
+        context.update(_rfq_conversation_context(request, requirement))
+        context.update(_change_request_context(request, requirement, context.get('my_quote')))
+        return render(request, 'requirement/requirement.html', context)
+
+
+def _change_request_context(request, requirement, my_quote):
+    """Change requests for the RFQ page: the buyer sees every request with
+    every supplier's response; a supplier sees only their own responses."""
+    if request.user.id == requirement.user_id:
+        amendments = list(requirement.amendments.prefetch_related('responses__quote__supplier'))
+        return {
+            'amendments': amendments,
+            'pending_amendment': next((a for a in amendments if a.status == RequirementAmendment.PENDING), None),
+            'expired_no_quotes': requirement.is_expired_without_quotes(),
+        }
+    if my_quote is None:
+        return {}
+    responses = list(my_quote.amendment_responses.select_related('amendment').order_by('-created_at'))
+    open_response = next((r for r in responses if r.status == AmendmentResponse.PENDING), None)
+    return {
+        'my_amendment_responses': responses,
+        'open_amendment_response': open_response,
+        'amendment_accept_form': AmendmentAcceptForm(quote=my_quote) if open_response else None,
+    }
+
+
+def _rfq_conversation_context(request, requirement):
+    """The RFQ page's conversation panel (it replaced the old per-supplier
+    Q&A, which was the same thing as a message thread). The buyer sees
+    every supplier conversation on this RFQ; a manufacturer sees theirs."""
+    if request.user.id == requirement.user_id:
+        rows = [row for row in services.message_thread_rows(request.user) if row['thread'].requirement_id == requirement.pk]
+        return {'rfq_threads': rows}
+    supplier = ManufacturerProfile.objects.filter(user=request.user).first()
+    if supplier is None:
+        return {}
+    thread = MessageThread.objects.filter(requirement=requirement, supplier=supplier).first()
+    recent = list(thread.messages.select_related('sender').order_by('-created_at')[:5])[::-1] if thread else []
+    return {'my_thread': thread, 'my_thread_messages': recent, 'can_start_thread': thread is None and not requirement.is_finished()}
 
 
 class RFQDeclineView(LoginRequiredMixin, View):
+    """Supplier says "not for us". Private to the supplier: the buyer isn't
+    notified, the RFQ just leaves this supplier's inbox."""
+    http_method_names = ['post']
+
     def post(self, request, pk):
-        requirement = get_object_or_404(Requirement, pk=pk)
+        requirement = get_object_or_404(Requirement, pk=pk, is_deleted=False)
         supplier = get_object_or_404(ManufacturerProfile, user=request.user)
+        if Quote.objects.filter(requirement=requirement, supplier=supplier, is_deleted=False).exists():
+            messages.error(request, "You've already quoted on this RFQ — delete your quote instead if you no longer want it.")
+            return redirect(reverse('requirement', kwargs={'pk': requirement.pk}))
         RFQDecline.objects.get_or_create(
             requirement=requirement, supplier=supplier,
             defaults={'reason': request.POST.get('reason', '')},
@@ -288,59 +544,53 @@ class RFQDeclineView(LoginRequiredMixin, View):
         return redirect(reverse('requirement-list'))
 
 
-class RequirementQuestionListCreateView(LoginRequiredMixin, View):
-    def get(self, request, pk):
-        requirement = get_object_or_404(Requirement, pk=pk)
-        supplier = ManufacturerProfile.objects.filter(user=request.user).first()
-        questions = RequirementQuestion.objects.filter(requirement=requirement, supplier=supplier) if supplier else []
-        return render(request, 'requirement/_questions_section.html', {
-            'demand': requirement, 'questions': questions, 'question_form': RequirementQuestionForm(),
-        })
-
-    def post(self, request, pk):
-        requirement = get_object_or_404(Requirement, pk=pk)
-        supplier = get_object_or_404(ManufacturerProfile, user=request.user)
-        form = RequirementQuestionForm(request.POST)
-        if form.is_valid():
-            question = form.save(commit=False)
-            question.requirement = requirement
-            question.supplier = supplier
-            question.asked_by = request.user
-            question.save()
-        questions = RequirementQuestion.objects.filter(requirement=requirement, supplier=supplier)
-        return render(request, 'requirement/_questions_section.html', {
-            'demand': requirement, 'questions': questions, 'question_form': RequirementQuestionForm(),
-        })
-
-
-class RequirementQuestionAnswerView(LoginRequiredMixin, View):
-    def post(self, request, pk):
-        question = get_object_or_404(RequirementQuestion, pk=pk)
-        if request.user != question.requirement.user:
-            messages.error(request, "Only the buyer who posted this RFQ can answer questions on it.")
-            return redirect(reverse('requirement', kwargs={'pk': question.requirement.pk}))
-        question.answer = request.POST.get('answer', '')
-        question.answered_at = timezone.now()
-        question.save()
-        return redirect(reverse('requirement', kwargs={'pk': question.requirement.pk}))
-
-
-class QuoteListView(ListView):
+class QuoteListView(LoginRequiredMixin, ListView):
     model = Quote
-    template_name = "quote/quote_list.html"
     paginate_by = 10
 
+    def get_template_names(self):
+        if self.request.user.role == 'manufacturer':
+            return ["quote/quote_list.html"]
+        return ["quote/quote_list_buyer.html"]
+
     def get_queryset(self):
-        user = self.request.user.id
-        supplier = ManufacturerProfile.objects.filter(user=user).first()
-        queryset = Quote.objects.filter(is_deleted=False, supplier=supplier)
-        return queryset
+        user = self.request.user
+        if user.role == 'manufacturer':
+            supplier = ManufacturerProfile.objects.filter(user=user).first()
+            return Quote.objects.filter(is_deleted=False, supplier=supplier).select_related('requirement', 'supplier').order_by('-created_at')
+        return Quote.objects.filter(
+            requirement__user=user, requirement__is_deleted=False, is_deleted=False, is_draft=False,
+        ).select_related('requirement', 'supplier').order_by('requirement_id', '-is_selected', 'quote_price')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if self.request.user.role != 'manufacturer':
+            grouped = {}
+            for quote in context['object_list']:
+                grouped.setdefault(quote.requirement, []).append(quote)
+            context['quotes_by_requirement'] = grouped
+        return context
 
 
 class QuoteCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView):
     model = Quote
     form_class = QuoteForm
     success_url = '/marketplace/quote'
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated:
+            requirement = get_object_or_404(Requirement, pk=self.kwargs.get('pk'), is_deleted=False)
+            supplier = ManufacturerProfile.objects.filter(user=request.user).first()
+            if supplier is None:
+                raise PermissionDenied("Only manufacturers can submit quotes.")
+            back = reverse('requirement', kwargs={'pk': requirement.pk})
+            if not requirement.is_open_for_quotes():
+                messages.error(request, "This RFQ is closed to new quotes — it has been awarded or its deadline has passed.")
+                return redirect(back)
+            if Quote.objects.filter(requirement=requirement, supplier=supplier, is_deleted=False).exists():
+                messages.error(request, "You've already quoted on this RFQ. Edit your existing quote instead.")
+                return redirect(back)
+        return super().dispatch(request, *args, **kwargs)
     success_message = "Quotation has been created successfully"
     template_name = "quote/quote_form.html"
 
@@ -354,8 +604,9 @@ class QuoteCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView):
         context["total_quantity"] = requirement.total_parts_quantity() if requirement else 0
         supplier = ManufacturerProfile.objects.filter(user=self.request.user).first()
         context["match_percent"] = services.compute_match_percent(requirement, supplier) if (requirement and supplier) else None
-        context["questions"] = RequirementQuestion.objects.filter(requirement=requirement, supplier=supplier) if (requirement and supplier) else []
-        context["question_form"] = RequirementQuestionForm()
+        if requirement:
+            context.update(_rfq_conversation_context(self.request, requirement))
+        context["is_manufacturer"] = True
         return context
 
     def post(self, request, *args, **kwargs):
@@ -379,15 +630,28 @@ class QuoteCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView):
         logger.info("Quote #%s submitted for requirement #%s by %s", quote.pk, requirement.pk, request.user)
         messages.success(request, "Quote saved as draft." if quote.is_draft else self.success_message)
         if getattr(request, 'htmx', False):
+            quotes = services.annotate_quote_badges(Quote.objects.filter(requirement=requirement, is_deleted=False))
             response = render(request, 'requirement/_quotes_section.html', {
                 'demand': requirement,
-                'quotes': Quote.objects.filter(requirement=requirement, is_deleted=False),
+                'quotes': quotes,
                 'is_manufacturer': True,
                 'my_quote': quote,
+                'selected_quote': next((q for q in quotes if q.is_selected), None),
             })
             response['HX-Redirect'] = reverse('requirement', kwargs={'pk': requirement.pk})
             return response
         return redirect(reverse('requirement', kwargs={'pk': requirement.pk}))
+
+
+def _own_open_quote(request, pk):
+    """The logged-in supplier's own quote, still undecided. Anyone else gets
+    a 404; a decided (selected/rejected) quote can't be changed."""
+    quote = get_object_or_404(Quote.objects.select_related('supplier', 'requirement'), pk=pk, is_deleted=False)
+    if quote.supplier.user_id != request.user.id:
+        raise Http404
+    if quote.is_selected or quote.status:
+        raise PermissionDenied("This quote has already been decided and can no longer be changed.")
+    return quote
 
 
 class QuoteUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
@@ -396,6 +660,9 @@ class QuoteUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
     success_url = '/marketplace/quote'
     success_message = "Quotation details has been updated successfully"
     template_name = "quote/quote_form.html"
+
+    def get_object(self, queryset=None):
+        return _own_open_quote(self.request, self.kwargs['pk'])
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -407,8 +674,8 @@ class QuoteUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
         context["parts"] = requirement.requirement_parts.all()
         context["total_quantity"] = requirement.total_parts_quantity()
         context["match_percent"] = services.compute_match_percent(requirement, self.object.supplier)
-        context["questions"] = RequirementQuestion.objects.filter(requirement=requirement, supplier=self.object.supplier)
-        context["question_form"] = RequirementQuestionForm()
+        context.update(_rfq_conversation_context(self.request, requirement))
+        context["is_manufacturer"] = True
         return context
 
     def post(self, request, *args, **kwargs):
@@ -418,21 +685,28 @@ class QuoteUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
             return self.render_to_response(self.get_context_data(form=form))
         quote = form.save(commit=False)
         quote.is_draft = request.POST.get('action') == 'draft'
+        if quote.revision_requested_at and not quote.is_draft:
+            # Submitting (not just saving a draft) answers the buyer's request.
+            quote.revised_at = timezone.now()
+            quote.revision_requested_at = None
+            quote.revision_note = ''
+            quote.save()
+            messages.success(request, "Revised quote sent to the buyer.")
+            return redirect(reverse('requirement', kwargs={'pk': quote.requirement.pk}))
         quote.save()
         messages.success(request, "Quote saved as draft." if quote.is_draft else self.success_message)
         return redirect(reverse('requirement', kwargs={'pk': quote.requirement.pk}))
 
 
-class QuoteDeleteView(View):
+class QuoteDeleteView(LoginRequiredMixin, View):
     template_name = "quote/delete_quote.html"
     success_message = "Quotation has been deleted successfully"
 
     def get(self, request, pk):
-        quote = get_object_or_404(Quote, pk=pk)
-        return render(request, self.template_name, {'object': quote})
+        return render(request, self.template_name, {'object': _own_open_quote(request, pk)})
 
     def post(self, request, pk):
-        quote = get_object_or_404(Quote, pk=pk)
+        quote = _own_open_quote(request, pk)
         quote.is_deleted = True
         quote.save()
         messages.success(request, self.success_message)
@@ -445,89 +719,124 @@ class QuoteView(View):
         return render(request, 'quote/quote.html', {'quote': quote})
 
 
-class QuoteStatusUpdateView(View):
-    def _update(self, request, pk, status):
-        quote = get_object_or_404(Quote, pk=pk)
-        requirement = Requirement.objects.get(pk=quote.requirement.id)
-        if status == 'Approved':
-            quote.status = 'Approved'
-            quote.is_selected = True
-            requirement.status = "Approved"
-            requirement.save()
-            other_quotes = Quote.objects.filter(requirement=quote.requirement, status__isnull=True).exclude(pk=quote.pk)
-            for reject_quote in other_quotes:
-                reject_quote.status = 'Rejected'
-                reject_quote.save()
-            logger.info(
-                "Quote #%s selected for requirement #%s by %s (%d other quote(s) auto-rejected)",
-                quote.pk, requirement.pk, request.user, other_quotes.count(),
-            )
-        elif status == 'Rejected':
-            quote.status = 'Rejected'
-            logger.info("Quote #%s rejected by %s", quote.pk, request.user)
-        quote.save()
-        if getattr(request, 'htmx', False):
-            is_manufacturer = request.user.is_authenticated and request.user.role == 'manufacturer'
-            my_quote = None
-            if is_manufacturer:
-                supplier = ManufacturerProfile.objects.filter(user=request.user).first()
-                my_quote = Quote.objects.filter(requirement=requirement, supplier=supplier).first()
-            return render(request, 'requirement/_quotes_section.html', {
-                'demand': requirement,
-                'quotes': Quote.objects.filter(requirement=requirement, is_deleted=False),
-                'is_manufacturer': is_manufacturer,
-                'my_quote': my_quote,
-            })
-        return redirect(reverse('requirement', kwargs={'pk': requirement.id}))
-
-    def get(self, request, pk, status):
-        return self._update(request, pk, status)
+class QuoteStatusUpdateView(LoginRequiredMixin, View):
+    """Buyer awards or rejects a quote. POST only (a GET link could be
+    triggered by anyone clicking a crafted URL), and only by the buyer who
+    owns the RFQ, while both the RFQ and the quote are still undecided."""
+    http_method_names = ['post']
 
     def post(self, request, pk, status):
-        return self._update(request, pk, status)
+        quote = get_object_or_404(Quote.objects.select_related('requirement', 'supplier'), pk=pk, is_deleted=False)
+        requirement = quote.requirement
+        if requirement.user_id != request.user.id or status not in ('Approved', 'Rejected'):
+            raise Http404
+        if requirement.status or quote.status or quote.is_draft:
+            messages.error(request, "This quote can no longer be changed.")
+        elif status == 'Approved':
+            with transaction.atomic():
+                order, rejected = services.award_quote(requirement, quote)
+            logger.info(
+                "Quote #%s selected for requirement #%s by %s (%d other quote(s) auto-rejected, order #%s)",
+                quote.pk, requirement.pk, request.user, rejected, getattr(order, 'billno', None),
+            )
+            messages.success(request, "Quote awarded. The order has been created.")
+        else:
+            quote.status = 'Rejected'
+            quote.decided_at = timezone.now()
+            quote.save()
+            logger.info("Quote #%s rejected by %s", quote.pk, request.user)
+            messages.success(request, f"Quote from {quote.supplier.companyname or quote.supplier} rejected.")
+
+        if getattr(request, 'htmx', False):
+            requirement.refresh_from_db()
+            return render(request, 'requirement/_quotes_section.html', quotes_section_context(request, requirement))
+        return redirect(reverse('requirement', kwargs={'pk': requirement.id}))
 
 
-class RequirementStatusUpdateView(View):
-    def _update(self, request, pk, status):
-        requirement = get_object_or_404(Requirement, pk=pk)
+class QuoteRevisionRequestView(LoginRequiredMixin, View):
+    """Buyer asks a supplier to revise their quote (price, lead time,
+    terms...). The quote stays undecided, so it can still be awarded or
+    rejected; the supplier is notified and resubmitting clears the request."""
+    http_method_names = ['post']
+
+    def post(self, request, pk):
+        quote = get_object_or_404(Quote.objects.select_related('requirement', 'supplier'), pk=pk, is_deleted=False)
+        requirement = quote.requirement
+        if requirement.user_id != request.user.id:
+            raise Http404
+        note = request.POST.get('note', '').strip()[:1000]
+        if requirement.status or not quote.is_undecided or quote.is_draft:
+            messages.error(request, "This quote can no longer be revised.")
+        elif quote.awaiting_revision:
+            messages.error(request, "You've already asked for a revision of this quote.")
+        elif not note:
+            messages.error(request, "Tell the supplier what to change.")
+        else:
+            quote.revision_requested_at = timezone.now()
+            quote.revision_note = note
+            quote.save()
+            logger.info("Revision of quote #%s requested by %s", quote.pk, request.user)
+            messages.success(request, f"Revision requested from {quote.supplier.companyname or quote.supplier}.")
+        if getattr(request, 'htmx', False):
+            return render(request, 'requirement/_quotes_section.html', quotes_section_context(request, requirement))
+        return redirect(reverse('requirement', kwargs={'pk': requirement.pk}) + '#quotes-section')
+
+
+class QuoteRevisionDeclineView(LoginRequiredMixin, View):
+    """Supplier keeps their quote as it is instead of revising it. The buyer
+    gets no notification; the quote returns to their review pile, labelled
+    so it's clear no revision is coming."""
+    http_method_names = ['post']
+
+    def post(self, request, pk):
+        quote = get_object_or_404(Quote.objects.select_related('supplier', 'requirement'), pk=pk, is_deleted=False)
+        if quote.supplier.user_id != request.user.id:
+            raise Http404
+        if not quote.awaiting_revision:
+            messages.error(request, "There's no open revision request on this quote.")
+        else:
+            quote.revision_requested_at = None
+            quote.revision_note = ''
+            quote.revision_declined_at = timezone.now()
+            quote.save()
+            logger.info("Revision request on quote #%s declined by %s", quote.pk, request.user)
+            messages.success(request, "Revision request declined. Your original quote stands.")
+        return redirect(reverse('quote-list'))
+
+
+class RequirementStatusUpdateView(LoginRequiredMixin, View):
+    """The awarded supplier moves the RFQ into production and then marks it
+    completed. POST only, and only the supplier whose quote was selected."""
+    http_method_names = ['post']
+
+    def post(self, request, pk, status):
+        requirement = get_object_or_404(Requirement, pk=pk, is_deleted=False)
+        selected = Quote.objects.filter(requirement=requirement, is_selected=True).select_related('supplier').first()
+        if selected is None or selected.supplier.user_id != request.user.id:
+            raise Http404
+
+        order = requirement.orders.order_by('-created_at').first()
+        if order is None:
+            # RFQs awarded before orders were created at award time.
+            order = services.create_award_order(requirement, selected)
+
         if status == 'Production' and requirement.status == 'Approved':
             requirement.status = 'Production'
             requirement.save()
-        if status == 'Completed' and requirement.status == 'Production':
+            if order is not None and order.status == 'quote_selected':
+                order.start_production(note="Supplier started production")
+                order.save()
+            messages.success(request, "Production started.")
+        elif status == 'Completed' and requirement.status == 'Production':
+            if order is not None and order.status == 'quote_selected':
+                order.start_production(note="Supplier started production")
+                order.save()
             requirement.status = 'Completed'
             requirement.save()
-            if not Order.objects.filter(requirement=requirement):
-                quote = Quote.objects.filter(requirement=requirement, is_selected=True).first()
-                if quote:
-                    customer = get_object_or_404(ConsumerProfile, user=requirement.user)
-                    order = Order.objects.create(
-                        requirement=requirement, quote=quote, supplier=quote.supplier, customer=customer,
-                    )
-                    logger.info("Order #%s auto-created for requirement #%s", order.billno, requirement.pk)
-                    # Reflect that the requirement already has a selected quote
-                    # and is moving straight into production.
-                    try:
-                        order.mark_quoted()
-                        order.select_quote()
-                        order.start_production()
-                        order.save()
-                    except Exception:
-                        logger.exception(
-                            "Failed to fast-forward order #%s to in_production for requirement #%s",
-                            order.billno, requirement.pk,
-                        )
-                else:
-                    logger.warning(
-                        "Requirement #%s marked Completed but has no selected quote — no Order created",
-                        requirement.pk,
-                    )
+            messages.success(request, "RFQ marked completed.")
+        else:
+            messages.error(request, "That status change isn't allowed from the RFQ's current state.")
         return redirect(reverse('requirement', kwargs={'pk': requirement.id}))
-
-    def get(self, request, pk, status):
-        return self._update(request, pk, status)
-
-    def post(self, request, pk, status):
-        return self._update(request, pk, status)
 
 
 class OrderListView(ListView):
@@ -542,11 +851,19 @@ class OrderListView(ListView):
             supplier = ManufacturerProfile.objects.filter(user=user).first()
             orders = Order.objects.filter(supplier=supplier)
             template_name = "order/order_list_manufacturer.html"
+            context = {'bills': orders.order_by('-created_at')}
         else:
             customer = ConsumerProfile.objects.filter(user=user).first()
             orders = Order.objects.filter(customer=customer)
             template_name = "order/order_list.html"
-        context = {'bills': orders.order_by('-created_at')}
+            month_start = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            context = {
+                'bills': orders.order_by('-created_at'),
+                'stat_in_production': orders.filter(status='in_production').count(),
+                'stat_needs_approval': orders.filter(status='payment_pending').count(),
+                'stat_in_transit': orders.filter(production_stage='dispatched').exclude(status__in=['completed', 'cancelled']).count(),
+                'stat_delivered_this_month': orders.filter(status='completed', updated_at__gte=month_start).count(),
+            }
         return render(request, template_name, context)
 
 
@@ -554,7 +871,9 @@ class OrderDetailView(View):
     template_name = "order/order_detail.html"
 
     def get(self, request, billno):
-        order = get_object_or_404(Order, billno=billno)
+        order = get_object_or_404(Order.objects.select_related('supplier', 'customer'), billno=billno)
+        if not (request.user.is_staff or request.user in (order.supplier.user, order.customer.user)):
+            raise Http404
         requirement = order.requirement
         items = RequirementPart.objects.filter(requirement=requirement.id)
         quote = order.quote
@@ -584,7 +903,7 @@ class OrderDetailView(View):
             'current_stage_index': Order.PRODUCTION_STAGES.index(order.production_stage),
             'next_production_stage': order.next_production_stage(),
             'production_progress_percent': order.production_progress_percent(),
-            'qc_items': order.qc_items.all(),
+            'qc_items': order.qc_checklist,
             'updates': order.updates.select_related('author').all(),
             'update_form': ProductionUpdateForm(),
             'shipment_form': ShipmentForm(instance=order),
@@ -636,18 +955,15 @@ class OrderUpdateCreateView(LoginRequiredMixin, View):
 
 
 class QCChecklistToggleView(LoginRequiredMixin, View):
-    def post(self, request, billno, item_pk):
+    def post(self, request, billno, index):
         order = get_object_or_404(Order, billno=billno)
-        item = get_object_or_404(QCChecklistItem, pk=item_pk, order=order)
         if request.user != order.supplier.user:
             messages.error(request, "Only the manufacturer on this order can update the QC checklist.")
             return redirect(reverse('order-detail', kwargs={'billno': order.billno}))
-        item.is_checked = not item.is_checked
-        item.checked_at = timezone.now() if item.is_checked else None
-        item.checked_by = request.user if item.is_checked else None
-        item.save()
+        if not order.toggle_qc_item(index, request.user):
+            raise Http404
         if getattr(request, 'htmx', False):
-            return render(request, 'order/_qc_checklist.html', {'qc_items': order.qc_items.all(), 'bill': order, 'is_supplier': True})
+            return render(request, 'order/_qc_checklist.html', {'qc_items': order.qc_checklist, 'bill': order, 'is_supplier': True})
         return redirect(reverse('order-detail', kwargs={'billno': order.billno}))
 
 
@@ -668,13 +984,16 @@ class OrderShipmentUpdateView(LoginRequiredMixin, View):
 
 class OrderStatusUpdateView(LoginRequiredMixin, View):
     def post(self, request, billno, status):
-        order = get_object_or_404(Order, billno=billno)
+        order = get_object_or_404(Order.objects.select_related('supplier', 'customer', 'requirement'), billno=billno)
+        if request.user not in (order.supplier.user, order.customer.user):
+            raise Http404
         transition_name = ORDER_TRANSITIONS.get(status)
         if transition_name and hasattr(order, transition_name):
             transition_method = getattr(order, transition_name)
             try:
                 transition_method(note=request.POST.get('note', ''))
                 order.save()
+                services.sync_after_order_transition(order)
                 logger.info("Order #%s -> %s by %s", order.billno, order.status, request.user)
                 messages.success(request, f"Order moved to {order.get_status_display()}.")
             except TransitionNotAllowed:
@@ -698,32 +1017,331 @@ class OrderStatusUpdateView(LoginRequiredMixin, View):
         return redirect(reverse('order-detail', kwargs={'billno': order.billno}))
 
 
+RFQ_NUMBER_PATTERN = re.compile(r'^(?:rfq-?)?(\d+)$', re.IGNORECASE)
+
+
 class global_search_view(LoginRequiredMixin, ListView):
+    """Searches only RFQs the user may see: a buyer's own, the open or
+    already-quoted ones for a manufacturer, everything for staff. The
+    searched fields are fixed; the caller can't choose one (that used to
+    allow `user`, which raised a server error)."""
     model = Requirement
     template_name = "globalsearch.html"
     paginate_by = 10
 
+    def _visible_requirements(self):
+        user = self.request.user
+        if user.is_staff:
+            return Requirement.objects.filter(is_deleted=False)
+        if user.role == 'manufacturer':
+            supplier = ManufacturerProfile.objects.filter(user=user).first()
+            if supplier is None:
+                return Requirement.objects.none()
+            open_ids = services.open_requirements_for(supplier).values('pk')
+            return Requirement.objects.filter(Q(pk__in=open_ids) | Q(quote__supplier=supplier), is_deleted=False)
+        return Requirement.objects.filter(user=user, is_deleted=False)
+
     def get_queryset(self):
-        query = self.request.GET.get('search')
-        fieldlist = ['user', 'title', 'rfq_desc', 'quote_currency', 'request_reason', 'parts', 'end_date', 'industry', 'file']
-        split_query = query.split(' ', 1) if query else []
-        search_field = 'title'
-        search_value = ''
-        if len(split_query) >= 2:
-            search_field = split_query[0]
-            if search_field not in fieldlist:
-                search_field = 'title'
-            search_value = split_query[1]
-        elif len(split_query) == 1:
-            search_value = split_query[0]
-        if search_value:
-            queryset = Requirement.objects.filter(is_deleted=False)
-            return queryset.filter(**{f"{search_field}__icontains": search_value})
-        else:
-            queryset = Requirement.objects.filter(id=0, is_deleted=False)
-        return queryset
+        query = (self.request.GET.get('search') or '').strip()
+        if not query:
+            return Requirement.objects.none()
+        match = Q(title__icontains=query) | Q(rfq_desc__icontains=query) | Q(industry__icontains=query) \
+            | Q(requirement_parts__part_name__icontains=query)
+        number = RFQ_NUMBER_PATTERN.match(query)
+        if number:
+            match |= Q(pk=int(number.group(1)))
+        return self._visible_requirements().filter(match).distinct().order_by('-created_at')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['search'] = self.request.GET.get('search', '')
         return context
+
+
+class DocumentListView(LoginRequiredMixin, View):
+    def get(self, request):
+        if request.user.role == 'manufacturer':
+            # A manufacturer's own uploads (quote files) plus whatever the
+            # buyer shared back through production updates on their orders.
+            supplier = get_object_or_404(ManufacturerProfile, user=request.user)
+            docs = []
+            for quote in Quote.objects.filter(supplier=supplier, is_deleted=False).select_related('requirement'):
+                if quote.quote_file:
+                    docs.append({
+                        'name': quote.quote_file.name.rsplit('/', 1)[-1], 'url': quote.quote_file.url, 'type': 'Quote',
+                        'linked_label': f'RFQ-{quote.requirement_id}', 'linked_url': reverse('requirement', kwargs={'pk': quote.requirement_id}),
+                        'uploaded_by': supplier.companyname or str(supplier), 'date': quote.created_at,
+                    })
+            for order in Order.objects.filter(supplier=supplier).select_related('requirement'):
+                for update in order.updates.select_related('author').all():
+                    if update.document:
+                        docs.append({
+                            'name': update.document.name.rsplit('/', 1)[-1], 'url': update.document.url, 'type': 'Certificate',
+                            'linked_label': f'ORD-{order.billno}', 'linked_url': reverse('order-detail', kwargs={'billno': order.billno}),
+                            'uploaded_by': update.author.get_full_name() if update.author else '—', 'date': update.created_at,
+                        })
+            docs.sort(key=lambda doc: doc['date'], reverse=True)
+        else:
+            docs = services.buyer_documents(request.user)
+        docs += services.message_attachment_documents(request.user)
+        docs.sort(key=lambda doc: doc['date'], reverse=True)
+        return render(request, 'documents/document_list.html', {'docs': docs})
+
+
+def _safe_next(request, fallback_name='notification-list'):
+    next_url = request.POST.get('next') or request.GET.get('next')
+    if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        return next_url
+    return reverse(fallback_name)
+
+
+class NotificationListView(LoginRequiredMixin, View):
+    def get(self, request):
+        events = services.notification_feed(request.user)
+        return render(request, 'notifications/notification_list.html', {
+            'events': events,
+            'unread_count': sum(1 for event in events if event['unread']),
+        })
+
+
+class NotificationOpenView(LoginRequiredMixin, View):
+    """Clicking a notification marks it read, then follows its link."""
+    def get(self, request):
+        key = request.GET.get('key', '')[:64]
+        if key:
+            services.mark_notifications_read(request.user, [key])
+        return redirect(_safe_next(request))
+
+
+class NotificationMarkReadView(LoginRequiredMixin, View):
+    def post(self, request):
+        key = request.POST.get('key', '')[:64]
+        if key:
+            services.mark_notifications_read(request.user, [key])
+        return redirect(_safe_next(request))
+
+
+class NotificationMarkAllReadView(LoginRequiredMixin, View):
+    def post(self, request):
+        keys = [event['key'] for event in services.notification_feed(request.user) if event['unread']]
+        services.mark_notifications_read(request.user, keys)
+        return redirect(_safe_next(request))
+
+
+class MessageThreadListView(LoginRequiredMixin, View):
+    def get(self, request):
+        return render(request, 'messages/thread_list.html', {'thread_rows': services.message_thread_rows(request.user)})
+
+
+class MessageThreadStartView(LoginRequiredMixin, View):
+    """Start (or resume) the conversation between one RFQ's buyer and one
+    supplier. The buyer starts it from a quote ("Message"), naming the
+    supplier; a manufacturer starts it by asking the buyer a question on an
+    RFQ they can quote on (no supplier in the URL: it's always their own).
+    An optional `body` becomes the first message."""
+    def post(self, request, requirement_pk, supplier_pk=None):
+        requirement = get_object_or_404(Requirement, pk=requirement_pk, is_deleted=False)
+        back = reverse('requirement', kwargs={'pk': requirement_pk})
+
+        if supplier_pk is None:
+            supplier = ManufacturerProfile.objects.filter(user=request.user).first()
+            can_see = supplier is not None and (
+                services.open_requirements_for(supplier).filter(pk=requirement.pk).exists()
+                or Quote.objects.filter(requirement=requirement, supplier=supplier).exists()
+                or MessageThread.objects.filter(requirement=requirement, supplier=supplier).exists()
+            )
+            if not can_see:
+                raise Http404
+        else:
+            if request.user != requirement.user:
+                messages.error(request, "Only the buyer who posted this RFQ can start this conversation.")
+                return redirect(back)
+            supplier = get_object_or_404(ManufacturerProfile, pk=supplier_pk)
+
+        thread = MessageThread.objects.filter(requirement=requirement, supplier=supplier).first()
+        if thread is None:
+            if requirement.is_finished():
+                messages.error(request, "This RFQ is finished, so new conversations can't be started on it.")
+                return redirect(back)
+            thread = MessageThread.objects.create(requirement=requirement, supplier=supplier)
+
+        body = request.POST.get('body', '').strip()
+        if body and not thread.is_closed:
+            Message.objects.create(thread=thread, sender=request.user, body=body[:2000])
+        return redirect(reverse('message-thread', kwargs={'pk': thread.pk}))
+
+
+def _get_participant_thread(request, pk):
+    thread = get_object_or_404(MessageThread.objects.select_related('requirement__user', 'supplier__user'), pk=pk)
+    if not thread.is_participant(request.user):
+        raise Http404
+    return thread
+
+
+def _thread_messages_context(thread, form=None):
+    return {
+        'thread': thread,
+        'thread_messages': thread.messages.select_related('sender').all(),
+        'message_form': form or MessageForm(),
+        'message_sig': services.thread_signature(thread),
+    }
+
+
+def _thread_response(request, thread, form=None):
+    """htmx requests get just the message pane re-rendered; plain form posts redirect back."""
+    if getattr(request, 'htmx', False):
+        return render(request, 'messages/_thread_messages.html', _thread_messages_context(thread, form))
+    return redirect(reverse('message-thread', kwargs={'pk': thread.pk}))
+
+
+class MessageThreadDetailView(LoginRequiredMixin, View):
+    def get(self, request, pk):
+        thread = _get_participant_thread(request, pk)
+        thread.mark_read_for(request.user)
+        services.invalidate_notification_cache(request.user)
+        context = _thread_messages_context(thread)
+        context['sidebar_thread_rows'] = services.message_thread_rows(request.user)
+        return render(request, 'messages/thread_detail.html', context)
+
+    def post(self, request, pk):
+        thread = _get_participant_thread(request, pk)
+        if thread.is_closed:
+            messages.error(request, "This conversation is closed.")
+            return _thread_response(request, thread)
+        form = MessageForm(request.POST, request.FILES)
+        if not form.is_valid():
+            if getattr(request, 'htmx', False):
+                return _thread_response(request, thread, form)
+            for error in form.errors.values():
+                messages.error(request, error.as_text().lstrip('* '))
+            return _thread_response(request, thread)
+        message = form.save(commit=False)
+        message.thread = thread
+        message.sender = request.user
+        message.save()
+        return _thread_response(request, thread)
+
+
+class MessageDeleteView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        message = get_object_or_404(Message.objects.select_related('thread__requirement', 'thread__supplier'), pk=pk)
+        thread = message.thread
+        if not thread.is_participant(request.user):
+            raise Http404
+        if message.sender_id != request.user.id:
+            messages.error(request, "You can only delete your own messages.")
+        elif thread.is_closed:
+            messages.error(request, "Messages in a closed conversation can't be deleted.")
+        elif not message.is_deleted:
+            message.soft_delete()
+            logger.info("Message #%s deleted by %s", message.pk, request.user)
+        return _thread_response(request, thread)
+
+
+class MessageAttachmentDownloadView(LoginRequiredMixin, View):
+    def get(self, request, pk):
+        message = get_object_or_404(Message.objects.select_related('thread__requirement', 'thread__supplier'), pk=pk)
+        if not message.thread.is_participant(request.user) or not message.has_attachment:
+            raise Http404
+        return FileResponse(
+            message.attachment.open('rb'),
+            as_attachment=True,
+            filename=message.attachment_name or 'attachment',
+            content_type=message.attachment_content_type or 'application/octet-stream',
+        )
+
+
+class MessageThreadCloseView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        thread = _get_participant_thread(request, pk)
+        if thread.can_be_closed():
+            thread.close(request.user)
+            messages.success(request, "Conversation closed.")
+        elif not thread.is_closed:
+            messages.error(request, "A conversation can only be closed once its RFQ is completed or its order is finished.")
+        return redirect(reverse('message-thread', kwargs={'pk': thread.pk}))
+
+
+# --- Live updates (htmx polling) ---------------------------------------------
+# Each poller sends back the signature of what it currently shows; an
+# unchanged signature gets an empty 204 (htmx leaves the page alone), and a
+# logged-out poller gets 286, which tells htmx to stop polling. These views
+# are exempt from LoginRequiredMiddleware (see urls.py) so a lapsed session
+# stops the poll instead of swapping the login page into the bell.
+
+NO_CHANGE = 204
+STOP_POLLING = 286
+
+
+def _poll_response(status):
+    return HttpResponse(status=status)
+
+
+def quotes_section_context(request, requirement):
+    """Everything _quotes_section.html needs, for the RFQ page, htmx swaps and the quotes poll."""
+    quotes = services.annotate_quote_badges(
+        Quote.objects.filter(requirement=requirement, is_deleted=False).select_related('supplier', 'supplier__company')
+    )
+    is_manufacturer = request.user.role == 'manufacturer'
+    my_quote = None
+    my_declined = False
+    if is_manufacturer:
+        supplier = ManufacturerProfile.objects.filter(user=request.user).first()
+        my_quote = next((q for q in quotes if q.supplier_id == getattr(supplier, 'pk', None)), None)
+        my_declined = supplier is not None and RFQDecline.objects.filter(requirement=requirement, supplier=supplier).exists()
+    return {
+        'demand': requirement,
+        'quotes': quotes,
+        'is_manufacturer': is_manufacturer,
+        'is_buyer': request.user.id == requirement.user_id,
+        'my_quote': my_quote,
+        'my_declined': my_declined,
+        'selected_quote': next((q for q in quotes if q.is_selected), None),
+        'quotes_sig': services.quotes_signature(requirement),
+    }
+
+
+class LiveTopbarView(View):
+    """Keeps the notification bell and sidebar badges current on every dashboard page."""
+    def get(self, request):
+        if not request.user.is_authenticated:
+            return _poll_response(STOP_POLLING)
+        from homepage.context_processors import dashboard_sidebar_counts
+        context = dashboard_sidebar_counts(request)
+        if not context or request.GET.get('sig') == context['live_sig']:
+            return _poll_response(NO_CHANGE)
+        context['next_url'] = request.htmx.current_url_abs_path if getattr(request, 'htmx', False) else reverse('home')
+        return render(request, 'live/_topbar_update.html', context)
+
+
+class MessageThreadPollView(View):
+    """New messages in an open conversation, without touching the reply box."""
+    def get(self, request, pk):
+        if not request.user.is_authenticated:
+            return _poll_response(STOP_POLLING)
+        thread = _get_participant_thread(request, pk)
+        if thread.is_closed and request.GET.get('closed') != '1':
+            # Closing also hides the reply box, which lives outside the polled list.
+            response = _poll_response(200)
+            response['HX-Refresh'] = 'true'
+            return response
+        sig = services.thread_signature(thread)
+        if request.GET.get('sig') == sig:
+            return _poll_response(NO_CHANGE)
+        thread.mark_read_for(request.user)
+        services.invalidate_notification_cache(request.user)
+        context = _thread_messages_context(thread)
+        return render(request, 'messages/_message_list.html', context)
+
+
+class QuotesSectionPollView(View):
+    """New or changed quotes on an open RFQ."""
+    def get(self, request, pk):
+        if not request.user.is_authenticated:
+            return _poll_response(STOP_POLLING)
+        requirement = get_object_or_404(Requirement, pk=pk, is_deleted=False)
+        if request.user.role != 'manufacturer' and request.user.id != requirement.user_id:
+            raise Http404
+        if request.GET.get('sig') == services.quotes_signature(requirement):
+            return _poll_response(NO_CHANGE)
+        return render(request, 'requirement/_quotes_section.html', quotes_section_context(request, requirement))

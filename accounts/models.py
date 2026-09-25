@@ -4,36 +4,6 @@ from django.db import models
 from django.conf import settings
 
 
-class ManufacturingSector(models.Model):
-    TECHNOLOGY_CHOICES = [
-        (31, 'Turning'),
-        (34, 'Milling'),
-        (82, 'Drilling / Sawing'),
-        (14, 'Machining (Extruded Profiles)'),
-        (28, 'Sheet Metal Processing'),
-        (25, 'Sheet Metal Forming (Stamping, Deep-drawing)'),
-        (55, 'Welding'),
-        (12, 'Welded constructions / Structural Steelwork'),
-        (13, 'Injection Moulding, Extruding'),
-        (19, 'Joining (Plastics & Rubber)'),
-        (86, 'Cutting (plastics)'),
-        (81, 'Forming (Plastics & Rubber)'),
-        (85, 'Machining (Plastics & Rubber)'),
-        (88, 'Water jet cutting'),
-        (4, 'Casting'),
-        (7, 'Sintering & Powder Pressing'),
-        (5, 'Cutting dies / deep drawing dies'),
-        (8, 'Mould construction'),
-        (9, 'Jigmaking'),
-        (83, 'Etching and Spark Erosion'),
-        (89, 'Cutting tools (metal)')
-        # Add additional technology choices as needed
-    ]
-    technology = models.IntegerField(choices=TECHNOLOGY_CHOICES)
-    description = models.CharField(max_length=55)
-    def __str__(self):
-        return f"{dict(self.TECHNOLOGY_CHOICES).get(self.technology, 'Other Technology')}"
-
 class ManufacturingTech(models.Model):
     TECH_CHOICES = [
         ('milling', 'Milling'),
@@ -478,5 +448,12 @@ class SubscriptionPlan(models.Model):
     end_date = models.DateField(blank=True, null=True) # Set this for expiration
     is_active = models.BooleanField(default=True)
 
+    # A paid upgrade the user asked for but hasn't paid for yet. There is no
+    # payment integration, so staff apply it (from the subscriptions admin
+    # screen) once payment is confirmed; plan_type/price/rfq_limit only
+    # change then.
+    pending_plan_type = models.CharField(max_length=20, choices=PLAN_CHOICES, blank=True)
+    pending_requested_at = models.DateTimeField(blank=True, null=True)
+
     def __str__(self):
-        return f"{self.user_profile.user.username} - {self.plan_type}"
+        return f"{self.user_profile.username} - {self.plan_type}"

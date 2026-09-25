@@ -1,22 +1,10 @@
 from django.core.management.base import BaseCommand
-from accounts.models import ManufacturingSector, ManufacturingTech, MaterialCapability
+from accounts.models import ManufacturingTech, MaterialCapability
 
 class Command(BaseCommand):
-    help = 'Populate the ManufacturingSector, ManufacturingTech and MaterialCapability lookup tables'
+    help = 'Populate the ManufacturingTech and MaterialCapability lookup tables'
 
     def handle(self, *args, **kwargs):
-        # Populate ManufacturingSector
-        sector_choices = ManufacturingSector.TECHNOLOGY_CHOICES
-        for choice in sector_choices:
-            technology, created = ManufacturingSector.objects.get_or_create(
-                technology=choice[0],
-                defaults={'description': choice[1]}
-            )
-            if created:
-                self.stdout.write(self.style.SUCCESS(f'Successfully created sector: {choice[1]}'))
-            else:
-                self.stdout.write(self.style.WARNING(f'Sector already exists: {choice[1]}'))
-
         # Populate ManufacturingTech.
         # NOTE: `technology_type` is the lookup key (must stay one of the
         # TECH_CHOICES keys, e.g. 'milling') — it must NOT also appear in

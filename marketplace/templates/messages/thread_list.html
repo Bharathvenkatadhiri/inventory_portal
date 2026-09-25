@@ -1,0 +1,13 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Messages — ManufactureHub{% endblock %}
+{% block page_header %}
+<div class="mb-6">
+    <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">Messages</h1>
+    <p class="mt-1 text-sm text-gray-500">Conversations with your {% if request.user.role == 'manufacturer' %}buyers{% else %}suppliers{% endif %}, grouped by RFQ.</p>
+</div>
+{% endblock %}
+{% block content %}
+<div class="card overflow-hidden p-0">
+    {% include "messages/_thread_list_panel.html" %}
+</div>
+{% endblock %}

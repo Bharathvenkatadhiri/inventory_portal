@@ -1,4 +1,5 @@
 {% extends "dashboard_base.html" %}
+{% load custom_filters %}
 {% block title %}Dashboard — ManufactureHub{% endblock %}
 {% block page_header %}
 <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -49,7 +50,7 @@
             </span>
         </div>
         <p class="mt-2 text-3xl font-extrabold text-navy-900">{{ stat_quotes_awaiting_count }}</p>
-        <p class="text-xs text-gray-500">Worth &#8377;{{ stat_quotes_awaiting_value|floatformat:0 }} in total</p>
+        <p class="text-xs text-gray-500">Worth {{ stat_quotes_awaiting_value|money_totals }} in total</p>
     </div>
     <div class="card">
         <div class="flex items-start justify-between">
@@ -98,7 +99,7 @@
                             <p class="text-xs text-gray-500">RFQ-{{ requirement.pk }}{% if requirement.industry %} &middot; {{ requirement.industry }}{% endif %}</p>
                         </td>
                         <td class="py-3 text-gray-600">{{ requirement.requirement_parts.first.technology|default:"—" }}</td>
-                        <td class="py-3 text-gray-600">{{ requirement.parts }}</td>
+                        <td class="py-3 text-gray-600">{{ requirement.total_parts_quantity }}</td>
                         <td class="py-3">
                             {% if requirement.end_date %}<span class="text-accent-600">{{ requirement.end_date|timeuntil }}</span>{% else %}—{% endif %}
                         </td>
@@ -161,6 +162,8 @@
                 {% endfor %}
             </ul>
         </div>
+
+        {% include "_subscription_widget.html" %}
     </div>
 </div>
 {% endif %}

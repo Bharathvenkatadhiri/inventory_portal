@@ -23,14 +23,15 @@
     </div>
 
     <h2 class="font-semibold text-gray-900 mb-3">Status history</h2>
-    {% if bill.status_history.all %}
+    {% with history=bill.status_events %}
+    {% if history %}
     <ul class="space-y-3">
-        {% for entry in bill.status_history.all %}
+        {% for entry in history %}
         <li class="flex items-start gap-3 text-sm">
             <span class="mt-1 h-2 w-2 rounded-full bg-brand-500 shrink-0"></span>
             <div>
                 <p class="text-gray-900">
-                    {% if entry.from_status %}{{ entry.from_status|title }} &rarr; {% endif %}{{ entry.to_status|title }}
+                    {% if entry.from_value %}{{ entry.from_label }} &rarr; {% endif %}{{ entry.to_label }}
                 </p>
                 <p class="text-xs text-gray-500">{{ entry.changed_at|date:"M j, Y H:i" }}{% if entry.note %} &middot; {{ entry.note }}{% endif %}</p>
             </div>
@@ -40,4 +41,5 @@
     {% else %}
     <p class="text-sm text-gray-500">No status changes recorded yet.</p>
     {% endif %}
+    {% endwith %}
 </div>

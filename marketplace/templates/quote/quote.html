@@ -1,13 +1,10 @@
-{% extends "base.html" %}
+{% extends "dashboard_base.html" %}
 {% block title %}Quote #{{ quote.pk }} — ManufactureHub{% endblock %}
-{% block content %}
-
-<div class="flex items-start justify-between gap-4 mb-6">
+{% block page_header %}
+<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
     <div>
-        <h1 class="text-2xl font-semibold text-gray-900">Quote #{{ quote.pk }}</h1>
-        <p class="text-sm text-gray-500 mt-1">
-            <a href="{% url 'requirement' quote.requirement.pk %}" class="text-brand-600 hover:underline">{{ quote.requirement.title }}</a>
-        </p>
+        <p class="text-sm text-gray-500"><a href="{% url 'requirement' quote.requirement.pk %}" class="text-accent-500 hover:underline">{{ quote.requirement.title }}</a></p>
+        <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">Quote #{{ quote.pk }} &middot; {{ quote.supplier.companyname|default:quote.supplier }}</h1>
     </div>
     <div class="flex flex-col items-end gap-2">
         {% if quote.is_selected %}
@@ -19,27 +16,87 @@
         {% else %}
         <span class="badge bg-yellow-50 text-yellow-700">Pending</span>
         {% endif %}
-        {% if quote.supplier.user == request.user %}
-        <a href="{% url 'edit-quote' quote.pk %}" class="text-sm text-brand-600 hover:underline">Edit details</a>
+        {% if quote.supplier.user == request.user and not quote.is_selected and not quote.status %}
+        <a href="{% url 'edit-quote' quote.pk %}" class="text-sm text-accent-500 hover:underline">Edit details</a>
         {% endif %}
     </div>
 </div>
+{% endblock %}
+{% block content %}
 
-<div class="card">
-    <dl class="grid grid-cols-2 gap-4 text-sm">
-        <div>
-            <dt class="text-gray-500">Manufacturer</dt>
-            <dd class="text-gray-900">{{ quote.supplier }}</dd>
+<div class="grid gap-6 lg:grid-cols-3">
+    <div class="card lg:col-span-2">
+        <h2 class="text-lg font-bold text-navy-900 mb-4">Quote breakdown</h2>
+        <dl class="grid grid-cols-2 gap-4 text-sm">
+            <div>
+                <dt class="text-gray-500">Manufacturer</dt>
+                <dd class="text-navy-900">{{ quote.supplier.companyname|default:quote.supplier }}</dd>
+            </div>
+            <div>
+                <dt class="text-gray-500">Unit price</dt>
+                <dd class="text-navy-900">{{ quote.requirement.quote_currency }} {{ quote.quote_price }}</dd>
+            </div>
+            <div>
+                <dt class="text-gray-500">Lead time</dt>
+                <dd class="text-navy-900">{% if quote.lead_time_value %}{{ quote.lead_time_value }} {{ quote.get_lead_time_unit_display }}{% else %}—{% endif %}</dd>
+            </div>
+            <div>
+                <dt class="text-gray-500">Tooling / setup</dt>
+                <dd class="text-navy-900">{{ quote.requirement.quote_currency }} {{ quote.tooling_cost }}</dd>
+            </div>
+            <div>
+                <dt class="text-gray-500">Payment terms</dt>
+                <dd class="text-navy-900">{{ quote.get_payment_terms_display|default:"—" }}</dd>
+            </div>
+            <div>
+                <dt class="text-gray-500">Valid until</dt>
+                <dd class="text-navy-900">{{ quote.valid_until|date:"M j, Y"|default:"—" }}</dd>
+            </div>
+            <div class="col-span-2">
+                <dt class="text-gray-500">Note</dt>
+                <dd class="text-navy-900">{{ quote.note|default:"—" }}</dd>
+            </div>
+            {% if quote.quote_file %}
+            <div class="col-span-2">
+                <dt class="text-gray-500">Quote document</dt>
+                <dd><a href="{{ quote.quote_file.url }}" target="_blank" class="text-accent-500 hover:underline">Download</a></dd>
+            </div>
+            {% endif %}
+        </dl>
+
+        {% with breakdown=quote.get_breakdown %}
+        <div class="mt-6 space-y-1.5 border-t border-gray-100 pt-4 text-sm">
+            <div class="flex justify-between"><dt class="text-gray-500">Quantity</dt><dd class="text-navy-900">{{ breakdown.quantity }}</dd></div>
+            <div class="flex justify-between"><dt class="text-gray-500">Subtotal</dt><dd class="text-navy-900">{{ quote.requirement.quote_currency }} {{ breakdown.subtotal|floatformat:2 }}</dd></div>
+            <div class="flex justify-between"><dt class="text-gray-500">GST (18%)</dt><dd class="text-navy-900">{{ quote.requirement.quote_currency }} {{ breakdown.gst|floatformat:2 }}</dd></div>
+            <div class="flex justify-between text-base font-bold"><dt class="text-navy-900">Total</dt><dd class="text-navy-900">{{ quote.requirement.quote_currency }} {{ breakdown.total|floatformat:2 }}</dd></div>
         </div>
-        <div>
-            <dt class="text-gray-500">Price</dt>
-            <dd class="text-gray-900">{{ quote.requirement.quote_currency }} {{ quote.quote_price }}</dd>
+        {% endwith %}
+    </div>
+
+    <div class="space-y-6">
+        <div class="card">
+            <h2 class="text-lg font-bold text-navy-900 mb-3">Certifications</h2>
+            {% if quote.supplier.certifications.all %}
+            <ul class="space-y-2 text-sm">
+                {% for cert in quote.supplier.certifications.all %}
+                <li class="flex items-center justify-between">
+                    <span class="text-navy-900">{{ cert.name }}</span>
+                    {% if cert.is_verified %}<span class="badge bg-green-50 text-green-700">Verified</span>{% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-sm text-gray-500">No certifications on file.</p>
+            {% endif %}
         </div>
-        <div class="col-span-2">
-            <dt class="text-gray-500">Note</dt>
-            <dd class="text-gray-900">{{ quote.note|default:"—" }}</dd>
-        </div>
-    </dl>
+        {% if request.user == quote.requirement.user %}
+        <form method="post" action="{% url 'message-thread-start' quote.requirement.pk quote.supplier.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="btn-outline w-full">Message {{ quote.supplier.companyname|default:quote.supplier }}</button>
+        </form>
+        {% endif %}
+    </div>
 </div>
 
 {% endblock content %}

@@ -1,69 +1,48 @@
-{% extends "base.html" %}
-{% block title %}Search Results — ManufactureHub{% endblock %}
+{% extends "dashboard_base.html" %}
+{% block title %}Search — ManufactureHub{% endblock %}
+{% block page_header %}
+<div class="mb-6">
+    <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">Search results for "{{ search }}"</h1>
+    <p class="mt-1 text-sm text-gray-500">Searching {% if request.user.is_staff %}all RFQs{% elif request.user.role == 'manufacturer' %}open RFQs and RFQs you've quoted on{% else %}your RFQs{% endif %} by title, description, industry, part name or RFQ number.</p>
+</div>
+{% endblock %}
 {% block content %}
-
-<h1 class="text-2xl font-semibold text-gray-900 mb-6">Search results for "{{ search }}"</h1>
-
 {% if object_list %}
-<div class="space-y-4">
+<div class="card divide-y divide-gray-100 p-0">
     {% for demand in object_list %}
-    <div class="card">
-        <div class="flex items-start justify-between gap-4">
-            <div>
-                <a href="{% url 'requirement' demand.pk %}" class="text-lg font-medium text-gray-900 hover:text-brand-600">{{ demand.title }}</a>
-                <p class="text-sm text-gray-500 mt-1">{{ demand.parts }} part(s) &middot; {{ demand.industry|default:"—" }} &middot; ends {{ demand.end_date|date:"M j, Y"|default:"—" }}</p>
-                <p class="text-sm text-gray-600 mt-1">{{ demand.rfq_desc }}</p>
-            </div>
-            <div class="flex flex-col items-end gap-2 shrink-0">
-                {% if demand.status == 'Approved' %}
-                <span class="badge bg-green-50 text-green-700">Approved</span>
-                {% elif demand.status == 'Production' %}
-                <span class="badge bg-yellow-50 text-yellow-700">In Production</span>
-                {% elif demand.status == 'Completed' %}
-                <span class="badge bg-green-50 text-green-700">Completed</span>
-                {% elif demand.status == 'Rejected' %}
-                <span class="badge bg-red-50 text-red-700">Rejected</span>
-                {% else %}
-                <span class="badge bg-gray-100 text-gray-700">Submitted</span>
-                {% endif %}
-                {% if request.user.role == 'manufacturer' and demand.status == 'Approved' %}
-                <a href="{% url 'requirement-update-status' demand.pk 'Production' %}" class="text-xs text-brand-600 hover:underline">+ Start production</a>
-                {% elif request.user.role == 'manufacturer' and demand.status == 'Production' %}
-                <a href="{% url 'requirement-update-status' demand.pk 'Completed' %}" class="text-xs text-brand-600 hover:underline">+ Complete RFQ</a>
-                {% endif %}
-                {% if demand.user == request.user and not demand.status %}
-                <div class="flex gap-3">
-                    <a href="{% url 'edit-requirement' demand.pk %}" class="text-xs text-gray-500 hover:text-gray-700">Edit</a>
-                    <a href="{% url 'delete-requirement' demand.pk %}" class="text-xs text-red-600 hover:text-red-700">Delete</a>
-                </div>
-                {% endif %}
-            </div>
+    <a href="{% url 'requirement' demand.pk %}" class="flex items-start justify-between gap-4 p-5 hover:bg-gray-50">
+        <div class="min-w-0">
+            <p class="font-bold text-navy-900">{{ demand.title }} <span class="ml-1 text-xs font-normal text-gray-400">RFQ-{{ demand.pk }}</span></p>
+            <p class="mt-1 text-sm text-gray-500">{{ demand.total_parts_quantity }} pcs &middot; {{ demand.industry|default:"—" }} &middot; quotes due {{ demand.end_date|date:"d M Y"|default:"—" }}</p>
+            {% if demand.rfq_desc %}<p class="mt-1 truncate text-sm text-gray-600">{{ demand.rfq_desc }}</p>{% endif %}
         </div>
-    </div>
+        {% if demand.status == 'Approved' %}
+        <span class="badge shrink-0 bg-green-50 text-green-700">Awarded</span>
+        {% elif demand.status == 'Production' %}
+        <span class="badge shrink-0 bg-yellow-50 text-yellow-700">In production</span>
+        {% elif demand.status == 'Completed' %}
+        <span class="badge shrink-0 bg-green-50 text-green-700">Completed</span>
+        {% elif demand.status == 'Rejected' %}
+        <span class="badge shrink-0 bg-red-50 text-red-700">Rejected</span>
+        {% else %}
+        <span class="badge shrink-0 bg-gray-100 text-gray-700">Open</span>
+        {% endif %}
+    </a>
     {% endfor %}
 </div>
 
 {% if is_paginated %}
 <div class="mt-6 flex flex-wrap gap-2">
     {% if page_obj.has_previous %}
-    <a class="btn-secondary" href="?page=1&search={{ search }}">First</a>
-    <a class="btn-secondary" href="?page={{ page_obj.previous_page_number }}&search={{ search }}">Previous</a>
+    <a class="btn-outline" href="?page={{ page_obj.previous_page_number }}&search={{ search|urlencode }}">Previous</a>
     {% endif %}
-    {% for num in page_obj.paginator.page_range %}
-        {% if page_obj.number == num %}
-        <span class="btn-primary">{{ num }}</span>
-        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-        <a class="btn-secondary" href="?page={{ num }}&search={{ search }}">{{ num }}</a>
-        {% endif %}
-    {% endfor %}
+    <span class="btn-primary">{{ page_obj.number }}</span>
     {% if page_obj.has_next %}
-    <a class="btn-secondary" href="?page={{ page_obj.next_page_number }}&search={{ search }}">Next</a>
-    <a class="btn-secondary" href="?page={{ page_obj.paginator.num_pages }}&search={{ search }}">Last</a>
+    <a class="btn-outline" href="?page={{ page_obj.next_page_number }}&search={{ search|urlencode }}">Next</a>
     {% endif %}
 </div>
 {% endif %}
-
 {% else %}
-<div class="card text-center text-gray-500">No results found.</div>
+<div class="card text-center text-sm text-gray-500">No RFQs match "{{ search }}".</div>
 {% endif %}
-{% endblock content %}
+{% endblock %}

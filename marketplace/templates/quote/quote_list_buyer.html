@@ -1,0 +1,49 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Quotes — ManufactureHub{% endblock %}
+{% block page_header %}
+<div class="mb-6">
+    <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">Quotes</h1>
+    <p class="mt-1 text-sm text-gray-500">Every quote sitting on your desk, grouped by RFQ.</p>
+</div>
+{% endblock %}
+{% block content %}
+{% if quotes_by_requirement %}
+<div class="space-y-6">
+    {% for requirement, quotes in quotes_by_requirement.items %}
+    <div class="card">
+        <div class="mb-4 flex items-center justify-between">
+            <div>
+                <a href="{% url 'requirement' requirement.pk %}#quotes-section" class="font-bold text-navy-900 hover:text-accent-500">{{ requirement.title }}</a>
+                <p class="text-xs text-gray-500">RFQ-{{ requirement.pk }} &middot; {{ quotes|length }} quote{{ quotes|length|pluralize }}{% if requirement.end_date %} &middot; due {{ requirement.end_date|date:"d M" }}{% endif %}</p>
+            </div>
+            <a href="{% url 'requirement' requirement.pk %}#quotes-section" class="btn-outline text-xs">Compare &rarr;</a>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {% for quote in quotes %}
+            <div class="rounded-lg border border-gray-100 p-3">
+                <p class="font-bold text-navy-900">{{ quote.supplier.companyname|default:quote.supplier }}</p>
+                <p class="mt-1 text-lg font-extrabold text-navy-900">{{ requirement.quote_currency }} {{ quote.quote_price }}<span class="text-xs font-normal text-gray-400"> /unit</span></p>
+                <p class="text-xs text-gray-500">{% if quote.lead_time_value %}{{ quote.lead_time_value }} {{ quote.get_lead_time_unit_display }} lead time{% else %}Lead time not set{% endif %}</p>
+                {% if quote.is_selected %}
+                <span class="badge mt-2 bg-green-50 text-green-700">Selected</span>
+                {% elif quote.status == 'Rejected' %}
+                <span class="badge mt-2 bg-red-50 text-red-700">Rejected</span>
+                {% elif quote.awaiting_revision %}
+                <span class="badge mt-2 bg-blue-50 text-blue-700">Revision requested</span>
+                {% elif quote.revision_was_declined %}
+                <span class="badge mt-2 bg-gray-100 text-gray-700">Original quote stands</span>
+                {% elif quote.revised_at %}
+                <span class="badge mt-2 bg-accent-50 text-accent-700">Revised</span>
+                {% else %}
+                <span class="badge mt-2 bg-yellow-50 text-yellow-700">Awaiting decision</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card text-center text-gray-500">No quotes waiting on a decision right now.</div>
+{% endif %}
+{% endblock %}

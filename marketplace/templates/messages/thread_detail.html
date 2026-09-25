@@ -1,0 +1,35 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Messages — ManufactureHub{% endblock %}
+{% block page_header %}
+<div class="mb-6">
+    <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">Messages</h1>
+</div>
+{% endblock %}
+{% block content %}
+<div class="grid gap-6 lg:grid-cols-[320px_1fr]">
+    <div class="card max-h-[70vh] overflow-y-auto p-0">
+        {% include "messages/_thread_list_panel.html" with thread_rows=sidebar_thread_rows active_thread=thread %}
+    </div>
+    <div class="card flex flex-col p-0">
+        <div class="flex items-start justify-between gap-3 border-b border-gray-100 p-4">
+            <div>
+                <p class="font-bold text-navy-900">
+                    {% if request.user == thread.requirement.user %}{{ thread.supplier.companyname|default:thread.supplier }}{% else %}{{ thread.requirement.user.get_full_name|default:thread.requirement.user.email }}{% endif %}
+                </p>
+                <a href="{% url 'requirement' thread.requirement.pk %}" class="text-xs text-accent-500 hover:underline">RFQ-{{ thread.requirement.pk }} &middot; {{ thread.requirement.title }}</a>
+            </div>
+            {% if thread.is_closed %}
+            <span class="badge shrink-0 bg-gray-100 text-gray-600">Closed</span>
+            {% elif thread.can_be_closed %}
+            <form method="post" action="{% url 'message-thread-close' thread.pk %}" onsubmit="return confirm('Close this conversation? It will become read-only for both sides.');">
+                {% csrf_token %}
+                <button type="submit" class="btn-outline shrink-0 text-xs">Close conversation</button>
+            </form>
+            {% endif %}
+        </div>
+        <div id="thread-messages">
+            {% include "messages/_thread_messages.html" %}
+        </div>
+    </div>
+</div>
+{% endblock %}

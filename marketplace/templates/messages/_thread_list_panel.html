@@ -1,0 +1,26 @@
+<div class="divide-y divide-gray-100">
+    {% for row in thread_rows %}
+    {% with thread=row.thread %}
+    <a href="{% url 'message-thread' thread.pk %}" class="block p-4 hover:bg-gray-50 {% if active_thread and active_thread.pk == thread.pk %}bg-accent-50{% endif %}">
+        <div class="flex items-center justify-between gap-2">
+            <p class="truncate font-bold text-navy-900">
+                {% if request.user == thread.requirement.user %}{{ thread.supplier.companyname|default:thread.supplier }}{% else %}{{ thread.requirement.user.get_full_name|default:thread.requirement.user.email }}{% endif %}
+            </p>
+            {% if row.last_message %}<span class="shrink-0 text-xs text-gray-400">{{ row.last_message.created_at|timesince }} ago</span>{% endif %}
+        </div>
+        <p class="text-xs text-accent-600">RFQ-{{ thread.requirement.pk }} &middot; {{ thread.requirement.title }}{% if thread.is_closed %} <span class="badge ml-1 bg-gray-100 text-gray-500">Closed</span>{% endif %}</p>
+        <div class="mt-1 flex items-center justify-between gap-2">
+            <p class="truncate text-sm text-gray-500">
+                {% if not row.last_message %}No messages yet
+                {% elif row.last_message.is_deleted %}<span class="italic">Message deleted</span>
+                {% elif row.last_message.body %}{{ row.last_message.body }}
+                {% else %}Attachment: {{ row.last_message.attachment_name }}{% endif %}
+            </p>
+            {% if row.unread %}<span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-500 text-xs font-bold text-white">{{ row.unread }}</span>{% endif %}
+        </div>
+    </a>
+    {% endwith %}
+    {% empty %}
+    <div class="p-6 text-center text-sm text-gray-500">No conversations yet. Start one from any RFQ's quotes.</div>
+    {% endfor %}
+</div>

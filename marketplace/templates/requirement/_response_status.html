@@ -1,0 +1,6 @@
+{% if response.status == 'pending' %}<span class="badge bg-gray-100 text-gray-700">Waiting for supplier</span>
+{% elif response.status == 'rejected' %}<span class="badge bg-red-50 text-red-700">Rejected changes</span>
+{% elif response.status == 'accepted' %}<span class="badge bg-accent-50 text-accent-700">New pricing to review</span>
+{% elif response.status == 'buyer_accepted' %}<span class="badge bg-green-50 text-green-700">You accepted</span>
+{% elif response.status == 'buyer_declined' %}<span class="badge bg-gray-100 text-gray-700">You kept the original</span>
+{% else %}<span class="badge bg-gray-100 text-gray-500">Closed</span>{% endif %}

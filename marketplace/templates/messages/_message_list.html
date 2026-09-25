@@ -1,0 +1,48 @@
+{% load widget_tweaks %}
+{# Polled every 5s while the conversation is open; the server replies 204 unless something changed. #}
+<div id="thread-message-list" class="max-h-[50vh] min-h-[240px] space-y-4 overflow-y-auto p-4"
+     x-data x-init="$el.scrollTop = $el.scrollHeight"
+     {% if not thread.is_closed %}hx-get="{% url 'live-thread' thread.pk %}?sig={{ message_sig }}&closed={{ thread.is_closed|yesno:'1,0' }}"
+     hx-trigger="every 5s [document.visibilityState === 'visible']"
+     hx-swap="outerHTML"{% endif %}>
+    {% for message in thread_messages %}
+    <div class="group flex items-start gap-2 {% if message.sender_id == request.user.id %}justify-end{% endif %}">
+        {% if message.sender_id == request.user.id and not message.is_deleted and not thread.is_closed %}
+        <form method="post" action="{% url 'message-delete' message.pk %}"
+              hx-post="{% url 'message-delete' message.pk %}" hx-target="#thread-messages" hx-swap="innerHTML"
+              hx-confirm="Delete this message? This can't be undone."
+              class="self-center opacity-0 transition-opacity group-hover:opacity-100">
+            {% csrf_token %}
+            <button type="submit" class="text-xs text-gray-400 hover:text-red-600" title="Delete message">
+                <span class="sr-only">Delete message</span>
+                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+            </button>
+        </form>
+        {% endif %}
+
+        {% if message.is_deleted %}
+        <div class="max-w-[75%] rounded-lg border border-dashed border-gray-200 px-3 py-2 text-sm italic text-gray-400">
+            This message was deleted
+            <p class="mt-1 text-[10px] not-italic">{{ message.sender.first_name }} {{ message.sender.last_name }} &middot; {{ message.deleted_at|date:"d M, H:i" }}</p>
+        </div>
+        {% else %}
+        <div class="max-w-[75%] rounded-lg px-3 py-2 text-sm {% if message.sender_id == request.user.id %}bg-accent-500 text-white{% else %}bg-gray-100 text-navy-900{% endif %}">
+            {% if message.body %}<p class="whitespace-pre-line">{{ message.body }}</p>{% endif %}
+            {% if message.has_attachment %}
+            <a href="{% url 'message-attachment' message.pk %}"
+               class="mt-2 flex items-center gap-2 rounded-md px-2 py-1.5 {% if message.sender_id == request.user.id %}bg-white/15 hover:bg-white/25{% else %}bg-white hover:bg-gray-50{% endif %}">
+                <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2h9l5 5v13a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2z"/><path d="M14 2v6h6"/></svg>
+                <span class="min-w-0">
+                    <span class="block truncate font-bold">{{ message.attachment_name }}</span>
+                    <span class="block text-[10px] opacity-70">{{ message.attachment_size|filesizeformat }}</span>
+                </span>
+            </a>
+            {% endif %}
+            <p class="mt-1 text-[10px] {% if message.sender_id == request.user.id %}text-white/70{% else %}text-gray-400{% endif %}">{{ message.sender.first_name }} {{ message.sender.last_name }} &middot; {{ message.created_at|date:"d M, H:i" }}</p>
+        </div>
+        {% endif %}
+    </div>
+    {% empty %}
+    <p class="mt-10 text-center text-sm text-gray-500">No messages yet — say hello.</p>
+    {% endfor %}
+</div>

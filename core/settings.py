@@ -43,6 +43,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
+    "core.middleware.HtmxMessagesMiddleware",
     "core.middleware.GlobalSearchMiddleware",
     "django.contrib.auth.middleware.LoginRequiredMiddleware",
 ]
@@ -75,6 +76,21 @@ WSGI_APPLICATION = "core.wsgi.application"
 
 DATABASES = {
     "default": env.db("DATABASE_URL"),
+}
+# Reuse each Postgres connection for up to a minute instead of opening one
+# per request — the live-update pollers make many small requests. Health
+# checks drop connections the database has closed. Keep
+# GUNICORN_WORKERS x GUNICORN_THREADS below the database's connection limit.
+DATABASES["default"]["CONN_MAX_AGE"] = env.int("DB_CONN_MAX_AGE", default=60)
+DATABASES["default"]["CONN_HEALTH_CHECKS"] = True
+
+# One cache shared by every Gunicorn worker (the notification-bell cache and
+# the GST-verification rate limit rely on it). Per-process memory would give
+# each worker its own copy, so the rate limit would multiply by the worker
+# count. Production defaults to the database cache (no extra service; needs
+# `manage.py createcachetable`); set CACHE_URL=redis://... to use Redis.
+CACHES = {
+    "default": env.cache_url("CACHE_URL", default="locmemcache://" if DEBUG else "dbcache://django_cache"),
 }
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -188,6 +204,9 @@ GST_VERIFICATION_PROVIDER = env("GST_VERIFICATION_PROVIDER", default="mock")
 GST_VERIFICATION_API_KEY = env("GST_VERIFICATION_API_KEY", default="")
 GST_VERIFICATION_API_BASE_URL = env("GST_VERIFICATION_API_BASE_URL", default="")
 GST_VERIFICATION_TIMEOUT_SECONDS = env.int("GST_VERIFICATION_TIMEOUT_SECONDS", default=10)
+
+# --- Buyer/supplier messaging ------------------------------------------------
+MESSAGE_ATTACHMENT_MAX_BYTES = env.int("MESSAGE_ATTACHMENT_MAX_BYTES", default=10 * 1024 * 1024)
 
 # --- Subscription plans ---------------------------------------------------
 # Referenced by accounts.forms/accounts.views when creating/updating a

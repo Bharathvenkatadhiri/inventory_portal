@@ -7,22 +7,23 @@ from django.contrib.auth.decorators import login_not_required
 from django.core.cache import cache
 from django.http import JsonResponse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 from django.core.exceptions import PermissionDenied
 from .forms import (
-    SupplierDetailsForm, updateSupplierDetailsForm, UserRegistrationForm, SelectCustomer,
+    SupplierDetailsForm, updateSupplierDetailsForm, UserRegistrationForm, SelectCustomer, CustomerRegistrationForm,
     UpdateSubscription, updateCustomer, CompanyAboutForm, CompanyContactForm, CompanyCapacityForm,
     MachineForm, CertificationForm, CapabilityAddForm, MaterialAddForm,
 )
 from .models import (
     ManufacturerProfile, ConsumerProfile, SubscriptionPlan, Company,
-    Machine, ManufacturerPhoto, Certification,
+    Machine, ManufacturerPhoto, Certification, ManufacturingTech,
 )
 from .services.gst_verification import verify_gstin
 from .services.company_matching import company_names_match
 from django.views.generic import (View, ListView, CreateView, UpdateView, DeleteView)
 from django.contrib.messages.views import SuccessMessageMixin
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib import messages
 from django.conf import settings
 from django.apps import apps
@@ -36,6 +37,43 @@ logger = logging.getLogger(__name__)
 
 GST_VERIFY_RATE_LIMIT = 5
 GST_VERIFY_RATE_WINDOW_SECONDS = 60
+
+# Same three tiers assigned at registration (see `register()` below) — the
+# one place that lists/prices them, so the settings pages and the
+# self-service upgrade view can't drift out of sync with each other.
+PLAN_ORDER = ['basic', 'standard', 'enterprise']
+
+
+class StaffRequiredMixin(UserPassesTestMixin):
+    """Platform-admin screens (all customers, all suppliers, all
+    subscriptions). Being logged in is not enough."""
+    raise_exception = True
+
+    def test_func(self):
+        return self.request.user.is_staff
+
+
+def plan_catalog(subscription):
+    """Real plan tiers from settings.subscription_plan_details, annotated
+    with which one the user is on, which one (if any) is awaiting payment,
+    and whether each other tier is an upgrade or downgrade from the current
+    one — never fabricated pricing or features."""
+    plan_labels = dict(SubscriptionPlan.PLAN_CHOICES)
+    current_plan_type = subscription.plan_type if subscription else 'basic'
+    pending_plan_type = subscription.pending_plan_type if subscription else ''
+    current_rank = PLAN_ORDER.index(current_plan_type) if current_plan_type in PLAN_ORDER else 0
+    return [
+        {
+            'key': key,
+            'label': plan_labels.get(key, key.title()),
+            'price': subscription_plan_details[key]['price'],
+            'rfq_limit': subscription_plan_details[key]['rfq_limit'],
+            'is_current': rank == current_rank,
+            'is_pending': key == pending_plan_type,
+            'is_upgrade': rank > current_rank,
+        }
+        for rank, key in enumerate(PLAN_ORDER)
+    ]
 
 
 def _gst_verify_rate_limited(request):
@@ -164,12 +202,23 @@ class CreateSupplier(SuccessMessageMixin, CreateView):
     success_url = '/'  # Redirects to home (the login page for anonymous users)
     success_message = "Your manufacturer account is all set. Log in to get started."
 
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
+    def _pending_user(self):
         # request.user is still anonymous at this point in the registration
         # flow (the account created in `register` isn't logged in yet), so
         # look the user up from the session instead of using request.user.
-        kwargs['user'] = User.objects.filter(pk=self.request.session.get('session_user_id')).first()
+        return User.objects.filter(
+            pk=self.request.session.get('session_user_id'), role='manufacturer', manufacturerprofile__isnull=True,
+        ).first()
+
+    def dispatch(self, request, *args, **kwargs):
+        if self._pending_user() is None:
+            messages.error(request, "Start by creating your account.")
+            return redirect('register')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self._pending_user()
         return kwargs
 
     def get_context_data(self, **kwargs):
@@ -179,7 +228,6 @@ class CreateSupplier(SuccessMessageMixin, CreateView):
         context["session_first_name"] = self.request.session.get('session_first_name')
         context["session_last_name"] = self.request.session.get('session_last_name')
         context["session_email"] = self.request.session.get('session_email')
-        context["session_is_staff"] = self.request.session.get('session_is_staff')
         # Drives the pre-filled, read-only "verified company" panel if the
         # user already verified a GSTIN earlier in this session.
         context["verified_company"] = Company.objects.filter(
@@ -209,6 +257,8 @@ class CreateSupplier(SuccessMessageMixin, CreateView):
             return self.form_invalid(form)
 
         profile = form.save(commit=False)
+        # Never trust the posted hidden `user` field.
+        profile.user = self._pending_user()
         profile.company = company
         profile.companyname = (company.trade_name or company.legal_name)[:40]
         profile.address = company.registered_address
@@ -221,15 +271,29 @@ class CreateSupplier(SuccessMessageMixin, CreateView):
         # One verification -> one registration; drop the session marker so
         # it can't be replayed for a second account.
         self.request.session.pop('verified_company_id', None)
+        _end_profile_step(self.request)
         messages.success(self.request, self.success_message)
         return redirect(self.get_success_url())
+
+
+def _start_profile_step(request, user):
+    """Hands the new (not yet logged-in) user to the profile step via the session."""
+    request.session['session_user_id'] = user.id
+    request.session['session_username'] = user.username
+    request.session['session_first_name'] = user.first_name
+    request.session['session_last_name'] = user.last_name
+    request.session['session_email'] = user.email
+
+
+def _end_profile_step(request):
+    for key in ('session_user_id', 'session_username', 'session_first_name', 'session_last_name', 'session_email'):
+        request.session.pop(key, None)
 
 
 @login_not_required
 def register(request):
     if request.method == 'POST':
         email = request.POST.get('email')
-        is_staff = request.POST.get('is_staff')
 
         if ConsumerProfile.objects.filter(email=email).exists() \
                 or ManufacturerProfile.objects.filter(email=email).exists():
@@ -245,37 +309,27 @@ def register(request):
         if existing_user is not None:
             # A User row exists but registration wasn't finished (the
             # supplier/customer profile step was abandoned) — resume from
-            # there instead of erroring, and repopulate the session the
-            # next step reads from.
-            request.session['session_user_id'] = existing_user.id
-            request.session['session_username'] = existing_user.username
-            request.session['session_first_name'] = existing_user.first_name
-            request.session['session_last_name'] = existing_user.last_name
-            request.session['session_is_staff'] = existing_user.is_staff
-            request.session['session_email'] = existing_user.email
-            if is_staff == '1':
-                return redirect('register-supplier')
-            else:
-                return redirect('register-customer')
+            # there instead of erroring. Only with the right password:
+            # without this check, typing someone else's email was enough to
+            # take over their half-finished account.
+            if not existing_user.check_password(request.POST.get('password1', '')):
+                form = UserRegistrationForm(request.POST)
+                form.add_error('email', 'An account with this email already exists. Enter its password to finish registering, or log in.')
+                return render(request, 'register_first.html', {'form': form})
+            _start_profile_step(request, existing_user)
+            return redirect('register-supplier' if existing_user.role == 'manufacturer' else 'register-customer')
 
         form = UserRegistrationForm(request.POST)
         if form.is_valid():
             user = form.save()
-            request.session['session_user_id'] = user.id
-            request.session['session_username'] = user.username
-            request.session['session_first_name'] = user.first_name
-            request.session['session_last_name'] = user.last_name
-            request.session['session_is_staff'] = user.is_staff
-            request.session['session_email'] = user.email
-            subscription_plan = SubscriptionPlan(plan_type='basic',
+            _start_profile_step(request, user)
+            SubscriptionPlan.objects.create(
+                plan_type='basic',
                 price=subscription_plan_details['basic']['price'],
-                rfq_limit = subscription_plan_details['basic']['rfq_limit'],
-                user_profile_id = email)
-            subscription_plan.save()
-            if user.is_staff:
-                return redirect('register-supplier')
-            else:
-                return redirect('register-customer')
+                rfq_limit=subscription_plan_details['basic']['rfq_limit'],
+                user_profile=user,
+            )
+            return redirect('register-supplier' if user.role == 'manufacturer' else 'register-customer')
     else:
         form = UserRegistrationForm()
     return render(request, 'register_first.html', {'form': form})
@@ -283,10 +337,27 @@ def register(request):
 
 class CreateCustomer(SuccessMessageMixin, CreateView):
     model = ConsumerProfile
-    form_class = SelectCustomer
+    form_class = CustomerRegistrationForm
     success_url = '/'
     success_message = "Your buyer account is all set. Log in to get started."
     template_name = "register_customer.html"
+
+    def _pending_user(self):
+        return User.objects.filter(
+            pk=self.request.session.get('session_user_id'), role='consumer', consumerprofile__isnull=True,
+        ).first()
+
+    def dispatch(self, request, *args, **kwargs):
+        if self._pending_user() is None:
+            messages.error(request, "Start by creating your account.")
+            return redirect('register')
+        return super().dispatch(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        form.instance.user = self._pending_user()
+        response = super().form_valid(form)
+        _end_profile_step(self.request)
+        return response
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -295,7 +366,6 @@ class CreateCustomer(SuccessMessageMixin, CreateView):
         context["session_first_name"] = self.request.session.get('session_first_name')
         context["session_last_name"] = self.request.session.get('session_last_name')
         context["session_email"] = self.request.session.get('session_email')
-        context["session_is_staff"] = self.request.session.get('session_is_staff')
         context["title"] = 'New Customer'
         context["savebtn"] = 'Add Customer'
         return context
@@ -303,24 +373,89 @@ class CreateCustomer(SuccessMessageMixin, CreateView):
 
 
 def ViewProfileDetails(request):
-    # Fixed: this used to branch on `request.user.is_staff` (a Django
-    # permission flag being repurposed as "is this a manufacturer"),
-    # inconsistent with the rest of the app's `request.user.role ==
-    # 'manufacturer'` convention (see marketplace/views.py). A staff user
-    # who isn't a manufacturer used to be wrongly sent down the supplier
-    # branch here.
-    if request.user.role == 'manufacturer':
-        return CompanyProfileView.as_view()(request)
+    # Settings page for both roles now — a manufacturer used to be sent
+    # straight to CompanyProfileView here, which meant they had no page to
+    # manage their own plan. That richer page (capabilities, machines,
+    # photos...) still exists at its own 'company-profile' URL; this page
+    # just adds Profile / Company summary / Plan & billing around it.
     context = {}
-    customer = ConsumerProfile.objects.filter(user=request.user.id).first()
-    if customer:
-        context['customer'] = customer
+    customer = None
+    supplier = None
+    if request.user.role == 'manufacturer':
+        supplier = ManufacturerProfile.objects.filter(user=request.user).first()
+        context['supplier'] = supplier
+    else:
+        customer = ConsumerProfile.objects.filter(user=request.user.id).first()
+        if customer:
+            context['customer'] = customer
+    subscription = SubscriptionPlan.objects.filter(user_profile=request.user).first()
+    context['subscription'] = subscription
+    context['plan_catalog'] = plan_catalog(subscription)
+    context['tab'] = request.GET.get('tab', 'profile')
     return render(request, 'profile.html', context)
 
 
+class SubscriptionUpgradeView(LoginRequiredMixin, View):
+    """Self-service plan change for the logged-in user (buyer or
+    manufacturer). Price and RFQ limit are always looked up server-side
+    from settings.subscription_plan_details; the client only picks a plan
+    key. Moving to a cheaper plan applies immediately. Moving to a more
+    expensive one is recorded as a pending request: there is no payment
+    integration yet, so staff apply it once payment is confirmed."""
+    def post(self, request):
+        plan_type = request.POST.get('plan_type')
+        details = subscription_plan_details.get(plan_type)
+        next_url = request.POST.get('next')
+        if not (next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure())):
+            next_url = reverse('profile') + '?tab=billing'
+        if not details:
+            messages.error(request, "Unknown plan selected.")
+            return redirect(next_url)
+
+        subscription = SubscriptionPlan.objects.filter(user_profile=request.user).first()
+        if subscription is None:
+            basic = subscription_plan_details['basic']
+            subscription = SubscriptionPlan(user_profile=request.user, plan_type='basic', price=basic['price'], rfq_limit=basic['rfq_limit'])
+        label = dict(SubscriptionPlan.PLAN_CHOICES)[plan_type]
+
+        if details['price'] > (subscription.price or 0):
+            subscription.pending_plan_type = plan_type
+            subscription.pending_requested_at = timezone.now()
+            subscription.save()
+            logger.info("Subscription upgrade to '%s' requested by %s (awaiting payment)", plan_type, request.user)
+            messages.success(
+                request,
+                f"Upgrade to {label} requested. We'll send you a payment link — your plan changes as soon as payment is confirmed.",
+            )
+            return redirect(next_url)
+
+        subscription.plan_type = plan_type
+        subscription.price = details['price']
+        subscription.rfq_limit = details['rfq_limit']
+        subscription.is_active = True
+        subscription.pending_plan_type = ''
+        subscription.pending_requested_at = None
+        subscription.save()
+        logger.info("Subscription for %s changed to '%s'", request.user, plan_type)
+        messages.success(request, f"You're now on the {label} plan.")
+        return redirect(next_url)
+
+        subscription = SubscriptionPlan.objects.filter(user_profile=request.user).first()
+        if subscription is None:
+            subscription = SubscriptionPlan(user_profile=request.user)
+        subscription.plan_type = plan_type
+        subscription.price = details['price']
+        subscription.rfq_limit = details['rfq_limit']
+        subscription.is_active = True
+        subscription.save()
+        logger.info("Subscription for %s changed to '%s'", request.user, plan_type)
+        messages.success(request, f"You're now on the {subscription.get_plan_type_display()} plan.")
+        return redirect(next_url)
 
 
-class CustomerListView(ListView):
+
+
+class CustomerListView(StaffRequiredMixin, ListView):
     model = ConsumerProfile
     template_name = "customer/customer_list.html"
     paginate_by = 5
@@ -336,7 +471,7 @@ class CustomerListView(ListView):
         context = super().get_context_data(**kwargs)
         return context
 
-class CustomerCreateView(SuccessMessageMixin, CreateView):
+class CustomerCreateView(StaffRequiredMixin, SuccessMessageMixin, CreateView):
     model = ConsumerProfile
     form_class = SelectCustomer
     success_url = '/accounts/customers'
@@ -349,20 +484,32 @@ class CustomerCreateView(SuccessMessageMixin, CreateView):
         context["savebtn"] = 'Add Customer'
         return context
 
-class CustomerUpdateView(SuccessMessageMixin, UpdateView):
+class CustomerUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
     model = ConsumerProfile
     form_class = updateCustomer
-    success_url = '/accounts/customers'
-    success_message = "Customer details has been updated successfully"
+    success_message = "Company details updated."
     template_name = "customer/edit_customer.html"
+
+    def get_object(self, queryset=None):
+        # Staff can edit any buyer company; a buyer only their own (linked
+        # from Settings → Company).
+        obj = super().get_object(queryset)
+        if not (self.request.user.is_staff or obj.user_id == self.request.user.id):
+            raise PermissionDenied("You can only edit your own company details.")
+        return obj
+
+    def get_success_url(self):
+        if self.request.user.is_staff and self.object.user_id != self.request.user.id:
+            return reverse('customers-list')
+        return reverse('profile') + '?tab=company'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["title"] = 'Edit Customer'
+        context["title"] = 'Edit company details'
         context["savebtn"] = 'Save Changes'
         return context
 
-class CustomerDeleteView(View):
+class CustomerDeleteView(StaffRequiredMixin, View):
     template_name = "customer/delete_customer.html"
     success_message = "Customer Record has been deleted successfully"
 
@@ -379,7 +526,7 @@ class CustomerDeleteView(View):
         messages.success(request, self.success_message)
         return redirect('customers-list')
 
-class CustomeractivateView(View):
+class CustomeractivateView(StaffRequiredMixin, View):
     template_name = "customer/activate_customer.html"
     success_message = "Customer Record has been activated successfully"
 
@@ -396,12 +543,12 @@ class CustomeractivateView(View):
         messages.success(request, self.success_message)
         return redirect('customers-list')
 
-class CustomerView(View):
+class CustomerView(StaffRequiredMixin, View):
     def get(self, request, pk):
         customer = get_object_or_404(ConsumerProfile, pk=pk)
         return render(request, 'customer/customer.html', {'customer' : customer})
 
-class SubscriptionView(ListView):
+class SubscriptionView(StaffRequiredMixin, ListView):
     model = SubscriptionPlan
     template_name = "subscription_list.html"
     queryset = SubscriptionPlan.objects.all()
@@ -411,7 +558,7 @@ class SubscriptionView(ListView):
         context = super().get_context_data(**kwargs)
         return context
 
-class SubscriptionDeleteView(View):
+class SubscriptionDeleteView(StaffRequiredMixin, View):
     template_name = "delete_subscription.html"
     success_message = "Customer Record has been Deactivated successfully"
 
@@ -426,7 +573,7 @@ class SubscriptionDeleteView(View):
         messages.success(request, self.success_message)
         return redirect('subscription-list')
 
-class SubscriptionUpdateView(SuccessMessageMixin, UpdateView):
+class SubscriptionUpdateView(StaffRequiredMixin, SuccessMessageMixin, UpdateView):
     model = SubscriptionPlan
     form_class = UpdateSubscription
     success_url = '/accounts/subscription'
@@ -440,7 +587,7 @@ class SubscriptionUpdateView(SuccessMessageMixin, UpdateView):
         return context
 
 
-class SupplierListView(ListView):
+class SupplierListView(StaffRequiredMixin, ListView):
     model = ManufacturerProfile
     template_name = "suppliers/suppliers_list.html"
     queryset = ManufacturerProfile.objects.filter()
@@ -448,6 +595,47 @@ class SupplierListView(ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        return context
+
+
+class SupplierDirectoryView(LoginRequiredMixin, ListView):
+    """Buyer-facing "Find manufacturers" browse screen. Real filters over
+    real fields only — no fabricated ratings/review counts, since the data
+    model doesn't have them yet."""
+    model = ManufacturerProfile
+    template_name = "suppliers/supplier_directory.html"
+    paginate_by = 12
+
+    def get_queryset(self):
+        queryset = ManufacturerProfile.objects.filter(is_deleted=False).select_related('company').prefetch_related(
+            'capabilities', 'materials', 'certifications',
+        )
+        process = self.request.GET.get('process', '')
+        certification = self.request.GET.get('certification', '')
+        city = self.request.GET.get('city', '')
+        min_order = self.request.GET.get('min_order', '')
+        if process:
+            queryset = queryset.filter(capabilities__technology_type=process)
+        if certification:
+            queryset = queryset.filter(certifications__name=certification)
+        if city:
+            queryset = queryset.filter(city=city)
+        if min_order:
+            try:
+                queryset = queryset.filter(minimum_order_qty__lte=int(min_order))
+            except ValueError:
+                pass
+        return queryset.distinct().order_by('companyname')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['process'] = self.request.GET.get('process', '')
+        context['certification'] = self.request.GET.get('certification', '')
+        context['city'] = self.request.GET.get('city', '')
+        context['min_order'] = self.request.GET.get('min_order', '')
+        context['process_choices'] = ManufacturingTech.TECH_CHOICES
+        context['certification_choices'] = Certification.objects.exclude(name='').order_by('name').values_list('name', flat=True).distinct()
+        context['city_choices'] = ManufacturerProfile.objects.filter(is_deleted=False).exclude(city='').order_by('city').values_list('city', flat=True).distinct()
         return context
 
 
@@ -476,7 +664,7 @@ class SupplierUpdateView(SuccessMessageMixin, UpdateView):
         return context
 
 
-class SupplierDeleteView(View):
+class SupplierDeleteView(StaffRequiredMixin, View):
     template_name = "suppliers/delete_supplier.html"
     success_message = "Manufacturer has been deleted successfully"
 
@@ -492,7 +680,7 @@ class SupplierDeleteView(View):
         return redirect('suppliers-list')
 
 
-class SupplieractivateView(View):
+class SupplieractivateView(StaffRequiredMixin, View):
     template_name = "suppliers/activate_supplier.html"
     success_message = "Supplier Record has been activated successfully"
 

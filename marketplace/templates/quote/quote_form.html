@@ -21,6 +21,17 @@
 </div>
 {% endblock %}
 {% block content %}
+{% if object.awaiting_revision %}
+<div class="mb-6 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+    <p class="font-bold">The buyer asked you to revise this quote {{ object.revision_requested_at|timesince }} ago</p>
+    <p class="mt-1">{{ object.revision_note }}</p>
+    <p class="mt-2 text-xs text-blue-700">Update the quote below and submit it to notify the buyer. Saving as a draft does not send it.</p>
+    <form method="post" action="{% url 'quote-decline-revision' object.pk %}" class="mt-3">
+        {% csrf_token %}
+        <button type="submit" class="btn-outline bg-white text-xs">Keep my original quote</button>
+    </form>
+</div>
+{% endif %}
 <div class="grid gap-6 lg:grid-cols-[1.4fr_1fr] lg:items-start">
     <div class="space-y-6">
         <div class="card">
@@ -59,8 +70,8 @@
             {% endfor %}
         </div>
 
-        <div id="questions-section">
-            {% include "requirement/_questions_section.html" %}
+        <div id="conversations">
+            {% include "requirement/_conversation_panel.html" %}
         </div>
     </div>
 

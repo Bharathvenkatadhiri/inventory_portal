@@ -23,7 +23,7 @@
                 {% for subscription in object_list %}
                 <tr>
                     <td class="py-2 pr-4">{{ subscription.user_profile }}</td>
-                    <td class="py-2 pr-4">{{ subscription.get_plan_type_display }}</td>
+                    <td class="py-2 pr-4">{{ subscription.get_plan_type_display }}{% if subscription.pending_plan_type %}<br><span class="badge bg-yellow-50 text-yellow-700">Upgrade to {{ subscription.get_pending_plan_type_display }} requested {{ subscription.pending_requested_at|date:"d M" }}</span>{% endif %}</td>
                     <td class="py-2 pr-4">{{ subscription.start_date }}</td>
                     <td class="py-2 pr-4">{{ subscription.end_date|default:"—" }}</td>
                     <td class="py-2 pr-4">

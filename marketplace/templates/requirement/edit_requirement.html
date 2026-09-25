@@ -1,127 +1,182 @@
-{% extends "base.html" %}
+{% extends "dashboard_base.html" %}
 {% load widget_tweaks %}
 {% block title %}{{ title }} — ManufactureHub{% endblock %}
+{% block page_header %}
+<div class="mb-2">
+    <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">Create a request for quote</h1>
+    <p class="mt-1 text-sm text-gray-500">Share your drawings once — verified manufacturers respond with priced quotes.</p>
+</div>
+{% endblock %}
 {% block content %}
-
-<h1 class="text-2xl font-semibold text-gray-900 mb-6">{{ title }}</h1>
-
-<form method="post" enctype="multipart/form-data" novalidate>
+<form method="post" enctype="multipart/form-data" novalidate x-data="{
+    files: {{ form.file.value|yesno:'1,0' }},
+    title: '{{ form.title.value|default:"" }}',
+    currency: '{{ form.quote_currency.value|default:"" }}',
+    endDate: '{{ form.end_date.value|default:"" }}'
+}">
     {% csrf_token %}
+    {% if live_quote_count %}
+    <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+        <p class="font-bold">{{ live_quote_count }} supplier{{ live_quote_count|pluralize }} {{ live_quote_count|pluralize:"has,have" }} already quoted on this RFQ.</p>
+        <p class="mt-1">A new due date applies straight away. Other changes are sent to those suppliers to accept (with updated pricing) or reject, and the RFQ keeps its current details until you accept a supplier's new pricing, which awards the RFQ to that supplier. Parts can't be added or removed, and files can't be replaced, at this stage.</p>
+    </div>
+    {% endif %}
     {% if form.non_field_errors %}
-    <div class="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">{{ form.non_field_errors }}</div>
+    <div class="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{{ form.non_field_errors }}</div>
     {% endif %}
 
-    <div class="card mb-6">
-        <h2 class="font-semibold text-gray-900 mb-4">Requirement details</h2>
-        <div class="grid gap-4 sm:grid-cols-2">
-            <div class="sm:col-span-2">
-                <label for="{{ form.title.id_for_label }}" class="field-label">Title</label>
-                {{ form.title|add_class:"field-input" }}
-                {% for error in form.title.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
-            </div>
-            <div class="sm:col-span-2">
-                <label for="{{ form.rfq_desc.id_for_label }}" class="field-label">Description</label>
-                {{ form.rfq_desc|add_class:"field-input" }}
-                {% for error in form.rfq_desc.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
-            </div>
-            <div>
-                <label for="{{ form.quote_currency.id_for_label }}" class="field-label">Currency</label>
-                {{ form.quote_currency|add_class:"field-input" }}
-                {% for error in form.quote_currency.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
-            </div>
-            <div>
-                <label for="{{ form.request_reason.id_for_label }}" class="field-label">Reason for request</label>
-                {{ form.request_reason|add_class:"field-input" }}
-                {% for error in form.request_reason.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
-            </div>
-            <div>
-                <label for="{{ form.parts.id_for_label }}" class="field-label">Number of parts</label>
-                {{ form.parts|add_class:"field-input" }}
-                {% for error in form.parts.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
-            </div>
-            <div>
-                <label for="{{ form.end_date.id_for_label }}" class="field-label">End date</label>
-                {{ form.end_date|add_class:"field-input" }}
-                {% for error in form.end_date.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
-            </div>
-            <div>
-                <label for="{{ form.industry.id_for_label }}" class="field-label">Industry</label>
-                {{ form.industry|add_class:"field-input" }}
-                {% for error in form.industry.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
-            </div>
-            <div>
-                <label for="{{ form.nda_required.id_for_label }}" class="field-label">NDA required</label>
-                {{ form.nda_required|add_class:"field-input" }}
-                {% for error in form.nda_required.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
-            </div>
-            <div class="sm:col-span-2">
-                <label for="{{ form.file.id_for_label }}" class="field-label">Master file</label>
-                {{ form.file|add_class:"field-input" }}
+    <div class="grid gap-6 lg:grid-cols-[1.7fr_1fr]">
+        <div class="space-y-6">
+            <div class="card">
+                <h2 class="text-lg font-bold text-navy-900">Drawings &amp; CAD files</h2>
+                <p class="mt-1 text-sm text-gray-500">Files are only shared with the suppliers who quote. NDA available on request.</p>
+                <label class="mt-4 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-200 px-6 py-10 text-center hover:border-accent-400">
+                    <svg viewBox="0 0 24 24" class="h-8 w-8 text-accent-500" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3"/></svg>
+                    <span class="text-sm font-bold text-navy-900">Drag &amp; drop a file, or click to browse</span>
+                    <span class="text-xs text-gray-400">STEP, IGES, STL, DXF, PDF &middot; up to 100 MB</span>
+                    {{ form.file|add_class:"hidden"|attr:"@change:files = true" }}
+                </label>
+                {% if form.instance.file %}
+                <p class="mt-2 text-xs text-gray-500">Current file: <a href="{{ form.instance.file.url }}" class="text-accent-500 hover:underline" target="_blank">{{ form.instance.file.name }}</a></p>
+                {% endif %}
                 {% for error in form.file.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
             </div>
-            {{ form.user }}
-            {{ form.is_deleted }}
-        </div>
-    </div>
 
-    {% if formset %}
-    <div class="card mb-6" x-data="{}">
-        <h2 class="font-semibold text-gray-900 mb-4">Parts</h2>
-        {{ formset.management_form }}
-        {% if formset.non_form_errors %}
-        <div class="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">{{ formset.non_form_errors }}</div>
-        {% endif %}
-        <div id="parts-formset" class="space-y-4">
-            {% for part_form in formset %}
-            <div class="rounded-md border border-gray-200 p-4 part-form-row">
-                {{ part_form.id }}
-                {% if formset.can_delete %}
-                <div class="flex justify-end">
-                    <label class="text-xs text-red-600 flex items-center gap-1">
-                        {{ part_form.DELETE }} Remove this part
-                    </label>
-                </div>
-                {% endif %}
+            <div class="card">
+                <h2 class="text-lg font-bold text-navy-900 mb-4">Requirement details</h2>
                 <div class="grid gap-4 sm:grid-cols-2">
-                    <div>
-                        <label class="field-label">Part name</label>
-                        {{ part_form.part_name|add_class:"field-input" }}
-                        {% for error in part_form.part_name.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
+                    <div class="sm:col-span-2">
+                        <label for="{{ form.title.id_for_label }}" class="field-label">Part / RFQ name</label>
+                        {{ form.title|add_class:"field-input"|attr:"x-model:title" }}
+                        {% for error in form.title.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label for="{{ form.rfq_desc.id_for_label }}" class="field-label">Description</label>
+                        {{ form.rfq_desc|add_class:"field-input" }}
+                        {% for error in form.rfq_desc.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
                     </div>
                     <div>
-                        <label class="field-label">Part description</label>
-                        {{ part_form.Part_desc|add_class:"field-input" }}
+                        <label for="{{ form.quote_currency.id_for_label }}" class="field-label">Currency</label>
+                        {{ form.quote_currency|add_class:"field-input"|attr:"x-model:currency" }}
+                        {% for error in form.quote_currency.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
                     </div>
                     <div>
-                        <label class="field-label">Technology</label>
-                        {{ part_form.technology|add_class:"field-input" }}
+                        <label for="{{ form.request_reason.id_for_label }}" class="field-label">Reason for request</label>
+                        {{ form.request_reason|add_class:"field-input" }}
+                        {% for error in form.request_reason.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
                     </div>
                     <div>
-                        <label class="field-label">Material</label>
-                        {{ part_form.Material|add_class:"field-input" }}
+                        <label for="{{ form.end_date.id_for_label }}" class="field-label">Quotes due by</label>
+                        {{ form.end_date|add_class:"field-input"|attr:"x-model:endDate" }}
+                        {% for error in form.end_date.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
                     </div>
                     <div>
-                        <label class="field-label">Quantity</label>
-                        {{ part_form.quantity|add_class:"field-input" }}
+                        <label for="{{ form.industry.id_for_label }}" class="field-label">Industry</label>
+                        {{ form.industry|add_class:"field-input" }}
+                        {% for error in form.industry.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
                     </div>
                     <div>
-                        <label class="field-label">File</label>
-                        {{ part_form.file|add_class:"field-input" }}
+                        <label for="{{ form.nda_required.id_for_label }}" class="field-label">NDA required</label>
+                        {{ form.nda_required|add_class:"field-input" }}
+                        {% for error in form.nda_required.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
                     </div>
                 </div>
             </div>
-            {% endfor %}
-        </div>
-        <p class="mt-3 text-xs text-gray-500">To add more parts, increase "Number of parts" above and save — additional rows will appear on the next edit.</p>
-    </div>
-    {% endif %}
 
-    <div class="flex items-center gap-3">
-        <button type="submit" class="btn-primary">{{ savebtn }}</button>
-        {% if delbtn %}
-        <a href="{% url 'delete-requirement' object.pk %}" class="btn-danger">{{ delbtn }}</a>
-        {% endif %}
-        <a href="{% url 'requirement-list' %}" class="btn-secondary">Cancel</a>
+            {% if formset %}
+            <div class="card">
+                <h2 class="text-lg font-bold text-navy-900 mb-1">Part requirements</h2>
+                <p class="mb-4 text-sm text-gray-500">One row per distinct part in this RFQ.</p>
+                {{ formset.management_form }}
+                {% if formset.non_form_errors %}
+                <div class="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{{ formset.non_form_errors }}</div>
+                {% endif %}
+                <div id="parts-formset" class="space-y-4">
+                    {% for part_form in formset %}
+                    <div class="rounded-lg border border-gray-100 p-4">
+                        {{ part_form.id }}
+                        {% if formset.can_delete %}
+                        <div class="flex justify-end">
+                            <label class="flex items-center gap-1 text-xs text-red-600">
+                                {{ part_form.DELETE }} Remove this part
+                            </label>
+                        </div>
+                        {% endif %}
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <div>
+                                <label class="field-label">Part name</label>
+                                {{ part_form.part_name|add_class:"field-input" }}
+                                {% for error in part_form.part_name.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
+                            </div>
+                            <div>
+                                <label class="field-label">Part description</label>
+                                {{ part_form.Part_desc|add_class:"field-input" }}
+                            </div>
+                            <div>
+                                <label class="field-label">Manufacturing process</label>
+                                {{ part_form.technology|add_class:"field-input" }}
+                            </div>
+                            <div>
+                                <label class="field-label">Material</label>
+                                {{ part_form.Material|add_class:"field-input" }}
+                            </div>
+                            <div>
+                                <label class="field-label">Quantity</label>
+                                {{ part_form.quantity|add_class:"field-input" }}
+                            </div>
+                            <div>
+                                <label class="field-label">Drawing</label>
+                                {{ part_form.file|add_class:"field-input" }}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <p class="mt-3 text-xs text-gray-500">Need more parts? Save, then edit the RFQ — a new blank row appears each time.</p>
+            </div>
+            {% endif %}
+
+            <div class="flex items-center gap-3">
+                <button type="submit" class="btn-primary">{{ savebtn }}</button>
+                {% if delbtn %}
+                <a href="{% url 'delete-requirement' object.pk %}" class="btn-danger">{{ delbtn }}</a>
+                {% endif %}
+                <a href="{% url 'requirement-list' %}" class="btn-outline">Cancel</a>
+            </div>
+        </div>
+
+        <div class="space-y-6">
+            <div class="card">
+                <h2 class="text-lg font-bold text-navy-900 mb-4">RFQ summary</h2>
+                <dl class="space-y-3 text-sm">
+                    <div class="flex justify-between">
+                        <dt class="text-gray-500">Master file</dt>
+                        <dd class="font-bold text-navy-900" x-text="files ? '1 attached' : 'None yet'"></dd>
+                    </div>
+                    <div class="flex justify-between">
+                        <dt class="text-gray-500">Title</dt>
+                        <dd class="max-w-[60%] truncate text-right font-bold text-navy-900" x-text="title || '—'"></dd>
+                    </div>
+                    <div class="flex justify-between">
+                        <dt class="text-gray-500">Currency</dt>
+                        <dd class="font-bold text-navy-900" x-text="currency || '—'"></dd>
+                    </div>
+                    <div class="flex justify-between">
+                        <dt class="text-gray-500">Quotes due</dt>
+                        <dd class="font-bold text-navy-900" x-text="endDate || '—'"></dd>
+                    </div>
+                </dl>
+            </div>
+
+            <div class="rounded-xl bg-navy-900 p-5 text-white">
+                <h2 class="text-sm font-bold">What happens next</h2>
+                <ol class="mt-4 space-y-3 text-sm text-white/80">
+                    <li class="flex gap-3"><span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-500 text-xs font-bold text-white">1</span>Suppliers review your files and ask questions in one thread.</li>
+                    <li class="flex gap-3"><span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-500 text-xs font-bold text-white">2</span>Quotes arrive side by side — price, lead time, certifications.</li>
+                    <li class="flex gap-3"><span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-500 text-xs font-bold text-white">3</span>Award one and track the order through to delivery.</li>
+                </ol>
+            </div>
+        </div>
     </div>
 </form>
 

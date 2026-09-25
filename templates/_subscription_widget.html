@@ -1,0 +1,26 @@
+{# Compact "current plan" card with an inline upgrade modal. Expects: subscription (SubscriptionPlan or None), plan_catalog. #}
+<div class="card" x-data="{ planModalOpen: false }">
+    <div class="flex items-center justify-between gap-3">
+        <div>
+            <p class="text-sm text-gray-500">Current plan</p>
+            <p class="text-lg font-bold text-navy-900">{{ subscription.get_plan_type_display|default:"Basic" }}</p>
+            <p class="mt-1 text-xs text-gray-500">
+                {% if subscription.rfq_limit == 'unlimited' %}Unlimited RFQs{% else %}Up to {{ subscription.rfq_limit|default:5 }} RFQs / month{% endif %}
+            </p>
+        </div>
+        <button type="button" @click="planModalOpen = true" class="btn-outline shrink-0 text-xs">Upgrade plan</button>
+    </div>
+
+    <div x-show="planModalOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/40" @click="planModalOpen = false"></div>
+        <div class="relative w-full max-w-3xl rounded-xl bg-white p-6 shadow-xl" @click.outside="planModalOpen = false">
+            <div class="mb-4 flex items-center justify-between">
+                <h2 class="text-lg font-bold text-navy-900">Choose your plan</h2>
+                <button type="button" @click="planModalOpen = false" class="text-gray-400 hover:text-gray-600">
+                    <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                </button>
+            </div>
+            {% include "_subscription_plans.html" with next=request.path %}
+        </div>
+    </div>
+</div>

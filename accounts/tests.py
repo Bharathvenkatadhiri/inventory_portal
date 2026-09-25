@@ -74,16 +74,15 @@ class ProfileModelTests(TestCase):
 
 class UserRegistrationRoleTests(TestCase):
     """
-    `is_staff` on this form is overloaded as the Supplier/Buyer choice (see
-    accounts.forms.UserRegistrationForm) — `role` must still end up correct
-    regardless, since templates/permissions elsewhere read `role` directly.
+    The Supplier/Buyer choice sets `role` — and must never touch `is_staff`
+    (it used to, making every supplier a Django staff user).
     """
 
     def setUp(self):
         self.client = Client()
         self.url = reverse("register")
 
-    def _payload(self, username, email, is_staff):
+    def _payload(self, username, email, account_type):
         return {
             "username": username,
             "first_name": "Test",
@@ -91,17 +90,18 @@ class UserRegistrationRoleTests(TestCase):
             "password1": "a-strong-passw0rd",
             "password2": "a-strong-passw0rd",
             "email": email,
-            "is_staff": is_staff,
+            "account_type": account_type,
         }
 
     def test_supplier_signup_gets_manufacturer_role(self):
-        response = self.client.post(self.url, data=self._payload("supplier1", "supplier1@example.com", "1"))
+        response = self.client.post(self.url, data=self._payload("supplier1", "supplier1@example.com", "supplier"))
         self.assertEqual(response.status_code, 302)
         user = User.objects.get(email="supplier1@example.com")
         self.assertEqual(user.role, "manufacturer")
+        self.assertFalse(user.is_staff)
 
     def test_buyer_signup_gets_consumer_role(self):
-        response = self.client.post(self.url, data=self._payload("buyer1", "buyer1@example.com", "0"))
+        response = self.client.post(self.url, data=self._payload("buyer1", "buyer1@example.com", "buyer"))
         self.assertEqual(response.status_code, 302)
         user = User.objects.get(email="buyer1@example.com")
         self.assertEqual(user.role, "consumer")
@@ -127,7 +127,7 @@ class RegisterViewTests(TestCase):
         self.client = Client()
         self.url = reverse("register")
 
-    def _payload(self, username, email, is_staff):
+    def _payload(self, username, email, account_type):
         return {
             "username": username,
             "first_name": "Test",
@@ -135,7 +135,7 @@ class RegisterViewTests(TestCase):
             "password1": "a-strong-passw0rd",
             "password2": "a-strong-passw0rd",
             "email": email,
-            "is_staff": is_staff,
+            "account_type": account_type,
         }
 
     def test_email_already_used_by_manufacturer_profile_shows_error(self):
@@ -144,7 +144,7 @@ class RegisterViewTests(TestCase):
             user=owner, phone="6666666666", address="x", city="Chennai", state="TN", country="India",
             amount_of_employees="10-20", turnover_per_year="<1", email="taken@example.com",
         )
-        response = self.client.post(self.url, data=self._payload("newsupplier", "taken@example.com", "1"))
+        response = self.client.post(self.url, data=self._payload("newsupplier", "taken@example.com", "supplier"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "already exists")
         # No duplicate/orphan User should be created for the rejected attempt.
@@ -156,7 +156,7 @@ class RegisterViewTests(TestCase):
             user=owner, Name="Acme", type_of_business="electronics", city="Pune", state="MH", country="India",
             phone="5555555555", email="takenbuyer@example.com", EORI_number="E1", VAT_number="V1",
         )
-        response = self.client.post(self.url, data=self._payload("newbuyer", "takenbuyer@example.com", "0"))
+        response = self.client.post(self.url, data=self._payload("newbuyer", "takenbuyer@example.com", "buyer"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "already exists")
         self.assertFalse(User.objects.filter(username="newbuyer").exists())
@@ -164,10 +164,16 @@ class RegisterViewTests(TestCase):
     def test_existing_user_without_profile_resumes_registration(self):
         # Simulates step 1 having completed in an earlier visit, but the
         # supplier/customer form (step 2) never being submitted.
-        User.objects.create_user(username="abandoned", email="abandoned@example.com", password="pass12345")
-        response = self.client.post(self.url, data=self._payload("abandoned", "abandoned@example.com", "1"))
+        User.objects.create_user(username="abandoned", email="abandoned@example.com", password="a-strong-passw0rd", role="manufacturer")
+        response = self.client.post(self.url, data=self._payload("abandoned", "abandoned@example.com", "supplier"))
         self.assertRedirects(response, reverse("register-supplier"))
         self.assertEqual(self.client.session["session_email"], "abandoned@example.com")
+
+    def test_resuming_someone_elses_registration_needs_their_password(self):
+        User.objects.create_user(username="victim", email="victim@example.com", password="their-own-passw0rd", role="manufacturer")
+        response = self.client.post(self.url, data=self._payload("victim", "victim@example.com", "supplier"))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("session_user_id", self.client.session)
 
 
 class GSTINFormatTests(TestCase):
@@ -340,7 +346,6 @@ class CreateSupplierSecurityTests(TestCase):
         session["session_first_name"] = "Test"
         session["session_last_name"] = "Supplier"
         session["session_email"] = self.user.email
-        session["session_is_staff"] = True
         session.save()
         self.url = reverse("register-supplier")
 
@@ -518,3 +523,144 @@ class CompanyProfileSubActionTests(TestCase):
     def test_view_profile_details_routes_manufacturer_to_company_profile(self):
         response = self.client.get(reverse("profile"))
         self.assertContains(response, "Company profile")
+
+
+def _buyer(username, phone):
+    user = User.objects.create_user(username=username, email=f"{username}@example.com", password="pass12345")
+    profile = ConsumerProfile.objects.create(
+        user=user, Name=f"{username} Co", type_of_business="electronics", city="Pune", state="MH", country="India",
+        phone=phone, email=f"{username}@example.com", EORI_number=f"E-{username}", VAT_number=f"V-{username}",
+    )
+    return user, profile
+
+
+@DASHBOARD_TEST_STORAGES
+class AdminScreenPermissionTests(TestCase):
+    """Customer/supplier/subscription admin screens used to need only a login."""
+
+    def setUp(self):
+        self.buyer, self.profile = _buyer("adminperm_buyer", "9400000001")
+        self.other, self.other_profile = _buyer("adminperm_other", "9400000002")
+        self.staff = User.objects.create_user(username="adminperm_staff", email="adminperm_staff@example.com", password="pass12345", is_staff=True)
+
+    def test_non_staff_cannot_open_admin_screens_or_deactivate_customers(self):
+        self.client.login(username="adminperm_buyer@example.com", password="pass12345")
+        for name in ("customers-list", "suppliers-list", "subscription-list"):
+            self.assertEqual(self.client.get(reverse(name)).status_code, 403, name)
+        response = self.client.post(reverse("delete-customer", kwargs={"pk": self.other_profile.pk}))
+        self.assertEqual(response.status_code, 403)
+        self.other_profile.refresh_from_db()
+        self.assertFalse(self.other_profile.is_deleted)
+
+    def test_staff_can_open_admin_screens(self):
+        self.client.login(username="adminperm_staff@example.com", password="pass12345")
+        for name in ("customers-list", "suppliers-list", "subscription-list"):
+            self.assertEqual(self.client.get(reverse(name)).status_code, 200, name)
+
+    def test_buyer_can_edit_only_their_own_company(self):
+        self.client.login(username="adminperm_buyer@example.com", password="pass12345")
+        self.assertEqual(self.client.get(reverse("edit-customer", kwargs={"pk": self.profile.pk})).status_code, 200)
+        self.assertEqual(self.client.get(reverse("edit-customer", kwargs={"pk": self.other_profile.pk})).status_code, 403)
+
+
+@DASHBOARD_TEST_STORAGES
+class BuyerRegistrationBindingTests(TestCase):
+    """The public buyer-profile step used to expose a `user` dropdown listing
+    every account without a profile, and trusted whichever one was posted."""
+
+    def setUp(self):
+        self.new_user = User.objects.create_user(username="fresh", email="fresh@example.com", password="pass12345")
+        self.victim = User.objects.create_user(username="victim2", email="victim2@example.com", password="pass12345")
+        session = self.client.session
+        session["session_user_id"] = self.new_user.id
+        session.save()
+
+    def _payload(self, **extra):
+        data = {
+            "Name": "Fresh Co", "type_of_business": "electronics", "Address": "1 Rd", "phone": "9400000009",
+            "email": "fresh@example.com", "EORI_number": "EF", "VAT_number": "VF",
+        }
+        data.update(extra)
+        return data
+
+    def test_page_does_not_list_other_users(self):
+        response = self.client.get(reverse("register-customer"))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "victim2")
+
+    def test_profile_is_attached_to_the_session_user_even_if_another_is_posted(self):
+        self.client.post(reverse("register-customer"), self._payload(user=self.victim.pk))
+        profile = ConsumerProfile.objects.get(email="fresh@example.com")
+        self.assertEqual(profile.user, self.new_user)
+        self.assertFalse(ConsumerProfile.objects.filter(user=self.victim).exists())
+        self.assertNotIn("session_user_id", self.client.session)
+
+    def test_without_a_pending_account_the_step_redirects_to_register(self):
+        self.client.session.flush()
+        client = Client()
+        self.assertRedirects(client.get(reverse("register-customer")), reverse("register"), fetch_redirect_response=False)
+
+
+@DASHBOARD_TEST_STORAGES
+class SubscriptionUpgradeTests(TestCase):
+    def setUp(self):
+        from accounts.models import SubscriptionPlan
+        self.SubscriptionPlan = SubscriptionPlan
+        self.buyer, _ = _buyer("planner", "9400000011")
+        self.plan = SubscriptionPlan.objects.create(user_profile=self.buyer, plan_type="standard", price=999, rfq_limit="50")
+        self.client.login(username="planner@example.com", password="pass12345")
+
+    def test_paid_upgrade_is_pending_until_staff_apply_it(self):
+        self.client.post(reverse("subscription-upgrade"), {"plan_type": "enterprise"})
+        self.plan.refresh_from_db()
+        self.assertEqual(self.plan.plan_type, "standard")
+        self.assertEqual(self.plan.pending_plan_type, "enterprise")
+        self.assertContains(self.client.get(reverse("profile") + "?tab=billing"), "Awaiting payment")
+
+    def test_moving_to_a_cheaper_plan_applies_immediately(self):
+        self.client.post(reverse("subscription-upgrade"), {"plan_type": "basic"})
+        self.plan.refresh_from_db()
+        self.assertEqual(self.plan.plan_type, "basic")
+        self.assertEqual(self.plan.rfq_limit, "5")
+
+    def test_staff_setting_the_plan_clears_the_pending_request(self):
+        self.client.post(reverse("subscription-upgrade"), {"plan_type": "enterprise"})
+        User.objects.create_user(username="planstaff", email="planstaff@example.com", password="pass12345", is_staff=True)
+        self.client.login(username="planstaff@example.com", password="pass12345")
+        self.client.post(reverse("edit-subscription", kwargs={"pk": self.plan.pk}), {"plan_type": "enterprise", "is_active": "on"})
+        self.plan.refresh_from_db()
+        self.assertEqual(self.plan.plan_type, "enterprise")
+        self.assertEqual(self.plan.pending_plan_type, "")
+
+    def test_next_cannot_redirect_off_site(self):
+        response = self.client.post(reverse("subscription-upgrade"), {"plan_type": "basic", "next": "https://evil.example.com/"})
+        self.assertEqual(response["Location"], reverse("profile") + "?tab=billing")
+
+
+@override_settings(STORAGES={
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+})
+class SupplierRegistrationBindingTests(TestCase):
+    """SupplierDetailsForm carries a hidden `user` field; the view must
+    ignore it and use the account from the session."""
+
+    def test_posted_user_is_ignored(self):
+        cache.clear()
+        me = User.objects.create_user(username="mfgme", email="mfgme@example.com", password="pass12345", role="manufacturer")
+        someone = User.objects.create_user(username="mfgother", email="mfgother@example.com", password="pass12345", role="manufacturer")
+        company = Company.objects.create(
+            legal_name="Bound Legal Pvt Ltd", trade_name="Bound Trade", gstin=ACTIVE_GSTIN, gst_status="ACTIVE",
+            gst_verified=True, gst_verified_at=timezone.now(), registered_address="1 St", state="TN", city="Chennai",
+            verification_status="verified",
+        )
+        session = self.client.session
+        session["session_user_id"] = me.id
+        session["verified_company_id"] = company.id
+        session.save()
+        self.client.post(reverse("register-supplier"), {
+            "user": someone.id, "email": "mfgme-co@example.com", "phone": "7000000001",
+            "amount_of_employees": "10-20", "turnover_per_year": "<1",
+        })
+        self.assertTrue(ManufacturerProfile.objects.filter(user=me).exists())
+        self.assertFalse(ManufacturerProfile.objects.filter(user=someone).exists())

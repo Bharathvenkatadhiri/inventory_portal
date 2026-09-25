@@ -1,39 +1,117 @@
 {% load custom_filters %}
-<div id="quotes-section">
-    <h2 class="font-semibold text-gray-900 mb-4">Quotes</h2>
-    {% if quotes %}
-    <div class="space-y-4">
-        {% for quote in quotes %}
-        <div class="card" id="quote-{{ quote.pk }}">
-            <div class="flex items-start justify-between gap-4">
-                <div>
-                    <a href="{% url 'quote' quote.pk %}" class="font-medium text-gray-900 hover:text-brand-600">Quote #{{ quote.pk }}</a>
-                    <p class="text-sm text-gray-500 mt-1">{{ quote.supplier }}</p>
-                    {% if request.user == demand.user or quote.supplier.user == request.user %}
-                    <p class="text-lg font-semibold text-gray-900 mt-2">{{ demand.quote_currency }} {{ quote.quote_price }}</p>
-                    {% endif %}
-                    {% if quote.note %}<p class="text-sm text-gray-600 mt-1">{{ quote.note }}</p>{% endif %}
-                </div>
-                <div class="flex flex-col items-end gap-2 shrink-0">
-                    {% if quote.is_selected %}
-                    <span class="badge bg-green-50 text-green-700">Selected</span>
-                    {% elif quote.status == 'Rejected' %}
-                    <span class="badge bg-red-50 text-red-700">Rejected</span>
-                    {% elif quote.status == 'Approved' %}
-                    <span class="badge bg-green-50 text-green-700">Approved</span>
-                    {% else %}
-                    <span class="badge bg-yellow-50 text-yellow-700">Pending</span>
-                    {% endif %}
+<div id="quotes-section"{% if quotes_sig and not demand.status %}
+     hx-get="{% url 'live-quotes' demand.pk %}?sig={{ quotes_sig }}"
+     hx-trigger="every 20s [document.visibilityState === 'visible']"
+     hx-swap="outerHTML"{% endif %}>
+    <div class="mb-4 flex items-center justify-between">
+        <h2 class="text-lg font-bold text-navy-900">Quotes ({{ quotes|length }})</h2>
+        {% if is_buyer and quotes %}
+        <a href="{% url 'message-thread-list' %}" class="text-sm font-bold text-accent-500 hover:text-accent-600">Message all &rarr;</a>
+        {% endif %}
+    </div>
 
-                    {% if request.user == demand.user and not quote.status and not demand.status %}
-                    <button
-                        class="btn-primary text-xs"
-                        hx-post="{% url 'quote-update-status' quote.pk 'Approved' %}"
-                        hx-target="#quotes-section"
-                        hx-swap="outerHTML"
-                    >Select this quote</button>
+    {% if quotes %}
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {% for quote in quotes %}
+        <div class="card flex flex-col {% if quote.is_selected %}ring-2 ring-accent-500{% endif %}" id="quote-{{ quote.pk }}">
+            <div class="flex items-start gap-3">
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-navy-900 text-sm font-bold text-white">
+                    {{ quote.supplier.companyname|default:quote.supplier|slice:":2"|upper }}
+                </span>
+                <div class="min-w-0">
+                    <a href="{% url 'quote' quote.pk %}" class="block truncate font-bold text-navy-900 hover:text-accent-500">{{ quote.supplier.companyname|default:quote.supplier }}</a>
+                    <p class="truncate text-xs text-gray-500">{{ quote.supplier.city }}{% if quote.supplier.city and quote.supplier.state %}, {% endif %}{{ quote.supplier.state }}</p>
+                </div>
+            </div>
+
+            <div class="mt-3 flex flex-wrap gap-1.5">
+                {% if quote.supplier.company.verification_status == 'verified' %}<span class="badge bg-green-50 text-green-700">Verified</span>{% endif %}
+                {% if quote.badge_best_price %}<span class="badge bg-accent-50 text-accent-700">Best price</span>{% endif %}
+                {% if quote.badge_fastest %}<span class="badge bg-blue-50 text-blue-700">Fastest</span>{% endif %}
+            </div>
+
+            {% if request.user == demand.user or quote.supplier.user == request.user %}
+            <p class="mt-3 text-2xl font-extrabold text-navy-900">{{ demand.quote_currency }} {{ quote.quote_price }}<span class="text-sm font-normal text-gray-400"> /unit</span></p>
+            <dl class="mt-3 space-y-1.5 text-sm">
+                <div class="flex justify-between"><dt class="text-gray-500">Total ({{ quote.get_breakdown.quantity }} pcs)</dt><dd class="text-navy-900">{{ demand.quote_currency }} {{ quote.get_breakdown.total|floatformat:0 }}</dd></div>
+                <div class="flex justify-between"><dt class="text-gray-500">Lead time</dt><dd class="text-navy-900">{% if quote.lead_time_value %}{{ quote.lead_time_value }} {{ quote.get_lead_time_unit_display }}{% else %}—{% endif %}</dd></div>
+                <div class="flex justify-between"><dt class="text-gray-500">Tooling / setup</dt><dd class="text-navy-900">{{ demand.quote_currency }} {{ quote.tooling_cost|floatformat:0 }}</dd></div>
+                <div class="flex justify-between"><dt class="text-gray-500">Payment terms</dt><dd class="text-navy-900">{{ quote.get_payment_terms_display|default:"—" }}</dd></div>
+                <div class="flex justify-between gap-2"><dt class="shrink-0 text-gray-500">Certifications</dt><dd class="truncate text-right text-navy-900">{% for cert in quote.supplier.certifications.all %}{{ cert.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</dd></div>
+                <div class="flex justify-between"><dt class="text-gray-500">Valid until</dt><dd class="text-navy-900">{{ quote.valid_until|date:"d M"|default:"—" }}</dd></div>
+            </dl>
+            {% endif %}
+            {% if quote.note %}<p class="mt-3 text-sm text-gray-600 line-clamp-3">{{ quote.note }}</p>{% endif %}
+
+            <div class="mt-3">
+                {% if quote.is_selected %}
+                <span class="badge inline-flex items-center gap-1 bg-green-50 text-green-700">
+                    <svg viewBox="0 0 20 20" class="h-3 w-3" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                    Selected
+                </span>
+                {% elif quote.status == 'Rejected' %}
+                <span class="badge bg-red-50 text-red-700">Rejected</span>
+                {% elif quote.status == 'Approved' %}
+                <span class="badge bg-green-50 text-green-700">Approved</span>
+                {% elif quote.awaiting_revision %}
+                <span class="badge bg-blue-50 text-blue-700">Revision requested</span>
+                {% elif quote.revision_was_declined %}
+                <span class="badge bg-gray-100 text-gray-700">Original quote stands</span>
+                {% elif quote.revised_at %}
+                <span class="badge bg-accent-50 text-accent-700">Revised {{ quote.revised_at|timesince }} ago</span>
+                {% else %}
+                <span class="badge bg-yellow-50 text-yellow-700">Pending</span>
+                {% endif %}
+                {% if quote.awaiting_revision and quote.revision_note %}
+                {% if is_buyer or quote.supplier.user_id == request.user.id %}
+                <p class="mt-2 rounded-md bg-blue-50 px-2.5 py-1.5 text-xs text-blue-800"><span class="font-bold">Asked to change:</span> {{ quote.revision_note }}</p>
+                {% endif %}
+                {% endif %}
+            </div>
+
+            <div class="mt-auto pt-3">
+                <div class="flex gap-2">
+                    <a href="{% url 'quote' quote.pk %}" class="btn-outline flex-1 justify-center text-xs">Full quote</a>
+                    {% if is_buyer %}
+                    <form method="post" action="{% url 'message-thread-start' demand.pk quote.supplier.pk %}" class="flex-1">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-outline w-full text-xs">Message</button>
+                    </form>
                     {% endif %}
                 </div>
+                {% if is_buyer and quote.is_undecided and not quote.is_draft and not demand.status %}
+                <button
+                    class="btn-primary mt-2 w-full text-xs"
+                    hx-post="{% url 'quote-update-status' quote.pk 'Approved' %}"
+                    hx-target="#quotes-section"
+                    hx-swap="outerHTML"
+                >Select this quote</button>
+                <div class="mt-2" x-data="{ revising: false }">
+                    <div class="flex gap-2" x-show="!revising">
+                        {% if not quote.awaiting_revision %}
+                        <button type="button" class="btn-outline flex-1 text-xs" @click="revising = true; $nextTick(() => $refs.note.focus())">Request revision</button>
+                        {% endif %}
+                        <button type="button" class="btn-outline flex-1 text-xs text-red-600 hover:border-red-600"
+                                hx-post="{% url 'quote-update-status' quote.pk 'Rejected' %}"
+                                hx-target="#quotes-section" hx-swap="outerHTML"
+                                hx-confirm="Reject the quote from {{ quote.supplier.companyname|default:quote.supplier }}? They will be notified.">Reject</button>
+                    </div>
+                    {% if not quote.awaiting_revision %}
+                    <form x-show="revising" x-cloak method="post" action="{% url 'quote-request-revision' quote.pk %}"
+                          hx-post="{% url 'quote-request-revision' quote.pk %}" hx-target="#quotes-section" hx-swap="outerHTML"
+                          class="space-y-2">
+                        {% csrf_token %}
+                        <label for="revision-note-{{ quote.pk }}" class="field-label text-xs">What should {{ quote.supplier.companyname|default:quote.supplier }} change?</label>
+                        <textarea id="revision-note-{{ quote.pk }}" name="note" rows="2" required maxlength="1000" x-ref="note"
+                                  class="field-input text-sm" placeholder="e.g. Can you match 15 days lead time, or quote without tooling?"></textarea>
+                        <div class="flex gap-2">
+                            <button type="submit" class="btn-primary flex-1 text-xs">Send request</button>
+                            <button type="button" class="btn-outline flex-1 text-xs" @click="revising = false">Cancel</button>
+                        </div>
+                    </form>
+                    {% endif %}
+                </div>
+                {% endif %}
             </div>
         </div>
         {% endfor %}
@@ -43,10 +121,38 @@
     {% endif %}
 
     {% if is_manufacturer and not my_quote %}
-    <div class="mt-4">
+    <div class="mt-4 flex flex-wrap items-center gap-3">
+        {% if not demand.is_open_for_quotes %}
+        <p class="text-sm text-gray-500">This RFQ is closed to new quotes.</p>
+        {% elif my_declined %}
+        <p class="text-sm text-gray-500">You declined this RFQ.</p>
+        <a href="{% url 'new-quote' demand.pk %}" class="btn-outline">Quote anyway</a>
+        {% else %}
         <a href="{% url 'new-quote' demand.pk %}" class="btn-primary">Submit a quote</a>
+        <form method="post" action="{% url 'requirement-decline' demand.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="btn-outline" title="Removes it from your RFQ inbox. The buyer isn't notified.">Not interested</button>
+        </form>
+        {% endif %}
     </div>
     {% elif is_manufacturer and my_quote %}
     <div class="mt-4 text-sm text-gray-500">You already submitted a quote for this requirement.</div>
+    {% endif %}
+
+    {% if selected_quote and is_buyer %}
+    <div class="sticky bottom-4 z-10 mt-6 flex flex-col items-start gap-3 rounded-xl bg-navy-900 p-4 text-white shadow-lg sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex items-center gap-3">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-500">
+                <svg viewBox="0 0 20 20" class="h-4 w-4 text-white" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+            </span>
+            <div>
+                <p class="text-xs font-bold uppercase tracking-wide text-white/60">Your selection</p>
+                <p class="font-bold">{{ selected_quote.supplier.companyname|default:selected_quote.supplier }} &middot; {{ demand.quote_currency }} {{ selected_quote.get_breakdown.total|floatformat:0 }}{% if selected_quote.lead_time_value %} &middot; {{ selected_quote.lead_time_value }} {{ selected_quote.get_lead_time_unit_display }}{% endif %}</p>
+            </div>
+        </div>
+        {% if demand.status == 'Approved' %}
+        <span class="badge bg-white/15 text-white">Awarded — awaiting production</span>
+        {% endif %}
+    </div>
     {% endif %}
 </div>

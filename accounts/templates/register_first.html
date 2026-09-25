@@ -53,17 +53,17 @@
     <fieldset class="grid grid-cols-2 gap-3">
         <legend class="sr-only">I am a...</legend>
         <label class="rounded-md border-2 border-gray-200 px-4 py-3 text-sm cursor-pointer transition-colors has-[:checked]:border-accent-500 has-[:checked]:bg-accent-50">
-            <input type="radio" name="is_staff" value="0" class="sr-only" {% if form.is_staff.value == '0' or not form.is_staff.value %}checked{% endif %}>
+            <input type="radio" name="account_type" value="buyer" class="sr-only" {% if form.account_type.value != 'supplier' %}checked{% endif %}>
             <span class="block font-semibold text-navy-900">I'm a buyer</span>
             <span class="block text-xs text-gray-500">Source custom parts</span>
         </label>
         <label class="rounded-md border-2 border-gray-200 px-4 py-3 text-sm cursor-pointer transition-colors has-[:checked]:border-accent-500 has-[:checked]:bg-accent-50">
-            <input type="radio" name="is_staff" value="1" class="sr-only" {% if form.is_staff.value == '1' %}checked{% endif %}>
+            <input type="radio" name="account_type" value="supplier" class="sr-only" {% if form.account_type.value == 'supplier' %}checked{% endif %}>
             <span class="block font-semibold text-navy-900">I'm a manufacturer</span>
             <span class="block text-xs text-gray-500">Receive RFQs, win orders</span>
         </label>
     </fieldset>
-    {% for error in form.is_staff.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+    {% for error in form.account_type.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
 
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
@@ -157,12 +157,12 @@
         var label = document.getElementById('password-strength-label');
         var form = document.getElementById('register-form');
         var submitBtn = document.getElementById('register-submit-btn');
-        var roleInputs = form.querySelectorAll('input[name="is_staff"]');
+        var roleInputs = form.querySelectorAll('input[name="account_type"]');
         var currentStrength = '';
 
         function updateSubmitLabel() {
-            var checked = form.querySelector('input[name="is_staff"]:checked');
-            submitBtn.textContent = (checked && checked.value === '1') ? 'Create manufacturer account' : 'Create buyer account';
+            var checked = form.querySelector('input[name="account_type"]:checked');
+            submitBtn.textContent = (checked && checked.value === 'supplier') ? 'Create manufacturer account' : 'Create buyer account';
         }
         roleInputs.forEach(function (input) {
             input.addEventListener('change', updateSubmitLabel);
