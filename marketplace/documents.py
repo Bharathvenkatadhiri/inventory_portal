@@ -15,7 +15,7 @@ from django.core.files.base import ContentFile
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from .models import DocumentSequence, OrderDocument
+from .models import GST_DOMESTIC, GST_EXPORT_LUT, DocumentSequence, ExchangeRate, OrderDocument
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +86,7 @@ def seller_snapshot(supplier):
         'country': supplier.country,
         'email': supplier.email,
         'phone': supplier.phone,
+        'lut_reference': company.lut_reference if company and company.has_valid_lut() else '',
     }
 
 
@@ -127,26 +128,54 @@ def _lines(order):
 
 
 def _tax(seller, buyer, breakdown):
-    """Splits the order's GST into CGST + SGST (same state) or IGST
-    (different states, or a buyer outside India). Totals match the order."""
+    """The order's GST as printed: CGST + SGST within a state, IGST across
+    states, and for exports either nothing (under LUT) or IGST. The
+    treatment and amounts come from the order's own breakdown, so the
+    document always agrees with the order page."""
     gst = breakdown['gst']
-    in_india = (buyer.get('country') or 'India').strip().lower() in ('india', 'in', 'bharat')
-    same_state = in_india and seller['state_code'] and seller['state_code'] == buyer['state_code']
+    treatment = breakdown['gst_treatment']
+    same_state = treatment == GST_DOMESTIC and seller['state_code'] and seller['state_code'] == buyer['state_code']
     cgst = (gst / 2).quantize(CENT) if same_state else Decimal('0')
-    place_code = buyer['state_code'] if in_india else ''
+    if treatment == GST_DOMESTIC:
+        code = buyer['state_code']
+        place = f"{STATE_NAMES.get(code, buyer['state'])} ({code})" if code else buyer['state']
+        declaration = ''
+    else:
+        place = f"Outside India ({buyer.get('country')})"
+        declaration = (
+            f"Supply meant for export under LUT without payment of IGST (LUT ARN {seller['lut_reference']})"
+            if treatment == GST_EXPORT_LUT else "Supply meant for export on payment of IGST"
+        )
     return {
+        'treatment': treatment,
         'subtotal': str(breakdown['subtotal'].quantize(CENT)),
-        'rate': '18',
+        'rate': str(int(breakdown['gst_rate'] * 100)),
         'intra_state': bool(same_state),
         'cgst': str(cgst),
         'sgst': str((gst - cgst) if same_state else Decimal('0')),
         'igst': str(Decimal('0') if same_state else gst),
         'gst': str(gst),
         'total': str(breakdown['total'].quantize(CENT)),
-        'place_of_supply': (
-            f"{STATE_NAMES.get(place_code, buyer['state'])} ({place_code})" if place_code
-            else (buyer['state'] if in_india else f"Outside India ({buyer.get('country')})")
-        ),
+        'place_of_supply': place,
+        'export_declaration': declaration,
+        'country_of_destination': '' if treatment == GST_DOMESTIC else (buyer.get('country') or ''),
+    }
+
+
+def _inr_values(currency, tax, when):
+    """For a document in another currency, the INR equivalents GST returns
+    are filed in, at the exchange rate on record when it was issued. The
+    rate is copied into the document, so it never changes afterwards."""
+    if currency == 'INR':
+        return None
+    rate = ExchangeRate.objects.filter(currency=currency).values_list('inr_per_unit', flat=True).first()
+    if rate is None:
+        return {'rate': None}
+    convert = lambda key: str((Decimal(tax[key]) * rate).quantize(CENT))
+    return {
+        'rate': str(rate),
+        'rate_date': timezone.localtime(when).date().isoformat(),
+        **{key: convert(key) for key in ('subtotal', 'cgst', 'sgst', 'igst', 'total')},
     }
 
 
@@ -181,6 +210,7 @@ def _issue(order, kind):
         'lines': _lines(order),
         'tax': _tax(seller, buyer, order.quote.get_breakdown()),
     }
+    details['inr'] = _inr_values(order.requirement.quote_currency or 'INR', details['tax'], now)
     if kind == OrderDocument.INVOICE:
         details['shipment'] = _shipment(order)
         issuer_key, prefix = f"supplier:{order.supplier_id}", 'INV'
@@ -241,20 +271,34 @@ def _words_below_1000(n):
     return words
 
 
+# (major unit, minor unit or None, minor units per major)
+CURRENCY_WORDS = {
+    'INR': ('Rupees', 'Paise'), 'USD': ('US Dollars', 'Cents'), 'EUR': ('Euros', 'Cents'),
+    'GBP': ('Pounds Sterling', 'Pence'), 'JPY': ('Yen', None), 'AUD': ('Australian Dollars', 'Cents'),
+    'CAD': ('Canadian Dollars', 'Cents'), 'CHF': ('Swiss Francs', 'Centimes'), 'CNY': ('Yuan', 'Fen'),
+    'SEK': ('Swedish Kronor', 'Ore'), 'NZD': ('New Zealand Dollars', 'Cents'),
+}
+
+
 def amount_in_words(amount, currency='INR'):
-    """Decimal('118000.50') -> "Rupees One Lakh Eighteen Thousand and Fifty Paise Only"."""
+    """Decimal('118000.50') -> "Rupees One Lakh Eighteen Thousand and Fifty
+    Paise Only". Rupees use lakh/crore; other currencies use thousand /
+    million / billion and their own minor unit (none for yen)."""
     amount = Decimal(amount).quantize(CENT)
+    major, minor = CURRENCY_WORDS.get(currency, (currency, 'Cents'))
+    if minor is None:
+        amount = amount.quantize(Decimal('1'))
     whole, fraction = int(amount), int((amount - int(amount)) * 100)
+    scales = ((10**7, 'Crore'), (10**5, 'Lakh'), (1000, 'Thousand')) if currency == 'INR'         else ((10**9, 'Billion'), (10**6, 'Million'), (1000, 'Thousand'))
     words = []
-    for size, label in ((10**7, 'Crore'), (10**5, 'Lakh'), (1000, 'Thousand')):
+    for size, label in scales:
         if whole >= size:
             words += _words_below_1000(whole // size) + [label]
             whole %= size
     words += _words_below_1000(whole)
-    unit, sub = ('Rupees', 'Paise') if currency == 'INR' else (currency, 'Cents')
-    text = f"{unit} {' '.join(words) or 'Zero'}"
-    if fraction:
-        text += f" and {' '.join(_words_below_1000(fraction))} {sub}"
+    text = f"{major} {' '.join(words) or 'Zero'}"
+    if fraction and minor:
+        text += f" and {' '.join(_words_below_1000(fraction))} {minor}"
     return text + ' Only'
 
 
@@ -337,12 +381,15 @@ def render_pdf(document):
         [Paragraph('ORDER', label), Paragraph(esc(refs['order']), right)],
         [Paragraph('RFQ', label), Paragraph(esc(refs['rfq']), right)],
     ]
+    export = tax.get('treatment', GST_DOMESTIC) != GST_DOMESTIC
     if is_invoice:
         meta_rows.append([Paragraph('PLACE OF SUPPLY', label), Paragraph(esc(tax['place_of_supply']), right)])
+    if export and tax.get('country_of_destination'):
+        meta_rows.append([Paragraph('DESTINATION', label), Paragraph(esc(tax['country_of_destination']), right)])
     header = Table(
         [[
             [Paragraph('TAX INVOICE' if is_invoice else 'PURCHASE ORDER', title),
-             Paragraph('Original for recipient' if is_invoice else 'Issued through ManufactureHub', small)],
+             Paragraph(('Export invoice · ' if export else '') + ('Original for recipient' if is_invoice else 'Issued through ManufactureHub'), small)],
             Table(meta_rows, colWidths=[30 * mm, 48 * mm], style=[('VALIGN', (0, 0), (-1, -1), 'TOP'), ('BOTTOMPADDING', (0, 0), (-1, -1), 1), ('TOPPADDING', (0, 0), (-1, -1), 1)]),
         ]],
         colWidths=[width - 80 * mm, 80 * mm],
@@ -382,17 +429,42 @@ def render_pdf(document):
     totals = [['Taxable value', _money(tax['subtotal'], currency)]]
     if tax['intra_state']:
         totals += [['CGST @ 9%', _money(tax['cgst'], currency)], ['SGST @ 9%', _money(tax['sgst'], currency)]]
+    elif tax.get('treatment') == GST_EXPORT_LUT:
+        totals += [['IGST @ 0% (export under LUT)', _money('0', currency)]]
     else:
         totals += [['IGST @ 18%', _money(tax['igst'], currency)]]
     totals.append([f"Total ({currency})", _money(tax['total'], currency)])
     totals_table = Table(
         [[Paragraph(esc(a), right_bold if i == len(totals) - 1 else right), Paragraph(esc(b), right_bold if i == len(totals) - 1 else right)]
          for i, (a, b) in enumerate(totals)],
-        colWidths=[40 * mm, 36 * mm], hAlign='RIGHT',
+        colWidths=[56 * mm, 36 * mm], hAlign='RIGHT',
     )
     totals_table.setStyle(TableStyle([('LINEABOVE', (0, -1), (-1, -1), 0.8, navy), ('TOPPADDING', (0, 0), (-1, -1), 2), ('BOTTOMPADDING', (0, 0), (-1, -1), 2)]))
     story += [totals_table, Spacer(1, 2 * mm)]
     story.append(Paragraph(f"<b>Amount in words:</b> {esc(amount_in_words(tax['total'], currency))}", body))
+    if tax.get('export_declaration'):
+        story.append(Spacer(1, 2 * mm))
+        story.append(Paragraph(f"<b>{esc(tax['export_declaration'].upper())}</b>", body))
+    inr = document.details.get('inr')
+    if inr:
+        story.append(Spacer(1, 4 * mm))
+        if inr.get('rate'):
+            rate_date = date.fromisoformat(inr['rate_date']).strftime('%d %b %Y')
+            story.append(Paragraph(f"<b>Values in INR</b> <font color='#6b7280'>at 1 {esc(currency)} = INR {Decimal(inr['rate']).normalize():f} (rate on record {rate_date})</font>", body))
+            inr_rows = [('Taxable value', inr['subtotal'])]
+            if tax['intra_state']:
+                inr_rows += [('CGST', inr['cgst']), ('SGST', inr['sgst'])]
+            else:
+                inr_rows += [('IGST', inr['igst'])]
+            inr_rows.append(('Total', inr['total']))
+            inr_table = Table(
+                [[Paragraph(esc(a), label), Paragraph(_money(b, 'INR'), right)] for a, b in inr_rows],
+                colWidths=[34 * mm, 36 * mm], hAlign='LEFT',
+            )
+            inr_table.setStyle(TableStyle([('BOX', (0, 0), (-1, -1), 0.6, rule), ('TOPPADDING', (0, 0), (-1, -1), 2), ('BOTTOMPADDING', (0, 0), (-1, -1), 2)]))
+            story += [Spacer(1, 1.5 * mm), inr_table]
+        else:
+            story.append(Paragraph(f"<font color='#6b7280'>No INR exchange rate for {esc(currency)} was on record when this document was issued.</font>", body))
     story.append(Spacer(1, 6 * mm))
 
     terms = []

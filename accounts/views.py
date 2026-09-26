@@ -13,7 +13,7 @@ from django.views.decorators.http import require_POST
 from django.core.exceptions import PermissionDenied
 from .forms import (
     SupplierDetailsForm, updateSupplierDetailsForm, UserRegistrationForm, SelectCustomer, CustomerRegistrationForm,
-    UpdateSubscription, updateCustomer, CompanyAboutForm, CompanyContactForm, CompanyCapacityForm,
+    UpdateSubscription, updateCustomer, CompanyAboutForm, CompanyContactForm, CompanyCapacityForm, CompanyLUTForm,
     MachineForm, CertificationForm, CapabilityAddForm, MaterialAddForm,
 )
 from .models import (
@@ -757,6 +757,7 @@ class CompanyProfileView(LoginRequiredMixin, View):
             'about_form': CompanyAboutForm(instance=supplier),
             'contact_form': CompanyContactForm(instance=supplier),
             'capacity_form': CompanyCapacityForm(instance=supplier),
+            'lut_form': CompanyLUTForm(instance=supplier.company) if supplier.company else None,
             'machine_form': MachineForm(),
             'certification_form': CertificationForm(),
             'capability_form': CapabilityAddForm(),
@@ -801,6 +802,22 @@ class CompanyCapacityUpdateView(_CompanyProfileSubActionView):
         if form.is_valid():
             form.save()
             messages.success(request, "Capacity settings updated.")
+        return redirect(reverse('company-profile'))
+
+
+class CompanyLUTUpdateView(_CompanyProfileSubActionView):
+    def post(self, request):
+        supplier = self.get_supplier()
+        if supplier.company is None:
+            messages.error(request, "Verify your company's GSTIN before adding a LUT.")
+            return redirect(reverse('company-profile'))
+        form = CompanyLUTForm(request.POST, instance=supplier.company)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Export LUT saved. Exports are now quoted and invoiced without GST." if form.instance.has_valid_lut()
+                             else "Export LUT details saved.")
+        else:
+            messages.error(request, " ".join(error for errors in form.errors.values() for error in errors))
         return redirect(reverse('company-profile'))
 
 

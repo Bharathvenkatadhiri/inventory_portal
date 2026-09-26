@@ -33,6 +33,7 @@ from .models import (
     RFQDecline,
     MessageThread, Message,
     RequirementAmendment, AmendmentResponse, SupplierReview, OrderDocument,
+    GST_EXPORT_LUT, GST_LABELS, GST_RATE, gst_treatment,
 )
 from .forms import (
     SelectRequirement, RequirementPartInlineFormSet, QuoteForm,
@@ -201,6 +202,16 @@ class RequirementListView(LoginRequiredMixin, ListView):
                 'awarded': own.filter(status__in=['Approved', 'Production', 'Completed']).count(),
             }
         return context
+
+
+def _gst_context(requirement, supplier):
+    """GST rate and label for the quote form's live total (0% for an
+    export when the manufacturer has a valid LUT)."""
+    treatment = gst_treatment(requirement, supplier)
+    return {
+        'gst_rate': '0' if treatment == GST_EXPORT_LUT else str(GST_RATE),
+        'gst_label': GST_LABELS[treatment],
+    }
 
 
 def _own_open_requirement(request, pk):
@@ -610,6 +621,7 @@ class QuoteCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView):
         context["match_percent"] = services.compute_match_percent(requirement, supplier) if (requirement and supplier) else None
         if requirement:
             context.update(_rfq_conversation_context(self.request, requirement))
+            context.update(_gst_context(requirement, supplier))
         context["is_manufacturer"] = True
         return context
 
@@ -679,6 +691,7 @@ class QuoteUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
         context["total_quantity"] = requirement.total_parts_quantity()
         context["match_percent"] = services.compute_match_percent(requirement, self.object.supplier)
         context.update(_rfq_conversation_context(self.request, requirement))
+        context.update(_gst_context(requirement, self.object.supplier))
         context["is_manufacturer"] = True
         return context
 

@@ -1,7 +1,7 @@
 import io
 import shutil
 import tempfile
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
 from django.core.management import call_command
@@ -11,7 +11,7 @@ from django.urls import reverse
 from core.models import User
 from accounts.models import Company, ConsumerProfile
 from marketplace import documents
-from marketplace.models import Order, OrderDocument
+from marketplace.models import ExchangeRate, Order, OrderDocument
 from marketplace.test_search_reports import Fixtures
 from marketplace.tests import DASHBOARD_TEST_STORAGES
 
@@ -157,8 +157,96 @@ class DocumentHelperTests(TestCase):
     def test_amount_in_words(self):
         self.assertEqual(documents.amount_in_words(Decimal("118000.50")), "Rupees One Lakh Eighteen Thousand and Fifty Paise Only")
         self.assertEqual(documents.amount_in_words(Decimal("12345678")), "Rupees One Crore Twenty-Three Lakh Forty-Five Thousand Six Hundred Seventy-Eight Only")
-        self.assertEqual(documents.amount_in_words(Decimal("0"), "USD"), "USD Zero Only")
+        self.assertEqual(documents.amount_in_words(Decimal("0"), "USD"), "US Dollars Zero Only")
+        self.assertEqual(documents.amount_in_words(Decimal("2500000.25"), "USD"), "US Dollars Two Million Five Hundred Thousand and Twenty-Five Cents Only")
+        self.assertEqual(documents.amount_in_words(Decimal("10.50"), "GBP"), "Pounds Sterling Ten and Fifty Pence Only")
+        self.assertEqual(documents.amount_in_words(Decimal("1200.40"), "JPY"), "Yen One Thousand Two Hundred Only")
 
     def test_gstin_validation(self):
         self.assertEqual(documents.valid_gstin(" 27aapfu0939f1zv "), "27AAPFU0939F1ZV")
         self.assertEqual(documents.valid_gstin("EU123"), "")
+
+
+@DASHBOARD_TEST_STORAGES
+@override_settings(MEDIA_ROOT=MEDIA)
+class CurrencyAndExportTests(OrderDocumentTests):
+    """Reuses OrderDocumentTests' setUp and helpers; its own tests are
+    switched off here so they don't run twice."""
+    for _name in [n for n in dir(OrderDocumentTests) if n.startswith("test_")]:
+        locals()[_name] = None
+    del _name
+
+    def make_export(self, lut=True, currency="EUR"):
+        ConsumerProfile.objects.filter(user=self.buyer).update(country="Germany", state="Bavaria", VAT_number="DE123456789")
+        if lut:
+            Company.objects.filter(pk=self.supplier.company_id).update(lut_reference="AD270326000123X")
+        self.rfq.quote_currency = currency
+        self.rfq.save()
+
+    def test_export_under_lut_is_zero_rated_everywhere(self):
+        self.make_export(lut=True)
+        quote = self.rfq.quote.get()
+        breakdown = quote.get_breakdown()
+        self.assertEqual((breakdown["gst"], breakdown["gst_label"]), (Decimal("0.00"), "GST (0%, export under LUT)"))
+        self.assertEqual(breakdown["total"], breakdown["subtotal"])
+        self.login(self.supplier.user)
+        form = self.client.get(reverse("edit-quote", kwargs={"pk": quote.pk}))
+        self.assertEqual(form.context["gst_rate"], "0")
+        order = self.dispatch(self.award())
+        tax = OrderDocument.objects.get(order=order, kind="invoice").details["tax"]
+        self.assertEqual(tax["treatment"], "export_lut")
+        self.assertEqual((Decimal(tax["igst"]), tax["total"]), (Decimal("0"), tax["subtotal"]))
+        self.assertIn("under LUT without payment of IGST (LUT ARN AD270326000123X)", tax["export_declaration"])
+        self.assertEqual((tax["country_of_destination"], tax["place_of_supply"]), ("Germany", "Outside India (Germany)"))
+        self.assertContains(self.client.get(reverse("order-detail", kwargs={"billno": order.billno})), "GST (0%, export under LUT)")
+
+    def test_export_without_a_valid_lut_charges_igst(self):
+        self.make_export(lut=True)
+        Company.objects.filter(pk=self.supplier.company_id).update(lut_valid_until=date(2020, 3, 31))  # expired
+        order = self.award()
+        tax = OrderDocument.objects.get(order=order).details["tax"]
+        self.assertEqual(tax["treatment"], "export_igst")
+        self.assertEqual(Decimal(tax["igst"]), order.quote.get_breakdown()["gst"])
+        self.assertGreater(Decimal(tax["igst"]), 0)
+        self.assertEqual(tax["export_declaration"], "Supply meant for export on payment of IGST")
+
+    def test_foreign_currency_documents_carry_frozen_inr_values(self):
+        self.rfq.quote_currency = "USD"
+        self.rfq.save()
+        rate = ExchangeRate.objects.get(currency="USD").inr_per_unit
+        order = self.award()
+        po = OrderDocument.objects.get(order=order)
+        inr = po.details["inr"]
+        self.assertEqual(Decimal(inr["rate"]), rate)
+        self.assertEqual(Decimal(inr["total"]), (Decimal(po.details["tax"]["total"]) * rate).quantize(Decimal("0.01")))
+        self.assertEqual(Decimal(inr["subtotal"]), (Decimal(po.details["tax"]["subtotal"]) * rate).quantize(Decimal("0.01")))
+        ExchangeRate.objects.filter(currency="USD").update(inr_per_unit="1.0")
+        po.refresh_from_db()
+        self.assertEqual(Decimal(po.details["inr"]["rate"]), rate)  # frozen at issue
+        self.assertTrue(documents.render_pdf(po).startswith(b"%PDF"))
+
+    def test_missing_rate_is_recorded_not_guessed_and_inr_documents_have_no_panel(self):
+        self.rfq.quote_currency = "USD"
+        self.rfq.save()
+        ExchangeRate.objects.filter(currency="USD").delete()
+        po = OrderDocument.objects.get(order=self.award())
+        self.assertEqual(po.details["inr"], {"rate": None})
+        self.assertTrue(documents.render_pdf(po).startswith(b"%PDF"))
+        rfq2 = self.make_rfq(self.buyer, "Rupee job")
+        quote2 = rfq2.quote.create(supplier=self.supplier, quote_price="10.00")
+        self.client.post(reverse("quote-update-status", kwargs={"pk": quote2.pk, "status": "Approved"}))
+        self.assertIsNone(OrderDocument.objects.get(order__requirement=rfq2).details["inr"])
+
+    def test_export_pdf_renders(self):
+        self.make_export(lut=True, currency="EUR")
+        po = OrderDocument.objects.get(order=self.award())
+        self.assertTrue(documents.render_pdf(po).startswith(b"%PDF"))
+
+    def test_manufacturer_saves_lut_from_company_profile(self):
+        self.login(self.supplier.user)
+        self.assertContains(self.client.get(reverse("company-profile")), "Exports (LUT)")
+        self.client.post(reverse("company-lut-update"), {"lut_reference": "ad270326000123x", "lut_valid_until": "2027-03-31"})
+        company = Company.objects.get(pk=self.supplier.company_id)
+        self.assertEqual((company.lut_reference, str(company.lut_valid_until)), ("AD270326000123X", "2027-03-31"))
+        self.client.post(reverse("company-lut-update"), {"lut_reference": "bad ref!", "lut_valid_until": ""})
+        self.assertEqual(Company.objects.get(pk=self.supplier.company_id).lut_reference, "AD270326000123X")

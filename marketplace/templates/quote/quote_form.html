@@ -81,7 +81,7 @@
             quantity: {{ total_quantity|default:0 }},
             tooling: {{ form.tooling_cost.value|default:0 }},
             get subtotal() { return (parseFloat(this.unitPrice || 0) * this.quantity) + parseFloat(this.tooling || 0) },
-            get gst() { return this.subtotal * 0.18 },
+            get gst() { return this.subtotal * {{ gst_rate|default:'0.18' }} },
             get total() { return this.subtotal + this.gst },
          }">
         <h2 class="text-lg font-bold text-navy-900">Your quote</h2>
@@ -141,10 +141,10 @@
             </div>
 
             <div class="rounded-lg bg-gray-50 p-4 text-sm">
-                <div class="flex justify-between py-1"><span class="text-gray-500">{{ total_quantity }} pcs &times; unit price</span><span class="text-navy-900" x-text="'₹' + (unitPrice * quantity).toLocaleString('en-IN', {maximumFractionDigits: 2})"></span></div>
-                <div class="flex justify-between py-1"><span class="text-gray-500">Tooling / setup</span><span class="text-navy-900" x-text="'₹' + parseFloat(tooling || 0).toLocaleString('en-IN', {maximumFractionDigits: 2})"></span></div>
-                <div class="flex justify-between py-1"><span class="text-gray-500">GST (18%)</span><span class="text-navy-900" x-text="'₹' + gst.toLocaleString('en-IN', {maximumFractionDigits: 2})"></span></div>
-                <div class="mt-1 flex justify-between border-t border-gray-200 pt-2 font-bold"><span class="text-navy-900">Total to buyer</span><span class="text-navy-900" x-text="'₹' + total.toLocaleString('en-IN', {maximumFractionDigits: 2})"></span></div>
+                <div class="flex justify-between py-1"><span class="text-gray-500">{{ total_quantity }} pcs &times; unit price</span><span class="text-navy-900" x-text="'{{ demand.quote_currency|default:'INR' }} ' + (unitPrice * quantity).toLocaleString('en-IN', {maximumFractionDigits: 2})"></span></div>
+                <div class="flex justify-between py-1"><span class="text-gray-500">Tooling / setup</span><span class="text-navy-900" x-text="'{{ demand.quote_currency|default:'INR' }} ' + parseFloat(tooling || 0).toLocaleString('en-IN', {maximumFractionDigits: 2})"></span></div>
+                <div class="flex justify-between py-1"><span class="text-gray-500">{{ gst_label|default:"GST (18%)" }}</span><span class="text-navy-900" x-text="'{{ demand.quote_currency|default:'INR' }} ' + gst.toLocaleString('en-IN', {maximumFractionDigits: 2})"></span></div>
+                <div class="mt-1 flex justify-between border-t border-gray-200 pt-2 font-bold"><span class="text-navy-900">Total to buyer</span><span class="text-navy-900" x-text="'{{ demand.quote_currency|default:'INR' }} ' + total.toLocaleString('en-IN', {maximumFractionDigits: 2})"></span></div>
             </div>
 
             <button type="submit" name="action" value="submit" class="btn-primary w-full">{{ savebtn|default:"Submit quote" }}</button>
