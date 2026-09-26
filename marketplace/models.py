@@ -749,3 +749,52 @@ class ExchangeRate(models.Model):
 
     def __str__(self):
         return f"1 {self.currency} = ₹{self.inr_per_unit}"
+
+
+class DocumentSequence(models.Model):
+    """Gap-free running number per issuer, document kind and Indian
+    financial year (April–March), e.g. a manufacturer's invoices for FY
+    2026-27. Rows are locked with select_for_update while a number is taken."""
+    issuer_key = models.CharField(max_length=40)  # "buyer:<ConsumerProfile id>" or "supplier:<ManufacturerProfile id>"
+    kind = models.CharField(max_length=10)
+    financial_year = models.CharField(max_length=4)  # "2627" for FY 2026-27
+    last_number = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['issuer_key', 'kind', 'financial_year'], name='unique_document_sequence')]
+
+    def __str__(self):
+        return f"{self.issuer_key} {self.kind} FY{self.financial_year}: {self.last_number}"
+
+
+class OrderDocument(models.Model):
+    """A purchase order (issued by the buyer at award) or a GST tax invoice
+    (issued by the manufacturer at dispatch). Party details, lines and tax
+    are copied in when the document is created, as the Company model
+    requires, so a later profile edit or GST re-verification never changes
+    an issued document. The PDF is rendered from these copies."""
+    PURCHASE_ORDER = 'po'
+    INVOICE = 'invoice'
+    KIND_CHOICES = [(PURCHASE_ORDER, 'Purchase order'), (INVOICE, 'Tax invoice')]
+
+    order = models.ForeignKey(Order, on_delete=models.PROTECT, related_name='documents')
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES)
+    number = models.CharField(max_length=16)  # GST caps invoice numbers at 16 characters
+    issuer_key = models.CharField(max_length=40)
+    issued_at = models.DateTimeField(default=timezone.now)
+    seller = models.JSONField()
+    buyer = models.JSONField()
+    details = models.JSONField()  # references, terms, lines and tax breakdown
+    currency = models.CharField(max_length=3)
+    total = models.DecimalField(max_digits=14, decimal_places=2)
+    pdf = models.FileField(upload_to='order_documents/', blank=True)
+
+    class Meta:
+        ordering = ['issued_at']
+        constraints = [
+            models.UniqueConstraint(fields=['order', 'kind'], name='one_document_of_each_kind_per_order'),
+            models.UniqueConstraint(fields=['issuer_key', 'kind', 'number'], name='unique_document_number_per_issuer'),
+        ]
+
+    def __str__(self):
+        return f"{self.get_kind_display()} {self.number} (order #{self.order_id})"

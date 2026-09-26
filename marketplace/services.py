@@ -15,6 +15,7 @@ from django.db.models.functions import Coalesce
 from django.urls import reverse
 from django.utils import timezone
 
+from . import documents
 from accounts.models import ManufacturerProfile, ConsumerProfile
 from .models import (
     Requirement, Quote, Order, OrderEvent,
@@ -134,6 +135,8 @@ def award_quote(requirement, quote):
         requirement=requirement, status__isnull=True,
     ).exclude(pk=quote.pk).update(status='Rejected', decided_at=now)
     order = create_award_order(requirement, quote)
+    if order is not None:
+        documents.issue_purchase_order(order)
     for amendment in requirement.amendments.filter(status=RequirementAmendment.PENDING):
         amendment.close(RequirementAmendment.CLOSED)
     AmendmentResponse.objects.filter(
@@ -725,3 +728,22 @@ def buyer_documents(user):
 
     docs.sort(key=lambda doc: doc['date'], reverse=True)
     return docs
+
+
+def order_document_entries(user):
+    """Purchase orders and tax invoices on the user's orders, for the
+    Documents page. Links go through the access-checked download view."""
+    from .models import OrderDocument
+    if getattr(user, 'role', None) == 'manufacturer':
+        found = OrderDocument.objects.filter(order__supplier__user=user)
+    else:
+        found = OrderDocument.objects.filter(order__customer__user=user)
+    return [{
+        'name': f"{document.number}.pdf",
+        'url': reverse('order-document', kwargs={'pk': document.pk}),
+        'type': 'Purchase order' if document.kind == OrderDocument.PURCHASE_ORDER else 'Invoice',
+        'linked_label': f'ORD-{document.order_id}',
+        'linked_url': reverse('order-detail', kwargs={'billno': document.order_id}),
+        'uploaded_by': document.buyer['name'] if document.kind == OrderDocument.PURCHASE_ORDER else document.seller['name'],
+        'date': document.issued_at,
+    } for document in found.order_by('-issued_at')]

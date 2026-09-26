@@ -32,6 +32,7 @@ urlpatterns = [
     path('orders/<billno>/production/advance/', views.OrderProductionAdvanceView.as_view(), name='order-production-advance'),
     path('orders/<billno>/updates/', views.OrderUpdateCreateView.as_view(), name='order-post-update'),
     path('orders/<billno>/qc/<int:index>/toggle/', views.QCChecklistToggleView.as_view(), name='order-qc-toggle'),
+    path('orders/documents/<int:pk>/pdf/', views.OrderDocumentDownloadView.as_view(), name='order-document'),
     path('orders/<billno>/review/', views.OrderReviewCreateView.as_view(), name='order-review'),
     path('orders/<billno>/shipment/', views.OrderShipmentUpdateView.as_view(), name='order-shipment-update'),
 
