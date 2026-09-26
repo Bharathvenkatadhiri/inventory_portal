@@ -1,4 +1,8 @@
-from django.shortcuts import render, redirect
+import logging
+
+from django.shortcuts import render, redirect, get_object_or_404
+from django.http import Http404
+from django.urls import reverse
 from django.views.generic import View, TemplateView
 from django.contrib.auth.decorators import login_not_required
 from django.contrib.auth.views import LoginView, LogoutView
@@ -7,7 +11,12 @@ from django.utils import timezone
 from marketplace import services
 from marketplace.models import Requirement, Quote, Order
 from accounts.models import ManufacturerProfile, ConsumerProfile, SubscriptionPlan
-from accounts.views import plan_catalog
+from accounts.views import plan_catalog, StaffRequiredMixin
+from .feedback import staff_summary
+from .forms import PortalFeedbackForm
+from .models import PortalFeedback
+
+logger = logging.getLogger(__name__)
 
 
 @login_not_required
@@ -67,6 +76,7 @@ class HomeView(View):
             "orders_in_progress": active_orders.order_by('ship_by_date')[:5],
         }
         context.update(_subscription_context(request.user))
+        context["rfq_limit"], context["rfq_used"] = services.rfq_allowance(request.user)
         return render(request, "home_buyer.html", context)
 
     def _manufacturer_dashboard(self, request):
@@ -187,3 +197,49 @@ class CustomLogoutView(LogoutView):
         response = super().post(request, *args, **kwargs)
         messages.success(request, "You've been logged out successfully.")
         return response
+
+
+class PortalFeedbackView(View):
+    """A buyer or manufacturer rates ManufactureHub. Submitting again
+    updates their earlier feedback."""
+    template_name = "feedback/portal_feedback.html"
+
+    def get(self, request):
+        existing = PortalFeedback.objects.filter(user=request.user).first()
+        return render(request, self.template_name, {'form': PortalFeedbackForm(instance=existing), 'existing': existing})
+
+    def post(self, request):
+        existing = PortalFeedback.objects.filter(user=request.user).first()
+        old_comment = existing.comment if existing else None
+        form = PortalFeedbackForm(request.POST, instance=existing)
+        if not form.is_valid():
+            return render(request, self.template_name, {'form': form, 'existing': existing})
+        feedback = form.save(commit=False)
+        feedback.user = request.user
+        feedback.role = request.user.role
+        if old_comment is not None and feedback.comment != old_comment:
+            # Staff featured the old wording, not this one.
+            feedback.is_featured = False
+        feedback.save()
+        logger.info("Portal feedback %s/5 saved by %s", feedback.rating, request.user)
+        messages.success(request, "Thanks for your feedback!")
+        return redirect('portal-feedback')
+
+
+class PortalFeedbackSummaryView(StaffRequiredMixin, View):
+    def get(self, request):
+        return render(request, "feedback/portal_feedback_summary.html", {'summary': staff_summary()})
+
+
+class PortalFeedbackModerateView(StaffRequiredMixin, View):
+    """Staff feature a review (pinned first on the public site) or hide it."""
+    def post(self, request, pk, action):
+        feedback = get_object_or_404(PortalFeedback, pk=pk)
+        if action == 'feature':
+            feedback.is_featured = not feedback.is_featured
+        elif action == 'hide':
+            feedback.is_hidden = not feedback.is_hidden
+        else:
+            raise Http404
+        feedback.save(update_fields=['is_featured', 'is_hidden'])
+        return redirect(reverse('portal-feedback-summary') + '#reviews')

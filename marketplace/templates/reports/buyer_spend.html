@@ -1,0 +1,99 @@
+{% extends "dashboard_base.html" %}
+{% load custom_filters %}
+{% block title %}Spend report — ManufactureHub{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div>
+        <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">Spend report</h1>
+        <p class="mt-1 text-sm text-gray-500">Completed orders only, in INR including GST. Other currencies are converted at current exchange rates.</p>
+    </div>
+    {% include "reports/_period_tabs.html" %}
+</div>
+{% endblock %}
+{% block content %}
+{% if report.unconverted_count %}
+<div class="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+    {{ report.unconverted_count }} completed order{{ report.unconverted_count|pluralize }} in {{ report.unconverted|join:", " }} {{ report.unconverted_count|pluralize:"isn't,aren't" }} included because there's no exchange rate for {{ report.unconverted|pluralize:"that currency,those currencies" }}. They're still in the CSV.
+</div>
+{% endif %}
+
+<div class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="card"><p class="text-sm text-gray-500">Total spend</p><p class="mt-1 text-2xl font-extrabold text-navy-900">{{ report.total_inr|inr }}</p><p class="text-xs text-gray-400">{{ report.period_label }}</p></div>
+    <div class="card"><p class="text-sm text-gray-500">Completed orders</p><p class="mt-1 text-2xl font-extrabold text-navy-900">{{ report.order_count }}</p></div>
+    <div class="card"><p class="text-sm text-gray-500">Average order</p><p class="mt-1 text-2xl font-extrabold text-navy-900">{{ report.average_inr|inr }}</p></div>
+    <div class="card"><p class="text-sm text-gray-500">Manufacturers used</p><p class="mt-1 text-2xl font-extrabold text-navy-900">{{ report.supplier_count }}</p></div>
+</div>
+
+<div class="card mb-6">
+    <div class="mb-4 flex items-baseline justify-between">
+        <h2 class="text-lg font-bold text-navy-900">Spend by month</h2>
+        <p class="text-xs text-gray-400">by completion date</p>
+    </div>
+    {% if report.order_count %}
+    {% include "reports/_month_bars.html" with months=report.months money=True label="Spend" %}
+    {% else %}
+    <p class="text-sm text-gray-500">No completed orders in this period.</p>
+    {% endif %}
+</div>
+
+<div class="mb-6 grid gap-6 lg:grid-cols-2">
+    <div class="card">
+        <h2 class="text-lg font-bold text-navy-900">By manufacturer</h2>
+        {% if report.suppliers %}
+        <table class="mt-3 w-full text-sm">
+            <thead><tr class="text-left text-xs text-gray-500"><th class="pb-2 font-medium">Manufacturer</th><th class="pb-2 font-medium">Share</th><th class="pb-2 text-right font-medium">Spend</th></tr></thead>
+            <tbody>
+                {% for row in report.suppliers %}
+                <tr class="border-t border-gray-100">
+                    <td class="py-2 pr-3"><p class="font-medium text-navy-900">{{ row.name }}</p><p class="text-xs text-gray-400">{{ row.orders }} order{{ row.orders|pluralize }}</p></td>
+                    <td class="w-1/3 py-2 pr-3"><div class="flex items-center gap-2"><span class="h-2 flex-1 overflow-hidden rounded-full bg-gray-100"><span class="block h-full rounded-full bg-navy-600" style="width: {{ row.percent|floatformat:1 }}%"></span></span><span class="w-9 text-right text-xs text-gray-600">{{ row.percent|floatformat:0 }}%</span></div></td>
+                    <td class="py-2 text-right font-medium text-navy-900">{{ row.value|inr }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}<p class="mt-2 text-sm text-gray-500">Nothing to show yet.</p>{% endif %}
+    </div>
+    <div class="card">
+        <h2 class="text-lg font-bold text-navy-900">By process</h2>
+        <p class="mt-1 text-xs text-gray-400">Orders with several processes are split by part quantity.</p>
+        {% if report.processes %}
+        <table class="mt-3 w-full text-sm">
+            <thead><tr class="text-left text-xs text-gray-500"><th class="pb-2 font-medium">Process</th><th class="pb-2 font-medium">Share</th><th class="pb-2 text-right font-medium">Spend</th></tr></thead>
+            <tbody>
+                {% for row in report.processes %}
+                <tr class="border-t border-gray-100">
+                    <td class="py-2 pr-3 font-medium text-navy-900">{{ row.name }}</td>
+                    <td class="w-1/3 py-2 pr-3"><div class="flex items-center gap-2"><span class="h-2 flex-1 overflow-hidden rounded-full bg-gray-100"><span class="block h-full rounded-full bg-navy-600" style="width: {{ row.percent|floatformat:1 }}%"></span></span><span class="w-9 text-right text-xs text-gray-600">{{ row.percent|floatformat:0 }}%</span></div></td>
+                    <td class="py-2 text-right font-medium text-navy-900">{{ row.value|inr }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}<p class="mt-2 text-sm text-gray-500">Nothing to show yet.</p>{% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <h2 class="text-lg font-bold text-navy-900">RFQ funnel</h2>
+    <p class="mt-1 text-xs text-gray-400">RFQs posted in this period and how far they got.</p>
+    {% with steps=report.funnel.steps %}
+    {% if steps.0.count %}
+    <ul class="mt-4 space-y-3">
+        {% for step in steps %}
+        <li class="grid grid-cols-[8rem_1fr_5rem] items-center gap-3 text-sm">
+            <span class="text-navy-900">{{ step.label }}</span>
+            <span class="h-3 overflow-hidden rounded bg-gray-100"><span class="block h-full rounded bg-navy-600" style="width: {{ step.percent|floatformat:1 }}%"></span></span>
+            <span class="text-right text-gray-600"><span class="font-bold text-navy-900">{{ step.count }}</span>{% if not forloop.first %} &middot; {{ step.percent|floatformat:0 }}%{% endif %}</span>
+        </li>
+        {% endfor %}
+    </ul>
+    {% if report.funnel.expired_without_quotes %}
+    <p class="mt-4 text-sm text-gray-600">{{ report.funnel.expired_without_quotes }} RFQ{{ report.funnel.expired_without_quotes|pluralize }} closed without any quotes.</p>
+    {% endif %}
+    {% else %}
+    <p class="mt-2 text-sm text-gray-500">No RFQs posted in this period.</p>
+    {% endif %}
+    {% endwith %}
+</div>
+{% endblock %}

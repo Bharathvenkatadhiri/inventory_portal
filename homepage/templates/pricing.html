@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load portal_feedback %}
 {% block title %}Pricing — ManufactureHub{% endblock %}
 {% block hero %}
 {% include "_page_hero.html" with eyebrow="Pricing" heading="Simple, <span class='text-accent-500'>transparent</span> pricing." sub="Start free and upgrade as your sourcing grows. No setup fees, cancel anytime." %}
@@ -137,4 +138,5 @@
         </div>
     </div>
 </div>
+{% portal_feedback_section embedded=True %}
 {% endblock %}

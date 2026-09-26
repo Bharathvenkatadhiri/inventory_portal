@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load portal_feedback %}
 {% block title %}How It Works — ManufactureHub{% endblock %}
 {% block hero %}
 {% include "_page_hero.html" with eyebrow="How It Works" heading="From drawing to delivered part in <span class='text-accent-500'>four steps.</span>" sub="Whether you're buying parts or making them, ManufactureHub keeps every step simple and visible." %}
@@ -213,4 +214,5 @@
         </div>
     </div>
 </div>
+{% portal_feedback_section embedded=True %}
 {% endblock %}

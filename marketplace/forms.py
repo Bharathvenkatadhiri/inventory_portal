@@ -4,7 +4,7 @@ from django import forms
 from django.conf import settings
 from django.forms import formset_factory, inlineformset_factory
 
-from .models import Requirement, RequirementPart, Quote, Order, ProductionUpdate, Message, AmendmentResponse
+from .models import Requirement, RequirementPart, Quote, Order, ProductionUpdate, Message, AmendmentResponse, SupplierReview
 
 
 class SelectRequirement(forms.ModelForm):
@@ -104,6 +104,16 @@ class ProductionUpdateForm(forms.ModelForm):
             'body': forms.Textarea(attrs={'class': 'field-input', 'rows': 3, 'placeholder': "What changed on the shop floor?"}),
             'photo': forms.ClearableFileInput(attrs={'class': 'field-input'}),
             'document': forms.ClearableFileInput(attrs={'class': 'field-input'}),
+        }
+
+
+class SupplierReviewForm(forms.ModelForm):
+    class Meta:
+        model = SupplierReview
+        fields = ['rating', 'comment']
+        widgets = {
+            'rating': forms.RadioSelect,
+            'comment': forms.Textarea(attrs={'class': 'field-input', 'rows': 3, 'placeholder': "How did the order go? Quality, communication, delivery…"}),
         }
 
 

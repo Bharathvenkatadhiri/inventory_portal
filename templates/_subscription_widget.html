@@ -1,5 +1,5 @@
-{# Compact "current plan" card with an inline upgrade modal. Expects: subscription (SubscriptionPlan or None), plan_catalog. #}
-<div class="card" x-data="{ planModalOpen: false }">
+{# Compact "current plan" card with an inline upgrade modal. Expects: subscription (SubscriptionPlan or None), plan_catalog; optionally rfq_used/rfq_limit. The modal opens on load when the URL has ?upgrade=1. #}
+<div class="card" x-data="{ planModalOpen: {% if request.GET.upgrade %}true{% else %}false{% endif %} }">
     <div class="flex items-center justify-between gap-3">
         <div>
             <p class="text-sm text-gray-500">Current plan</p>
@@ -7,6 +7,9 @@
             <p class="mt-1 text-xs text-gray-500">
                 {% if subscription.rfq_limit == 'unlimited' %}Unlimited RFQs{% else %}Up to {{ subscription.rfq_limit|default:5 }} RFQs / month{% endif %}
             </p>
+            {% if rfq_used is not None and rfq_limit %}
+            <p class="mt-1 text-xs {% if rfq_used >= rfq_limit %}font-bold text-red-600{% else %}text-gray-500{% endif %}">{{ rfq_used }} of {{ rfq_limit }} used this month</p>
+            {% endif %}
         </div>
         <button type="button" @click="planModalOpen = true" class="btn-outline shrink-0 text-xs">Upgrade plan</button>
     </div>

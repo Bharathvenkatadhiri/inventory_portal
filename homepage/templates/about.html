@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load portal_feedback %}
 {% load static %}
 {% block title %}About — ManufactureHub{% endblock %}
 {% block hero %}
@@ -108,4 +109,5 @@
     </div>
 </div>
 
+{% portal_feedback_section embedded=True %}
 {% endblock %}

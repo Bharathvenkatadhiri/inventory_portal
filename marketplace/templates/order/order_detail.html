@@ -90,6 +90,10 @@
     </div>
 </div>
 
+{% if bill.status == 'completed' %}
+{% include "order/_review.html" %}
+{% endif %}
+
 <div class="card mb-6" id="production-tracker-block">
     {% include "order/_production_tracker.html" %}
 </div>

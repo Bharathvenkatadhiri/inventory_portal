@@ -11,7 +11,7 @@ from django.utils import timezone
 from core.models import User
 from accounts.models import ConsumerProfile, ManufacturerProfile, ManufacturingTech, MaterialCapability
 from marketplace import services
-from marketplace.models import Requirement, RequirementPart, Quote, Order, OrderEvent, MessageThread, Message, RFQDecline, RequirementAmendment, AmendmentResponse
+from marketplace.models import Requirement, RequirementPart, Quote, Order, OrderEvent, MessageThread, Message, RFQDecline, RequirementAmendment, AmendmentResponse, SupplierReview
 
 # See homepage/tests.py's LoginViewTests for why: templates using {% static %}
 # need this override under `manage.py test`'s settings — the manifest
@@ -693,7 +693,12 @@ class OwnershipAndAwardTests(TestCase):
         SubscriptionPlan.objects.create(user_profile=self.buyer, plan_type="basic", price=0, rfq_limit="1")
         self.login(self.buyer)
         response = self.client.get(reverse("new-requirement"))
-        self.assertRedirects(response, reverse("profile") + "?tab=billing", fetch_redirect_response=False)
+        self.assertRedirects(response, reverse("home") + "?upgrade=1", fetch_redirect_response=False)
+        # POSTs are blocked too, not just the form page.
+        self.assertEqual(self.client.post(reverse("new-requirement"), {}).status_code, 302)
+        dashboard = self.client.get(reverse("home") + "?upgrade=1")
+        self.assertContains(dashboard, "planModalOpen: true")
+        self.assertContains(dashboard, "1 of 1 used this month")
 
     def test_unlimited_plan_is_not_limited(self):
         from accounts.models import SubscriptionPlan
@@ -1483,3 +1488,103 @@ class RfqLifecycleChangeTests(TestCase):
         })
         self.login(self.other_buyer)
         self.assertEqual(self.client.post(reverse("amendment-decide", kwargs={"pk": maker_response.pk}), {"decision": "accept"}).status_code, 404)
+
+
+@DASHBOARD_TEST_STORAGES
+class SupplierReviewTests(TestCase):
+    def setUp(self):
+        self.buyer = User.objects.create_user(username="revbuyer", email="revbuyer@example.com", password="pass12345")
+        self.consumer = ConsumerProfile.objects.create(
+            user=self.buyer, Name="Rev Buyer", type_of_business="electronics", city="Pune", state="MH", country="India",
+            phone="9700000001", email="revbuyer@example.com", EORI_number="ERV", VAT_number="VRV",
+        )
+        self.maker = User.objects.create_user(username="revmaker", email="revmaker@example.com", password="pass12345", role="manufacturer")
+        self.supplier = ManufacturerProfile.objects.create(
+            user=self.maker, companyname="Rev Maker", phone="8700000001", address="1 Rd", city="Pune", state="MH",
+            country="India", amount_of_employees="10-20", turnover_per_year="<1", email="revmaker@example.com",
+        )
+        self.order = self.make_order("Bracket")
+        self.url = reverse("order-review", kwargs={"billno": self.order.billno})
+
+    def make_order(self, title, complete=True):
+        requirement = Requirement.objects.create(user=self.buyer, title=title, rfq_desc="", quote_currency="INR", request_reason="other")
+        quote = Quote.objects.create(requirement=requirement, supplier=self.supplier, quote_price="10.00", lead_time_value=5)
+        order = Order.objects.create(requirement=requirement, quote=quote, supplier=self.supplier, customer=self.consumer)
+        steps = [order.mark_quoted, order.select_quote, order.start_production]
+        if complete:
+            steps += [order.request_payment, order.mark_paid, order.complete]
+        for step in steps:
+            step()
+        order.save()
+        return order
+
+    def login(self, user):
+        self.client.login(username=user.email, password="pass12345")
+
+    def test_buyer_rates_a_completed_order_once(self):
+        self.login(self.buyer)
+        page = self.client.get(reverse("order-detail", kwargs={"billno": self.order.billno}))
+        self.assertContains(page, "Submit rating")
+        self.client.post(self.url, {"rating": "4", "comment": "On time, good finish"})
+        review = SupplierReview.objects.get(order=self.order)
+        self.assertEqual((review.rating, review.comment), (4, "On time, good finish"))
+        self.client.post(self.url, {"rating": "1"})
+        self.assertEqual(SupplierReview.objects.get(order=self.order).rating, 4)
+        page = self.client.get(reverse("order-detail", kwargs={"billno": self.order.billno}))
+        self.assertNotContains(page, "Submit rating")
+        self.assertContains(page, "On time, good finish")
+
+    def test_only_the_buyer_can_rate_and_only_after_completion(self):
+        self.login(self.maker)
+        self.assertEqual(self.client.post(self.url, {"rating": "5"}).status_code, 404)
+        open_order = self.make_order("Open one", complete=False)
+        self.login(self.buyer)
+        self.client.post(reverse("order-review", kwargs={"billno": open_order.billno}), {"rating": "5"})
+        self.client.post(self.url, {"rating": "6"})
+        self.assertFalse(SupplierReview.objects.exists())
+
+    def test_rating_is_an_action_item_until_given(self):
+        titles = [item["title"] for item in services.buyer_action_items(self.buyer)]
+        self.assertTrue(any(t.startswith("Rate Rev Maker") for t in titles))
+        SupplierReview.objects.create(order=self.order, rating=5)
+        titles = [item["title"] for item in services.buyer_action_items(self.buyer)]
+        self.assertFalse(any(t.startswith("Rate Rev Maker") for t in titles))
+
+    def test_average_and_count_show_in_directory_and_on_quote_cards(self):
+        SupplierReview.objects.create(order=self.order, rating=4)
+        SupplierReview.objects.create(order=self.make_order("Second"), rating=5)
+        self.login(self.buyer)
+        self.assertContains(self.client.get(reverse("supplier-directory")), "(2 reviews)")
+        supplier = services.with_ratings(ManufacturerProfile.objects.filter(pk=self.supplier.pk)).get()
+        self.assertEqual((supplier.rating_avg, supplier.rating_count), (4.5, 2))
+
+        requirement = Requirement.objects.create(
+            user=self.buyer, title="New part", rfq_desc="", quote_currency="INR", request_reason="other",
+            end_date=timezone.now() + timedelta(days=5),
+        )
+        Quote.objects.create(requirement=requirement, supplier=self.supplier, quote_price="12.00")
+        page = self.client.get(reverse("requirement", kwargs={"pk": requirement.pk}))
+        self.assertContains(page, "4.5")
+        self.assertContains(page, "(2 reviews)")
+
+    def test_unrated_supplier_shows_no_reviews(self):
+        supplier = services.with_ratings(ManufacturerProfile.objects.filter(pk=self.supplier.pk)).get()
+        self.assertEqual((supplier.rating_avg, supplier.rating_count), (None, 0))
+        self.login(self.buyer)
+        self.assertContains(self.client.get(reverse("supplier-directory")), "No reviews yet")
+
+    def test_profile_pages_show_ratings_without_comments(self):
+        SupplierReview.objects.create(order=self.order, rating=5, comment="Secret comment")
+        SupplierReview.objects.create(order=self.make_order("Second"), rating=3)
+        breakdown = services.rating_breakdown(self.supplier)
+        self.assertEqual((breakdown["avg"], breakdown["count"]), (4.0, 2))
+        self.assertEqual([row["count"] for row in breakdown["stars"]], [1, 0, 1, 0, 0])
+
+        self.login(self.buyer)
+        page = self.client.get(reverse("supplier", kwargs={"pk": self.supplier.pk}))
+        self.assertContains(page, "2 ratings from completed orders")
+        self.assertNotContains(page, "Secret comment")
+        self.login(self.maker)
+        page = self.client.get(reverse("company-profile"))
+        self.assertContains(page, "2 ratings from completed orders")
+        self.assertNotContains(page, "Secret comment")

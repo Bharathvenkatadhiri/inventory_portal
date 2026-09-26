@@ -1,0 +1,36 @@
+{# Buyer's rating of the manufacturer, collected once the order is completed. Expects: bill, review_form. #}
+{% with review=bill.review %}
+<div class="card mb-6" id="review">
+    <h2 class="text-lg font-bold text-navy-900">Rating</h2>
+    {% if review %}
+    <div class="mt-3 flex items-center gap-1" aria-label="{{ review.rating }} out of 5">
+        {% for n in "12345" %}
+        <svg viewBox="0 0 20 20" class="h-5 w-5 {% if forloop.counter <= review.rating %}text-amber-400{% else %}text-gray-300{% endif %}" fill="currentColor" aria-hidden="true"><path d="M10 1.5l2.6 5.3 5.9.9-4.25 4.1 1 5.8L10 14.9l-5.25 2.7 1-5.8L1.5 7.7l5.9-.9L10 1.5z"/></svg>
+        {% endfor %}
+        <span class="ml-2 text-xs text-gray-500">{{ review.created_at|date:"d M Y" }}</span>
+    </div>
+    {% if review.comment %}<p class="mt-2 text-sm text-gray-700">{{ review.comment|linebreaksbr }}</p>{% endif %}
+    {% elif request.user == bill.customer.user %}
+    <p class="mt-1 text-sm text-gray-500">How was working with {{ bill.supplier.companyname|default:bill.supplier }}? Your rating shows on their profile and quotes.</p>
+    <form method="post" action="{% url 'order-review' bill.billno %}" class="mt-3 space-y-3" x-data="{ rating: 0, hover: 0 }">
+        {% csrf_token %}
+        <input type="hidden" name="rating" :value="rating">
+        <div class="flex items-center gap-1" @mouseleave="hover = 0">
+            {% for n in "12345" %}
+            <button type="button" @click="rating = {{ n }}" @mouseenter="hover = {{ n }}" aria-label="{{ n }} star{{ n|pluralize }}"
+                    :class="(hover || rating) >= {{ n }} ? 'text-amber-400' : 'text-gray-300'" class="text-gray-300">
+                <svg viewBox="0 0 20 20" class="h-7 w-7" fill="currentColor" aria-hidden="true"><path d="M10 1.5l2.6 5.3 5.9.9-4.25 4.1 1 5.8L10 14.9l-5.25 2.7 1-5.8L1.5 7.7l5.9-.9L10 1.5z"/></svg>
+            </button>
+            {% endfor %}
+        </div>
+        <div>
+            <label class="field-label" for="{{ review_form.comment.id_for_label }}">Comment <span class="font-normal text-gray-400">(optional)</span></label>
+            {{ review_form.comment }}
+        </div>
+        <button type="submit" class="btn-primary text-sm" :disabled="!rating" :class="!rating && 'opacity-50 cursor-not-allowed'">Submit rating</button>
+    </form>
+    {% else %}
+    <p class="mt-1 text-sm text-gray-500">The buyer hasn't rated this order yet.</p>
+    {% endif %}
+</div>
+{% endwith %}

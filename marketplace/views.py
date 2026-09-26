@@ -1,5 +1,6 @@
 import datetime
 import logging
+import csv
 import re
 
 from django.shortcuts import render, redirect, get_object_or_404
@@ -7,6 +8,7 @@ from django.core.exceptions import PermissionDenied
 from django.http import FileResponse, Http404, HttpResponse
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils.dateparse import parse_date
 from django.views.generic import (
     View,
     ListView,
@@ -25,16 +27,17 @@ from django_fsm import TransitionNotAllowed
 
 from accounts.models import ManufacturerProfile, ConsumerProfile
 
-from . import services
+from . import reports, search, services
 from .models import (
     Requirement, RequirementPart, Quote, Order,
     RFQDecline,
     MessageThread, Message,
-    RequirementAmendment, AmendmentResponse,
+    RequirementAmendment, AmendmentResponse, SupplierReview,
 )
 from .forms import (
     SelectRequirement, RequirementPartInlineFormSet, QuoteForm,
     ShipmentForm, ProductionUpdateForm, MessageForm, AmendmentAcceptForm,
+    SupplierReviewForm,
 )
 
 model_str = settings.AUTH_USER_MODEL
@@ -233,7 +236,8 @@ class RequirementCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView)
                     request,
                     f"You've used all {limit} RFQs included in your plan this month. Upgrade your plan to post more.",
                 )
-                return redirect(reverse('profile') + '?tab=billing')
+                # ?upgrade=1 opens the plan modal in the dashboard's subscription widget.
+                return redirect(reverse('home') + '?upgrade=1')
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
@@ -907,6 +911,7 @@ class OrderDetailView(View):
             'updates': order.updates.select_related('author').all(),
             'update_form': ProductionUpdateForm(),
             'shipment_form': ShipmentForm(instance=order),
+            'review_form': SupplierReviewForm(),
         }
         return render(request, self.template_name, context)
 
@@ -1006,6 +1011,11 @@ class OrderStatusUpdateView(LoginRequiredMixin, View):
             logger.warning("Unknown order status '%s' requested for order #%s", status, billno)
             messages.error(request, "Unknown order status.")
         if getattr(request, 'htmx', False):
+            if order.status == 'completed':
+                # Completion adds the rating card outside the swapped block; reload to show it.
+                response = HttpResponse(status=204)
+                response['HX-Refresh'] = 'true'
+                return response
             can_advance = request.user.is_authenticated and (
                 request.user == order.supplier.user or request.user == order.customer.user
             )
@@ -1015,6 +1025,32 @@ class OrderStatusUpdateView(LoginRequiredMixin, View):
                 'can_advance': can_advance,
             })
         return redirect(reverse('order-detail', kwargs={'billno': order.billno}))
+
+
+class OrderReviewCreateView(LoginRequiredMixin, View):
+    """The buyer rates the manufacturer once the order is completed. One
+    review per order; it can't be edited afterwards."""
+    def post(self, request, billno):
+        order = get_object_or_404(Order.objects.select_related('customer', 'supplier'), billno=billno)
+        if request.user != order.customer.user:
+            raise Http404
+        detail_url = reverse('order-detail', kwargs={'billno': order.billno}) + '#review'
+        if order.status != 'completed':
+            messages.error(request, "You can rate the manufacturer once the order is completed.")
+            return redirect(detail_url)
+        if SupplierReview.objects.filter(order=order).exists():
+            messages.error(request, "You've already rated this order.")
+            return redirect(detail_url)
+        form = SupplierReviewForm(request.POST)
+        if form.is_valid():
+            review = form.save(commit=False)
+            review.order = order
+            review.save()
+            logger.info("Order #%s rated %s/5 by %s", order.billno, review.rating, request.user)
+            messages.success(request, "Thanks — your rating has been saved.")
+        else:
+            messages.error(request, "Pick a rating from 1 to 5 stars.")
+        return redirect(detail_url)
 
 
 RFQ_NUMBER_PATTERN = re.compile(r'^(?:rfq-?)?(\d+)$', re.IGNORECASE)
@@ -1041,20 +1077,59 @@ class global_search_view(LoginRequiredMixin, ListView):
             return Requirement.objects.filter(Q(pk__in=open_ids) | Q(quote__supplier=supplier), is_deleted=False)
         return Requirement.objects.filter(user=user, is_deleted=False)
 
+    STATUS_FILTERS = {
+        'open': Q(status__isnull=True),
+        'awarded': Q(status='Approved'),
+        'production': Q(status='Production'),
+        'completed': Q(status='Completed'),
+    }
+
+    def _filters(self):
+        get = self.request.GET
+        return {
+            'status': get.get('status', ''),
+            'process': get.get('process', ''),
+            'material': get.get('material', ''),
+            'date_from': get.get('date_from', ''),
+            'date_to': get.get('date_to', ''),
+        }
+
     def get_queryset(self):
         query = (self.request.GET.get('search') or '').strip()
-        if not query:
+        filters = self._filters()
+        if not query and not any(filters.values()):
             return Requirement.objects.none()
-        match = Q(title__icontains=query) | Q(rfq_desc__icontains=query) | Q(industry__icontains=query) \
-            | Q(requirement_parts__part_name__icontains=query)
+        queryset = self._visible_requirements()
+        if filters['status'] in self.STATUS_FILTERS:
+            queryset = queryset.filter(self.STATUS_FILTERS[filters['status']])
+        if filters['process']:
+            queryset = queryset.filter(pk__in=RequirementPart.objects.filter(technology=filters['process']).values('requirement'))
+        if filters['material']:
+            queryset = queryset.filter(pk__in=RequirementPart.objects.filter(Material=filters['material']).values('requirement'))
+        for key, lookup in (('date_from', 'created_at__date__gte'), ('date_to', 'created_at__date__lte')):
+            day = parse_date(filters[key]) if filters[key] else None
+            if day:
+                queryset = queryset.filter(**{lookup: day})
+        if not query:
+            return queryset.order_by('-created_at')
         number = RFQ_NUMBER_PATTERN.match(query)
         if number:
-            match |= Q(pk=int(number.group(1)))
-        return self._visible_requirements().filter(match).distinct().order_by('-created_at')
+            by_number = queryset.filter(pk=int(number.group(1))).order_by('pk')
+            if by_number.exists():
+                return by_number
+        return search.search_requirements(queryset, query).order_by('-rank', '-created_at')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['search'] = self.request.GET.get('search', '')
+        context['filters'] = self._filters()
+        context['has_filters'] = any(context['filters'].values())
+        context['process_choices'] = RequirementPart.TECHNOLOGY_TYPES
+        context['material_choices'] = RequirementPart.MATERIAL_TYPES
+        # Everything except the page number, for pagination links.
+        params = self.request.GET.copy()
+        params.pop('page', None)
+        context['querystring'] = params.urlencode()
         return context
 
 
@@ -1345,3 +1420,28 @@ class QuotesSectionPollView(View):
         if request.GET.get('sig') == services.quotes_signature(requirement):
             return _poll_response(NO_CHANGE)
         return render(request, 'requirement/_quotes_section.html', quotes_section_context(request, requirement))
+
+
+class ReportsView(LoginRequiredMixin, View):
+    """Buyers get their spend report, manufacturers their win-rate report.
+    ?period= picks the window; ?format=csv downloads the underlying rows."""
+    def get(self, request):
+        period = request.GET.get('period', reports.DEFAULT_PERIOD)
+        if request.user.role == 'manufacturer':
+            supplier = ManufacturerProfile.objects.filter(user=request.user).first()
+            if supplier is None:
+                messages.info(request, "Your manufacturer profile isn't set up yet.")
+                return redirect(reverse('home'))
+            report = reports.supplier_win_rate(supplier, period)
+            template, filename = 'reports/supplier_win_rate.html', 'quotes'
+        else:
+            report = reports.buyer_spend(request.user, period)
+            template, filename = 'reports/buyer_spend.html', 'spend'
+        if request.GET.get('format') == 'csv':
+            response = HttpResponse(content_type='text/csv; charset=utf-8')
+            response['Content-Disposition'] = f'attachment; filename="{filename}-{report["period"]}.csv"'
+            writer = csv.writer(response)
+            writer.writerow(report['csv_header'])
+            writer.writerows(report['csv_rows'])
+            return response
+        return render(request, template, {'report': report})

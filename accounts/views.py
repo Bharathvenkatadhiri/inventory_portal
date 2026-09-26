@@ -5,6 +5,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.contrib.auth.decorators import login_not_required
 from django.core.cache import cache
+from django.db.models import F
 from django.http import JsonResponse
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -600,24 +601,34 @@ class SupplierListView(StaffRequiredMixin, ListView):
 
 class SupplierDirectoryView(LoginRequiredMixin, ListView):
     """Buyer-facing "Find manufacturers" browse screen. Real filters over
-    real fields only — no fabricated ratings/review counts, since the data
-    model doesn't have them yet."""
+    real fields only; ratings come from buyers' reviews of completed orders."""
     model = ManufacturerProfile
     template_name = "suppliers/supplier_directory.html"
     paginate_by = 12
 
+    SORTS = {
+        'name': ['companyname'],
+        'rating': [F('rating_avg').desc(nulls_last=True), '-rating_count', 'companyname'],
+        'lead_time': [F('typical_lead_time_days').asc(nulls_last=True), 'companyname'],
+    }
+
     def get_queryset(self):
+        from marketplace.search import search_suppliers
+        from marketplace.services import with_ratings
         queryset = ManufacturerProfile.objects.filter(is_deleted=False).select_related('company').prefetch_related(
             'capabilities', 'materials', 'certifications',
         )
+        q = self.request.GET.get('q', '').strip()
         process = self.request.GET.get('process', '')
         certification = self.request.GET.get('certification', '')
         city = self.request.GET.get('city', '')
         min_order = self.request.GET.get('min_order', '')
+        # pk__in subqueries rather than joins, so no DISTINCT is needed
+        # alongside the search and rating annotations.
         if process:
-            queryset = queryset.filter(capabilities__technology_type=process)
+            queryset = queryset.filter(pk__in=ManufacturerProfile.objects.filter(capabilities__technology_type=process).values('pk'))
         if certification:
-            queryset = queryset.filter(certifications__name=certification)
+            queryset = queryset.filter(pk__in=Certification.objects.filter(name=certification).values('manufacturer'))
         if city:
             queryset = queryset.filter(city=city)
         if min_order:
@@ -625,10 +636,21 @@ class SupplierDirectoryView(LoginRequiredMixin, ListView):
                 queryset = queryset.filter(minimum_order_qty__lte=int(min_order))
             except ValueError:
                 pass
-        return queryset.distinct().order_by('companyname')
+        queryset = with_ratings(queryset)
+        sort = self.request.GET.get('sort') or ('relevance' if q else 'name')
+        if q:
+            queryset = search_suppliers(queryset, q)
+            if sort == 'relevance':
+                return queryset.order_by('-rank', 'companyname')
+        return queryset.order_by(*self.SORTS.get(sort, self.SORTS['name']))
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context['q'] = self.request.GET.get('q', '').strip()
+        context['sort'] = self.request.GET.get('sort') or ('relevance' if context['q'] else 'name')
+        params = self.request.GET.copy()
+        params.pop('page', None)
+        context['querystring'] = params.urlencode()
         context['process'] = self.request.GET.get('process', '')
         context['certification'] = self.request.GET.get('certification', '')
         context['city'] = self.request.GET.get('city', '')
@@ -700,9 +722,11 @@ class SupplieractivateView(StaffRequiredMixin, View):
 
 class SupplierView(View):
     def get(self, request, pk=''):
+        from marketplace.services import rating_breakdown
         supplierobj = get_object_or_404(ManufacturerProfile, pk=pk)
         context = {
             'supplier': supplierobj,
+            'rating': rating_breakdown(supplierobj),
         }
         return render(request, 'suppliers/supplier.html', context)
 
@@ -723,9 +747,11 @@ class CompanyProfileView(LoginRequiredMixin, View):
         if supplier is None:
             messages.info(request, "Your manufacturer profile isn't set up yet. Please contact support to finish setting up your account.")
             return redirect(reverse('home'))
+        from marketplace.services import rating_breakdown
         percent, checklist = supplier.profile_strength()
         context = {
             'supplier': supplier,
+            'rating': rating_breakdown(supplier),
             'profile_strength_percent': percent,
             'profile_strength_checklist': checklist,
             'about_form': CompanyAboutForm(instance=supplier),

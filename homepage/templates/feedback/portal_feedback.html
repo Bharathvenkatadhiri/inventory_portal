@@ -1,0 +1,71 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Rate ManufactureHub — ManufactureHub{% endblock %}
+{% block page_header %}
+<div class="mb-6">
+    <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">Rate ManufactureHub</h1>
+    <p class="mt-1 text-sm text-gray-500">{% if existing %}You rated us {{ existing.rating }}/5 on {{ existing.updated_at|date:"d M Y" }}. Update it any time.{% else %}Tell us what's working and what isn't. It takes a minute.{% endif %}</p>
+</div>
+{% endblock %}
+{% block content %}
+<form method="post" class="max-w-3xl space-y-6" x-data="{ rating: {{ form.rating.value|default:0 }}, hover: 0 }">
+    {% csrf_token %}
+
+    <div class="card">
+        <h2 class="text-lg font-bold text-navy-900">Overall, how would you rate ManufactureHub?</h2>
+        <input type="hidden" name="rating" :value="rating || ''">
+        <div class="mt-3 flex items-center gap-1" @mouseleave="hover = 0">
+            {% for n in "12345" %}
+            <button type="button" @click="rating = {{ n }}" @mouseenter="hover = {{ n }}" aria-label="{{ n }} star{{ n|pluralize }}"
+                    :class="(hover || rating) >= {{ n }} ? 'text-amber-400' : 'text-gray-300'" class="text-gray-300">
+                <svg viewBox="0 0 20 20" class="h-8 w-8" fill="currentColor" aria-hidden="true"><path d="M10 1.5l2.6 5.3 5.9.9-4.25 4.1 1 5.8L10 14.9l-5.25 2.7 1-5.8L1.5 7.7l5.9-.9L10 1.5z"/></svg>
+            </button>
+            {% endfor %}
+        </div>
+        {% if form.rating.errors %}<p class="mt-2 text-sm text-red-600">Pick a rating from 1 to 5 stars.</p>{% endif %}
+    </div>
+
+    <div class="grid gap-6 md:grid-cols-2">
+        <div class="card">
+            <h2 class="text-lg font-bold text-navy-900">What's most useful to you?</h2>
+            <p class="mt-1 text-xs text-gray-500">Pick as many as you like.</p>
+            <div class="mt-3 flex flex-wrap gap-2">
+                {% for choice in form.useful_features %}
+                <label class="relative cursor-pointer">
+                    {{ choice.tag }}
+                    <span class="inline-block rounded-full border border-gray-200 px-3 py-1.5 text-sm text-gray-700 peer-checked:border-green-500 peer-checked:bg-green-50 peer-checked:text-green-700 peer-focus-visible:ring-2 peer-focus-visible:ring-accent-500">{{ choice.choice_label }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="card">
+            <h2 class="text-lg font-bold text-navy-900">What should we improve?</h2>
+            <p class="mt-1 text-xs text-gray-500">Pick as many as you like.</p>
+            <div class="mt-3 flex flex-wrap gap-2">
+                {% for choice in form.improvement_areas %}
+                <label class="relative cursor-pointer">
+                    {{ choice.tag }}
+                    <span class="inline-block rounded-full border border-gray-200 px-3 py-1.5 text-sm text-gray-700 peer-checked:border-amber-500 peer-checked:bg-amber-50 peer-checked:text-amber-700 peer-focus-visible:ring-2 peer-focus-visible:ring-accent-500">{{ choice.choice_label }}</span>
+                </label>
+                {% endfor %}
+            </div>
+            <div class="mt-4">
+                <label class="field-label" for="{{ form.improvement_note.id_for_label }}">{{ form.improvement_note.label }} <span class="font-normal text-gray-400">(optional)</span></label>
+                {{ form.improvement_note }}
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <label class="field-label" for="{{ form.comment.id_for_label }}">{{ form.comment.label }} <span class="font-normal text-gray-400">(optional)</span></label>
+        {{ form.comment }}
+        <label class="mt-3 flex items-start gap-2 text-sm text-gray-700">
+            {{ form.allow_public }}
+            <span>{{ form.allow_public.label }}</span>
+        </label>
+        <p class="mt-1 text-xs text-gray-400">Our team may pick reviews to show on the homepage. Improvement notes are never shown publicly.</p>
+    </div>
+
+    <button type="submit" class="btn-primary" :disabled="!rating" :class="!rating && 'opacity-50 cursor-not-allowed'">{% if existing %}Update feedback{% else %}Send feedback{% endif %}</button>
+</form>
+
+{% endblock %}

@@ -1,4 +1,5 @@
 {% extends "dashboard_base.html" %}
+{% load custom_filters %}
 {% block title %}Find manufacturers — ManufactureHub{% endblock %}
 {% block page_header %}
 <div class="mb-6">
@@ -12,6 +13,19 @@
         <div class="flex items-center justify-between">
             <h2 class="text-sm font-bold text-navy-900">Filters</h2>
             <a href="{% url 'supplier-directory' %}" class="text-xs text-accent-500 hover:underline">Reset</a>
+        </div>
+        <div>
+            <label class="field-label" for="directory-q">Search</label>
+            <input id="directory-q" type="search" name="q" value="{{ q }}" placeholder="Company, process, material, certification…" class="field-input">
+        </div>
+        <div>
+            <label class="field-label" for="directory-sort">Sort by</label>
+            <select id="directory-sort" name="sort" class="field-input" onchange="this.form.submit()">
+                {% if q %}<option value="relevance" {% if sort == 'relevance' %}selected{% endif %}>Best match</option>{% endif %}
+                <option value="rating" {% if sort == 'rating' %}selected{% endif %}>Highest rated</option>
+                <option value="lead_time" {% if sort == 'lead_time' %}selected{% endif %}>Shortest lead time</option>
+                <option value="name" {% if sort == 'name' %}selected{% endif %}>Name</option>
+            </select>
         </div>
         <div>
             <label class="field-label">Process</label>
@@ -47,7 +61,7 @@
     </form>
 
     <div>
-        <p class="mb-4 text-sm text-gray-500">{{ paginator.count }} manufacturer{{ paginator.count|pluralize }} match{% if process or certification or city or min_order %} your filters{% endif %}</p>
+        <p class="mb-4 text-sm text-gray-500">{{ paginator.count }} manufacturer{{ paginator.count|pluralize }} match{% if q %} "{{ q }}"{% endif %}{% if process or certification or city or min_order %}{% if q %} and{% endif %} your filters{% endif %}</p>
         {% if object_list %}
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {% for supplier in object_list %}
@@ -62,6 +76,7 @@
                             {% endif %}
                         </div>
                         <p class="truncate text-xs text-gray-500">{{ supplier.city }}{% if supplier.city and supplier.state %}, {% endif %}{{ supplier.state }}</p>
+                        <div class="mt-1">{% include "_star_rating.html" with avg=supplier.rating_avg count=supplier.rating_count %}</div>
                     </div>
                 </div>
 
@@ -72,6 +87,9 @@
                     <span class="text-xs text-gray-400">No capabilities listed yet</span>
                     {% endfor %}
                 </div>
+                {% if supplier.snippet %}
+                <p class="mt-2 line-clamp-2 text-xs text-gray-600">{{ supplier.snippet|search_highlight }}</p>
+                {% endif %}
 
                 <dl class="mt-4 grid grid-cols-2 gap-2 border-t border-gray-100 pt-3 text-xs">
                     <div>
@@ -94,10 +112,10 @@
         {% if is_paginated %}
         <div class="mt-6 flex flex-wrap gap-2">
             {% if page_obj.has_previous %}
-            <a class="btn-outline" href="?page={{ page_obj.previous_page_number }}{% if process %}&process={{ process }}{% endif %}{% if certification %}&certification={{ certification }}{% endif %}{% if city %}&city={{ city }}{% endif %}{% if min_order %}&min_order={{ min_order }}{% endif %}">Previous</a>
+            <a class="btn-outline" href="?{{ querystring }}&page={{ page_obj.previous_page_number }}">Previous</a>
             {% endif %}
             {% if page_obj.has_next %}
-            <a class="btn-outline" href="?page={{ page_obj.next_page_number }}{% if process %}&process={{ process }}{% endif %}{% if certification %}&certification={{ certification }}{% endif %}{% if city %}&city={{ city }}{% endif %}{% if min_order %}&min_order={{ min_order }}{% endif %}">Next</a>
+            <a class="btn-outline" href="?{{ querystring }}&page={{ page_obj.next_page_number }}">Next</a>
             {% endif %}
         </div>
         {% endif %}

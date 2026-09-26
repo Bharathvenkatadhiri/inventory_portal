@@ -707,3 +707,34 @@ class RFQDecline(models.Model):
 
     def __str__(self):
         return f"Decline: requirement #{self.requirement_id} by supplier #{self.supplier_id}"
+
+
+class SupplierReview(models.Model):
+    """The buyer's rating of the manufacturer on a completed order — one per
+    order. The supplier is reached through the order, so ratings can't be
+    attached to a manufacturer the buyer never actually worked with."""
+    RATING_CHOICES = [(n, str(n)) for n in range(1, 6)]
+
+    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='review')
+    rating = models.PositiveSmallIntegerField(choices=RATING_CHOICES)
+    comment = models.TextField(max_length=1000, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Review of order #{self.order_id}: {self.rating}/5"
+
+
+class ExchangeRate(models.Model):
+    """INR per one unit of a currency, maintained by staff in the admin.
+    Reports convert completed-order values to INR with the current rate;
+    INR itself needs no row. A currency without a row is left out of INR
+    totals and flagged on the report rather than guessed."""
+    currency = models.CharField(max_length=3, unique=True, choices=[c for c in Requirement.CURRENCY_CHOICES if c[0] != 'INR'])
+    inr_per_unit = models.DecimalField(max_digits=14, decimal_places=6)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['currency']
+
+    def __str__(self):
+        return f"1 {self.currency} = ₹{self.inr_per_unit}"

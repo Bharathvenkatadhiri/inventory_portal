@@ -3,6 +3,8 @@ module.exports = {
   content: [
     "./templates/**/*.html",
     "./*/templates/**/*.html",
+    // Template filters that emit markup (e.g. search_highlight's <mark>).
+    "./*/templatetags/*.py",
   ],
   theme: {
     extend: {

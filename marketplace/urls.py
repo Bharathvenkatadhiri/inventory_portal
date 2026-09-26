@@ -25,12 +25,14 @@ urlpatterns = [
     path('quote/<int:pk>/request-revision/', views.QuoteRevisionRequestView.as_view(), name='quote-request-revision'),
     path('quote/<int:pk>/decline-revision/', views.QuoteRevisionDeclineView.as_view(), name='quote-decline-revision'),
 
+    path('reports/', views.ReportsView.as_view(), name='reports'),
     path('orders/', views.OrderListView.as_view(), name='orders-list'),
     path('orders/<billno>', views.OrderDetailView.as_view(), name='order-detail'),
     path('orders/<billno>/update-status/<str:status>/', views.OrderStatusUpdateView.as_view(), name='order-update-status'),
     path('orders/<billno>/production/advance/', views.OrderProductionAdvanceView.as_view(), name='order-production-advance'),
     path('orders/<billno>/updates/', views.OrderUpdateCreateView.as_view(), name='order-post-update'),
     path('orders/<billno>/qc/<int:index>/toggle/', views.QCChecklistToggleView.as_view(), name='order-qc-toggle'),
+    path('orders/<billno>/review/', views.OrderReviewCreateView.as_view(), name='order-review'),
     path('orders/<billno>/shipment/', views.OrderShipmentUpdateView.as_view(), name='order-shipment-update'),
 
     path('search/', views.global_search_view.as_view(), name='global_search_view'),

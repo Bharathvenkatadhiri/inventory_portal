@@ -17,4 +17,7 @@ urlpatterns = [
     path('terms-of-service/', login_not_required(views.TermsOfServiceView.as_view()), name='terms-of-service'),
     path('careers/', login_not_required(views.CareersView.as_view()), name='careers'),
     path('supplier-code-of-conduct/', login_not_required(views.SupplierCodeOfConductView.as_view()), name='supplier-code-of-conduct'),
+    path('feedback/', views.PortalFeedbackView.as_view(), name='portal-feedback'),
+    path('feedback/summary/', views.PortalFeedbackSummaryView.as_view(), name='portal-feedback-summary'),
+    path('feedback/<int:pk>/<str:action>/', views.PortalFeedbackModerateView.as_view(), name='portal-feedback-moderate'),
 ]

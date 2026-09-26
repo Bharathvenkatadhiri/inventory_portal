@@ -1,0 +1,28 @@
+{# A manufacturer's buyer ratings: average, count and a 5→1 star distribution. Expects: rating (from services.rating_breakdown). #}
+<div class="card">
+    <h2 class="text-lg font-bold text-navy-900">Buyer ratings</h2>
+    {% if rating.count %}
+    <div class="mt-3 flex items-center gap-4">
+        <p class="text-4xl font-extrabold text-navy-900">{{ rating.avg|floatformat:1 }}</p>
+        <div>
+            <div class="flex items-center gap-0.5" aria-label="{{ rating.avg|floatformat:1 }} out of 5">
+                {% for n in "12345" %}
+                <svg viewBox="0 0 20 20" class="h-4 w-4 {% if forloop.counter <= rating.avg|floatformat:0|add:0 %}text-amber-400{% else %}text-gray-300{% endif %}" fill="currentColor" aria-hidden="true"><path d="M10 1.5l2.6 5.3 5.9.9-4.25 4.1 1 5.8L10 14.9l-5.25 2.7 1-5.8L1.5 7.7l5.9-.9L10 1.5z"/></svg>
+                {% endfor %}
+            </div>
+            <p class="mt-1 text-xs text-gray-500">{{ rating.count }} rating{{ rating.count|pluralize }} from completed orders</p>
+        </div>
+    </div>
+    <ul class="mt-4 space-y-1.5">
+        {% for row in rating.stars %}
+        <li class="flex items-center gap-2 text-xs text-gray-600">
+            <span class="w-6 shrink-0">{{ row.star }}★</span>
+            <span class="h-2 flex-1 overflow-hidden rounded-full bg-gray-100"><span class="block h-full rounded-full bg-amber-400" style="width: {{ row.percent }}%"></span></span>
+            <span class="w-6 shrink-0 text-right">{{ row.count }}</span>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="mt-1 text-sm text-gray-500">No ratings yet. Buyers rate manufacturers when an order is completed.</p>
+    {% endif %}
+</div>

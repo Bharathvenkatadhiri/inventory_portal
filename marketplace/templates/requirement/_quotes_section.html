@@ -21,6 +21,7 @@
                 <div class="min-w-0">
                     <a href="{% url 'quote' quote.pk %}" class="block truncate font-bold text-navy-900 hover:text-accent-500">{{ quote.supplier.companyname|default:quote.supplier }}</a>
                     <p class="truncate text-xs text-gray-500">{{ quote.supplier.city }}{% if quote.supplier.city and quote.supplier.state %}, {% endif %}{{ quote.supplier.state }}</p>
+                    <div class="mt-1">{% include "_star_rating.html" with avg=quote.rating_avg count=quote.rating_count %}</div>
                 </div>
             </div>
 

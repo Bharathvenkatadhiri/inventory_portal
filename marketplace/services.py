@@ -10,7 +10,8 @@ import logging
 from datetime import timedelta
 
 from django.core.cache import cache
-from django.db.models import Count, Exists, Max, OuterRef, Q
+from django.db.models import Avg, Count, Exists, IntegerField, Max, OuterRef, Q, Subquery, Value
+from django.db.models.functions import Coalesce
 from django.urls import reverse
 from django.utils import timezone
 
@@ -18,7 +19,7 @@ from accounts.models import ManufacturerProfile, ConsumerProfile
 from .models import (
     Requirement, Quote, Order, OrderEvent,
     ProductionUpdate, MessageThread, Message, NotificationRead,
-    RequirementAmendment, AmendmentResponse,
+    RequirementAmendment, AmendmentResponse, SupplierReview,
 )
 
 logger = logging.getLogger(__name__)
@@ -349,6 +350,18 @@ def buyer_action_items(user):
             'cta': 'Review update',
         })
 
+    unreviewed = Order.objects.filter(
+        customer__user=user, status='completed', review__isnull=True,
+        updated_at__gte=timezone.now() - timedelta(days=30),
+    ).select_related('requirement', 'supplier')
+    for order in unreviewed[:3]:
+        items.append({
+            'title': f"Rate {order.supplier.companyname or order.supplier} · ORD-{order.billno}",
+            'detail': f"{order.requirement.title} is complete. A quick rating helps other buyers choose manufacturers.",
+            'url': reverse('order-detail', kwargs={'billno': order.billno}) + '#review',
+            'cta': 'Leave a rating',
+        })
+
     for requirement in expired_without_quotes(user)[:3]:
         items.append({
             'title': f"No quotes by the due date \u00b7 RFQ-{requirement.pk}",
@@ -592,11 +605,51 @@ def mark_notifications_read(user, keys):
     invalidate_notification_cache(user)
 
 
+def with_ratings(suppliers):
+    """Annotates a ManufacturerProfile queryset with rating_avg (None when
+    unrated) and rating_count from buyers' order reviews. Subqueries rather
+    than joins, so filters that join capabilities/certifications can't
+    multiply the counts."""
+    reviews = SupplierReview.objects.filter(order__supplier=OuterRef('pk')).order_by().values('order__supplier')
+    return suppliers.annotate(
+        rating_avg=Subquery(reviews.annotate(avg=Avg('rating')).values('avg')),
+        rating_count=Coalesce(Subquery(reviews.annotate(n=Count('pk')).values('n'), output_field=IntegerField()), Value(0)),
+    )
+
+
+def rating_summaries(supplier_ids):
+    """{supplier_id: (average, count)} for the given suppliers that have reviews."""
+    rows = (
+        SupplierReview.objects.filter(order__supplier_id__in=supplier_ids)
+        .values('order__supplier').annotate(avg=Avg('rating'), n=Count('pk'))
+    )
+    return {row['order__supplier']: (row['avg'], row['n']) for row in rows}
+
+
+def rating_breakdown(supplier):
+    """Average, count and per-star distribution of a manufacturer's order
+    ratings, for their profile pages. Comments are deliberately left out."""
+    counts = dict(
+        SupplierReview.objects.filter(order__supplier=supplier)
+        .values_list('rating').annotate(n=Count('pk')).order_by()
+    )
+    total = sum(counts.values())
+    return {
+        'avg': sum(star * n for star, n in counts.items()) / total if total else None,
+        'count': total,
+        'stars': [
+            {'star': star, 'count': counts.get(star, 0), 'percent': counts.get(star, 0) * 100 // total if total else 0}
+            for star in range(5, 0, -1)
+        ],
+    }
+
+
 def annotate_quote_badges(quotes):
     """Mutates quote objects in place with real, derived comparison badges
-    (lowest price / shortest lead time among the set shown) — never
-    fabricated ratings, since the data model doesn't have any."""
+    (lowest price / shortest lead time among the set shown) and the
+    supplier's rating from buyers' reviews of completed orders."""
     quotes = list(quotes)
+    ratings = rating_summaries({q.supplier_id for q in quotes})
     priced = [q for q in quotes if q.quote_price is not None]
     best_price_id = min(priced, key=lambda q: q.quote_price).pk if len(priced) > 1 else None
     timed = [q for q in quotes if q.lead_time_as_timedelta() is not None]
@@ -604,6 +657,7 @@ def annotate_quote_badges(quotes):
     for quote in quotes:
         quote.badge_best_price = quote.pk == best_price_id
         quote.badge_fastest = quote.pk == fastest_id
+        quote.rating_avg, quote.rating_count = ratings.get(quote.supplier_id, (None, 0))
     return quotes
 
 

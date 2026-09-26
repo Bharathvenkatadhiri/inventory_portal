@@ -1,20 +1,71 @@
 {% extends "dashboard_base.html" %}
+{% load custom_filters %}
 {% block title %}Search — ManufactureHub{% endblock %}
 {% block page_header %}
 <div class="mb-6">
-    <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">Search results for "{{ search }}"</h1>
-    <p class="mt-1 text-sm text-gray-500">Searching {% if request.user.is_staff %}all RFQs{% elif request.user.role == 'manufacturer' %}open RFQs and RFQs you've quoted on{% else %}your RFQs{% endif %} by title, description, industry, part name or RFQ number.</p>
+    <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">{% if search %}Search results for "{{ search }}"{% else %}Search RFQs{% endif %}</h1>
+    <p class="mt-1 text-sm text-gray-500">Searching {% if request.user.is_staff %}all RFQs{% elif request.user.role == 'manufacturer' %}open RFQs and RFQs you've quoted on{% else %}your RFQs{% endif %} by title, parts, process, material, industry, description or RFQ number. Best matches first.</p>
 </div>
 {% endblock %}
 {% block content %}
+<form method="get" class="card mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+    <div class="sm:col-span-2">
+        <label class="field-label" for="search-q">Keywords</label>
+        <input id="search-q" type="search" name="search" value="{{ search }}" class="field-input" placeholder="e.g. anodized aluminium housing">
+    </div>
+    <div>
+        <label class="field-label" for="search-status">Status</label>
+        <select id="search-status" name="status" class="field-input">
+            <option value="">Any</option>
+            <option value="open" {% if filters.status == 'open' %}selected{% endif %}>Open</option>
+            <option value="awarded" {% if filters.status == 'awarded' %}selected{% endif %}>Awarded</option>
+            <option value="production" {% if filters.status == 'production' %}selected{% endif %}>In production</option>
+            <option value="completed" {% if filters.status == 'completed' %}selected{% endif %}>Completed</option>
+        </select>
+    </div>
+    <div>
+        <label class="field-label" for="search-process">Process</label>
+        <select id="search-process" name="process" class="field-input">
+            <option value="">Any</option>
+            {% for value, label in process_choices %}<option value="{{ value }}" {% if filters.process == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+    </div>
+    <div>
+        <label class="field-label" for="search-material">Material</label>
+        <select id="search-material" name="material" class="field-input">
+            <option value="">Any</option>
+            {% for value, label in material_choices %}<option value="{{ value }}" {% if filters.material == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+    </div>
+    <div class="grid grid-cols-2 gap-2">
+        <div>
+            <label class="field-label" for="search-from">From</label>
+            <input id="search-from" type="date" name="date_from" value="{{ filters.date_from }}" class="field-input">
+        </div>
+        <div>
+            <label class="field-label" for="search-to">To</label>
+            <input id="search-to" type="date" name="date_to" value="{{ filters.date_to }}" class="field-input">
+        </div>
+    </div>
+    <div class="flex items-center gap-3 sm:col-span-2 lg:col-span-6">
+        <button type="submit" class="btn-primary">Search</button>
+        {% if has_filters or search %}<a href="{% url 'global_search_view' %}" class="text-sm font-bold text-gray-500 hover:text-navy-900">Clear</a>{% endif %}
+        {% if paginator %}<span class="ml-auto text-sm text-gray-500">{{ paginator.count }} result{{ paginator.count|pluralize }}</span>{% endif %}
+    </div>
+</form>
+
 {% if object_list %}
 <div class="card divide-y divide-gray-100 p-0">
     {% for demand in object_list %}
     <a href="{% url 'requirement' demand.pk %}" class="flex items-start justify-between gap-4 p-5 hover:bg-gray-50">
         <div class="min-w-0">
             <p class="font-bold text-navy-900">{{ demand.title }} <span class="ml-1 text-xs font-normal text-gray-400">RFQ-{{ demand.pk }}</span></p>
-            <p class="mt-1 text-sm text-gray-500">{{ demand.total_parts_quantity }} pcs &middot; {{ demand.industry|default:"—" }} &middot; quotes due {{ demand.end_date|date:"d M Y"|default:"—" }}</p>
-            {% if demand.rfq_desc %}<p class="mt-1 truncate text-sm text-gray-600">{{ demand.rfq_desc }}</p>{% endif %}
+            <p class="mt-1 text-sm text-gray-500">{{ demand.total_parts_quantity }} pcs &middot; {{ demand.industry|default:"—" }} &middot; posted {{ demand.created_at|date:"d M Y" }} &middot; quotes due {{ demand.end_date|date:"d M Y"|default:"—" }}</p>
+            {% if demand.snippet %}
+            <p class="mt-1 line-clamp-2 text-sm text-gray-600">{{ demand.snippet|search_highlight }}</p>
+            {% elif demand.rfq_desc %}
+            <p class="mt-1 truncate text-sm text-gray-600">{{ demand.rfq_desc }}</p>
+            {% endif %}
         </div>
         {% if demand.status == 'Approved' %}
         <span class="badge shrink-0 bg-green-50 text-green-700">Awarded</span>
@@ -34,15 +85,15 @@
 {% if is_paginated %}
 <div class="mt-6 flex flex-wrap gap-2">
     {% if page_obj.has_previous %}
-    <a class="btn-outline" href="?page={{ page_obj.previous_page_number }}&search={{ search|urlencode }}">Previous</a>
+    <a class="btn-outline" href="?{{ querystring }}&page={{ page_obj.previous_page_number }}">Previous</a>
     {% endif %}
     <span class="btn-primary">{{ page_obj.number }}</span>
     {% if page_obj.has_next %}
-    <a class="btn-outline" href="?page={{ page_obj.next_page_number }}&search={{ search|urlencode }}">Next</a>
+    <a class="btn-outline" href="?{{ querystring }}&page={{ page_obj.next_page_number }}">Next</a>
     {% endif %}
 </div>
 {% endif %}
-{% else %}
-<div class="card text-center text-sm text-gray-500">No RFQs match "{{ search }}".</div>
+{% elif search or has_filters %}
+<div class="card text-center text-sm text-gray-500">No RFQs match{% if search %} "{{ search }}"{% endif %}{% if has_filters %} with these filters{% endif %}.</div>
 {% endif %}
 {% endblock %}

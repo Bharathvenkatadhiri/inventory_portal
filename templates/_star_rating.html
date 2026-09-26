@@ -1,0 +1,10 @@
+{# Compact supplier rating: one star, the average and the review count. Expects: avg (None when unrated), count. #}
+{% if count %}
+<span class="inline-flex items-center gap-1 text-xs text-gray-600" title="{{ avg|floatformat:1 }} out of 5 from {{ count }} completed order{{ count|pluralize }}">
+    <svg viewBox="0 0 20 20" class="h-3.5 w-3.5 text-amber-400" fill="currentColor" aria-hidden="true"><path d="M10 1.5l2.6 5.3 5.9.9-4.25 4.1 1 5.8L10 14.9l-5.25 2.7 1-5.8L1.5 7.7l5.9-.9L10 1.5z"/></svg>
+    <span class="font-bold text-navy-900">{{ avg|floatformat:1 }}</span>
+    <span>({{ count }} review{{ count|pluralize }})</span>
+</span>
+{% else %}
+<span class="text-xs text-gray-400">No reviews yet</span>
+{% endif %}
