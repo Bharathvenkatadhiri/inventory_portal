@@ -202,3 +202,59 @@ class PortalFeedbackTests(TestCase):
 
     def test_public_section_is_hidden_without_ratings(self):
         self.assertNotContains(self.client.get(reverse("home")), "Trusted by buyers and manufacturers")
+
+
+@DASHBOARD_TEST_STORAGES
+class LogoutFeedbackPromptTests(TestCase):
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.buyer = User.objects.create_user(username="lobuyer", email="lobuyer@example.com", password="pass12345", first_name="Asha")
+        self.client.login(username=self.buyer.email, password="pass12345")
+
+    def test_prompt_shows_until_the_user_has_rated(self):
+        from homepage.models import PortalFeedback
+        page = self.client.get(reverse("profile"))
+        self.assertContains(page, "Before you go")
+        PortalFeedback.objects.create(user=self.buyer, role="consumer", rating=4)
+        self.assertNotContains(self.client.get(reverse("profile")), "Before you go")
+
+    def test_staff_are_not_prompted(self):
+        staff = User.objects.create_user(username="lostaff", email="lostaff@example.com", password="pass12345", is_staff=True)
+        self.client.login(username=staff.email, password="pass12345")
+        self.assertNotContains(self.client.get(reverse("profile")), "Before you go")
+
+    def test_submit_from_prompt_saves_and_logs_out(self):
+        from homepage.models import PortalFeedback
+        response = self.client.post(reverse("portal-feedback"), {"rating": "5", "comment": "Smooth", "logout": "1"})
+        self.assertRedirects(response, reverse("home"), fetch_redirect_response=False)
+        self.assertEqual(PortalFeedback.objects.get(user=self.buyer).rating, 5)
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_skip_still_logs_out(self):
+        self.client.post(reverse("logout"))
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_star_buttons_have_no_fixed_grey_class(self):
+        # A fixed text-gray-300 outranks the Alpine-added text-amber-400 in the built CSS.
+        page = self.client.get(reverse("portal-feedback"))
+        self.assertContains(page, """' : 'text-gray-300'" class="transition-colors">""")
+        self.assertNotContains(page, """' : 'text-gray-300'" class="text-gray-300">""")
+
+
+@DASHBOARD_TEST_STORAGES
+class PortalRatingBadgeTests(TestCase):
+    def setUp(self):
+        from django.core.cache import cache
+        from homepage.models import PortalFeedback
+        cache.clear()
+        user = User.objects.create_user(username="badgeuser", email="badgeuser@example.com", password="pass12345", first_name="Ravi")
+        PortalFeedback.objects.create(user=user, role="consumer", rating=5, comment="Quotes came in fast.", allow_public=True)
+
+    def test_badge_at_the_top_of_pages_with_a_reviews_section(self):
+        for name in ("home", "about", "how-it-works", "pricing"):
+            page = self.client.get(reverse(name)).content.decode()
+            self.assertIn('href="#reviews"', page, name)
+            self.assertIn('id="reviews"', page, name)
+            self.assertLess(page.index('href="#reviews"'), page.index('id="reviews"'), name)
+        self.assertNotIn('href="#reviews"', self.client.get(reverse("privacy-policy")).content.decode())

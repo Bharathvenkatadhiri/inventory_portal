@@ -1588,3 +1588,39 @@ class SupplierReviewTests(TestCase):
         page = self.client.get(reverse("company-profile"))
         self.assertContains(page, "2 ratings from completed orders")
         self.assertNotContains(page, "Secret comment")
+
+
+@DASHBOARD_TEST_STORAGES
+class OrderProgressGuidanceTests(TestCase):
+    """An order that hasn't started production. Borrows SupplierReviewTests'
+    fixture helpers without inheriting (and re-running) its tests."""
+    make_order = SupplierReviewTests.make_order
+    login = SupplierReviewTests.login
+
+    def setUp(self):
+        SupplierReviewTests.setUp(self)
+        self.order = self.make_order("Awaiting start", complete=False)
+        Order.objects.filter(pk=self.order.pk).update(status="quote_selected")
+        self.detail = reverse("order-detail", kwargs={"billno": self.order.billno})
+
+    def test_before_production_the_page_says_how_to_start(self):
+        self.login(self.maker)
+        page = self.client.get(self.detail)
+        self.assertContains(page, ">Start production</button>")
+        self.assertContains(page, "Production hasn't started yet")
+        self.assertNotContains(page, "Advance to")
+
+    def test_starting_production_via_htmx_reloads_the_page(self):
+        self.login(self.maker)
+        response = self.client.post(
+            reverse("order-update-status", kwargs={"billno": self.order.billno, "status": "in_production"}), HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response["HX-Refresh"], "true")
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, "in_production")
+        self.assertContains(self.client.get(self.detail), 'Mark "Order confirmed" complete')
+
+    def test_buyer_is_told_the_manufacturer_updates_stages(self):
+        Order.objects.filter(pk=self.order.pk).update(status="in_production")
+        self.login(self.buyer)
+        self.assertContains(self.client.get(self.detail), "marks each stage complete as work progresses")

@@ -27,10 +27,7 @@
                 <p class="font-bold text-navy-900">{{ request.user.first_name }} {{ request.user.last_name }}</p>
                 <p class="text-xs text-gray-500">{{ sidebar_company_name|default:"" }}</p>
             </div>
-            <form method="post" action="{% url 'logout' %}">
-                {% csrf_token %}
-                <button type="submit" class="text-sm text-gray-500 hover:text-gray-700">Log out</button>
-            </form>
+            {% include "_logout_button.html" %}
         </div>
     </div>
 </header>

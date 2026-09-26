@@ -5,6 +5,7 @@ from django.http import Http404
 from django.urls import reverse
 from django.views.generic import View, TemplateView
 from django.contrib.auth.decorators import login_not_required
+from django.contrib.auth import logout as auth_logout
 from django.contrib.auth.views import LoginView, LogoutView
 from django.contrib import messages
 from django.utils import timezone
@@ -222,6 +223,11 @@ class PortalFeedbackView(View):
             feedback.is_featured = False
         feedback.save()
         logger.info("Portal feedback %s/5 saved by %s", feedback.rating, request.user)
+        if request.POST.get('logout'):
+            # Sent from the rating prompt on the Log out button.
+            auth_logout(request)
+            messages.success(request, "Thanks for your feedback! You've been logged out.")
+            return redirect('home')
         messages.success(request, "Thanks for your feedback!")
         return redirect('portal-feedback')
 

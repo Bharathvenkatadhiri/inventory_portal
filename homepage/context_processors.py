@@ -63,3 +63,19 @@ def _counts(request):
         })
 
     return counts
+
+
+def portal_feedback_prompt(request):
+    """`needs_portal_feedback`: a signed-in buyer or manufacturer who hasn't
+    rated ManufactureHub yet, so logging out asks them first. Lazy — only
+    queried on pages that render the logout button."""
+    user = getattr(request, 'user', None)
+
+    def needs():
+        from homepage.models import PortalFeedback
+        return (
+            bool(user and user.is_authenticated) and not user.is_staff
+            and user.role in ('consumer', 'manufacturer')
+            and not PortalFeedback.objects.filter(user=user).exists()
+        )
+    return {'needs_portal_feedback': needs}

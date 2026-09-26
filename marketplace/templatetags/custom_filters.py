@@ -82,3 +82,10 @@ def inr_compact(value):
         if abs(value) >= size:
             return f"₹{value / size:.1f}".rstrip('0').rstrip('.') + suffix
     return f"₹{value:.0f}"
+
+
+@register.filter
+def order_action_label(status):
+    """Button text for moving an order to `status`, e.g. "Start production"."""
+    from marketplace.models import Order
+    return Order.ACTION_LABELS.get(status, str(status).replace('_', ' ').capitalize())

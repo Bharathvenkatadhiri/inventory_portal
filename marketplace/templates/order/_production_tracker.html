@@ -8,6 +8,17 @@
     </form>
     {% endif %}
 </div>
+{% if not can_manage_production %}
+{# Explain why there's no button, so the tracker doesn't just look stuck. #}
+<p class="mb-4 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-600">
+    {% if bill.status == 'cancelled' %}This order was cancelled.
+    {% elif bill.status == 'completed' %}This order is completed.
+    {% elif bill.status == 'submitted' or bill.status == 'quoted' or bill.status == 'quote_selected' %}Production hasn't started yet. Click <span class="font-bold text-navy-900">Start production</span> in the Status card to begin tracking stages.
+    {% elif request.user == bill.supplier.user %}Stages can't be changed at this point.
+    {% else %}{{ bill.supplier.companyname|default:"The manufacturer" }} marks each stage complete as work progresses. You'll see updates here.
+    {% endif %}
+</p>
+{% endif %}
 
 <div class="grid gap-2" style="grid-template-columns: repeat({{ production_stages|length }}, minmax(0, 1fr));">
     {% for key, label in production_stages %}

@@ -248,6 +248,17 @@ class Order(models.Model):
     ]
     PRODUCTION_STAGES = [key for key, _ in PRODUCTION_STAGE_CHOICES]
 
+    # Button text for moving the order *to* each status.
+    ACTION_LABELS = {
+        'quoted': 'Mark as quoted',
+        'quote_selected': 'Confirm selected quote',
+        'in_production': 'Start production',
+        'payment_pending': 'Request payment',
+        'paid': 'Mark as paid',
+        'completed': 'Mark order completed',
+        'cancelled': 'Cancel order',
+    }
+
     COURIER_CHOICES = [
         ('delhivery', 'Delhivery'),
         ('bluedart', 'Blue Dart'),

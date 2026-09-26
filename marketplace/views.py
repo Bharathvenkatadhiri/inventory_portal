@@ -1011,8 +1011,9 @@ class OrderStatusUpdateView(LoginRequiredMixin, View):
             logger.warning("Unknown order status '%s' requested for order #%s", status, billno)
             messages.error(request, "Unknown order status.")
         if getattr(request, 'htmx', False):
-            if order.status == 'completed':
-                # Completion adds the rating card outside the swapped block; reload to show it.
+            if order.status in ('in_production', 'completed', 'cancelled'):
+                # These change the tracker, QC checklist and rating card
+                # outside the swapped status block; reload to show them.
                 response = HttpResponse(status=204)
                 response['HX-Refresh'] = 'true'
                 return response
