@@ -89,3 +89,15 @@ def order_action_label(status):
     """Button text for moving an order to `status`, e.g. "Start production"."""
     from marketplace.models import Order
     return Order.ACTION_LABELS.get(status, str(status).replace('_', ' ').capitalize())
+
+
+@register.filter
+def star_fills(value):
+    """How full each of 5 stars is, in percent, for a (possibly fractional)
+    rating: 4.5 -> [100, 100, 100, 100, 50]. Rounded to the nearest 10%
+    so 4.46 still reads as a half star rather than a sliver."""
+    try:
+        value = float(value or 0)
+    except (TypeError, ValueError):
+        value = 0.0
+    return [round(max(0.0, min(1.0, value - index)) * 10) * 10 for index in range(5)]

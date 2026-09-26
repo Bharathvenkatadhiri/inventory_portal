@@ -258,3 +258,28 @@ class PortalRatingBadgeTests(TestCase):
             self.assertIn('id="reviews"', page, name)
             self.assertLess(page.index('href="#reviews"'), page.index('id="reviews"'), name)
         self.assertNotIn('href="#reviews"', self.client.get(reverse("privacy-policy")).content.decode())
+
+    def test_half_star_for_a_4_5_average(self):
+        from homepage.models import PortalFeedback
+        from marketplace.templatetags.custom_filters import star_fills
+        self.assertEqual(star_fills(4.5), [100, 100, 100, 100, 50])
+        self.assertEqual(star_fills(3.46), [100, 100, 100, 50, 0])
+        self.assertEqual(star_fills(None), [0, 0, 0, 0, 0])
+        other = User.objects.create_user(username="badgeuser2", email="badgeuser2@example.com", password="pass12345")
+        PortalFeedback.objects.create(user=other, role="consumer", rating=4)
+        page = self.client.get(reverse("home")).content.decode()
+        self.assertIn("4.5 out of 5 stars", page)
+        self.assertIn('style="width: 50%"', page)
+
+    def test_reviews_on_contact_and_register_pages(self):
+        for name in ("contact", "register"):
+            page = self.client.get(reverse(name)).content.decode()
+            self.assertIn('href="#reviews"', page, name)
+            self.assertIn("Quotes came in fast.", page, name)
+        # The detailed sign-up forms need the half-registered account from step one.
+        for name, role in (("register-customer", "consumer"), ("register-supplier", "manufacturer")):
+            pending = User.objects.create_user(username=f"pending-{role}", email=f"pending-{role}@example.com", password="pass12345", role=role)
+            session = self.client.session
+            session["session_user_id"] = pending.pk
+            session.save()
+            self.assertContains(self.client.get(reverse(name)), "Quotes came in fast.", msg_prefix=name)
