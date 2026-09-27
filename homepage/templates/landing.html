@@ -78,16 +78,15 @@
                 {% if messages %}
                 <div id="toast-messages" class="mb-5 flex flex-col gap-2">
                     {% for message in messages %}
-                    <div class="flex items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm {% if message.tags == 'error' %}border-red-200 bg-red-50 text-red-700{% else %}border-green-200 bg-green-50 text-green-700{% endif %}">
-                        <span>{{ message }}</span>
+                    <div class="{% if 'unregistered' not in message.extra_tags %}auto-dismiss {% endif %}flex items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm {% if message.level_tag == 'error' %}border-red-200 bg-red-50 text-red-700{% else %}border-green-200 bg-green-50 text-green-700{% endif %}">
+                        <span>{{ message }}{% if 'unregistered' in message.extra_tags %} <a href="{% url 'register' %}" class="font-semibold underline hover:text-red-900">Register here</a>{% endif %}</span>
                         <button type="button" onclick="this.closest('div').remove()" class="shrink-0 opacity-60 hover:opacity-100" aria-label="Dismiss">&times;</button>
                     </div>
                     {% endfor %}
                 </div>
                 <script>
                     setTimeout(function () {
-                        var el = document.getElementById('toast-messages');
-                        if (el) el.remove();
+                        document.querySelectorAll('#toast-messages .auto-dismiss').forEach(function (el) { el.remove(); });
                     }, 4000);
                 </script>
                 {% endif %}

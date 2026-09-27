@@ -1,14 +1,16 @@
 import logging
 
+from django.conf import settings
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import Http404
 from django.urls import reverse
 from django.views.generic import View, TemplateView
 from django.contrib.auth.decorators import login_not_required
-from django.contrib.auth import logout as auth_logout
+from django.contrib.auth import get_user_model, logout as auth_logout
 from django.contrib.auth.views import LoginView, LogoutView
 from django.contrib import messages
 from django.utils import timezone
+from core import login_throttle
 from marketplace import services
 from marketplace.models import Requirement, Quote, Order
 from accounts.models import ManufacturerProfile, ConsumerProfile, SubscriptionPlan
@@ -170,7 +172,20 @@ class SupplierCodeOfConductView(TemplateView):
 class CustomLoginView(LoginView):
     template_name = 'landing.html'
 
+    def post(self, request, *args, **kwargs):
+        # Checked before the password is, so a locked-out attacker learns
+        # nothing more — not even whether the email is registered.
+        if login_throttle.is_locked_out(request, self._posted_email()):
+            minutes = settings.LOGIN_FAILURE_WINDOW_SECONDS // 60
+            messages.error(request, f"Too many failed login attempts. Please try again in {minutes} minutes or reset your password.")
+            return redirect('login')
+        return super().post(request, *args, **kwargs)
+
+    def _posted_email(self):
+        return (self.request.POST.get('username') or '').strip()
+
     def form_valid(self, form):
+        login_throttle.clear_failures(self._posted_email())
         response = super().form_valid(form)
         # Default session behaviour (set globally) expires at browser close;
         # "Remember me" opts into a longer-lived session instead.
@@ -187,7 +202,19 @@ class CustomLoginView(LoginView):
         # (and can look like the page is just stuck). Redirect back to a
         # fresh GET instead and surface the error via the messages
         # framework, matching how register/logout feedback is shown.
-        messages.error(self.request, "Incorrect email or password. Please try again.")
+        email = self._posted_email()
+        login_throttle.record_failure(self.request, email)
+        hint_allowed = login_throttle.ip_failure_count(self.request) <= settings.LOGIN_UNREGISTERED_HINT_LIMIT
+        if hint_allowed and email and not get_user_model().objects.filter(email__iexact=email).exists():
+            # The "unregistered" tag tells landing.html to add a Register
+            # link and keep the toast up long enough to click it.
+            messages.error(
+                self.request,
+                "The email ID you entered is not registered.",
+                extra_tags='unregistered',
+            )
+        else:
+            messages.error(self.request, "Incorrect email or password. Please try again.")
         return redirect('login')
 
 

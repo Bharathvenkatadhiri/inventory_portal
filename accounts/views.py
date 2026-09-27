@@ -393,6 +393,12 @@ def ViewProfileDetails(request):
     context['subscription'] = subscription
     context['plan_catalog'] = plan_catalog(subscription)
     context['tab'] = request.GET.get('tab', 'profile')
+    # Pre-fills the Contact us tab with the sender's own details.
+    if supplier:
+        context.update(contact_company=supplier.companyname or '', contact_phone=supplier.phone)
+    elif customer:
+        context.update(contact_company=customer.Name, contact_phone=customer.phone)
+    context['contact_role'] = 'Manufacturer looking for RFQs' if request.user.role == 'manufacturer' else 'Buyer looking for parts'
     return render(request, 'profile.html', context)
 
 
@@ -727,6 +733,9 @@ class SupplierView(View):
         context = {
             'supplier': supplierobj,
             'rating': rating_breakdown(supplierobj),
+            # Buyers reach this from Find manufacturers, so keep them in the
+            # dashboard shell; staff come from the admin supplier list.
+            'base_template': 'base.html' if request.user.is_staff else 'dashboard_base.html',
         }
         return render(request, 'suppliers/supplier.html', context)
 

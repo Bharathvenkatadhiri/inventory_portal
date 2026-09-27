@@ -1,4 +1,5 @@
 from django.contrib.messages import get_messages
+from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
@@ -33,6 +34,7 @@ class LoginViewTests(TestCase):
     """
 
     def setUp(self):
+        cache.clear()  # failed-login counts live in the cache
         User.objects.create_user(username="realuser", email="real@example.com", password="correct-horse-battery")
         self.url = reverse("login")
 
@@ -49,6 +51,16 @@ class LoginViewTests(TestCase):
         messages = [m.message for m in get_messages(response.wsgi_request)]
         self.assertTrue(any("Incorrect email or password" in m for m in messages))
 
+    def test_unregistered_email_links_to_register(self):
+        response = self.client.post(
+            self.url,
+            data={"username": "nobody@example.com", "password": "whatever"},
+            follow=True,
+        )
+        self.assertContains(response, "The email ID you entered is not registered.")
+        self.assertContains(response, 'href="%s"' % reverse("register"))
+        self.assertNotContains(response, "Incorrect email or password")
+
     def test_refresh_after_failed_login_is_a_plain_get(self):
         self.client.post(self.url, data={"username": "real@example.com", "password": "wrong-password"})
         # Simulates the browser refresh: a plain GET, not a resubmitted POST.
@@ -58,6 +70,77 @@ class LoginViewTests(TestCase):
     def test_valid_login_still_works(self):
         response = self.client.post(self.url, data={"username": "real@example.com", "password": "correct-horse-battery"})
         self.assertEqual(response.status_code, 302)
+        self.assertIn("_auth_user_id", self.client.session)
+
+
+@override_settings(
+    STORAGES={
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    },
+    LOGIN_FAILURE_LIMIT_PER_EMAIL=3,
+    LOGIN_FAILURE_LIMIT_PER_IP=5,
+)
+class LoginThrottleTests(TestCase):
+    """Login used to allow unlimited password guesses, and the "not
+    registered" message let anyone script a check of which emails have
+    accounts. Failures are now counted per email and per IP."""
+
+    def setUp(self):
+        cache.clear()
+        User.objects.create_user(username="victim", email="victim@example.com", password="correct-horse-battery")
+        self.url = reverse("login")
+
+    def _post(self, email, password="wrong-password", **extra):
+        return self.client.post(self.url, data={"username": email, "password": password}, follow=True, **extra)
+
+    def test_email_locks_after_limit_even_with_the_right_password(self):
+        for _ in range(3):
+            self._post("victim@example.com")
+        response = self._post("victim@example.com", password="correct-horse-battery")
+        self.assertContains(response, "Too many failed login attempts")
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_email_lock_applies_from_another_ip(self):
+        for _ in range(3):
+            self._post("victim@example.com", REMOTE_ADDR="10.0.0.1")
+        response = self._post("victim@example.com", password="correct-horse-battery", REMOTE_ADDR="10.0.0.2")
+        self.assertContains(response, "Too many failed login attempts")
+
+    def test_ip_locks_after_spraying_many_emails(self):
+        for i in range(5):
+            self._post(f"guess{i}@example.com", REMOTE_ADDR="10.0.0.9")
+        response = self._post("victim@example.com", password="correct-horse-battery", REMOTE_ADDR="10.0.0.9")
+        self.assertContains(response, "Too many failed login attempts")
+        # A different client is unaffected.
+        self._post("victim@example.com", password="correct-horse-battery", REMOTE_ADDR="10.0.0.10")
+        self.assertIn("_auth_user_id", self.client.session)
+
+    def test_locked_out_request_does_not_reveal_registration(self):
+        for i in range(5):
+            self._post(f"guess{i}@example.com")
+        response = self._post("nobody@example.com")
+        self.assertNotContains(response, "not registered")
+
+    @override_settings(LOGIN_UNREGISTERED_HINT_LIMIT=2)
+    def test_not_registered_hint_stops_after_a_few_failures_from_one_ip(self):
+        self.assertContains(self._post("first@example.com"), "not registered")
+        self.assertContains(self._post("second@example.com"), "not registered")
+        response = self._post("third@example.com")
+        self.assertNotContains(response, "not registered")
+        self.assertContains(response, "Incorrect email or password")
+        # Another client still gets the helpful message.
+        self.assertContains(self._post("fourth@example.com", REMOTE_ADDR="10.0.0.20"), "not registered")
+
+    def test_successful_login_resets_the_email_count(self):
+        for _ in range(2):
+            self._post("victim@example.com")
+        self._post("victim@example.com", password="correct-horse-battery")
+        self.client.logout()
+        for _ in range(2):
+            self._post("victim@example.com")
+        response = self._post("victim@example.com", password="correct-horse-battery")
+        self.assertNotContains(response, "Too many failed login attempts")
         self.assertIn("_auth_user_id", self.client.session)
 
 
@@ -283,3 +366,28 @@ class PortalRatingBadgeTests(TestCase):
             session["session_user_id"] = pending.pk
             session.save()
             self.assertContains(self.client.get(reverse(name)), "Quotes came in fast.", msg_prefix=name)
+
+
+@override_settings(
+    STORAGES={
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    },
+    SECURE_SSL_REDIRECT=True,
+    SECURE_PROXY_SSL_HEADER=("HTTP_X_FORWARDED_PROTO", "https"),
+    SECURE_HSTS_SECONDS=3600,
+)
+class HttpsHardeningTests(TestCase):
+    """Production settings: plain HTTP is redirected, but a request the TLS
+    proxy marks as HTTPS is served (not redirected again, which would loop)."""
+
+    def test_plain_http_is_redirected_to_https(self):
+        response = self.client.get(reverse("login"))
+        self.assertEqual(response.status_code, 301)
+        self.assertTrue(response["Location"].startswith("https://"))
+
+    def test_https_via_proxy_is_served_with_hsts_and_no_framing(self):
+        response = self.client.get(reverse("login"), HTTP_X_FORWARDED_PROTO="https")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Strict-Transport-Security"], "max-age=3600")
+        self.assertEqual(response["X-Frame-Options"], "DENY")

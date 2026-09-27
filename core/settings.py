@@ -132,8 +132,41 @@ else:
     MEDIA_ROOT = BASE_DIR / "media"
     STORAGES["default"] = {"BACKEND": "django.core.files.storage.FileSystemStorage"}
 
+# Login brute-force protection (core/login_throttle.py). The per-IP limit
+# assumes REMOTE_ADDR is the real client; behind a proxy that doesn't pass
+# it through, every user shares one IP, so raise the limit there.
+LOGIN_FAILURE_LIMIT_PER_EMAIL = env.int("LOGIN_FAILURE_LIMIT_PER_EMAIL", default=5)
+LOGIN_FAILURE_LIMIT_PER_IP = env.int("LOGIN_FAILURE_LIMIT_PER_IP", default=20)
+LOGIN_FAILURE_WINDOW_SECONDS = env.int("LOGIN_FAILURE_WINDOW_SECONDS", default=15 * 60)
+# The login form says "email not registered" (with a Register link) only for
+# an IP's first few failures in the window; after that it gives the generic
+# message, so the form can't be used to check which emails have accounts.
+LOGIN_UNREGISTERED_HINT_LIMIT = env.int("LOGIN_UNREGISTERED_HINT_LIMIT", default=3)
+
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_COOKIE_AGE = 3600
+
+# --- HTTPS / cookie hardening ------------------------------------------------
+# On by default whenever DEBUG=False; each can be overridden from the env.
+# gunicorn serves plain HTTP, so production always has a TLS-terminating
+# proxy/load balancer in front. SECURE_PROXY_SSL_HEADER tells Django to trust
+# its X-Forwarded-Proto header — without it, SECURE_SSL_REDIRECT would see
+# every request as HTTP and redirect forever. The proxy must overwrite (not
+# pass through) any X-Forwarded-Proto the client sends.
+SESSION_COOKIE_SECURE = env.bool("SESSION_COOKIE_SECURE", default=not DEBUG)
+CSRF_COOKIE_SECURE = env.bool("CSRF_COOKIE_SECURE", default=not DEBUG)
+SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=not DEBUG)
+if env.bool("SECURE_PROXY_SSL_HEADER", default=not DEBUG):
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# Start small: browsers cache HSTS for this long, so a mistake (e.g. a
+# subdomain still on HTTP) is locked in for that period. Raise to a year
+# (31536000) once HTTPS is confirmed working everywhere.
+SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=0 if DEBUG else 3600)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = env.bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", default=False)
+SECURE_HSTS_PRELOAD = env.bool("SECURE_HSTS_PRELOAD", default=False)
+# Django's default already, stated explicitly: no page may be framed by any
+# site, including this one (nothing here uses iframes).
+X_FRAME_OPTIONS = "DENY"
 
 AUTH_USER_MODEL = "core.User"
 AUTHENTICATION_BACKENDS = [
