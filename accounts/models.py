@@ -104,6 +104,11 @@ class Company(models.Model):
     mca_status = models.CharField(max_length=30, null=True, blank=True)
     entity_type = models.CharField(max_length=30, choices=ENTITY_TYPE_CHOICES, blank=True)
     verification_status = models.CharField(max_length=20, choices=VERIFICATION_STATUS_CHOICES, default='pending')
+    # Letter of Undertaking for zero-rated exports without paying IGST. Filed
+    # on the GST portal once per financial year; the ARN is quoted on
+    # export invoices. Leave blank if the company exports on payment of IGST.
+    lut_reference = models.CharField('LUT ARN', max_length=30, blank=True)
+    lut_valid_until = models.DateField('LUT valid until', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -115,6 +120,11 @@ class Company(models.Model):
 
     def __str__(self):
         return self.legal_name or self.trade_name or f"Company #{self.pk}"
+
+    def has_valid_lut(self, on=None):
+        from django.utils import timezone
+        on = on or timezone.localdate()
+        return bool(self.lut_reference.strip()) and (self.lut_valid_until is None or self.lut_valid_until >= on)
 
 
 class ManufacturerProfile(models.Model):

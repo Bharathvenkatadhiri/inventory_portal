@@ -29,6 +29,8 @@ jobs:
       SECRET_KEY: ci-test-secret-key
       ALLOWED_HOSTS: localhost,127.0.0.1
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/marketplace
+      # Tests talk plain HTTP to the test client; don't redirect them to HTTPS.
+      SECURE_SSL_REDIRECT: "False"
 
     steps:
       - uses: actions/checkout@v4

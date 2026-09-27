@@ -1,0 +1,16 @@
+{# Hero-sized portal rating and best review, on a dark background. Rendered by {% portal_rating_badge %}. #}
+{% if summary.count %}
+<a href="#reviews" class="mt-8 inline-flex max-w-xl flex-col gap-2 rounded-xl border border-white/15 bg-white/[0.06] px-4 py-3 text-white transition-colors hover:bg-white/10 sm:flex-row sm:items-center sm:gap-4">
+    <span class="flex shrink-0 items-center gap-2">
+        <span class="flex items-center gap-0.5" aria-hidden="true">
+            {% include "_stars.html" with value=summary.avg size="h-4 w-4" empty="text-white/25" %}
+        </span>
+        <span class="text-sm"><span class="font-bold">{{ summary.avg|floatformat:1 }}</span><span class="text-white/65"> / 5 &middot; {{ summary.count }} review{{ summary.count|pluralize }}</span></span>
+    </span>
+    {% with top=summary.reviews.0 %}
+    {% if top %}
+    <span class="text-sm text-white/80 sm:border-l sm:border-white/15 sm:pl-4">&ldquo;{{ top.comment|truncatewords:14 }}&rdquo; <span class="text-white/55">&mdash; {{ top.name }}</span></span>
+    {% endif %}
+    {% endwith %}
+</a>
+{% endif %}

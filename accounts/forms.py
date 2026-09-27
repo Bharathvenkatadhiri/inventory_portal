@@ -6,7 +6,7 @@ from django.conf import settings
 from django import forms
 from .models import (
     ManufacturerProfile, ConsumerProfile, SubscriptionPlan,
-    Machine, Certification, ManufacturingTech, MaterialCapability,
+    Machine, Certification, ManufacturingTech, MaterialCapability, Company,
 )
 from django.apps import apps
 from core.settings import subscription_plan_details
@@ -117,6 +117,23 @@ class CompanyContactForm(forms.ModelForm):
             'contact_role': forms.TextInput(attrs={'class': 'field-input'}),
             'contact_phone': forms.TextInput(attrs={'class': 'field-input'}),
         }
+
+
+class CompanyLUTForm(forms.ModelForm):
+    """The manufacturer's Letter of Undertaking for zero-rated exports."""
+    class Meta:
+        model = Company
+        fields = ['lut_reference', 'lut_valid_until']
+        widgets = {
+            'lut_reference': forms.TextInput(attrs={'class': 'field-input', 'placeholder': 'e.g. AD270326000123X'}),
+            'lut_valid_until': forms.DateInput(attrs={'class': 'field-input', 'type': 'date'}),
+        }
+
+    def clean_lut_reference(self):
+        value = self.cleaned_data['lut_reference'].strip().upper()
+        if value and not (value.isalnum() and 10 <= len(value) <= 20):
+            raise forms.ValidationError("Enter the LUT's ARN as shown on the GST portal (letters and digits only).")
+        return value
 
 
 class CompanyCapacityForm(forms.ModelForm):

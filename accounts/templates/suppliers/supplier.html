@@ -1,9 +1,9 @@
-{% extends "base.html" %}
+{% extends base_template %}
 {% block title %}{{ supplier.companyname }}{% endblock title %}
 {% block content %}
 <div class="flex items-center justify-between mb-6">
     <div>
-        <h1 class="text-xl font-semibold text-gray-900">{{ supplier.companyname }}</h1>
+        <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">{{ supplier.companyname }}</h1>
         <p class="text-sm text-gray-500">{{ supplier.get_activity_type_display }} &middot; created {{ supplier.created_at|date:"Y-m-d" }}</p>
     </div>
     <div class="flex gap-2">

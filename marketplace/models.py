@@ -6,11 +6,38 @@ from decimal import Decimal
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+from django.utils.functional import cached_property
 from django_fsm import FSMField, transition
 
 from accounts.models import ManufacturerProfile, ConsumerProfile
 
 GST_RATE = Decimal('0.18')
+INDIA_NAMES = {'india', 'in', 'ind', 'bharat'}
+
+# How GST applies to an order, from the buyer's country and the
+# manufacturer's LUT (see gst_treatment).
+GST_DOMESTIC = 'domestic'
+GST_EXPORT_LUT = 'export_lut'      # zero-rated export under LUT: no GST charged
+GST_EXPORT_IGST = 'export_igst'    # export on payment of IGST (refundable to the exporter)
+GST_LABELS = {
+    GST_DOMESTIC: 'GST (18%)',
+    GST_EXPORT_LUT: 'GST (0%, export under LUT)',
+    GST_EXPORT_IGST: 'IGST (18%, export)',
+}
+
+
+def is_india(country):
+    return (country or 'India').strip().lower() in INDIA_NAMES
+
+
+def gst_treatment(requirement, supplier):
+    """Exports (buyer outside India) are zero-rated: no GST when the
+    manufacturer has a valid LUT, IGST otherwise. Everything else is a
+    domestic supply at 18%."""
+    if not requirement.is_export:
+        return GST_DOMESTIC
+    company = getattr(supplier, 'company', None) if supplier else None
+    return GST_EXPORT_LUT if company and company.has_valid_lut() else GST_EXPORT_IGST
 
 
 # Contains requirements (RFQs) submitted by consumers
@@ -60,6 +87,12 @@ class Requirement(models.Model):
 
     def __str__(self):
         return f"Requirement #{self.id} - {self.user.first_name}"
+
+    @cached_property
+    def is_export(self):
+        """The buyer's company is outside India, so supplies to it are exports."""
+        country = ConsumerProfile.objects.filter(user_id=self.user_id).values_list('country', flat=True).first()
+        return not is_india(country)
 
     def total_parts_quantity(self):
         return sum(part.quantity for part in self.requirement_parts.all())
@@ -198,17 +231,25 @@ class Quote(models.Model):
             and (self.revised_at is None or self.revised_at < self.revision_declined_at)
         )
 
+    def gst_treatment(self):
+        return gst_treatment(self.requirement, self.supplier)
+
     def get_breakdown(self):
         quantity = self.requirement.total_parts_quantity()
         unit_price = self.quote_price or Decimal('0')
         subtotal = (unit_price * quantity) + self.tooling_cost
-        gst = (subtotal * GST_RATE).quantize(Decimal('0.01'))
+        treatment = self.gst_treatment()
+        rate = Decimal('0') if treatment == GST_EXPORT_LUT else GST_RATE
+        gst = (subtotal * rate).quantize(Decimal('0.01'))
         return {
             'quantity': quantity,
             'unit_price': unit_price,
             'subtotal': subtotal,
             'tooling_cost': self.tooling_cost,
             'gst': gst,
+            'gst_rate': rate,
+            'gst_treatment': treatment,
+            'gst_label': GST_LABELS[treatment],
             'total': subtotal + gst,
         }
 
@@ -247,6 +288,17 @@ class Order(models.Model):
         ('delivered', 'Delivered'),
     ]
     PRODUCTION_STAGES = [key for key, _ in PRODUCTION_STAGE_CHOICES]
+
+    # Button text for moving the order *to* each status.
+    ACTION_LABELS = {
+        'quoted': 'Mark as quoted',
+        'quote_selected': 'Confirm selected quote',
+        'in_production': 'Start production',
+        'payment_pending': 'Request payment',
+        'paid': 'Mark as paid',
+        'completed': 'Mark order completed',
+        'cancelled': 'Cancel order',
+    }
 
     COURIER_CHOICES = [
         ('delhivery', 'Delhivery'),
@@ -738,3 +790,52 @@ class ExchangeRate(models.Model):
 
     def __str__(self):
         return f"1 {self.currency} = ₹{self.inr_per_unit}"
+
+
+class DocumentSequence(models.Model):
+    """Gap-free running number per issuer, document kind and Indian
+    financial year (April–March), e.g. a manufacturer's invoices for FY
+    2026-27. Rows are locked with select_for_update while a number is taken."""
+    issuer_key = models.CharField(max_length=40)  # "buyer:<ConsumerProfile id>" or "supplier:<ManufacturerProfile id>"
+    kind = models.CharField(max_length=10)
+    financial_year = models.CharField(max_length=4)  # "2627" for FY 2026-27
+    last_number = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['issuer_key', 'kind', 'financial_year'], name='unique_document_sequence')]
+
+    def __str__(self):
+        return f"{self.issuer_key} {self.kind} FY{self.financial_year}: {self.last_number}"
+
+
+class OrderDocument(models.Model):
+    """A purchase order (issued by the buyer at award) or a GST tax invoice
+    (issued by the manufacturer at dispatch). Party details, lines and tax
+    are copied in when the document is created, as the Company model
+    requires, so a later profile edit or GST re-verification never changes
+    an issued document. The PDF is rendered from these copies."""
+    PURCHASE_ORDER = 'po'
+    INVOICE = 'invoice'
+    KIND_CHOICES = [(PURCHASE_ORDER, 'Purchase order'), (INVOICE, 'Tax invoice')]
+
+    order = models.ForeignKey(Order, on_delete=models.PROTECT, related_name='documents')
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES)
+    number = models.CharField(max_length=16)  # GST caps invoice numbers at 16 characters
+    issuer_key = models.CharField(max_length=40)
+    issued_at = models.DateTimeField(default=timezone.now)
+    seller = models.JSONField()
+    buyer = models.JSONField()
+    details = models.JSONField()  # references, terms, lines and tax breakdown
+    currency = models.CharField(max_length=3)
+    total = models.DecimalField(max_digits=14, decimal_places=2)
+    pdf = models.FileField(upload_to='order_documents/', blank=True)
+
+    class Meta:
+        ordering = ['issued_at']
+        constraints = [
+            models.UniqueConstraint(fields=['order', 'kind'], name='one_document_of_each_kind_per_order'),
+            models.UniqueConstraint(fields=['issuer_key', 'kind', 'number'], name='unique_document_number_per_issuer'),
+        ]
+
+    def __str__(self):
+        return f"{self.get_kind_display()} {self.number} (order #{self.order_id})"

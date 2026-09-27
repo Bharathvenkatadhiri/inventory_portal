@@ -18,9 +18,12 @@
             hx-post="{% url 'order-update-status' bill.billno next_status %}"
             hx-target="#order-status-block"
             hx-swap="outerHTML"
-        >Advance to {{ next_status|title }}</button>
+        >{{ next_status|order_action_label }}</button>
         {% endif %}
     </div>
+    {% if next_status == 'in_production' and can_advance %}
+    <p class="-mt-2 mb-4 text-xs text-gray-500">Starting production unlocks the stage tracker and QC checklist, and sets the ship-by date from the quote's lead time.</p>
+    {% endif %}
 
     <h2 class="font-semibold text-gray-900 mb-3">Status history</h2>
     {% with history=bill.status_events %}

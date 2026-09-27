@@ -27,12 +27,13 @@ from django_fsm import TransitionNotAllowed
 
 from accounts.models import ManufacturerProfile, ConsumerProfile
 
-from . import reports, search, services
+from . import documents, reports, search, services
 from .models import (
     Requirement, RequirementPart, Quote, Order,
     RFQDecline,
     MessageThread, Message,
-    RequirementAmendment, AmendmentResponse, SupplierReview,
+    RequirementAmendment, AmendmentResponse, SupplierReview, OrderDocument,
+    GST_EXPORT_LUT, GST_LABELS, GST_RATE, gst_treatment,
 )
 from .forms import (
     SelectRequirement, RequirementPartInlineFormSet, QuoteForm,
@@ -201,6 +202,16 @@ class RequirementListView(LoginRequiredMixin, ListView):
                 'awarded': own.filter(status__in=['Approved', 'Production', 'Completed']).count(),
             }
         return context
+
+
+def _gst_context(requirement, supplier):
+    """GST rate and label for the quote form's live total (0% for an
+    export when the manufacturer has a valid LUT)."""
+    treatment = gst_treatment(requirement, supplier)
+    return {
+        'gst_rate': '0' if treatment == GST_EXPORT_LUT else str(GST_RATE),
+        'gst_label': GST_LABELS[treatment],
+    }
 
 
 def _own_open_requirement(request, pk):
@@ -610,6 +621,7 @@ class QuoteCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView):
         context["match_percent"] = services.compute_match_percent(requirement, supplier) if (requirement and supplier) else None
         if requirement:
             context.update(_rfq_conversation_context(self.request, requirement))
+            context.update(_gst_context(requirement, supplier))
         context["is_manufacturer"] = True
         return context
 
@@ -679,6 +691,7 @@ class QuoteUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
         context["total_quantity"] = requirement.total_parts_quantity()
         context["match_percent"] = services.compute_match_percent(requirement, self.object.supplier)
         context.update(_rfq_conversation_context(self.request, requirement))
+        context.update(_gst_context(requirement, self.object.supplier))
         context["is_manufacturer"] = True
         return context
 
@@ -912,6 +925,7 @@ class OrderDetailView(View):
             'update_form': ProductionUpdateForm(),
             'shipment_form': ShipmentForm(instance=order),
             'review_form': SupplierReviewForm(),
+            'order_documents': order.documents.all(),
         }
         return render(request, self.template_name, context)
 
@@ -925,6 +939,14 @@ class OrderProductionAdvanceView(LoginRequiredMixin, View):
         advanced = order.advance_production_stage(note=request.POST.get('note', ''))
         if advanced:
             messages.success(request, f"Marked '{order.get_production_stage_display()}' complete.")
+        if advanced and order.production_stage == 'dispatched':
+            invoice = documents.issue_invoice(order)
+            messages.success(request, f"Tax invoice {invoice.number} issued to the buyer.")
+            if getattr(request, 'htmx', False):
+                # The invoice appears in the Documents card, outside the swapped tracker.
+                response = HttpResponse(status=204)
+                response['HX-Refresh'] = 'true'
+                return response
         if getattr(request, 'htmx', False):
             return render(request, 'order/_production_tracker.html', {
                 'bill': order,
@@ -1011,8 +1033,9 @@ class OrderStatusUpdateView(LoginRequiredMixin, View):
             logger.warning("Unknown order status '%s' requested for order #%s", status, billno)
             messages.error(request, "Unknown order status.")
         if getattr(request, 'htmx', False):
-            if order.status == 'completed':
-                # Completion adds the rating card outside the swapped block; reload to show it.
+            if order.status in ('in_production', 'completed', 'cancelled'):
+                # These change the tracker, QC checklist and rating card
+                # outside the swapped status block; reload to show them.
                 response = HttpResponse(status=204)
                 response['HX-Refresh'] = 'true'
                 return response
@@ -1159,6 +1182,7 @@ class DocumentListView(LoginRequiredMixin, View):
         else:
             docs = services.buyer_documents(request.user)
         docs += services.message_attachment_documents(request.user)
+        docs += services.order_document_entries(request.user)
         docs.sort(key=lambda doc: doc['date'], reverse=True)
         return render(request, 'documents/document_list.html', {'docs': docs})
 
@@ -1445,3 +1469,13 @@ class ReportsView(LoginRequiredMixin, View):
             writer.writerows(report['csv_rows'])
             return response
         return render(request, template, {'report': report})
+
+
+class OrderDocumentDownloadView(LoginRequiredMixin, View):
+    """A PO or tax invoice PDF, for the order's buyer, its manufacturer or staff."""
+    def get(self, request, pk):
+        document = get_object_or_404(OrderDocument.objects.select_related('order__supplier', 'order__customer'), pk=pk)
+        if not (request.user.is_staff or request.user in (document.order.supplier.user, document.order.customer.user)):
+            raise Http404
+        documents.ensure_pdf(document)
+        return FileResponse(document.pdf.open('rb'), content_type='application/pdf', filename=f"{document.number}.pdf")

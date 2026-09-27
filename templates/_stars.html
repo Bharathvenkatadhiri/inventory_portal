@@ -1,0 +1,14 @@
+{% load custom_filters %}
+{# Five stars with fractional fill (4.5 -> four and a half). Expects: value; optional size (default "h-4 w-4") and empty (class for the unfilled part, default "text-gray-300"). #}
+<span class="inline-flex items-center gap-0.5" role="img" aria-label="{{ value|floatformat:1 }} out of 5 stars">
+    {% for fill in value|star_fills %}
+    <span class="relative inline-block {{ size|default:'h-4 w-4' }}" aria-hidden="true">
+        <svg viewBox="0 0 20 20" class="absolute inset-0 h-full w-full {{ empty|default:'text-gray-300' }}" fill="currentColor"><path d="M10 1.5l2.6 5.3 5.9.9-4.25 4.1 1 5.8L10 14.9l-5.25 2.7 1-5.8L1.5 7.7l5.9-.9L10 1.5z"/></svg>
+        {% if fill %}
+        <span class="absolute inset-y-0 left-0 overflow-hidden" style="width: {{ fill }}%">
+            <svg viewBox="0 0 20 20" class="max-w-none text-amber-400 {{ size|default:'h-4 w-4' }}" fill="currentColor"><path d="M10 1.5l2.6 5.3 5.9.9-4.25 4.1 1 5.8L10 14.9l-5.25 2.7 1-5.8L1.5 7.7l5.9-.9L10 1.5z"/></svg>
+        </span>
+        {% endif %}
+    </span>
+    {% endfor %}
+</span>

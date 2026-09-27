@@ -1,0 +1,13 @@
+# Store every text file with LF line endings, whatever the OS or editor.
+# Git detects binaries itself; the list below just makes the common ones explicit.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary

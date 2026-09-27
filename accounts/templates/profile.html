@@ -3,7 +3,7 @@
 {% block page_header %}
 <div class="mb-6">
     <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">Settings</h1>
-    <p class="mt-1 text-sm text-gray-500">Manage your profile, company and plan.</p>
+    <p class="mt-1 text-sm text-gray-500">Manage your profile, company and plan, or get in touch with us.</p>
 </div>
 {% endblock %}
 {% block content %}
@@ -12,6 +12,7 @@
         <a href="?tab=profile" class="block rounded-lg px-3 py-2 text-sm font-bold {% if tab == 'profile' %}bg-accent-50 text-accent-700{% else %}text-gray-600 hover:bg-gray-50{% endif %}">Profile</a>
         <a href="?tab=company" class="block rounded-lg px-3 py-2 text-sm font-bold {% if tab == 'company' %}bg-accent-50 text-accent-700{% else %}text-gray-600 hover:bg-gray-50{% endif %}">Company</a>
         <a href="?tab=billing" class="block rounded-lg px-3 py-2 text-sm font-bold {% if tab == 'billing' %}bg-accent-50 text-accent-700{% else %}text-gray-600 hover:bg-gray-50{% endif %}">Plan &amp; billing</a>
+        <a href="?tab=contact" class="block rounded-lg px-3 py-2 text-sm font-bold {% if tab == 'contact' %}bg-accent-50 text-accent-700{% else %}text-gray-600 hover:bg-gray-50{% endif %}">Contact us</a>
     </nav>
 
     <div class="space-y-6">
@@ -56,6 +57,9 @@
             {% include "_subscription_plans.html" with next=request.get_full_path %}
         </div>
 
+        {% elif tab == 'contact' %}
+        {% include "_contact_form.html" with contact_name=request.user.get_full_name contact_email=request.user.email contact_company=contact_company contact_phone=contact_phone contact_role=contact_role %}
+
         {% else %}
         <div class="card">
             <h2 class="text-lg font-bold text-navy-900 mb-4">Profile</h2>
@@ -77,12 +81,6 @@
             </dl>
         </div>
         {% endif %}
-
-        <div class="card">
-            <h2 class="text-sm font-bold text-navy-900 mb-2">Still can't find what you're looking for?</h2>
-            <p class="mb-4 text-sm text-gray-600">Call us: <a href="tel:0000000000" class="text-accent-500 hover:underline">(91) 999-9999-99</a></p>
-            <a href="{% url 'contact' %}" class="btn-outline">Contact us</a>
-        </div>
     </div>
 </div>
 {% endblock %}

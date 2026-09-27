@@ -68,7 +68,7 @@
         <div class="mt-6 space-y-1.5 border-t border-gray-100 pt-4 text-sm">
             <div class="flex justify-between"><dt class="text-gray-500">Quantity</dt><dd class="text-navy-900">{{ breakdown.quantity }}</dd></div>
             <div class="flex justify-between"><dt class="text-gray-500">Subtotal</dt><dd class="text-navy-900">{{ quote.requirement.quote_currency }} {{ breakdown.subtotal|floatformat:2 }}</dd></div>
-            <div class="flex justify-between"><dt class="text-gray-500">GST (18%)</dt><dd class="text-navy-900">{{ quote.requirement.quote_currency }} {{ breakdown.gst|floatformat:2 }}</dd></div>
+            <div class="flex justify-between"><dt class="text-gray-500">{{ breakdown.gst_label }}</dt><dd class="text-navy-900">{{ quote.requirement.quote_currency }} {{ breakdown.gst|floatformat:2 }}</dd></div>
             <div class="flex justify-between text-base font-bold"><dt class="text-navy-900">Total</dt><dd class="text-navy-900">{{ quote.requirement.quote_currency }} {{ breakdown.total|floatformat:2 }}</dd></div>
         </div>
         {% endwith %}

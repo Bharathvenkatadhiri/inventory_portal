@@ -664,3 +664,58 @@ class SupplierRegistrationBindingTests(TestCase):
         })
         self.assertTrue(ManufacturerProfile.objects.filter(user=me).exists())
         self.assertFalse(ManufacturerProfile.objects.filter(user=someone).exists())
+
+
+@DASHBOARD_TEST_STORAGES
+class SettingsContactTabTests(TestCase):
+    """Contact us lives in its own Settings tab for buyers and suppliers,
+    not as a card under every other tab."""
+
+    def test_supplier_contact_tab_prefills_their_details(self):
+        _make_manufacturer("contact_mfg", "contact_mfg@example.com")
+        self.client.login(username="contact_mfg@example.com", password="pass12345")
+        response = self.client.get(reverse("profile") + "?tab=contact")
+        self.assertContains(response, "Send us a message")
+        self.assertContains(response, "contact_mfg Co")
+        self.assertContains(response, "role: 'Manufacturer looking for RFQs'")
+
+    def test_buyer_contact_tab_prefills_their_details(self):
+        _buyer("contact_buyer", "9400000031")
+        self.client.login(username="contact_buyer@example.com", password="pass12345")
+        response = self.client.get(reverse("profile") + "?tab=contact")
+        self.assertContains(response, "Send us a message")
+        self.assertContains(response, "contact_buyer Co")
+        self.assertContains(response, "role: 'Buyer looking for parts'")
+
+    def test_profile_tab_no_longer_shows_the_contact_card(self):
+        _buyer("contact_buyer2", "9400000032")
+        self.client.login(username="contact_buyer2@example.com", password="pass12345")
+        response = self.client.get(reverse("profile"))
+        self.assertContains(response, "?tab=contact")
+        self.assertNotContains(response, "Still can't find what you're looking for?")
+        self.assertNotContains(response, "Send us a message")
+
+
+@DASHBOARD_TEST_STORAGES
+class SupplierProfileLayoutTests(TestCase):
+    """View profile from Find manufacturers used to render in the public
+    site layout, so it looked like the buyer had been sent out of the portal."""
+
+    def setUp(self):
+        _, self.supplier = _make_manufacturer("layout_mfg", "layout_mfg@example.com")
+
+    def test_buyer_sees_profile_inside_the_dashboard(self):
+        _buyer("layout_buyer", "9400000041")
+        self.client.login(username="layout_buyer@example.com", password="pass12345")
+        response = self.client.get(reverse("supplier", kwargs={"pk": self.supplier.pk}))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "dashboard_base.html")
+        self.assertContains(response, "layout_mfg Co")
+        self.assertContains(response, reverse("supplier-directory"))
+
+    def test_staff_keep_the_admin_layout(self):
+        User.objects.create_user(username="layout_staff", email="layout_staff@example.com", password="pass12345", is_staff=True)
+        self.client.login(username="layout_staff@example.com", password="pass12345")
+        response = self.client.get(reverse("supplier", kwargs={"pk": self.supplier.pk}))
+        self.assertTemplateUsed(response, "base.html")
+        self.assertTemplateNotUsed(response, "dashboard_base.html")

@@ -1,4 +1,5 @@
 from django.contrib.messages import get_messages
+from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
@@ -33,6 +34,7 @@ class LoginViewTests(TestCase):
     """
 
     def setUp(self):
+        cache.clear()  # failed-login counts live in the cache
         User.objects.create_user(username="realuser", email="real@example.com", password="correct-horse-battery")
         self.url = reverse("login")
 
@@ -49,6 +51,16 @@ class LoginViewTests(TestCase):
         messages = [m.message for m in get_messages(response.wsgi_request)]
         self.assertTrue(any("Incorrect email or password" in m for m in messages))
 
+    def test_unregistered_email_links_to_register(self):
+        response = self.client.post(
+            self.url,
+            data={"username": "nobody@example.com", "password": "whatever"},
+            follow=True,
+        )
+        self.assertContains(response, "The email ID you entered is not registered.")
+        self.assertContains(response, 'href="%s"' % reverse("register"))
+        self.assertNotContains(response, "Incorrect email or password")
+
     def test_refresh_after_failed_login_is_a_plain_get(self):
         self.client.post(self.url, data={"username": "real@example.com", "password": "wrong-password"})
         # Simulates the browser refresh: a plain GET, not a resubmitted POST.
@@ -58,6 +70,77 @@ class LoginViewTests(TestCase):
     def test_valid_login_still_works(self):
         response = self.client.post(self.url, data={"username": "real@example.com", "password": "correct-horse-battery"})
         self.assertEqual(response.status_code, 302)
+        self.assertIn("_auth_user_id", self.client.session)
+
+
+@override_settings(
+    STORAGES={
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    },
+    LOGIN_FAILURE_LIMIT_PER_EMAIL=3,
+    LOGIN_FAILURE_LIMIT_PER_IP=5,
+)
+class LoginThrottleTests(TestCase):
+    """Login used to allow unlimited password guesses, and the "not
+    registered" message let anyone script a check of which emails have
+    accounts. Failures are now counted per email and per IP."""
+
+    def setUp(self):
+        cache.clear()
+        User.objects.create_user(username="victim", email="victim@example.com", password="correct-horse-battery")
+        self.url = reverse("login")
+
+    def _post(self, email, password="wrong-password", **extra):
+        return self.client.post(self.url, data={"username": email, "password": password}, follow=True, **extra)
+
+    def test_email_locks_after_limit_even_with_the_right_password(self):
+        for _ in range(3):
+            self._post("victim@example.com")
+        response = self._post("victim@example.com", password="correct-horse-battery")
+        self.assertContains(response, "Too many failed login attempts")
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_email_lock_applies_from_another_ip(self):
+        for _ in range(3):
+            self._post("victim@example.com", REMOTE_ADDR="10.0.0.1")
+        response = self._post("victim@example.com", password="correct-horse-battery", REMOTE_ADDR="10.0.0.2")
+        self.assertContains(response, "Too many failed login attempts")
+
+    def test_ip_locks_after_spraying_many_emails(self):
+        for i in range(5):
+            self._post(f"guess{i}@example.com", REMOTE_ADDR="10.0.0.9")
+        response = self._post("victim@example.com", password="correct-horse-battery", REMOTE_ADDR="10.0.0.9")
+        self.assertContains(response, "Too many failed login attempts")
+        # A different client is unaffected.
+        self._post("victim@example.com", password="correct-horse-battery", REMOTE_ADDR="10.0.0.10")
+        self.assertIn("_auth_user_id", self.client.session)
+
+    def test_locked_out_request_does_not_reveal_registration(self):
+        for i in range(5):
+            self._post(f"guess{i}@example.com")
+        response = self._post("nobody@example.com")
+        self.assertNotContains(response, "not registered")
+
+    @override_settings(LOGIN_UNREGISTERED_HINT_LIMIT=2)
+    def test_not_registered_hint_stops_after_a_few_failures_from_one_ip(self):
+        self.assertContains(self._post("first@example.com"), "not registered")
+        self.assertContains(self._post("second@example.com"), "not registered")
+        response = self._post("third@example.com")
+        self.assertNotContains(response, "not registered")
+        self.assertContains(response, "Incorrect email or password")
+        # Another client still gets the helpful message.
+        self.assertContains(self._post("fourth@example.com", REMOTE_ADDR="10.0.0.20"), "not registered")
+
+    def test_successful_login_resets_the_email_count(self):
+        for _ in range(2):
+            self._post("victim@example.com")
+        self._post("victim@example.com", password="correct-horse-battery")
+        self.client.logout()
+        for _ in range(2):
+            self._post("victim@example.com")
+        response = self._post("victim@example.com", password="correct-horse-battery")
+        self.assertNotContains(response, "Too many failed login attempts")
         self.assertIn("_auth_user_id", self.client.session)
 
 
@@ -202,3 +285,109 @@ class PortalFeedbackTests(TestCase):
 
     def test_public_section_is_hidden_without_ratings(self):
         self.assertNotContains(self.client.get(reverse("home")), "Trusted by buyers and manufacturers")
+
+
+@DASHBOARD_TEST_STORAGES
+class LogoutFeedbackPromptTests(TestCase):
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.buyer = User.objects.create_user(username="lobuyer", email="lobuyer@example.com", password="pass12345", first_name="Asha")
+        self.client.login(username=self.buyer.email, password="pass12345")
+
+    def test_prompt_shows_until_the_user_has_rated(self):
+        from homepage.models import PortalFeedback
+        page = self.client.get(reverse("profile"))
+        self.assertContains(page, "Before you go")
+        PortalFeedback.objects.create(user=self.buyer, role="consumer", rating=4)
+        self.assertNotContains(self.client.get(reverse("profile")), "Before you go")
+
+    def test_staff_are_not_prompted(self):
+        staff = User.objects.create_user(username="lostaff", email="lostaff@example.com", password="pass12345", is_staff=True)
+        self.client.login(username=staff.email, password="pass12345")
+        self.assertNotContains(self.client.get(reverse("profile")), "Before you go")
+
+    def test_submit_from_prompt_saves_and_logs_out(self):
+        from homepage.models import PortalFeedback
+        response = self.client.post(reverse("portal-feedback"), {"rating": "5", "comment": "Smooth", "logout": "1"})
+        self.assertRedirects(response, reverse("home"), fetch_redirect_response=False)
+        self.assertEqual(PortalFeedback.objects.get(user=self.buyer).rating, 5)
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_skip_still_logs_out(self):
+        self.client.post(reverse("logout"))
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_star_buttons_have_no_fixed_grey_class(self):
+        # A fixed text-gray-300 outranks the Alpine-added text-amber-400 in the built CSS.
+        page = self.client.get(reverse("portal-feedback"))
+        self.assertContains(page, """' : 'text-gray-300'" class="transition-colors">""")
+        self.assertNotContains(page, """' : 'text-gray-300'" class="text-gray-300">""")
+
+
+@DASHBOARD_TEST_STORAGES
+class PortalRatingBadgeTests(TestCase):
+    def setUp(self):
+        from django.core.cache import cache
+        from homepage.models import PortalFeedback
+        cache.clear()
+        user = User.objects.create_user(username="badgeuser", email="badgeuser@example.com", password="pass12345", first_name="Ravi")
+        PortalFeedback.objects.create(user=user, role="consumer", rating=5, comment="Quotes came in fast.", allow_public=True)
+
+    def test_badge_at_the_top_of_pages_with_a_reviews_section(self):
+        for name in ("home", "about", "how-it-works", "pricing"):
+            page = self.client.get(reverse(name)).content.decode()
+            self.assertIn('href="#reviews"', page, name)
+            self.assertIn('id="reviews"', page, name)
+            self.assertLess(page.index('href="#reviews"'), page.index('id="reviews"'), name)
+        self.assertNotIn('href="#reviews"', self.client.get(reverse("privacy-policy")).content.decode())
+
+    def test_half_star_for_a_4_5_average(self):
+        from homepage.models import PortalFeedback
+        from marketplace.templatetags.custom_filters import star_fills
+        self.assertEqual(star_fills(4.5), [100, 100, 100, 100, 50])
+        self.assertEqual(star_fills(3.46), [100, 100, 100, 50, 0])
+        self.assertEqual(star_fills(None), [0, 0, 0, 0, 0])
+        other = User.objects.create_user(username="badgeuser2", email="badgeuser2@example.com", password="pass12345")
+        PortalFeedback.objects.create(user=other, role="consumer", rating=4)
+        page = self.client.get(reverse("home")).content.decode()
+        self.assertIn("4.5 out of 5 stars", page)
+        self.assertIn('style="width: 50%"', page)
+
+    def test_reviews_on_contact_and_register_pages(self):
+        for name in ("contact", "register"):
+            page = self.client.get(reverse(name)).content.decode()
+            self.assertIn('href="#reviews"', page, name)
+            self.assertIn("Quotes came in fast.", page, name)
+        # The detailed sign-up forms need the half-registered account from step one.
+        for name, role in (("register-customer", "consumer"), ("register-supplier", "manufacturer")):
+            pending = User.objects.create_user(username=f"pending-{role}", email=f"pending-{role}@example.com", password="pass12345", role=role)
+            session = self.client.session
+            session["session_user_id"] = pending.pk
+            session.save()
+            self.assertContains(self.client.get(reverse(name)), "Quotes came in fast.", msg_prefix=name)
+
+
+@override_settings(
+    STORAGES={
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    },
+    SECURE_SSL_REDIRECT=True,
+    SECURE_PROXY_SSL_HEADER=("HTTP_X_FORWARDED_PROTO", "https"),
+    SECURE_HSTS_SECONDS=3600,
+)
+class HttpsHardeningTests(TestCase):
+    """Production settings: plain HTTP is redirected, but a request the TLS
+    proxy marks as HTTPS is served (not redirected again, which would loop)."""
+
+    def test_plain_http_is_redirected_to_https(self):
+        response = self.client.get(reverse("login"))
+        self.assertEqual(response.status_code, 301)
+        self.assertTrue(response["Location"].startswith("https://"))
+
+    def test_https_via_proxy_is_served_with_hsts_and_no_framing(self):
+        response = self.client.get(reverse("login"), HTTP_X_FORWARDED_PROTO="https")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Strict-Transport-Security"], "max-age=3600")
+        self.assertEqual(response["X-Frame-Options"], "DENY")

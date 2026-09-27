@@ -15,6 +15,7 @@ urlpatterns = [
     path('company/about/', views.CompanyAboutUpdateView.as_view(), name='company-about-update'),
     path('company/contact/', views.CompanyContactUpdateView.as_view(), name='company-contact-update'),
     path('company/capacity/', views.CompanyCapacityUpdateView.as_view(), name='company-capacity-update'),
+    path('company/lut/', views.CompanyLUTUpdateView.as_view(), name='company-lut-update'),
     path('company/capabilities/add/', views.CompanyCapabilityAddView.as_view(), name='company-capability-add'),
     path('company/capabilities/<int:pk>/remove/', views.CompanyCapabilityRemoveView.as_view(), name='company-capability-remove'),
     path('company/materials/add/', views.CompanyMaterialAddView.as_view(), name='company-material-add'),

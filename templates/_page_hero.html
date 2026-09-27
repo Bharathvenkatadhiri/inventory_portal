@@ -1,4 +1,4 @@
-{% load static %}
+{% load static portal_feedback %}
 <section class="relative isolate overflow-hidden bg-navy-900">
     <div class="absolute inset-0 bg-gradient-to-br from-navy-800 via-navy-900 to-navy-950"></div>
     <div class="pointer-events-none absolute inset-y-0 right-0 hidden w-[420px] opacity-30 lg:block"
@@ -23,5 +23,6 @@
         <p class="text-xs font-bold uppercase tracking-[0.22em] text-white/70">{{ eyebrow }}</p>
         <h1 class="mt-5 max-w-3xl text-4xl font-extrabold leading-[1.1] tracking-tight text-white sm:text-5xl">{{ heading|safe }}</h1>
         <p class="mt-5 max-w-xl text-base leading-relaxed text-white/75">{{ sub }}</p>
+        {% if show_rating %}{% portal_rating_badge %}{% endif %}
     </div>
 </section>

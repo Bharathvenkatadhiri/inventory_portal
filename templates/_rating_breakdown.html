@@ -6,9 +6,7 @@
         <p class="text-4xl font-extrabold text-navy-900">{{ rating.avg|floatformat:1 }}</p>
         <div>
             <div class="flex items-center gap-0.5" aria-label="{{ rating.avg|floatformat:1 }} out of 5">
-                {% for n in "12345" %}
-                <svg viewBox="0 0 20 20" class="h-4 w-4 {% if forloop.counter <= rating.avg|floatformat:0|add:0 %}text-amber-400{% else %}text-gray-300{% endif %}" fill="currentColor" aria-hidden="true"><path d="M10 1.5l2.6 5.3 5.9.9-4.25 4.1 1 5.8L10 14.9l-5.25 2.7 1-5.8L1.5 7.7l5.9-.9L10 1.5z"/></svg>
-                {% endfor %}
+                {% include "_stars.html" with value=rating.avg size="h-4 w-4" %}
             </div>
             <p class="mt-1 text-xs text-gray-500">{{ rating.count }} rating{{ rating.count|pluralize }} from completed orders</p>
         </div>

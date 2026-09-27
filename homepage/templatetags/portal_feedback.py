@@ -12,3 +12,10 @@ def portal_feedback_section(heading="What our users say", embedded=False):
     embedded=True inside base.html's content block, which already has the
     page container and side padding."""
     return {'summary': public_summary(), 'heading': heading, 'embedded': embedded}
+
+
+@register.inclusion_tag('_portal_rating_badge.html')
+def portal_rating_badge():
+    """Compact rating + top review for the dark page heroes. Links down to
+    the full reviews section. Renders nothing until there's a rating."""
+    return {'summary': public_summary()}
