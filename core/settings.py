@@ -126,6 +126,13 @@ if AWS_STORAGE_BUCKET_NAME:
     AWS_S3_ENDPOINT_URL = env("AWS_S3_ENDPOINT_URL", default="") or None
     AWS_DEFAULT_ACL = None
     AWS_QUERYSTRING_AUTH = True
+    # django-storages defaults this to True, which silently replaces an
+    # existing object sharing the same key — e.g. two companies' first
+    # purchase order both land on order_documents/PO-2627-0001.pdf, and the
+    # second overwrites the first. Every upload_to below is now a random
+    # name specifically so a collision can't happen even with this off, but
+    # keep it off as a second line of defence for any field that isn't.
+    AWS_S3_FILE_OVERWRITE = False
     STORAGES["default"] = {"BACKEND": "storages.backends.s3.S3Storage"}
 else:
     MEDIA_URL = "/media/"

@@ -10,7 +10,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from .forms import (
     SupplierDetailsForm, updateSupplierDetailsForm, UserRegistrationForm, SelectCustomer, CustomerRegistrationForm,
     UpdateSubscription, updateCustomer, CompanyAboutForm, CompanyContactForm, CompanyCapacityForm, CompanyLUTForm,
@@ -29,6 +29,7 @@ from django.contrib import messages
 from django.conf import settings
 from django.apps import apps
 from core.settings import subscription_plan_details
+from core.validators import IMAGE_EXTENSIONS, validate_upload
 
 model_str = settings.AUTH_USER_MODEL
 app_label, model_name = model_str.split('.')
@@ -885,6 +886,11 @@ class CompanyPhotoUploadView(_CompanyProfileSubActionView):
         supplier = self.get_supplier()
         image = request.FILES.get('image')
         if image:
+            try:
+                validate_upload(image, IMAGE_EXTENSIONS, verify_image=True)
+            except ValidationError as error:
+                messages.error(request, " ".join(error.messages))
+                return redirect(reverse('company-profile'))
             ManufacturerPhoto.objects.create(manufacturer=supplier, image=image, caption=request.POST.get('caption', ''))
         return redirect(reverse('company-profile'))
 

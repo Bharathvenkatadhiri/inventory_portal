@@ -59,6 +59,49 @@ ORDER_TRANSITIONS = {
     'cancelled': 'cancel',
 }
 
+# Which side of the deal may trigger each transition. A target absent here
+# (quoted, quote_selected) is left open to either party: in the normal flow
+# both fire together, synchronously, inside services.create_award_order
+# rather than through this view, so this only guards a legacy path for
+# orders that predate that (see RequirementStatusUpdateView). 'cancelled'
+# isn't listed — _may_perform_transition below handles it separately,
+# since it depends on the order's current state rather than a fixed role.
+ORDER_TRANSITION_ROLE = {
+    'in_production': 'supplier',      # supplier starts the work
+    'payment_pending': 'supplier',    # supplier asks to be paid
+    'paid': 'buyer',                  # buyer confirms payment (until a payment gateway drives this instead)
+    'completed': 'buyer',             # buyer confirms the order is done — this is also what unlocks their rating
+}
+
+# Cancelling unilaterally is only safe before the supplier has started
+# spending time and material on the order. There's no mutual-agreement
+# flow yet for cancelling a later-stage order — that needs both sides'
+# sign-off, which isn't built, so it's simply blocked here for now.
+CANCELLABLE_ORDER_STATUSES = {'submitted', 'quoted', 'quote_selected'}
+
+
+def _order_role(order, user):
+    """'supplier' or 'buyer' for a party on this order, else None."""
+    if user == order.supplier.user:
+        return 'supplier'
+    if user == order.customer.user:
+        return 'buyer'
+    return None
+
+
+def _may_perform_transition(order, user, status):
+    """Whether `user` — already confirmed to be a party on the order — may
+    trigger the transition that reaches `status`. Without this, either
+    side could press any next-step button: a supplier marking their own
+    order paid and completed, or a buyer starting production themselves."""
+    role = _order_role(order, user)
+    if role is None:
+        return False
+    if status == 'cancelled':
+        return order.status in CANCELLABLE_ORDER_STATUSES
+    required_role = ORDER_TRANSITION_ROLE.get(status)
+    return required_role is None or required_role == role
+
 
 def _next_order_status(order):
     """The single next non-cancel transition available from the order's
@@ -731,8 +774,16 @@ class QuoteDeleteView(LoginRequiredMixin, View):
 
 
 class QuoteView(View):
+    """The full quote, prices included — private to the RFQ's buyer (once
+    the quote isn't a draft), the quote's own supplier, and staff. Quote
+    ids are sequential, so without this check any signed-in user could walk
+    every quote on every RFQ, including a rival's price."""
     def get(self, request, pk):
-        quote = get_object_or_404(Quote, pk=pk)
+        quote = get_object_or_404(Quote.objects.select_related('requirement', 'supplier'), pk=pk, is_deleted=False)
+        is_buyer = request.user.id == quote.requirement.user_id and not quote.is_draft
+        is_own_supplier = request.user.id == quote.supplier.user_id
+        if not (is_buyer or is_own_supplier or request.user.is_staff):
+            raise Http404
         return render(request, 'quote/quote.html', {'quote': quote})
 
 
@@ -899,8 +950,9 @@ class OrderDetailView(View):
         breakdown = quote.get_breakdown()
         next_status = _next_order_status(order)
         is_supplier = request.user.is_authenticated and request.user == order.supplier.user
-        can_advance = request.user.is_authenticated and (
-            request.user == order.supplier.user or request.user == order.customer.user
+        can_advance = (
+            request.user.is_authenticated and next_status is not None
+            and _may_perform_transition(order, request.user, next_status)
         )
         can_manage_production = is_supplier and order.status in ('in_production', 'payment_pending', 'paid')
         context = {
@@ -1015,7 +1067,21 @@ class OrderStatusUpdateView(LoginRequiredMixin, View):
         if request.user not in (order.supplier.user, order.customer.user):
             raise Http404
         transition_name = ORDER_TRANSITIONS.get(status)
-        if transition_name and hasattr(order, transition_name):
+        if not (transition_name and hasattr(order, transition_name)):
+            logger.warning("Unknown order status '%s' requested for order #%s", status, billno)
+            messages.error(request, "Unknown order status.")
+        elif not _may_perform_transition(order, request.user, status):
+            logger.warning(
+                "Rejected transition '%s' on order #%s (current status: %s): %s is not the party who may make it",
+                status, order.billno, order.status, request.user,
+            )
+            if status == 'cancelled':
+                messages.error(request, "This order can only be cancelled before production starts.")
+            elif ORDER_TRANSITION_ROLE.get(status) == 'supplier':
+                messages.error(request, "Only the manufacturer on this order can make that change.")
+            else:
+                messages.error(request, "Only the buyer on this order can make that change.")
+        else:
             transition_method = getattr(order, transition_name)
             try:
                 transition_method(note=request.POST.get('note', ''))
@@ -1029,9 +1095,6 @@ class OrderStatusUpdateView(LoginRequiredMixin, View):
                     status, order.billno, order.status, request.user,
                 )
                 messages.error(request, "That status change isn't allowed from the order's current state.")
-        else:
-            logger.warning("Unknown order status '%s' requested for order #%s", status, billno)
-            messages.error(request, "Unknown order status.")
         if getattr(request, 'htmx', False):
             if order.status in ('in_production', 'completed', 'cancelled'):
                 # These change the tracker, QC checklist and rating card
@@ -1039,12 +1102,14 @@ class OrderStatusUpdateView(LoginRequiredMixin, View):
                 response = HttpResponse(status=204)
                 response['HX-Refresh'] = 'true'
                 return response
-            can_advance = request.user.is_authenticated and (
-                request.user == order.supplier.user or request.user == order.customer.user
+            next_status = _next_order_status(order)
+            can_advance = (
+                request.user.is_authenticated and next_status is not None
+                and _may_perform_transition(order, request.user, next_status)
             )
             return render(request, 'order/_order_status.html', {
                 'bill': order,
-                'next_status': _next_order_status(order),
+                'next_status': next_status,
                 'can_advance': can_advance,
             })
         return redirect(reverse('order-detail', kwargs={'billno': order.billno}))

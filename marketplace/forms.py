@@ -1,9 +1,8 @@
-import os
-
 from django import forms
 from django.conf import settings
 from django.forms import formset_factory, inlineformset_factory
 
+from core.validators import DOCUMENT_EXTENSIONS, IMAGE_EXTENSIONS, is_new_upload, validate_upload
 from .models import Requirement, RequirementPart, Quote, Order, ProductionUpdate, Message, AmendmentResponse, SupplierReview
 
 
@@ -31,6 +30,12 @@ class SelectRequirement(forms.ModelForm):
             'nda_required': forms.Select(choices=[(True, 'Yes'), (False, 'No')]),
         }
 
+    def clean_file(self):
+        upload = self.cleaned_data.get('file')
+        if is_new_upload(upload):
+            validate_upload(upload, DOCUMENT_EXTENSIONS)
+        return upload
+
 
 class RequirementPartForm(forms.ModelForm):
     class Meta:
@@ -44,6 +49,12 @@ class RequirementPartForm(forms.ModelForm):
             'file': forms.ClearableFileInput(attrs={'class': 'field-input'}),
             'quantity': forms.NumberInput(attrs={'class': 'field-input'}),
         }
+
+    def clean_file(self):
+        upload = self.cleaned_data.get('file')
+        if is_new_upload(upload):
+            validate_upload(upload, DOCUMENT_EXTENSIONS)
+        return upload
 
 
 RequirementPartFormSet = formset_factory(RequirementPartForm, extra=1)
@@ -83,6 +94,12 @@ class QuoteForm(forms.ModelForm):
             'quote_file': forms.ClearableFileInput(attrs={'class': 'field-input'}),
         }
 
+    def clean_quote_file(self):
+        upload = self.cleaned_data.get('quote_file')
+        if is_new_upload(upload):
+            validate_upload(upload, DOCUMENT_EXTENSIONS)
+        return upload
+
 
 class ShipmentForm(forms.ModelForm):
     class Meta:
@@ -106,6 +123,18 @@ class ProductionUpdateForm(forms.ModelForm):
             'document': forms.ClearableFileInput(attrs={'class': 'field-input'}),
         }
 
+    def clean_photo(self):
+        upload = self.cleaned_data.get('photo')
+        if is_new_upload(upload):
+            validate_upload(upload, IMAGE_EXTENSIONS, verify_image=True)
+        return upload
+
+    def clean_document(self):
+        upload = self.cleaned_data.get('document')
+        if is_new_upload(upload):
+            validate_upload(upload, DOCUMENT_EXTENSIONS)
+        return upload
+
 
 class SupplierReviewForm(forms.ModelForm):
     class Meta:
@@ -117,10 +146,9 @@ class SupplierReviewForm(forms.ModelForm):
         }
 
 
-MESSAGE_ATTACHMENT_EXTENSIONS = {
-    '.pdf', '.png', '.jpg', '.jpeg', '.step', '.stp', '.iges', '.igs', '.stl', '.dxf', '.dwg',
-    '.xlsx', '.xls', '.csv', '.docx', '.doc', '.txt', '.zip',
-}
+# Kept as its own name for readability where the rest of the app refers to
+# "message attachments"; it's the same whitelist as DOCUMENT_EXTENSIONS.
+MESSAGE_ATTACHMENT_EXTENSIONS = DOCUMENT_EXTENSIONS
 
 
 class MessageForm(forms.ModelForm):
@@ -133,14 +161,8 @@ class MessageForm(forms.ModelForm):
 
     def clean_attachment(self):
         attachment = self.cleaned_data.get('attachment')
-        if not attachment:
-            return attachment
-        ext = os.path.splitext(attachment.name)[1].lower()
-        if ext not in MESSAGE_ATTACHMENT_EXTENSIONS:
-            raise forms.ValidationError("That file type isn't supported. Allowed: " + ", ".join(sorted(MESSAGE_ATTACHMENT_EXTENSIONS)))
-        if attachment.size > settings.MESSAGE_ATTACHMENT_MAX_BYTES:
-            limit_mb = settings.MESSAGE_ATTACHMENT_MAX_BYTES // (1024 * 1024)
-            raise forms.ValidationError(f"Attachments can be up to {limit_mb} MB.")
+        if is_new_upload(attachment):
+            validate_upload(attachment, MESSAGE_ATTACHMENT_EXTENSIONS, max_bytes=settings.MESSAGE_ATTACHMENT_MAX_BYTES)
         return attachment
 
     def clean(self):
