@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}ManufactureHub{% endblock %}</title>
+    <title>{% block title %}MakeSetu — B2B Manufacturing Marketplace{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}MakeSetu is the bridge between buyers and manufacturers: post RFQs, compare quotes from verified manufacturers and track orders to delivery.{% endblock %}">
     <link rel="stylesheet" href="{% static 'css/tailwind-built.css' %}">
     <link rel="icon" type="image/svg+xml" href="{% static 'images/logo.svg' %}">
 </head>
@@ -58,8 +59,7 @@
                 {% endif %}
 
                 <div class="flex items-center justify-center gap-2.5">
-                    <img src="{% static 'images/logo.svg' %}" alt="" class="h-8 w-8">
-                    <span class="text-lg font-extrabold tracking-tight text-navy-900">Manufacture<span class="text-accent-500">Hub</span></span>
+                    {% include "_wordmark.html" with size="text-lg" %}
                 </div>
 
                 <div class="mt-7">

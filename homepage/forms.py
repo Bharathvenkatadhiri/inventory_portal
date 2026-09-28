@@ -12,10 +12,10 @@ class PortalFeedbackForm(forms.ModelForm):
         fields = ['rating', 'useful_features', 'improvement_areas', 'improvement_note', 'comment', 'allow_public']
         widgets = {
             'improvement_note': forms.Textarea(attrs={'class': 'field-input', 'rows': 3, 'placeholder': "What's missing, slow or confusing? Only our team sees this."}),
-            'comment': forms.Textarea(attrs={'class': 'field-input', 'rows': 3, 'placeholder': "A sentence or two about your experience with ManufactureHub."}),
+            'comment': forms.Textarea(attrs={'class': 'field-input', 'rows': 3, 'placeholder': "A sentence or two about your experience with MakeSetu."}),
         }
         labels = {
             'improvement_note': 'Anything else we should improve?',
             'comment': 'Your review',
-            'allow_public': 'Show my review, first name and company on the ManufactureHub website',
+            'allow_public': 'Show my review, first name and company on the MakeSetu website',
         }

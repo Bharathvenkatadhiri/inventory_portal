@@ -370,7 +370,7 @@ def render_pdf(document):
     buffer = io.BytesIO()
     pdf = SimpleDocTemplate(
         buffer, pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm, topMargin=14 * mm, bottomMargin=16 * mm,
-        title=f"{document.get_kind_display()} {document.number}", author='ManufactureHub',
+        title=f"{document.get_kind_display()} {document.number}", author='MakeSetu',
     )
     width = A4[0] - 32 * mm
     story = []
@@ -389,7 +389,7 @@ def render_pdf(document):
     header = Table(
         [[
             [Paragraph('TAX INVOICE' if is_invoice else 'PURCHASE ORDER', title),
-             Paragraph(('Export invoice · ' if export else '') + ('Original for recipient' if is_invoice else 'Issued through ManufactureHub'), small)],
+             Paragraph(('Export invoice · ' if export else '') + ('Original for recipient' if is_invoice else 'Issued through MakeSetu'), small)],
             Table(meta_rows, colWidths=[30 * mm, 48 * mm], style=[('VALIGN', (0, 0), (-1, -1), 'TOP'), ('BOTTOMPADDING', (0, 0), (-1, -1), 1), ('TOPPADDING', (0, 0), (-1, -1), 1)]),
         ]],
         colWidths=[width - 80 * mm, 80 * mm],
@@ -492,7 +492,7 @@ def render_pdf(document):
         story.append(Paragraph('Authorised signatory', small))
         story.append(Spacer(1, 4 * mm))
     story.append(Paragraph(
-        'This is a computer-generated document issued through ManufactureHub. Party details are as recorded on the date of issue.',
+        'This is a computer-generated document issued through MakeSetu. Party details are as recorded on the date of issue.',
         small,
     ))
     pdf.build(story)

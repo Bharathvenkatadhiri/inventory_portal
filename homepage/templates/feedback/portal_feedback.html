@@ -1,8 +1,8 @@
 {% extends "dashboard_base.html" %}
-{% block title %}Rate ManufactureHub — ManufactureHub{% endblock %}
+{% block title %}Rate MakeSetu — MakeSetu{% endblock %}
 {% block page_header %}
 <div class="mb-6">
-    <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">Rate ManufactureHub</h1>
+    <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">Rate MakeSetu</h1>
     <p class="mt-1 text-sm text-gray-500">{% if existing %}You rated us {{ existing.rating }}/5 on {{ existing.updated_at|date:"d M Y" }}. Update it any time.{% else %}Tell us what's working and what isn't. It takes a minute.{% endif %}</p>
 </div>
 {% endblock %}
@@ -11,7 +11,7 @@
     {% csrf_token %}
 
     <div class="card">
-        <h2 class="text-lg font-bold text-navy-900">Overall, how would you rate ManufactureHub?</h2>
+        <h2 class="text-lg font-bold text-navy-900">Overall, how would you rate MakeSetu?</h2>
         <input type="hidden" name="rating" :value="rating || ''">
         <div class="mt-3 flex items-center gap-1" @mouseleave="hover = 0">
             {% for n in "12345" %}

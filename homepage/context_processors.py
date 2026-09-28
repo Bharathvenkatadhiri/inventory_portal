@@ -67,7 +67,7 @@ def _counts(request):
 
 def portal_feedback_prompt(request):
     """`needs_portal_feedback`: a signed-in buyer or manufacturer who hasn't
-    rated ManufactureHub yet, so logging out asks them first. Lazy — only
+    rated MakeSetu yet, so logging out asks them first. Lazy — only
     queried on pages that render the logout button."""
     user = getattr(request, 'user', None)
 

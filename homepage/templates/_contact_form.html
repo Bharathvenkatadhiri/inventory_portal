@@ -60,7 +60,7 @@ contact_name / contact_email / contact_company / contact_phone / contact_role.
                 type="button"
                 :disabled="!agreed"
                 :class="agreed ? 'bg-navy-900 hover:bg-navy-950' : 'bg-gray-300 cursor-not-allowed'"
-                @click="window.location.href = 'mailto:bharathvenkatadhiri@gmail.com?subject=' + encodeURIComponent('[' + topic + '] ManufactureHub enquiry') + '&body=' + encodeURIComponent('From: ' + name + ' (' + email + ')\nCompany: ' + company + '\nPhone: ' + phone + '\nI am a: ' + role + '\n\n' + message)"
+                @click="window.location.href = 'mailto:bharathvenkatadhiri@gmail.com?subject=' + encodeURIComponent('[' + topic + '] MakeSetu enquiry') + '&body=' + encodeURIComponent('From: ' + name + ' (' + email + ')\nCompany: ' + company + '\nPhone: ' + phone + '\nI am a: ' + role + '\n\n' + message)"
                 class="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium text-white transition-colors"
             >Send Email</button>
         </div>
