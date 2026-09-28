@@ -25,7 +25,7 @@ def _display_name(user):
     last = (user.last_name or '').strip()
     if first:
         return f"{first} {last[:1]}." if last else first
-    return "A ManufactureHub user"
+    return "A MakeSetu user"
 
 
 def best_reviews_queryset():

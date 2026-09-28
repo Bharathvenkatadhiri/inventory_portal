@@ -1,6 +1,6 @@
-# ManufactureHub
+# MakeSetu
 
-ManufactureHub is a B2B manufacturing marketplace: a consumer submits a requirement (with a diagram/spec file), manufacturers respond with quotes, the consumer selects one, and the order proceeds through production to payment.
+MakeSetu is a B2B manufacturing marketplace: a consumer submits a requirement (with a diagram/spec file), manufacturers respond with quotes, the consumer selects one, and the order proceeds through production to payment.
 
 Stack: Django 5.1 + PostgreSQL, server-rendered templates (htmx/Alpine, no separate SPA), S3-compatible storage for uploaded files.
 
@@ -154,7 +154,7 @@ this automatically, which is why it's easy to forget; skipping `collectstatic` w
 
 ## Licensing and Commercial Terms
 
-ManufactureHub is a commercial software product. Usage of this application is chargeable, and the source code is available under separate commercial terms. For licensing and purchasing details, please contact bharathvenkatadhiri@gmail.com.
+MakeSetu is a commercial software product. Usage of this application is chargeable, and the source code is available under separate commercial terms. For licensing and purchasing details, please contact bharathvenkatadhiri@gmail.com.
 
 ## Contact
 

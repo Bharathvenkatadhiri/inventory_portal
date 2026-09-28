@@ -228,7 +228,7 @@ class CustomLogoutView(LogoutView):
 
 
 class PortalFeedbackView(View):
-    """A buyer or manufacturer rates ManufactureHub. Submitting again
+    """A buyer or manufacturer rates MakeSetu. Submitting again
     updates their earlier feedback."""
     template_name = "feedback/portal_feedback.html"
 

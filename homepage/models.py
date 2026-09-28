@@ -21,7 +21,7 @@ PORTAL_FEATURES = [
 
 
 class PortalFeedback(models.Model):
-    """A buyer's or manufacturer's rating of ManufactureHub itself. One per
+    """A buyer's or manufacturer's rating of MakeSetu itself. One per
     user; submitting again updates it. The comment is only shown publicly
     when the user allowed it, it isn't hidden by staff, and it rates 4+."""
     RATING_CHOICES = [(n, str(n)) for n in range(1, 6)]

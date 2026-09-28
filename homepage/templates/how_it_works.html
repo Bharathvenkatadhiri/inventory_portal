@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% load portal_feedback %}
-{% block title %}How It Works — ManufactureHub{% endblock %}
+{% block title %}How It Works — MakeSetu{% endblock %}
 {% block hero %}
-{% include "_page_hero.html" with eyebrow="How It Works" heading="From drawing to delivered part in <span class='text-accent-500'>four steps.</span>" sub="Whether you're buying parts or making them, ManufactureHub keeps every step simple and visible." show_rating=True %}
+{% include "_page_hero.html" with eyebrow="How It Works" heading="From drawing to delivered part in <span class='text-accent-500'>four steps.</span>" sub="Whether you're buying parts or making them, MakeSetu keeps every step simple and visible." show_rating=True %}
 {% endblock %}
 {% block content %}
 <div x-data="{ buyer: true }">
@@ -207,7 +207,7 @@
         </div>
         <div class="py-4">
             <button type="button" @click="open = (open === 4 ? -1 : 4)" class="flex w-full items-center justify-between text-left">
-                <span class="font-medium text-navy-900">Can I use ManufactureHub for small batches?</span>
+                <span class="font-medium text-navy-900">Can I use MakeSetu for small batches?</span>
                 <span class="text-accent-500 text-lg" x-text="open === 4 ? '−' : '+'"></span>
             </button>
             <p class="mt-2 text-sm text-gray-500" x-show="open === 4">Yes — the platform supports everything from single prototypes to large production runs.</p>

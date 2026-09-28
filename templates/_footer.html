@@ -3,11 +3,10 @@
     <div class="mx-auto grid max-w-7xl gap-10 px-6 py-14 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr] lg:px-8">
         <div>
             <a href="{% url 'home' %}" class="flex items-center gap-2.5">
-                <img src="{% static 'images/logo.svg' %}" alt="ManufactureHub" class="h-8 w-8">
-                <span class="text-lg font-extrabold tracking-tight text-white">Manufacture<span class="text-accent-500">Hub</span></span>
+                {% include "_wordmark.html" with size="text-lg" dark=True %}
             </a>
-            <p class="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-white/45">Connect &middot; Quote &middot; Manufacture</p>
-            <p class="mt-4 max-w-xs text-sm leading-relaxed text-white/60">Source custom manufacturing without the endless emails, spreadsheets, and follow-ups.</p>
+            <p class="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-white/45">Bridging buyers &amp; manufacturers</p>
+            <p class="mt-4 max-w-xs text-sm leading-relaxed text-white/60"><em>Setu</em> means bridge. MakeSetu links buyers who need custom parts with manufacturers who can make them, from RFQ to delivery.</p>
         </div>
         <div>
             <p class="text-xs font-bold uppercase tracking-[0.18em] text-white/45">Platform</p>
@@ -35,7 +34,7 @@
     </div>
     <div class="border-t border-white/10">
         <div class="mx-auto flex max-w-7xl flex-col gap-2 px-6 py-5 text-xs text-white/50 sm:flex-row sm:items-center sm:justify-between lg:px-8">
-            <p>&copy; {% now "Y" %} ManufactureHub. All rights reserved.</p>
+            <p>&copy; {% now "Y" %} MakeSetu. All rights reserved.</p>
             <p>Chennai, Tamil Nadu &middot; GSTIN 33ABCDE1234F1Z5</p>
         </div>
     </div>
