@@ -10,6 +10,7 @@ from .models import (
 )
 from django.apps import apps
 from core.settings import subscription_plan_details
+from core.validators import DOCUMENT_EXTENSIONS, IMAGE_EXTENSIONS, is_new_upload, validate_upload
 
 model_str = settings.AUTH_USER_MODEL
 app_label, model_name = model_str.split('.')
@@ -107,6 +108,12 @@ class CompanyAboutForm(forms.ModelForm):
             'cover_image': forms.ClearableFileInput(attrs={'class': 'field-input'}),
         }
 
+    def clean_cover_image(self):
+        upload = self.cleaned_data.get('cover_image')
+        if is_new_upload(upload):
+            validate_upload(upload, IMAGE_EXTENSIONS, verify_image=True)
+        return upload
+
 
 class CompanyContactForm(forms.ModelForm):
     class Meta:
@@ -167,6 +174,12 @@ class CertificationForm(forms.ModelForm):
             'valid_until': forms.DateInput(attrs={'type': 'date', 'class': 'field-input'}),
             'document': forms.ClearableFileInput(attrs={'class': 'field-input'}),
         }
+
+    def clean_document(self):
+        upload = self.cleaned_data.get('document')
+        if is_new_upload(upload):
+            validate_upload(upload, DOCUMENT_EXTENSIONS)
+        return upload
 
 
 class CapabilityAddForm(forms.Form):
