@@ -402,7 +402,10 @@ class MessagingTests(TestCase):
         self.thread.refresh_from_db()
         self.assertFalse(self.thread.is_closed)
 
-        for status in ("payment_pending", "paid", "completed"):
+        # The supplier requests payment; the buyer confirms payment and completion.
+        self.client.post(reverse("order-update-status", kwargs={"billno": order.billno, "status": "payment_pending"}))
+        self.client.login(username="msgbuyer@example.com", password="pass12345")
+        for status in ("paid", "completed"):
             self.client.post(reverse("order-update-status", kwargs={"billno": order.billno, "status": status}))
         order.refresh_from_db()
         self.assertEqual(order.status, "completed")
@@ -690,6 +693,69 @@ class OwnershipAndAwardTests(TestCase):
         self.login(self.maker)
         self.client.post(reverse("requirement-update-status", kwargs={"pk": self.requirement.pk, "status": "Production"}))
         self.assertEqual(Order.objects.get(requirement=self.requirement).status, "in_production")
+
+    # --- Order status: each side may only press its own next step ---------
+    def test_buyer_cannot_start_production_or_request_payment(self):
+        self.award()
+        order = Order.objects.get(requirement=self.requirement)
+        self.login(self.buyer)
+        for status in ("in_production", "payment_pending"):
+            self.client.post(reverse("order-update-status", kwargs={"billno": order.billno, "status": status}))
+            order.refresh_from_db()
+            self.assertNotEqual(order.status, status)
+
+    def test_supplier_cannot_mark_paid_or_complete_their_own_order(self):
+        self.award()
+        order = Order.objects.get(requirement=self.requirement)
+        self.login(self.maker)
+        self.client.post(reverse("order-update-status", kwargs={"billno": order.billno, "status": "in_production"}))
+        self.client.post(reverse("order-update-status", kwargs={"billno": order.billno, "status": "payment_pending"}))
+        for status in ("paid", "completed"):
+            self.client.post(reverse("order-update-status", kwargs={"billno": order.billno, "status": status}))
+            order.refresh_from_db()
+            self.assertNotEqual(order.status, status)
+        self.assertEqual(order.status, "payment_pending")  # the supplier's own two steps still worked
+
+    def test_buyer_confirms_payment_and_completion_after_the_supplier_requests_it(self):
+        self.award()
+        order = Order.objects.get(requirement=self.requirement)
+        self.login(self.maker)
+        self.client.post(reverse("order-update-status", kwargs={"billno": order.billno, "status": "in_production"}))
+        self.client.post(reverse("order-update-status", kwargs={"billno": order.billno, "status": "payment_pending"}))
+        self.login(self.buyer)
+        self.client.post(reverse("order-update-status", kwargs={"billno": order.billno, "status": "paid"}))
+        self.client.post(reverse("order-update-status", kwargs={"billno": order.billno, "status": "completed"}))
+        order.refresh_from_db()
+        self.assertEqual(order.status, "completed")
+
+    def test_either_party_can_cancel_before_production_but_not_after(self):
+        self.award()
+        order = Order.objects.get(requirement=self.requirement)
+        self.login(self.buyer)
+        self.assertEqual(order.status, "quote_selected")  # still before production
+        self.client.post(reverse("order-update-status", kwargs={"billno": order.billno, "status": "cancelled"}))
+        order.refresh_from_db()
+        self.assertEqual(order.status, "cancelled")
+
+        order2 = self.award_second_order()
+        self.login(self.maker)
+        self.client.post(reverse("order-update-status", kwargs={"billno": order2.billno, "status": "in_production"}))
+        for user in (self.buyer, self.maker):
+            self.login(user)
+            self.client.post(reverse("order-update-status", kwargs={"billno": order2.billno, "status": "cancelled"}))
+            order2.refresh_from_db()
+            self.assertNotEqual(order2.status, "cancelled")
+
+    def award_second_order(self):
+        second = Requirement.objects.create(
+            user=self.buyer, title="Second bracket", rfq_desc="Aluminium", quote_currency="INR",
+            request_reason="other", end_date=timezone.now() + timedelta(days=5),
+        )
+        RequirementPart.objects.create(requirement=second, part_name="Bracket", technology="Milling", Material="Aluminium", quantity=50)
+        quote = Quote.objects.create(requirement=second, supplier=self.supplier, quote_price="80.00")
+        self.login(self.buyer)
+        self.client.post(reverse("quote-update-status", kwargs={"pk": quote.pk, "status": "Approved"}))
+        return Order.objects.get(requirement=second)
 
     # --- Orders -----------------------------------------------------------
     def test_outsiders_cannot_view_or_change_an_order(self):
