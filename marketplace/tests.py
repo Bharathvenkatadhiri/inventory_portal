@@ -613,6 +613,33 @@ class OwnershipAndAwardTests(TestCase):
         self.quote.refresh_from_db()
         self.assertFalse(self.quote.is_deleted)
 
+    def test_quote_detail_is_private_to_the_buyer_its_own_supplier_and_staff(self):
+        url = reverse("quote", kwargs={"pk": self.quote.pk})
+        # The RFQ's buyer and the quote's own supplier may see it.
+        self.login(self.buyer)
+        self.assertEqual(self.client.get(url).status_code, 200)
+        self.login(self.maker)
+        self.assertEqual(self.client.get(url).status_code, 200)
+        # A rival supplier can't walk another supplier's quote by id.
+        self.login(self.rival)
+        self.assertEqual(self.client.get(url).status_code, 404)
+        # Nor can an unrelated buyer.
+        self.login(self.other_buyer)
+        self.assertEqual(self.client.get(url).status_code, 404)
+        # Staff can, for support.
+        staff = User.objects.create_user(username="quotestaff", email="quotestaff@example.com", password="pass12345", is_staff=True)
+        self.login(staff)
+        self.assertEqual(self.client.get(url).status_code, 200)
+
+    def test_quote_detail_hides_a_draft_from_the_buyer_but_not_its_own_supplier(self):
+        self.quote.is_draft = True
+        self.quote.save()
+        url = reverse("quote", kwargs={"pk": self.quote.pk})
+        self.login(self.buyer)
+        self.assertEqual(self.client.get(url).status_code, 404)
+        self.login(self.maker)
+        self.assertEqual(self.client.get(url).status_code, 200)
+
     def test_selecting_a_quote_requires_post_by_the_rfq_owner(self):
         url = reverse("quote-update-status", kwargs={"pk": self.quote.pk, "status": "Approved"})
         self.login(self.buyer)

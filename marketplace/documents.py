@@ -252,6 +252,20 @@ def ensure_pdf(document):
     return document
 
 
+def rerender_pdf(document):
+    """Re-renders and re-saves the PDF unconditionally, replacing the file
+    already stored (e.g. after a branding change, or to move a document
+    issued before order_document_path randomised the storage key onto a
+    non-guessable one). The old file is deleted rather than left orphaned.
+    `document.pdf.save()` mutates the FieldFile's `.name` in place, so the
+    old storage key has to be captured as a plain string first."""
+    old_storage, old_name = document.pdf.storage, document.pdf.name
+    document.pdf.save(f"{document.number}.pdf", ContentFile(render_pdf(document)), save=True)
+    if old_name:
+        old_storage.delete(old_name)
+    return document
+
+
 # --- Amount in words (Indian numbering) -----------------------------------------
 
 _ONES = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve',

@@ -148,6 +148,54 @@ class OrderDocumentTests(Fixtures, TestCase):
         call_command("issue_order_documents", stdout=io.StringIO())  # re-running issues nothing new
         self.assertEqual(OrderDocument.objects.filter(order=order).count(), 2)
 
+    def test_storage_key_is_random_not_the_document_number(self):
+        # Two different buyers' first PO both number "PO-2627-0001" (numbering
+        # is per issuer, not global) — the stored file must not collide on
+        # that name, or a same-named upload could silently overwrite it.
+        order = self.award()
+        po = OrderDocument.objects.get(order=order)
+        self.assertNotIn(po.number, po.pdf.name)
+        self.assertTrue(po.pdf.name.endswith(".pdf"))
+
+        other_buyer = self.make_buyer("pobuyer2")
+        ConsumerProfile.objects.filter(user=other_buyer).update(
+            VAT_number="27AAPFU0939F1ZW", Address="1 Other Road", city="Pune", state="Maharashtra",
+        )
+        other_rfq = self.make_rfq(other_buyer, "Pump housing 2", quantity=10)
+        other_quote = other_rfq.quote.create(supplier=self.supplier, quote_price="250.00", tooling_cost="1000.00", payment_terms="net_30")
+        self.login(other_buyer)
+        with self.captureOnCommitCallbacks(execute=True):
+            self.client.post(reverse("quote-update-status", kwargs={"pk": other_quote.pk, "status": "Approved"}))
+        other_po = OrderDocument.objects.get(order__requirement=other_rfq)
+
+        self.assertEqual(po.number, other_po.number)  # same number, different issuer
+        self.assertNotEqual(po.pdf.name, other_po.pdf.name)  # never the same storage key
+        # Each buyer still downloads a PDF named after their own document number.
+        self.login(self.buyer)
+        response = self.client.get(reverse("order-document", kwargs={"pk": po.pk}))
+        self.assertIn(f'filename="{po.number}.pdf"', response["Content-Disposition"])
+        self.assertTrue(b"".join(response.streaming_content).startswith(b"%PDF"))
+
+    def test_rerender_replaces_the_stored_file_and_keeps_the_number(self):
+        order = self.award()
+        po = OrderDocument.objects.get(order=order)
+        old_name = po.pdf.name
+        documents.rerender_pdf(po)
+        po.refresh_from_db()
+        self.assertNotEqual(po.pdf.name, old_name)
+        self.assertFalse(po.pdf.storage.exists(old_name))  # the old file was deleted, not orphaned
+        self.assertEqual(po.number, OrderDocument.objects.get(pk=po.pk).number)
+
+    def test_rerender_flag_rewrites_every_stored_document(self):
+        order = self.award()
+        po = OrderDocument.objects.get(order=order)
+        old_name = po.pdf.name
+        out = io.StringIO()
+        call_command("issue_order_documents", "--rerender", stdout=out)
+        po.refresh_from_db()
+        self.assertNotEqual(po.pdf.name, old_name)
+        self.assertIn(f"Re-rendered Purchase order {po.number}", out.getvalue())
+
 
 class DocumentHelperTests(TestCase):
     def test_financial_year_turns_over_in_april(self):

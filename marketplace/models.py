@@ -808,6 +808,17 @@ class DocumentSequence(models.Model):
         return f"{self.issuer_key} {self.kind} FY{self.financial_year}: {self.last_number}"
 
 
+def order_document_path(instance, filename):
+    # Random name: document.number (e.g. "PO-2627-0001") is per-issuer, not
+    # globally unique, so two companies' first PO would otherwise share one
+    # storage key and, on a backend that overwrites same-name uploads,
+    # buyer A's download could start serving buyer B's PO. The number stays
+    # the friendly name shown to the user via the download view's
+    # `filename=`, never the storage key.
+    ext = os.path.splitext(filename)[1].lower() or '.pdf'
+    return f"order_documents/{uuid.uuid4().hex}{ext}"
+
+
 class OrderDocument(models.Model):
     """A purchase order (issued by the buyer at award) or a GST tax invoice
     (issued by the manufacturer at dispatch). Party details, lines and tax
@@ -828,7 +839,7 @@ class OrderDocument(models.Model):
     details = models.JSONField()  # references, terms, lines and tax breakdown
     currency = models.CharField(max_length=3)
     total = models.DecimalField(max_digits=14, decimal_places=2)
-    pdf = models.FileField(upload_to='order_documents/', blank=True)
+    pdf = models.FileField(upload_to=order_document_path, blank=True)
 
     class Meta:
         ordering = ['issued_at']

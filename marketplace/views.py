@@ -731,8 +731,16 @@ class QuoteDeleteView(LoginRequiredMixin, View):
 
 
 class QuoteView(View):
+    """The full quote, prices included — private to the RFQ's buyer (once
+    the quote isn't a draft), the quote's own supplier, and staff. Quote
+    ids are sequential, so without this check any signed-in user could walk
+    every quote on every RFQ, including a rival's price."""
     def get(self, request, pk):
-        quote = get_object_or_404(Quote, pk=pk)
+        quote = get_object_or_404(Quote.objects.select_related('requirement', 'supplier'), pk=pk, is_deleted=False)
+        is_buyer = request.user.id == quote.requirement.user_id and not quote.is_draft
+        is_own_supplier = request.user.id == quote.supplier.user_id
+        if not (is_buyer or is_own_supplier or request.user.is_staff):
+            raise Http404
         return render(request, 'quote/quote.html', {'quote': quote})
 
 
