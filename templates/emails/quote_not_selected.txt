@@ -1,0 +1,13 @@
+{% autoescape off %}Hi {{ supplier_name }},
+
+The buyer has moved forward with another quote on this RFQ:
+
+    {{ requirement.title }} (RFQ-{{ requirement.pk }})
+
+Your quote was not selected this time. Keep an eye on your RFQ inbox for other matching requests:
+
+    {{ url }}
+
+Thanks,
+The MakeSetu Team
+{% endautoescape %}

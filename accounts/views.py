@@ -31,6 +31,7 @@ from django.apps import apps
 from core.settings import subscription_plan_details
 from core.validators import IMAGE_EXTENSIONS, validate_upload
 from core import audit, login_throttle, session_security
+from . import otp
 
 model_str = settings.AUTH_USER_MODEL
 app_label, model_name = model_str.split('.')
@@ -230,10 +231,16 @@ class CreateSupplier(SuccessMessageMixin, CreateView):
         # look the user up from the session instead of using request.user.
         return User.objects.filter(
             pk=self.request.session.get('session_user_id'), role='manufacturer', manufacturerprofile__isnull=True,
+            email_verified=True,
         ).first()
 
     def dispatch(self, request, *args, **kwargs):
         if self._pending_user() is None:
+            if User.objects.filter(
+                pk=request.session.get('session_user_id'), role='manufacturer', manufacturerprofile__isnull=True,
+                email_verified=False,
+            ).exists():
+                return redirect('verify-email')
             messages.error(request, "Start by creating your account.")
             return redirect('register')
         return super().dispatch(request, *args, **kwargs)
@@ -350,6 +357,9 @@ def register(request):
                     form.add_error('email', "We couldn't register with these details. If you already have an account, sign in instead.")
                 return render(request, 'register_first.html', {'form': form})
             _start_profile_step(request, existing_user)
+            if not existing_user.email_verified:
+                otp.issue_and_send(existing_user)
+                return redirect('verify-email')
             return redirect('register-supplier' if existing_user.role == 'manufacturer' else 'register-customer')
 
         form = UserRegistrationForm(request.POST)
@@ -362,10 +372,55 @@ def register(request):
                 rfq_limit=subscription_plan_details['basic']['rfq_limit'],
                 user_profile=user,
             )
-            return redirect('register-supplier' if user.role == 'manufacturer' else 'register-customer')
+            otp.issue_and_send(user)
+            return redirect('verify-email')
     else:
         form = UserRegistrationForm()
     return render(request, 'register_first.html', {'form': form})
+
+
+@login_not_required
+def verify_email(request):
+    """Between account creation and the profile step: confirms the user
+    controls the email address before letting them proceed (accounts.otp
+    holds the actual OTP logic). Reached only via the session the register
+    flow sets up — there's no user to verify without it."""
+    user = User.objects.filter(pk=request.session.get('session_user_id')).first()
+    if user is None:
+        messages.error(request, "Start by creating your account.")
+        return redirect('register')
+    if user.email_verified:
+        return redirect('register-supplier' if user.role == 'manufacturer' else 'register-customer')
+
+    if request.method == 'POST':
+        if request.POST.get('action') == 'resend':
+            if otp.resend_allowed(user):
+                otp.issue_and_send(user)
+                messages.success(request, f"A new code was sent to {user.email}.")
+            else:
+                messages.error(request, "Too many codes requested. Please wait a few minutes and try again.")
+            return redirect('verify-email')
+
+        code = (request.POST.get('code') or '').strip()
+        ok, reason = otp.verify(user, code)
+        if ok:
+            user.email_verified = True
+            user.save(update_fields=['email_verified'])
+            messages.success(request, "Email verified.")
+            return redirect('register-supplier' if user.role == 'manufacturer' else 'register-customer')
+        errors = {
+            'no_pending': "That code has expired. Request a new one below.",
+            'expired': "That code has expired. Request a new one below.",
+            'locked': "Too many incorrect attempts. Request a new code below.",
+            'mismatch': "That code isn't right. Please try again.",
+        }
+        messages.error(request, errors.get(reason, "That code isn't right. Please try again."))
+    elif not otp.has_pending_code(user):
+        # First visit after register(), or the earlier code has expired —
+        # make sure there's always a live one to enter.
+        otp.issue_and_send(user)
+
+    return render(request, 'registration/verify_email.html', {'email': user.email})
 
 
 class CreateCustomer(SuccessMessageMixin, CreateView):
@@ -378,10 +433,16 @@ class CreateCustomer(SuccessMessageMixin, CreateView):
     def _pending_user(self):
         return User.objects.filter(
             pk=self.request.session.get('session_user_id'), role='consumer', consumerprofile__isnull=True,
+            email_verified=True,
         ).first()
 
     def dispatch(self, request, *args, **kwargs):
         if self._pending_user() is None:
+            if User.objects.filter(
+                pk=request.session.get('session_user_id'), role='consumer', consumerprofile__isnull=True,
+                email_verified=False,
+            ).exists():
+                return redirect('verify-email')
             messages.error(request, "Start by creating your account.")
             return redirect('register')
         return super().dispatch(request, *args, **kwargs)

@@ -1,0 +1,15 @@
+{% autoescape off %}Hi,
+
+This order is now marked complete:
+
+    Order #{{ order.billno }} — {{ requirement.title }}
+    {% if recipient_is_buyer %}Manufacturer: {{ supplier_name }}{% else %}Buyer: {{ buyer_name }}{% endif %}
+
+{% if recipient_is_buyer %}Take a moment to rate {{ supplier_name }} — it helps other buyers on MakeSetu.{% endif %}
+View the order:
+
+    {{ url }}
+
+Thanks,
+The MakeSetu Team
+{% endautoescape %}

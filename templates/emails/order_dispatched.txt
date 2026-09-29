@@ -1,0 +1,15 @@
+{% autoescape off %}Hi,
+
+Your order has been dispatched:
+
+    Order #{{ order.billno }} — {{ requirement.title }}
+    Shipped by: {{ supplier_name }}
+    Tax invoice: {{ invoice.number }}
+
+Track the shipment and download the invoice:
+
+    {{ url }}
+
+Thanks,
+The MakeSetu Team
+{% endautoescape %}

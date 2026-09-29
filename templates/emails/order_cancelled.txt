@@ -1,0 +1,13 @@
+{% autoescape off %}Hi,
+
+This order has been cancelled:
+
+    Order #{{ order.billno }} — {{ requirement.title }}
+
+View the order for details:
+
+    {{ url }}
+
+Thanks,
+The MakeSetu Team
+{% endautoescape %}

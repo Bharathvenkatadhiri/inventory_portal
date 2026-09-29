@@ -1,0 +1,1 @@
+New quote on RFQ-{{ requirement.pk }}: {{ requirement.title }}

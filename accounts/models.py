@@ -467,3 +467,23 @@ class SubscriptionPlan(models.Model):
 
     def __str__(self):
         return f"{self.user_profile.username} - {self.plan_type}"
+
+
+class EmailVerification(models.Model):
+    """One OTP sent to confirm a new account's email during registration
+    (accounts.otp, accounts.views.verify_email). Each row is one code;
+    a fresh resend creates a new row rather than reusing one, so old codes
+    simply expire instead of being extended."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='email_verifications')
+    code_hash = models.CharField(max_length=128)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    consumed_at = models.DateTimeField(null=True, blank=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['user', 'consumed_at'])]
+
+    def __str__(self):
+        return f"OTP for {self.user_id} issued {self.created_at:%Y-%m-%d %H:%M}"

@@ -1,0 +1,17 @@
+{% autoescape off %}Hi {{ company_name }},
+
+A new RFQ matching your capabilities was just posted on MakeSetu:
+
+    {{ requirement.title }} (RFQ-{{ requirement.pk }})
+    Process: {{ process|default:"—" }}
+    Parts: {{ part_count }}
+    Currency: {{ requirement.quote_currency }}
+    {% if requirement.end_date %}Quotes due: {{ requirement.end_date|date:"d M Y" }}{% endif %}
+
+View the full RFQ and submit a quote:
+
+    {{ url }}
+
+Thanks,
+The MakeSetu Team
+{% endautoescape %}

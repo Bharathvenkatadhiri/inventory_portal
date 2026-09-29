@@ -361,7 +361,10 @@ class PortalRatingBadgeTests(TestCase):
             self.assertIn("Quotes came in fast.", page, name)
         # The detailed sign-up forms need the half-registered account from step one.
         for name, role in (("register-customer", "consumer"), ("register-supplier", "manufacturer")):
-            pending = User.objects.create_user(username=f"pending-{role}", email=f"pending-{role}@example.com", password="pass12345", role=role)
+            pending = User.objects.create_user(
+                username=f"pending-{role}", email=f"pending-{role}@example.com", password="pass12345", role=role,
+                email_verified=True,  # this test is about the review widget, not email verification
+            )
             session = self.client.session
             session["session_user_id"] = pending.pk
             session.save()
@@ -421,6 +424,20 @@ class AuthSurfaceHardeningTests(TestCase):
             response = self.client.post(reverse("password_reset"), {"email": "authsurf@example.com"})
             self.assertRedirects(response, reverse("password_reset_done"), fetch_redirect_response=False)
         self.assertEqual(len(mail.outbox), settings.PASSWORD_RESET_LIMIT_PER_EMAIL)
+
+    def test_unknown_email_gets_the_same_page_and_sends_nothing(self):
+        # Django's PasswordResetForm.save() only emails a match it finds;
+        # the view redirects to password_reset_done either way, so an
+        # unknown address can't be told apart from a real one by the
+        # response — only by the (nonexistent) email that follows.
+        from django.core import mail
+        response = self.client.post(reverse("password_reset"), {"email": "nobody-here@example.com"})
+        self.assertRedirects(response, reverse("password_reset_done"), fetch_redirect_response=False)
+        self.assertEqual(len(mail.outbox), 0)
+        response = self.client.post(reverse("password_reset"), {"email": "authsurf@example.com"})
+        self.assertRedirects(response, reverse("password_reset_done"), fetch_redirect_response=False)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("authsurf@example.com", mail.outbox[0].to)
 
     def test_session_is_logged_out_when_replayed_from_another_browser(self):
         self.client.login(username="authsurf@example.com", password="correct-horse-battery")

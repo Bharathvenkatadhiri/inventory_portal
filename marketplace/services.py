@@ -10,12 +10,13 @@ import logging
 from datetime import timedelta
 
 from django.core.cache import cache
+from django.db import transaction
 from django.db.models import Avg, Count, Exists, IntegerField, Max, OuterRef, Q, Subquery, Value
 from django.db.models.functions import Coalesce
 from django.urls import reverse
 from django.utils import timezone
 
-from . import documents
+from . import documents, emails
 from accounts.models import ManufacturerProfile, ConsumerProfile
 from .models import (
     Requirement, Quote, Order, OrderEvent,
@@ -164,12 +165,22 @@ def award_quote(requirement, quote):
     quote.save()
     requirement.status = 'Approved'
     requirement.save()
-    rejected = Quote.objects.filter(
-        requirement=requirement, status__isnull=True,
-    ).exclude(pk=quote.pk).update(status='Rejected', decided_at=now)
+    # Captured as objects (not just the update() count) so each loser can
+    # be emailed by name below; select_related keeps that to one query.
+    rejected_quotes = list(
+        Quote.objects.filter(requirement=requirement, status__isnull=True)
+        .exclude(pk=quote.pk).select_related('supplier__user', 'requirement')
+    )
+    rejected = Quote.objects.filter(pk__in=[q.pk for q in rejected_quotes]).update(status='Rejected', decided_at=now)
     order = create_award_order(requirement, quote)
     if order is not None:
         documents.issue_purchase_order(order)
+        # Deferred to on_commit like the PO's own PDF render just above —
+        # a rollback of this award must not leave an email saying it
+        # happened when it didn't.
+        transaction.on_commit(lambda: emails.notify_quote_awarded(order))
+    for rejected_quote in rejected_quotes:
+        transaction.on_commit(lambda q=rejected_quote: emails.notify_quote_not_selected(q))
     for amendment in requirement.amendments.filter(status=RequirementAmendment.PENDING):
         amendment.close(RequirementAmendment.CLOSED)
     AmendmentResponse.objects.filter(

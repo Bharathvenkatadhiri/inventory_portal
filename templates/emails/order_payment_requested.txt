@@ -1,0 +1,13 @@
+{% autoescape off %}Hi {{ buyer_name }},
+
+{{ supplier_name }} has requested payment on your order:
+
+    Order #{{ order.billno }} — {{ requirement.title }}
+
+Review the order and confirm payment:
+
+    {{ url }}
+
+Thanks,
+The MakeSetu Team
+{% endautoescape %}

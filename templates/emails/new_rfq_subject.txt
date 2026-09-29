@@ -1,0 +1,1 @@
+New RFQ matched: {{ requirement.title }} (RFQ-{{ requirement.pk }})
