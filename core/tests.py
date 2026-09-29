@@ -1,4 +1,7 @@
 import io
+import os
+import subprocess
+import sys
 
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -68,3 +71,37 @@ class ValidateUploadTests(TestCase):
         self.assertFalse(is_new_upload(existing))
         self.assertFalse(is_new_upload(None))
         self.assertFalse(is_new_upload(False))
+
+
+class ProductionStorageGuardTests(TestCase):
+    """Without a bucket configured, uploads fall back to local disk served
+    unsigned from /media/ — fine for local dev, but with DEBUG=False that
+    means RFQ files and guessable purchase-order/invoice filenames become
+    fetchable by anyone with the path. core/settings.py now refuses to
+    start rather than fall back to that silently.
+
+    The check runs once at settings-module import time, before this test
+    process's own DEBUG=True even applies, so it can't be exercised with
+    override_settings (which only patches an already-loaded settings
+    object) — each case boots a fresh interpreter instead."""
+
+    def _boot(self, **env_overrides):
+        env = os.environ.copy()
+        env.update({k: str(v) for k, v in env_overrides.items()})
+        return subprocess.run(
+            [sys.executable, "-c", "import django; django.setup()"],
+            env=env, capture_output=True, text=True, timeout=30,
+        )
+
+    def test_refuses_to_start_without_a_bucket_in_production(self):
+        result = self._boot(DEBUG="False", AWS_STORAGE_BUCKET_NAME="")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("AWS_STORAGE_BUCKET_NAME is required", result.stderr)
+
+    def test_starts_fine_in_production_with_a_bucket_configured(self):
+        result = self._boot(DEBUG="False", AWS_STORAGE_BUCKET_NAME="prod-bucket")
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_dev_mode_is_unaffected_without_a_bucket(self):
+        result = self._boot(DEBUG="True", AWS_STORAGE_BUCKET_NAME="")
+        self.assertEqual(result.returncode, 0, result.stderr)

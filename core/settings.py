@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 import environ
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -135,6 +136,18 @@ if AWS_STORAGE_BUCKET_NAME:
     AWS_S3_FILE_OVERWRITE = False
     STORAGES["default"] = {"BACKEND": "storages.backends.s3.S3Storage"}
 else:
+    # Local disk has two problems in production: it isn't shared across
+    # instances/deploys (per the .env.prod.example note this setting
+    # already carries), and /media/ is served with no signed-URL check —
+    # unlike AWS_QUERYSTRING_AUTH above, so RFQ files, quote files, and
+    # purchase order/invoice PDFs (whose names are guessable, e.g.
+    # PO-2627-0001.pdf) become fetchable by anyone with the path. Refuse
+    # to start rather than silently fall back to that with DEBUG=False.
+    if not DEBUG:
+        raise ImproperlyConfigured(
+            "AWS_STORAGE_BUCKET_NAME is required when DEBUG=False. Set it (and the other "
+            "AWS_* settings) so uploads use signed S3 URLs instead of unsigned local disk."
+        )
     MEDIA_URL = "/media/"
     MEDIA_ROOT = BASE_DIR / "media"
     STORAGES["default"] = {"BACKEND": "django.core.files.storage.FileSystemStorage"}
