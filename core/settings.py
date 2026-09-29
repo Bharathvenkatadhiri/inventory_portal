@@ -144,10 +144,14 @@ else:
     # purchase order/invoice PDFs (whose names are guessable, e.g.
     # PO-2627-0001.pdf) become fetchable by anyone with the path. Refuse
     # to start rather than silently fall back to that with DEBUG=False.
-    if not DEBUG:
+    # ALLOW_LOCAL_MEDIA_STORAGE is an explicit opt-out for CI, which runs
+    # production settings (DEBUG=False) without a bucket; never set it on a
+    # real deployment.
+    if not DEBUG and not env.bool("ALLOW_LOCAL_MEDIA_STORAGE", default=False):
         raise ImproperlyConfigured(
             "AWS_STORAGE_BUCKET_NAME is required when DEBUG=False. Set it (and the other "
-            "AWS_* settings) so uploads use signed S3 URLs instead of unsigned local disk."
+            "AWS_* settings) so uploads use signed S3 URLs instead of unsigned local disk. "
+            "(CI only: ALLOW_LOCAL_MEDIA_STORAGE=True skips this check.)"
         )
     MEDIA_URL = "/media/"
     MEDIA_ROOT = BASE_DIR / "media"

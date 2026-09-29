@@ -87,6 +87,8 @@ class ProductionStorageGuardTests(TestCase):
 
     def _boot(self, **env_overrides):
         env = os.environ.copy()
+        # CI sets the opt-out for its own run; each case here decides it.
+        env["ALLOW_LOCAL_MEDIA_STORAGE"] = "False"
         env.update({k: str(v) for k, v in env_overrides.items()})
         return subprocess.run(
             [sys.executable, "-c", "import django; django.setup()"],
@@ -104,6 +106,11 @@ class ProductionStorageGuardTests(TestCase):
 
     def test_dev_mode_is_unaffected_without_a_bucket(self):
         result = self._boot(DEBUG="True", AWS_STORAGE_BUCKET_NAME="")
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_ci_can_opt_out_explicitly(self):
+        # CI runs production settings without a bucket (.github/workflows/ci.yml).
+        result = self._boot(DEBUG="False", AWS_STORAGE_BUCKET_NAME="", ALLOW_LOCAL_MEDIA_STORAGE="True")
         self.assertEqual(result.returncode, 0, result.stderr)
 
 
