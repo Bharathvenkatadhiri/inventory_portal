@@ -105,3 +105,35 @@ class ProductionStorageGuardTests(TestCase):
     def test_dev_mode_is_unaffected_without_a_bucket(self):
         result = self._boot(DEBUG="True", AWS_STORAGE_BUCKET_NAME="")
         self.assertEqual(result.returncode, 0, result.stderr)
+
+
+class EmailBackendTests(TestCase):
+    """The backend must return None on any failure (never raise, which
+    leaked "no such user" vs "wrong password"), and pay for a password hash
+    even for an unknown email so timing doesn't reveal registration."""
+
+    def setUp(self):
+        User.objects.create_user(username="backend", email="backend@example.com", password="right-password")
+
+    def test_failures_return_none_instead_of_raising(self):
+        from django.contrib.auth import authenticate
+        self.assertIsNone(authenticate(username="nobody@example.com", password="x"))
+        self.assertIsNone(authenticate(username="backend@example.com", password="wrong"))
+        self.assertIsNotNone(authenticate(username="backend@example.com", password="right-password"))
+
+    def test_unknown_email_still_runs_the_password_hasher(self):
+        from unittest import mock
+        from django.contrib.auth import authenticate
+        from django.contrib.auth.hashers import make_password
+        with mock.patch("django.contrib.auth.base_user.make_password", wraps=make_password) as hasher:
+            authenticate(username="nobody@example.com", password="x")
+        self.assertTrue(hasher.called)
+
+    def test_username_is_not_a_second_way_in(self):
+        from django.contrib.auth import authenticate
+        self.assertIsNone(authenticate(username="backend", password="right-password"))
+
+    def test_inactive_users_cannot_sign_in(self):
+        from django.contrib.auth import authenticate
+        User.objects.filter(email="backend@example.com").update(is_active=False)
+        self.assertIsNone(authenticate(username="backend@example.com", password="right-password"))

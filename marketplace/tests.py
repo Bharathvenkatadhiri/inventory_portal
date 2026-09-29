@@ -681,6 +681,57 @@ class OwnershipAndAwardTests(TestCase):
         self.login(self.maker)
         self.assertEqual(self.client.get(url).status_code, 200)
 
+    def test_a_draft_is_hidden_from_the_buyer_but_shown_to_its_supplier(self):
+        self.rival_quote.is_draft = True
+        self.rival_quote.save()
+        url = reverse("requirement", kwargs={"pk": self.requirement.pk})
+        self.login(self.buyer)
+        page = self.client.get(url)
+        self.assertNotContains(page, "Rival Maker")
+        self.assertNotContains(page, "Best price")  # a lone submitted quote has nothing to beat
+        self.login(self.rival)
+        self.assertContains(self.client.get(url), "Rival Maker")
+
+    def _expire_recent_auth(self):
+        from core.session_security import AUTH_AT
+        session = self.client.session
+        session[AUTH_AT] = 0
+        session.save()
+
+    def test_awarding_needs_a_recently_entered_password(self):
+        self.login(self.buyer)
+        self._expire_recent_auth()
+        url = reverse("quote-update-status", kwargs={"pk": self.quote.pk, "status": "Approved"})
+        response = self.client.post(url)
+        self.assertTrue(response["Location"].startswith(reverse("reauth")))
+        self.assertFalse(Order.objects.filter(requirement=self.requirement).exists())
+        # htmx gets an HX-Redirect instead of a redirect swapped into the fragment.
+        response = self.client.post(url, HTTP_HX_REQUEST="true")
+        self.assertTrue(response["HX-Redirect"].startswith(reverse("reauth")))
+        self.client.post(reverse("reauth"), {"password": "pass12345", "next": "/"})
+        self.client.post(url)
+        self.assertTrue(Order.objects.filter(requirement=self.requirement).exists())
+
+    def test_rejecting_a_quote_does_not_need_reauth(self):
+        self.login(self.buyer)
+        self._expire_recent_auth()
+        self.client.post(reverse("quote-update-status", kwargs={"pk": self.rival_quote.pk, "status": "Rejected"}))
+        self.rival_quote.refresh_from_db()
+        self.assertEqual(self.rival_quote.status, "Rejected")
+
+    def test_confirming_payment_needs_a_recently_entered_password(self):
+        self.award()
+        order = Order.objects.get(requirement=self.requirement)
+        self.login(self.maker)
+        self.client.post(reverse("order-update-status", kwargs={"billno": order.billno, "status": "in_production"}))
+        self.client.post(reverse("order-update-status", kwargs={"billno": order.billno, "status": "payment_pending"}))
+        self.login(self.buyer)
+        self._expire_recent_auth()
+        response = self.client.post(reverse("order-update-status", kwargs={"billno": order.billno, "status": "paid"}))
+        self.assertTrue(response["Location"].startswith(reverse("reauth")))
+        order.refresh_from_db()
+        self.assertEqual(order.status, "payment_pending")
+
     def test_manufacturer_sees_only_their_own_quote_card_and_a_count_of_others(self):
         self.login(self.maker)
         page = self.client.get(reverse("requirement", kwargs={"pk": self.requirement.pk}))
@@ -986,6 +1037,20 @@ class NDAGateTests(TestCase):
     def test_a_buyer_cannot_accept_an_nda_on_their_own_or_anyone_elses_rfq(self):
         self.login(self.buyer)
         self.assertEqual(self.client.post(self.accept_url).status_code, 404)
+
+    def test_quote_form_hides_drawings_and_part_notes_until_the_nda_is_accepted(self):
+        # The quote form was a second route to the same files.
+        self.login(self.maker)
+        url = reverse("new-quote", kwargs={"pk": self.requirement.pk})
+        page = self.client.get(url)
+        self.assertContains(page, "This RFQ requires an NDA")
+        self.assertNotContains(page, "Secret geometry")
+        self.assertNotContains(page, self.requirement.file.url)
+        self.client.post(self.accept_url)
+        page = self.client.get(url)
+        self.assertContains(page, "Secret geometry")
+        self.assertContains(page, self.requirement.file.url)
+        self.assertNotContains(page, "This RFQ requires an NDA")
 
 
 @DASHBOARD_TEST_STORAGES

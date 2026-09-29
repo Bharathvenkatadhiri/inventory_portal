@@ -626,6 +626,80 @@ class AdminScreenPermissionTests(TestCase):
 
 
 @DASHBOARD_TEST_STORAGES
+class StaffActionSecurityTests(TestCase):
+    """Staff changes to other accounts are audited and need a recently
+    entered password; deactivating a supplier now also blocks their login;
+    a deactivated supplier's profile is no longer reachable by id."""
+
+    def setUp(self):
+        self.buyer, self.profile = _buyer("staffsec_buyer", "9410000001")
+        self.maker = User.objects.create_user(username="staffsec_maker", email="staffsec_maker@example.com", password="pass12345", role="manufacturer")
+        self.supplier = ManufacturerProfile.objects.create(
+            user=self.maker, companyname="Staffsec Maker", phone="8410000001", address="1 Rd", city="Pune", state="MH",
+            country="India", amount_of_employees="10-20", turnover_per_year="<1", email="staffsec_maker@example.com",
+        )
+        self.staff = User.objects.create_user(username="staffsec_staff", email="staffsec_staff@example.com", password="pass12345", is_staff=True)
+        self.client.login(username="staffsec_staff@example.com", password="pass12345")
+
+    def _expire_recent_auth(self):
+        from core.session_security import AUTH_AT
+        session = self.client.session
+        session[AUTH_AT] = 0  # signed in long ago
+        session.save()
+
+    def test_deactivating_a_supplier_blocks_their_login_and_is_audited(self):
+        from core.models import AuditLogEntry
+        self.client.post(reverse("delete-supplier", kwargs={"pk": self.supplier.pk}))
+        self.maker.refresh_from_db()
+        self.assertFalse(self.maker.is_active)
+        entry = AuditLogEntry.objects.get(action="supplier.deactivate")
+        self.assertEqual((entry.actor, entry.target_id), (self.staff, str(self.supplier.pk)))
+        self.assertFalse(Client().login(username="staffsec_maker@example.com", password="pass12345"))
+
+    def test_customer_deactivation_and_subscription_edits_are_audited(self):
+        from core.models import AuditLogEntry
+        self.client.post(reverse("delete-customer", kwargs={"pk": self.profile.pk}))
+        self.assertTrue(AuditLogEntry.objects.filter(action="customer.deactivate", target_id=str(self.profile.pk)).exists())
+
+    def test_staff_actions_need_a_recent_password(self):
+        self._expire_recent_auth()
+        response = self.client.post(reverse("delete-supplier", kwargs={"pk": self.supplier.pk}))
+        self.assertTrue(response["Location"].startswith(reverse("reauth")))
+        self.supplier.refresh_from_db()
+        self.assertFalse(self.supplier.is_deleted)
+        # Confirming the password lets the same action through.
+        self.client.post(reverse("reauth"), {"password": "pass12345", "next": reverse("suppliers-list")})
+        self.client.post(reverse("delete-supplier", kwargs={"pk": self.supplier.pk}))
+        self.supplier.refresh_from_db()
+        self.assertTrue(self.supplier.is_deleted)
+
+    def test_wrong_reauth_password_is_refused_and_counted(self):
+        self._expire_recent_auth()
+        self.client.post(reverse("reauth"), {"password": "wrong", "next": "/"})
+        self.client.post(reverse("delete-supplier", kwargs={"pk": self.supplier.pk}))
+        self.supplier.refresh_from_db()
+        self.assertFalse(self.supplier.is_deleted)
+
+    def test_audit_log_is_read_only_in_the_admin(self):
+        from core.admin import AuditLogEntryAdmin
+        from core.models import AuditLogEntry
+        from django.contrib import admin
+        model_admin = AuditLogEntryAdmin(AuditLogEntry, admin.site)
+        request = type("R", (), {"user": self.staff})()
+        self.assertFalse(model_admin.has_add_permission(request))
+        self.assertFalse(model_admin.has_change_permission(request))
+        self.assertFalse(model_admin.has_delete_permission(request))
+
+    def test_deactivated_supplier_profile_is_hidden_except_from_staff(self):
+        self.supplier.is_deleted = True
+        self.supplier.save()
+        url = reverse("supplier", kwargs={"pk": self.supplier.pk})
+        self.assertEqual(self.client.get(url).status_code, 200)  # staff
+        self.client.login(username="staffsec_buyer@example.com", password="pass12345")
+        self.assertEqual(self.client.get(url).status_code, 404)
+
+
+@DASHBOARD_TEST_STORAGES
 class BuyerRegistrationBindingTests(TestCase):
     """The public buyer-profile step used to expose a `user` dropdown listing
     every account without a profile, and trusted whichever one was posted."""

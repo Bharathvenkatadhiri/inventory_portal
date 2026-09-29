@@ -8,6 +8,8 @@ from django.core.exceptions import PermissionDenied
 from django.http import FileResponse, Http404, HttpResponse
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
+
+from core import session_security
 from django.utils.dateparse import parse_date
 from django.views.generic import (
     View,
@@ -687,6 +689,9 @@ class QuoteCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView):
         context["total_quantity"] = requirement.total_parts_quantity() if requirement else 0
         supplier = ManufacturerProfile.objects.filter(user=self.request.user).first()
         context["match_percent"] = services.compute_match_percent(requirement, supplier) if (requirement and supplier) else None
+        # Same NDA gate as the RFQ page: without it, this form was a second
+        # way to the master file, part notes and drawings.
+        context["nda_accepted"] = requirement.nda_accepted_by(supplier) if requirement else True
         if requirement:
             context.update(_rfq_conversation_context(self.request, requirement))
             context.update(_gst_context(requirement, supplier))
@@ -758,6 +763,7 @@ class QuoteUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
         context["parts"] = requirement.requirement_parts.all()
         context["total_quantity"] = requirement.total_parts_quantity()
         context["match_percent"] = services.compute_match_percent(requirement, self.object.supplier)
+        context["nda_accepted"] = requirement.nda_accepted_by(self.object.supplier)
         context.update(_rfq_conversation_context(self.request, requirement))
         context.update(_gst_context(requirement, self.object.supplier))
         context["is_manufacturer"] = True
@@ -823,6 +829,12 @@ class QuoteStatusUpdateView(LoginRequiredMixin, View):
         requirement = quote.requirement
         if requirement.user_id != request.user.id or status not in ('Approved', 'Rejected'):
             raise Http404
+        if status == 'Approved':
+            # Awarding creates the order and issues a purchase order: a
+            # stolen or shared session shouldn't be enough on its own.
+            reauth = session_security.require_recent_auth(request, reverse('requirement', kwargs={'pk': requirement.pk}))
+            if reauth is not None:
+                return reauth
         if requirement.status or quote.status or quote.is_draft:
             messages.error(request, "This quote can no longer be changed.")
         elif status == 'Approved':
@@ -1091,6 +1103,11 @@ class OrderStatusUpdateView(LoginRequiredMixin, View):
         order = get_object_or_404(Order.objects.select_related('supplier', 'customer', 'requirement'), billno=billno)
         if request.user not in (order.supplier.user, order.customer.user):
             raise Http404
+        if status == 'paid' and _may_perform_transition(order, request.user, status):
+            # Confirming payment is the other step that moves money.
+            reauth = session_security.require_recent_auth(request, reverse('order-detail', kwargs={'billno': order.billno}))
+            if reauth is not None:
+                return reauth
         transition_name = ORDER_TRANSITIONS.get(status)
         if not (transition_name and hasattr(order, transition_name)):
             logger.warning("Unknown order status '%s' requested for order #%s", status, billno)
@@ -1459,8 +1476,13 @@ def _poll_response(status):
 
 def quotes_section_context(request, requirement):
     """Everything _quotes_section.html needs, for the RFQ page, htmx swaps and the quotes poll."""
+    # A draft is the supplier's unsent work: only its author sees it. It
+    # used to be listed (price included) to the buyer, and counted in the
+    # Best price / Fastest comparison, before it was ever submitted.
     quotes = services.annotate_quote_badges(
-        Quote.objects.filter(requirement=requirement, is_deleted=False).select_related('supplier', 'supplier__company')
+        Quote.objects.filter(requirement=requirement, is_deleted=False)
+        .filter(Q(is_draft=False) | Q(supplier__user=request.user))
+        .select_related('supplier', 'supplier__company')
     )
     is_manufacturer = request.user.role == 'manufacturer'
     my_quote = None

@@ -62,6 +62,22 @@ def _increment(key):
         return 1
 
 
+def password_reset_allowed(request, email):
+    """Whether a password-reset email may be sent. Django's reset view has
+    no limit of its own, so anyone could flood a buyer's or supplier's
+    inbox with reset emails, or burn through the sending quota. Counted
+    per IP and per email in the same fixed window as login failures;
+    every request counts, whether or not the email has an account, so the
+    limit reveals nothing either."""
+    ip_count = _increment(f"pwreset:ip:{request.META.get('REMOTE_ADDR', 'unknown')}")
+    email_count = 0
+    if email:
+        digest = hashlib.sha256(email.strip().lower().encode()).hexdigest()
+        email_count = _increment(f"pwreset:email:{digest}")
+    return (ip_count <= settings.PASSWORD_RESET_LIMIT_PER_IP
+            and email_count <= settings.PASSWORD_RESET_LIMIT_PER_EMAIL)
+
+
 def record_failure(request, email):
     ip = request.META.get('REMOTE_ADDR', 'unknown')
     ip_count = _increment(_ip_key(request))

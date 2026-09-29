@@ -47,6 +47,7 @@ MIDDLEWARE = [
     "django_htmx.middleware.HtmxMiddleware",
     "core.middleware.HtmxMessagesMiddleware",
     "core.middleware.GlobalSearchMiddleware",
+    "core.session_security.SessionBindingMiddleware",
     "django.contrib.auth.middleware.LoginRequiredMiddleware",
 ]
 
@@ -162,6 +163,13 @@ LOGIN_FAILURE_WINDOW_SECONDS = env.int("LOGIN_FAILURE_WINDOW_SECONDS", default=1
 # an IP's first few failures in the window; after that it gives the generic
 # message, so the form can't be used to check which emails have accounts.
 LOGIN_UNREGISTERED_HINT_LIMIT = env.int("LOGIN_UNREGISTERED_HINT_LIMIT", default=3)
+# Password-reset emails sent per IP and per email address in the same window;
+# past either, the form still shows "check your email" but sends nothing.
+PASSWORD_RESET_LIMIT_PER_IP = env.int("PASSWORD_RESET_LIMIT_PER_IP", default=5)
+PASSWORD_RESET_LIMIT_PER_EMAIL = env.int("PASSWORD_RESET_LIMIT_PER_EMAIL", default=3)
+# Awarding a quote, confirming payment and staff changes to other accounts
+# need the password to have been entered this recently (core/session_security.py).
+REAUTH_WINDOW_SECONDS = env.int("REAUTH_WINDOW_SECONDS", default=15 * 60)
 
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_COOKIE_AGE = 3600
@@ -189,9 +197,13 @@ SECURE_HSTS_PRELOAD = env.bool("SECURE_HSTS_PRELOAD", default=False)
 X_FRAME_OPTIONS = "DENY"
 
 AUTH_USER_MODEL = "core.User"
+# Email sign-in only. ModelBackend used to be listed as a fallback, but
+# EmailBackend raised on every failure so it never ran; now that
+# EmailBackend returns None properly, keeping it would quietly add sign-in
+# by username — a second route with its own per-account lockout counter.
+# EmailBackend subclasses ModelBackend, so permission checks are unchanged.
 AUTHENTICATION_BACKENDS = [
     "core.backends.EmailBackend",
-    "django.contrib.auth.backends.ModelBackend",
 ]
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
