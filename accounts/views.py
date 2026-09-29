@@ -30,6 +30,7 @@ from django.conf import settings
 from django.apps import apps
 from core.settings import subscription_plan_details
 from core.validators import IMAGE_EXTENSIONS, validate_upload
+from core import login_throttle
 
 model_str = settings.AUTH_USER_MODEL
 app_label, model_name = model_str.split('.')
@@ -302,9 +303,17 @@ def register(request):
             # An account under this email already completed registration.
             # Previously this fell through to a silent re-render with no
             # error — the user would click Register and nothing would
-            # visibly happen.
+            # visibly happen. Confirming that outright is exactly what the
+            # login form's own "not registered" hint is capped to stop an
+            # attacker learning by the bucketful, so it's capped the same
+            # way here — registration_hint_allowed shares login's per-IP
+            # counter and limit, so probing through this form instead
+            # spends the same budget a wrong login would.
             form = UserRegistrationForm(request.POST)
-            form.add_error('email', 'An account with this email already exists. Please log in instead.')
+            if login_throttle.registration_hint_allowed(request):
+                form.add_error('email', 'An account with this email already exists. Please log in instead.')
+            else:
+                form.add_error('email', "We couldn't register with these details. If you already have an account, sign in instead.")
             return render(request, 'register_first.html', {'form': form})
 
         existing_user = User.objects.filter(email=email).first()
@@ -316,7 +325,10 @@ def register(request):
             # take over their half-finished account.
             if not existing_user.check_password(request.POST.get('password1', '')):
                 form = UserRegistrationForm(request.POST)
-                form.add_error('email', 'An account with this email already exists. Enter its password to finish registering, or log in.')
+                if login_throttle.registration_hint_allowed(request):
+                    form.add_error('email', 'An account with this email already exists. Enter its password to finish registering, or log in.')
+                else:
+                    form.add_error('email', "We couldn't register with these details. If you already have an account, sign in instead.")
                 return render(request, 'register_first.html', {'form': form})
             _start_profile_step(request, existing_user)
             return redirect('register-supplier' if existing_user.role == 'manufacturer' else 'register-customer')

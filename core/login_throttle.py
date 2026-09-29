@@ -39,6 +39,18 @@ def ip_failure_count(request):
     return cache.get(_ip_key(request), 0)
 
 
+def registration_hint_allowed(request):
+    """Whether a registration attempt may say plainly that the email
+    already has an account. Shares login's own per-IP counter and window
+    (and LOGIN_UNREGISTERED_HINT_LIMIT, the same cap login's "not
+    registered" hint uses) so an attacker can't just switch from the
+    login form to the registration form to keep learning which emails
+    are registered — each check here spends from the same budget a
+    failed login would. Only call this where a matching account was
+    actually found; a genuinely new email should never consume it."""
+    return _increment(_ip_key(request)) <= settings.LOGIN_UNREGISTERED_HINT_LIMIT
+
+
 def _increment(key):
     # add() only sets the key if it's missing, so the window starts at the
     # first failure and isn't extended by later ones.
