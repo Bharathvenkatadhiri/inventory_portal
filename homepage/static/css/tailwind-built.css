@@ -2267,6 +2267,11 @@ input:where([type='file']):focus{
   border-color: rgb(255 255 255 / 0.3);
 }
 
+.border-yellow-200{
+  --tw-border-opacity: 1;
+  border-color: rgb(254 240 138 / var(--tw-border-opacity, 1));
+}
+
 .bg-accent-100{
   --tw-bg-opacity: 1;
   background-color: rgb(253 228 207 / var(--tw-bg-opacity, 1));
@@ -2844,6 +2849,10 @@ input:where([type='file']):focus{
   letter-spacing: 0.22em;
 }
 
+.tracking-\[0\.5em\]{
+  letter-spacing: 0.5em;
+}
+
 .tracking-tight{
   letter-spacing: -0.025em;
 }
@@ -3070,6 +3079,11 @@ input:where([type='file']):focus{
 .text-yellow-700{
   --tw-text-opacity: 1;
   color: rgb(161 98 7 / var(--tw-text-opacity, 1));
+}
+
+.text-yellow-800{
+  --tw-text-opacity: 1;
+  color: rgb(133 77 14 / var(--tw-text-opacity, 1));
 }
 
 .underline{
