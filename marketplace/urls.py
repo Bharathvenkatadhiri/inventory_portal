@@ -12,6 +12,7 @@ urlpatterns = [
     path('requirement/<int:pk>/update-status/<str:status>/', views.RequirementStatusUpdateView.as_view(), name='requirement-update-status'),
     path('requirement/<int:pk>/decline/', views.RFQDeclineView.as_view(), name='requirement-decline'),
     path('requirement/<int:pk>/extend/', views.RequirementExtendView.as_view(), name='requirement-extend'),
+    path('requirement/<int:pk>/accept-nda/', views.RequirementNDAAcceptView.as_view(), name='requirement-accept-nda'),
     path('changes/<int:pk>/withdraw/', views.AmendmentWithdrawView.as_view(), name='amendment-withdraw'),
     path('changes/response/<int:pk>/respond/', views.AmendmentRespondView.as_view(), name='amendment-respond'),
     path('changes/response/<int:pk>/decide/', views.AmendmentDecisionView.as_view(), name='amendment-decide'),

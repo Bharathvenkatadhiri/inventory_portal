@@ -30,7 +30,7 @@ from accounts.models import ManufacturerProfile, ConsumerProfile
 from . import documents, reports, search, services
 from .models import (
     Requirement, RequirementPart, Quote, Order,
-    RFQDecline,
+    RFQDecline, RequirementNDAAcceptance,
     MessageThread, Message,
     RequirementAmendment, AmendmentResponse, SupplierReview, OrderDocument,
     GST_EXPORT_LUT, GST_LABELS, GST_RATE, gst_treatment,
@@ -534,16 +534,41 @@ class RequirementDeleteView(LoginRequiredMixin, View):
 
 class RequirementView(LoginRequiredMixin, View):
     def get(self, request, pk):
-        requirement = get_object_or_404(Requirement, pk=pk)
-        # Manufacturers browse RFQs to quote on them; a buyer may only open
-        # their own.
-        if request.user.role != 'manufacturer' and not request.user.is_staff and requirement.user_id != request.user.id:
-            raise Http404
+        # Staff keep full access, including a deleted RFQ, for support.
+        # Everyone else gets exactly the scope search and the RFQ
+        # list/inbox already use: a buyer's own RFQs, or a manufacturer's
+        # open-to-quote and already-quoted ones — never deleted, never
+        # someone else's awarded RFQ. Without this, the id in the URL was
+        # the only thing standing between any manufacturer and any RFQ.
+        if request.user.is_staff:
+            requirement = get_object_or_404(Requirement, pk=pk)
+        else:
+            requirement = get_object_or_404(services.visible_requirements_for(request.user), pk=pk)
         context = quotes_section_context(request, requirement)
-        context['demanddetails'] = RequirementPart.objects.filter(requirement=requirement).all()
+        # NDA'd RFQs: the buyer and staff always see everything; a
+        # manufacturer sees the summary only until they've accepted.
+        supplier = None
+        if not request.user.is_staff and not context['is_buyer']:
+            supplier = ManufacturerProfile.objects.filter(user=request.user).first()
+        nda_accepted = request.user.is_staff or context['is_buyer'] or requirement.nda_accepted_by(supplier)
+        context['nda_accepted'] = nda_accepted
+        context['demanddetails'] = RequirementPart.objects.filter(requirement=requirement).all() if nda_accepted else RequirementPart.objects.none()
         context.update(_rfq_conversation_context(request, requirement))
         context.update(_change_request_context(request, requirement, context.get('my_quote')))
         return render(request, 'requirement/requirement.html', context)
+
+
+class RequirementNDAAcceptView(LoginRequiredMixin, View):
+    """A manufacturer accepts an NDA'd RFQ's terms before its master file
+    and part details become visible to them. Recorded once per supplier
+    per RFQ; the buyer never sees or triggers this."""
+    http_method_names = ['post']
+
+    def post(self, request, pk):
+        requirement = get_object_or_404(services.visible_requirements_for(request.user), pk=pk, nda_required=True)
+        supplier = get_object_or_404(ManufacturerProfile, user=request.user)
+        RequirementNDAAcceptance.objects.get_or_create(requirement=requirement, supplier=supplier)
+        return redirect(reverse('requirement', kwargs={'pk': requirement.pk}))
 
 
 def _change_request_context(request, requirement, my_quote):
@@ -1154,16 +1179,7 @@ class global_search_view(LoginRequiredMixin, ListView):
     paginate_by = 10
 
     def _visible_requirements(self):
-        user = self.request.user
-        if user.is_staff:
-            return Requirement.objects.filter(is_deleted=False)
-        if user.role == 'manufacturer':
-            supplier = ManufacturerProfile.objects.filter(user=user).first()
-            if supplier is None:
-                return Requirement.objects.none()
-            open_ids = services.open_requirements_for(supplier).values('pk')
-            return Requirement.objects.filter(Q(pk__in=open_ids) | Q(quote__supplier=supplier), is_deleted=False)
-        return Requirement.objects.filter(user=user, is_deleted=False)
+        return services.visible_requirements_for(self.request.user)
 
     STATUS_FILTERS = {
         'open': Q(status__isnull=True),
@@ -1453,9 +1469,28 @@ def quotes_section_context(request, requirement):
         supplier = ManufacturerProfile.objects.filter(user=request.user).first()
         my_quote = next((q for q in quotes if q.supplier_id == getattr(supplier, 'pk', None)), None)
         my_declined = supplier is not None and RFQDecline.objects.filter(requirement=requirement, supplier=supplier).exists()
+    if is_manufacturer:
+        # A manufacturer already sees their own price and terms (it's
+        # their own data); every other card would show a rival's name,
+        # city, rating and note, plus the two comparison badges — which by
+        # existing at all tell a supplier the exact thing prices are
+        # hidden to prevent: who else is bidding, and whether they're
+        # winning on price or lead time. So they see only their own card,
+        # with those two badges stripped off it too, plus how many others
+        # exist.
+        visible_quotes = [my_quote] if my_quote else []
+        for quote in visible_quotes:
+            quote.badge_best_price = False
+            quote.badge_fastest = False
+        other_quote_count = len(quotes) - len(visible_quotes)
+    else:
+        visible_quotes = quotes
+        other_quote_count = 0
     return {
         'demand': requirement,
         'quotes': quotes,
+        'visible_quotes': visible_quotes,
+        'other_quote_count': other_quote_count,
         'is_manufacturer': is_manufacturer,
         'is_buyer': request.user.id == requirement.user_id,
         'my_quote': my_quote,
@@ -1499,13 +1534,17 @@ class MessageThreadPollView(View):
 
 
 class QuotesSectionPollView(View):
-    """New or changed quotes on an open RFQ."""
+    """New or changed quotes on an open RFQ. Same visibility scope as the
+    RFQ page itself (services.visible_requirements_for) — otherwise the
+    poll would happily hand quote data for an RFQ the page itself
+    refuses to open."""
     def get(self, request, pk):
         if not request.user.is_authenticated:
             return _poll_response(STOP_POLLING)
-        requirement = get_object_or_404(Requirement, pk=pk, is_deleted=False)
-        if request.user.role != 'manufacturer' and request.user.id != requirement.user_id:
-            raise Http404
+        if request.user.is_staff:
+            requirement = get_object_or_404(Requirement, pk=pk)
+        else:
+            requirement = get_object_or_404(services.visible_requirements_for(request.user), pk=pk)
         if request.GET.get('sig') == services.quotes_signature(requirement):
             return _poll_response(NO_CHANGE)
         return render(request, 'requirement/_quotes_section.html', quotes_section_context(request, requirement))

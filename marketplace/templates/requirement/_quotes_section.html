@@ -10,9 +10,9 @@
         {% endif %}
     </div>
 
-    {% if quotes %}
+    {% if visible_quotes %}
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {% for quote in quotes %}
+        {% for quote in visible_quotes %}
         <div class="card flex flex-col {% if quote.is_selected %}ring-2 ring-accent-500{% endif %}" id="quote-{{ quote.pk }}">
             <div class="flex items-start gap-3">
                 <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-navy-900 text-sm font-bold text-white">
@@ -117,8 +117,14 @@
         </div>
         {% endfor %}
     </div>
+    {% elif quotes %}
+    <div class="card text-center text-gray-500">{{ quotes|length }} manufacturer{{ quotes|length|pluralize }} quoted on this RFQ. Every manufacturer's pricing and details are private to them and the buyer.</div>
     {% else %}
     <div class="card text-center text-gray-500">No quotes submitted yet.</div>
+    {% endif %}
+
+    {% if is_manufacturer and my_quote and other_quote_count %}
+    <p class="mt-3 text-sm text-gray-500">+{{ other_quote_count }} other quote{{ other_quote_count|pluralize }} on this RFQ. Other manufacturers' pricing and details are private.</p>
     {% endif %}
 
     {% if is_manufacturer and not my_quote %}

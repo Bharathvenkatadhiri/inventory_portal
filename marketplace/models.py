@@ -124,6 +124,14 @@ class Requirement(models.Model):
         completed or cancelled. Its conversations may be closed from then."""
         return self.status == 'Completed' or self.orders.filter(status__in=['completed', 'cancelled']).exists()
 
+    def nda_accepted_by(self, supplier):
+        """Whether `supplier` has accepted this RFQ's NDA — always True
+        when no NDA is required. `supplier` may be None (buyer/staff
+        viewing, or a manufacturer with no profile yet)."""
+        if not self.nda_required:
+            return True
+        return supplier is not None and self.nda_acceptances.filter(supplier=supplier).exists()
+
 
 class RequirementPart(models.Model):
     TECHNOLOGY_TYPES = [
@@ -759,6 +767,24 @@ class RFQDecline(models.Model):
 
     def __str__(self):
         return f"Decline: requirement #{self.requirement_id} by supplier #{self.supplier_id}"
+
+
+class RequirementNDAAcceptance(models.Model):
+    """Records that a manufacturer accepted an NDA'd RFQ's terms. Until
+    this row exists for a given supplier, the RFQ page shows only the
+    summary — nda_required was previously stored and displayed but never
+    actually enforced anywhere, so the master file and every part's
+    description and drawing were reachable by anyone who could open the
+    RFQ at all."""
+    requirement = models.ForeignKey(Requirement, on_delete=models.CASCADE, related_name='nda_acceptances')
+    supplier = models.ForeignKey(ManufacturerProfile, on_delete=models.CASCADE, related_name='nda_acceptances')
+    accepted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [('requirement', 'supplier')]
+
+    def __str__(self):
+        return f"NDA accepted: requirement #{self.requirement_id} by supplier #{self.supplier_id}"
 
 
 class SupplierReview(models.Model):
