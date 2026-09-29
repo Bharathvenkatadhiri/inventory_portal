@@ -1,0 +1,15 @@
+{% extends "emails/_base_email.html" %}
+{% block title %}Production started — MakeSetu{% endblock %}
+{% block preheader %}{{ supplier_name }} started production on order #{{ order.billno }}{% endblock %}
+{% block body %}
+<p style="margin:0 0 16px;">Hi {{ buyer_name }},</p>
+<p style="margin:0 0 20px;"><strong>{{ supplier_name }}</strong> has started production on your order:</p>
+<table role="presentation" width="100%" style="margin:0 0 20px;background-color:#F3F5F8;border-radius:8px;">
+<tr><td style="padding:16px 20px;">
+<p style="margin:0;font-size:17px;font-weight:700;color:#11355C;">Order #{{ order.billno }} <span style="color:#56657A;font-weight:400;">— {{ requirement.title }}</span></p>
+</td></tr>
+</table>
+<p style="margin:0 0 24px;">
+<a href="{{ url }}" style="display:inline-block;padding:12px 24px;background-color:#F57921;color:#FFFFFF;font-weight:700;text-decoration:none;border-radius:8px;">Track this order</a>
+</p>
+{% endblock %}

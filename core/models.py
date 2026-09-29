@@ -11,6 +11,15 @@ class User(AbstractUser):
 
     email = models.EmailField(unique=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="consumer")
+    # Set once the OTP sent at registration (accounts.otp) is confirmed.
+    # Defaults False for every existing row too, but that's harmless: it's
+    # only checked on the registration flow itself (CreateSupplier /
+    # CreateCustomer), which a fully-registered user never revisits — see
+    # accounts.views.register. db_default (not just default) so the column
+    # itself defaults to false in Postgres — an INSERT that doesn't name
+    # this column (an older frozen model state in a migration test, e.g.)
+    # gets false instead of hitting the NOT NULL constraint.
+    email_verified = models.BooleanField(default=False, db_default=False)
 
 
 class AuditLogEntry(models.Model):

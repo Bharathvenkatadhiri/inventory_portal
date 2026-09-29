@@ -1,0 +1,14 @@
+{% autoescape off %}Hi {{ supplier_name }},
+
+Congratulations — your quote was selected:
+
+    {{ requirement.title }} (RFQ-{{ requirement.pk }})
+    Order: #{{ order.billno }}
+
+A purchase order has been issued. View the order and get started:
+
+    {{ url }}
+
+Thanks,
+The MakeSetu Team
+{% endautoescape %}

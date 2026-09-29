@@ -1,0 +1,13 @@
+{% autoescape off %}Hi {{ buyer_name }},
+
+{{ supplier_name }} has submitted a quote on your RFQ:
+
+    {{ requirement.title }} (RFQ-{{ requirement.pk }})
+
+Review it and compare it against any other quotes:
+
+    {{ url }}
+
+Thanks,
+The MakeSetu Team
+{% endautoescape %}

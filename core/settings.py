@@ -264,6 +264,14 @@ EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="MakeSetu <no-reply@makesetu.com>")
+# Base URL used to build absolute links in emails sent outside a request
+# (marketplace.emails) — e.g. the RFQ-matched and order-status notifications,
+# which fire from award_quote/services rather than always from a view.
+# Defaults to the first configured host in production so a real deployment
+# that hasn't set SITE_URL explicitly still gets working links rather than
+# silently broken (relative, no-domain) ones.
+_default_site_url = "http://localhost:8000" if DEBUG else (f"https://{ALLOWED_HOSTS[0]}" if ALLOWED_HOSTS else "")
+SITE_URL = env("SITE_URL", default=_default_site_url).rstrip("/")
 
 # --- GST verification -------------------------------------------------------
 # "mock" (default) uses accounts.services.gst_verification.MockGSTProvider —

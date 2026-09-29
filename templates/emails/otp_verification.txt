@@ -1,0 +1,11 @@
+{% autoescape off %}Hi {{ name }},
+
+Use this code to verify your email address and continue setting up your MakeSetu account:
+
+    {{ code }}
+
+This code expires in {{ ttl_minutes }} minutes. If you didn't try to create a MakeSetu account, you can ignore this email — nothing will be set up without it.
+
+Thanks,
+The MakeSetu Team
+{% endautoescape %}

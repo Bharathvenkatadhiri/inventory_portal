@@ -1,0 +1,29 @@
+{% extends "auth_shell.html" %}
+{% block title %}Verify your email — MakeSetu{% endblock %}
+{% block hero_eyebrow %}One Last Step{% endblock %}
+{% block hero_title %}Check your inbox<br><span class="text-accent-500">for a code.</span>{% endblock %}
+{% block hero_subtitle %}We sent a 6-digit code to your email. Enter it here to finish setting up your MakeSetu account.{% endblock %}
+{% block panel %}
+<h2 class="text-2xl font-extrabold tracking-tight text-navy-900">Verify your email</h2>
+<p class="mt-1 text-sm text-gray-500">We sent a code to <span class="font-semibold text-navy-900">{{ email }}</span>. It expires in 10 minutes.</p>
+
+<form method="post" class="mt-6 space-y-4">
+    {% csrf_token %}
+    <div>
+        <label for="id_code" class="sr-only">Verification code</label>
+        <input type="text" name="code" id="id_code" required autofocus autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]*" maxlength="6"
+               class="field-input text-center text-2xl tracking-[0.5em]" placeholder="000000">
+    </div>
+    <button type="submit" class="btn-primary w-full">Verify and continue</button>
+</form>
+
+<form method="post" class="mt-3">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="resend">
+    <button type="submit" class="w-full text-center text-sm font-semibold text-navy-900 hover:underline">Didn't get it? Send a new code</button>
+</form>
+
+<p class="text-center text-sm text-gray-500 mt-6">
+    <a href="{% url 'register' %}" class="font-semibold text-navy-900 hover:underline">&larr; Start over with a different email</a>
+</p>
+{% endblock %}

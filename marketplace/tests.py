@@ -3,6 +3,7 @@ from decimal import Decimal
 import tempfile
 from datetime import timedelta
 
+from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
@@ -1051,6 +1052,150 @@ class NDAGateTests(TestCase):
         self.assertContains(page, "Secret geometry")
         self.assertContains(page, self.requirement.file.url)
         self.assertNotContains(page, "This RFQ requires an NDA")
+
+
+@DASHBOARD_TEST_STORAGES
+class LifecycleEmailTests(TestCase):
+    """A new RFQ, a submitted quote, an award, and each order-status change
+    now email the side it's news to (marketplace/emails.py)."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()  # login/reauth throttle counters must start clean for the 'paid' transition's reauth check
+        mail.outbox.clear()
+        self.buyer = User.objects.create_user(username="lcbuyer", email="lcbuyer@example.com", password="pass12345")
+        self.consumer = ConsumerProfile.objects.create(
+            user=self.buyer, Name="LC Buyer Co", type_of_business="electronics", city="Pune", state="MH",
+            country="India", phone="9300000001", email="lcbuyer@example.com", EORI_number="ELC", VAT_number="VLC",
+        )
+        self.maker = User.objects.create_user(username="lcmaker", email="lcmaker@example.com", password="pass12345", role="manufacturer")
+        self.supplier = ManufacturerProfile.objects.create(
+            user=self.maker, companyname="LC Maker", phone="8300000001", address="1 Rd", city="Pune", state="MH",
+            country="India", amount_of_employees="10-20", turnover_per_year="<1", email="lcmaker@example.com",
+        )
+        self.supplier.capabilities.add(ManufacturingTech.objects.create(technology_type="milling"))
+
+    def login(self, user):
+        self.client.login(username=user.email, password="pass12345")
+
+    def _post_rfq(self, technology="Milling"):
+        self.login(self.buyer)
+        return self.client.post(reverse("new-requirement"), {
+            "title": "Bracket", "rfq_desc": "d", "quote_currency": "INR", "request_reason": "other",
+            "nda_required": "False",
+            "requirement_parts-TOTAL_FORMS": "1", "requirement_parts-INITIAL_FORMS": "0",
+            "requirement_parts-0-part_name": "Bracket", "requirement_parts-0-technology": technology,
+            "requirement_parts-0-Material": "Aluminium", "requirement_parts-0-quantity": "10",
+        })
+
+    def test_posting_an_rfq_emails_only_matching_accepting_suppliers(self):
+        no_match = self._maker("nomatch", accepting_rfqs=True)
+        not_accepting = self._maker("notaccepting", capability="milling", accepting_rfqs=False)
+        self._post_rfq()
+        recipients = {to for message in mail.outbox for to in message.to}
+        self.assertIn("lcmaker@example.com", recipients)
+        self.assertNotIn("nomatch@example.com", recipients)
+        self.assertNotIn("notaccepting@example.com", recipients)
+
+    def _maker(self, name, capability=None, accepting_rfqs=True):
+        user = User.objects.create_user(username=name, email=f"{name}@example.com", password="pass12345", role="manufacturer")
+        profile = ManufacturerProfile.objects.create(
+            user=user, companyname=name, phone=f"8{abs(hash(name)) % 10**9:09d}", address="1 Rd", city="Pune", state="MH",
+            country="India", amount_of_employees="10-20", turnover_per_year="<1", email=f"{name}@example.com",
+            accepting_rfqs=accepting_rfqs,
+        )
+        if capability:
+            tech, _ = ManufacturingTech.objects.get_or_create(technology_type=capability)
+            profile.capabilities.add(tech)
+        return profile
+
+    def test_submitting_a_quote_emails_the_buyer_but_a_draft_does_not(self):
+        self._post_rfq()
+        requirement = Requirement.objects.get(title="Bracket")
+        mail.outbox.clear()
+        self.login(self.maker)
+        self.client.post(reverse("new-quote", kwargs={"pk": requirement.pk}), {
+            "quote_price": "10", "tooling_cost": "0", "lead_time_unit": "days", "action": "draft",
+        })
+        self.assertEqual(len(mail.outbox), 0)
+        quote = Quote.objects.get(requirement=requirement)
+        self.client.post(reverse("edit-quote", kwargs={"pk": quote.pk}), {
+            "quote_price": "10", "tooling_cost": "0", "lead_time_unit": "days",
+        })
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("lcbuyer@example.com", mail.outbox[0].to)
+
+    def test_awarding_emails_the_winner_and_rejects_email_the_losers(self):
+        self._post_rfq()
+        requirement = Requirement.objects.get(title="Bracket")
+        winner = self.supplier
+        loser = self._maker("lcloser", capability="milling")
+        win_quote = Quote.objects.create(requirement=requirement, supplier=winner, quote_price="10.00")
+        lose_quote = Quote.objects.create(requirement=requirement, supplier=loser, quote_price="12.00")
+        mail.outbox.clear()
+        self.login(self.buyer)
+        with self.captureOnCommitCallbacks(execute=True):
+            self.client.post(reverse("quote-update-status", kwargs={"pk": win_quote.pk, "status": "Approved"}))
+        recipients_by_subject = {m.subject: set(m.to) for m in mail.outbox}
+        self.assertTrue(any("won" in s.lower() for s in recipients_by_subject))
+        self.assertIn("lcmaker@example.com", {to for s, tos in recipients_by_subject.items() if "won" in s.lower() for to in tos})
+        self.assertIn("lcloser@example.com", {to for s, tos in recipients_by_subject.items() if "update" in s.lower() for to in tos})
+
+    def test_explicit_rejection_emails_that_supplier(self):
+        self._post_rfq()
+        requirement = Requirement.objects.get(title="Bracket")
+        quote = Quote.objects.create(requirement=requirement, supplier=self.supplier, quote_price="10.00")
+        mail.outbox.clear()
+        self.login(self.buyer)
+        self.client.post(reverse("quote-update-status", kwargs={"pk": quote.pk, "status": "Rejected"}))
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("lcmaker@example.com", mail.outbox[0].to)
+
+    def _award(self):
+        self._post_rfq()
+        requirement = Requirement.objects.get(title="Bracket")
+        quote = Quote.objects.create(requirement=requirement, supplier=self.supplier, quote_price="10.00")
+        self.login(self.buyer)
+        with self.captureOnCommitCallbacks(execute=True):
+            self.client.post(reverse("quote-update-status", kwargs={"pk": quote.pk, "status": "Approved"}))
+        return Order.objects.get(requirement=requirement)
+
+    def test_order_status_changes_email_the_right_side(self):
+        order = self._award()
+        mail.outbox.clear()
+
+        self.login(self.maker)
+        self.client.post(reverse("order-update-status", kwargs={"billno": order.billno, "status": "in_production"}))
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("lcbuyer@example.com", mail.outbox[-1].to)
+
+        self.client.post(reverse("order-update-status", kwargs={"billno": order.billno, "status": "payment_pending"}))
+        self.assertEqual(len(mail.outbox), 2)
+        self.assertIn("lcbuyer@example.com", mail.outbox[-1].to)
+
+        self.login(self.buyer)
+        self.client.post(reverse("reauth"), {"password": "pass12345", "next": "/"})
+        self.client.post(reverse("order-update-status", kwargs={"billno": order.billno, "status": "paid"}))
+        self.assertEqual(len(mail.outbox), 3)
+        self.assertIn("lcmaker@example.com", mail.outbox[-1].to)
+
+        self.client.post(reverse("order-update-status", kwargs={"billno": order.billno, "status": "completed"}))
+        recipients = {to for m in mail.outbox[3:] for to in m.to}
+        self.assertEqual(recipients, {"lcbuyer@example.com", "lcmaker@example.com"})
+
+    def test_dispatch_emails_the_buyer_with_the_invoice_number(self):
+        order = self._award()
+        self.login(self.maker)
+        self.client.post(reverse("order-update-status", kwargs={"billno": order.billno, "status": "in_production"}))
+        mail.outbox.clear()
+        for _ in range(4):  # order confirmed -> material -> machining -> finishing & QC -> dispatched
+            self.client.post(reverse("order-production-advance", kwargs={"billno": order.billno}))
+        dispatch_emails = [m for m in mail.outbox if "shipped" in m.subject.lower()]
+        self.assertEqual(len(dispatch_emails), 1)
+        self.assertIn("lcbuyer@example.com", dispatch_emails[0].to)
+        from marketplace.models import OrderDocument
+        invoice = OrderDocument.objects.get(order=order, kind=OrderDocument.INVOICE)
+        self.assertIn(invoice.number, dispatch_emails[0].body)
 
 
 @DASHBOARD_TEST_STORAGES

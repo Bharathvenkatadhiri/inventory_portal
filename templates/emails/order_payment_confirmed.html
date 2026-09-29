@@ -1,0 +1,16 @@
+{% extends "emails/_base_email.html" %}
+{% block title %}Payment confirmed — MakeSetu{% endblock %}
+{% block preheader %}Payment confirmed for order #{{ order.billno }}{% endblock %}
+{% block body %}
+<p style="margin:0 0 16px;">Hi {{ supplier_name }},</p>
+<p style="margin:0 0 20px;">The buyer has confirmed payment on this order:</p>
+<table role="presentation" width="100%" style="margin:0 0 20px;background-color:#E6F4EC;border-radius:8px;">
+<tr><td style="padding:16px 20px;">
+<p style="margin:0;font-size:17px;font-weight:700;color:#11355C;">Order #{{ order.billno }} <span style="color:#56657A;font-weight:400;">— {{ requirement.title }}</span></p>
+</td></tr>
+</table>
+<p style="margin:0 0 20px;">You can proceed to dispatch.</p>
+<p style="margin:0 0 24px;">
+<a href="{{ url }}" style="display:inline-block;padding:12px 24px;background-color:#F57921;color:#FFFFFF;font-weight:700;text-decoration:none;border-radius:8px;">View order</a>
+</p>
+{% endblock %}

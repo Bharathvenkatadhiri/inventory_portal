@@ -4,6 +4,7 @@ from . import views
 
 urlpatterns = [
     path('register', views.register, name='register'),
+    path('verify-email', views.verify_email, name='verify-email'),
     # login_not_required must wrap the as_view() result, not decorate the
     # class itself — View.as_view() doesn't propagate class-level
     # attributes to the callable that LoginRequiredMiddleware inspects.

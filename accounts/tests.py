@@ -1,6 +1,7 @@
 import json
 
 from django.conf import settings
+from django.core import mail
 from django.core.cache import cache
 from django.test import TestCase, Client, override_settings
 from django.urls import reverse
@@ -164,12 +165,21 @@ class RegisterViewTests(TestCase):
         self.assertFalse(User.objects.filter(username="newbuyer").exists())
 
     def test_existing_user_without_profile_resumes_registration(self):
-        # Simulates step 1 having completed in an earlier visit, but the
-        # supplier/customer form (step 2) never being submitted.
-        User.objects.create_user(username="abandoned", email="abandoned@example.com", password="a-strong-passw0rd", role="manufacturer")
+        # Simulates step 1 having completed in an earlier visit and its
+        # email already verified, but the supplier/customer form (step 2)
+        # never being submitted.
+        User.objects.create_user(
+            username="abandoned", email="abandoned@example.com", password="a-strong-passw0rd", role="manufacturer",
+            email_verified=True,
+        )
         response = self.client.post(self.url, data=self._payload("abandoned", "abandoned@example.com", "supplier"))
         self.assertRedirects(response, reverse("register-supplier"))
         self.assertEqual(self.client.session["session_email"], "abandoned@example.com")
+
+    def test_resuming_an_unverified_account_is_sent_back_to_verify_its_email(self):
+        User.objects.create_user(username="halfdone", email="halfdone@example.com", password="a-strong-passw0rd", role="manufacturer")
+        response = self.client.post(self.url, data=self._payload("halfdone", "halfdone@example.com", "supplier"))
+        self.assertRedirects(response, reverse("verify-email"))
 
     def test_resuming_someone_elses_registration_needs_their_password(self):
         User.objects.create_user(username="victim", email="victim@example.com", password="their-own-passw0rd", role="manufacturer")
@@ -236,6 +246,112 @@ class RegisterViewTests(TestCase):
         for i in range(limit + 2):
             response = self.client.post(self.url, data=self._payload(f"newuser{i}", f"newuser{i}@example.com", "buyer"))
             self.assertEqual(response.status_code, 302)  # registration proceeds every time
+
+
+@override_settings(
+    # register_first.html and verify_email.html use {% static %}; see the
+    # identical note on CreateSupplierSecurityTests above.
+    STORAGES={
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    }
+)
+class EmailVerificationTests(TestCase):
+    """Registration now pauses at an OTP step between account creation and
+    the profile step (accounts.otp, accounts.views.verify_email)."""
+
+    def setUp(self):
+        cache.clear()
+        mail.outbox.clear()
+        self.url = reverse("register")
+
+    def _payload(self, username, email, account_type="buyer"):
+        return {
+            "username": username, "first_name": "Test", "last_name": "User",
+            "password1": "a-strong-passw0rd", "password2": "a-strong-passw0rd",
+            "email": email, "account_type": account_type,
+        }
+
+    def _register(self, username="otpuser", email="otpuser@example.com", account_type="buyer"):
+        return self.client.post(self.url, data=self._payload(username, email, account_type))
+
+    def _sent_code(self):
+        from accounts.models import EmailVerification
+        user = User.objects.get(email="otpuser@example.com")
+        otp_row = EmailVerification.objects.filter(user=user).latest("created_at")
+        # The code isn't stored in the clear; pull it back out of the email
+        # actually sent, the same way a real user would read it.
+        for line in mail.outbox[-1].body.splitlines():
+            line = line.strip()
+            if line.isdigit() and len(line) == 6:
+                return line
+        raise AssertionError(f"No 6-digit code found in email body: {mail.outbox[-1].body!r}")
+
+    def test_registering_sends_a_code_and_redirects_to_verify(self):
+        response = self._register()
+        self.assertRedirects(response, reverse("verify-email"))
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("otpuser@example.com", mail.outbox[0].to)
+        user = User.objects.get(email="otpuser@example.com")
+        self.assertFalse(user.email_verified)
+
+    def test_cannot_reach_the_profile_step_before_verifying(self):
+        self._register()
+        response = self.client.get(reverse("register-customer"))
+        self.assertRedirects(response, reverse("verify-email"))
+
+    def test_correct_code_verifies_and_moves_on_to_the_profile_step(self):
+        self._register()
+        code = self._sent_code()
+        response = self.client.post(reverse("verify-email"), {"code": code})
+        self.assertRedirects(response, reverse("register-customer"))
+        user = User.objects.get(email="otpuser@example.com")
+        self.assertTrue(user.email_verified)
+        # And the profile step is reachable now.
+        self.assertEqual(self.client.get(reverse("register-customer")).status_code, 200)
+
+    def test_wrong_code_is_rejected_and_does_not_verify(self):
+        self._register()
+        self._sent_code()
+        response = self.client.post(reverse("verify-email"), {"code": "000000"})
+        self.assertContains(response, "code isn")
+        user = User.objects.get(email="otpuser@example.com")
+        self.assertFalse(user.email_verified)
+
+    def test_too_many_wrong_attempts_locks_the_code(self):
+        from accounts.otp import MAX_ATTEMPTS
+        self._register()
+        code = self._sent_code()
+        for _ in range(MAX_ATTEMPTS):
+            self.client.post(reverse("verify-email"), {"code": "000000"})
+        response = self.client.post(reverse("verify-email"), {"code": code})  # even the real code, now locked
+        self.assertContains(response, "Too many incorrect attempts")
+        user = User.objects.get(email="otpuser@example.com")
+        self.assertFalse(user.email_verified)
+
+    def test_resend_issues_a_new_code_and_is_rate_limited(self):
+        from accounts.otp import RESEND_LIMIT
+        self._register()  # counts as the first of RESEND_LIMIT sends in the window
+        first_code = self._sent_code()
+        for _ in range(RESEND_LIMIT - 1):
+            self.client.post(reverse("verify-email"), {"action": "resend"})
+        self.assertEqual(len(mail.outbox), RESEND_LIMIT)
+        response = self.client.post(reverse("verify-email"), {"action": "resend"}, follow=True)
+        self.assertContains(response, "Too many codes requested")
+        self.assertEqual(len(mail.outbox), RESEND_LIMIT)  # the throttled attempt sent nothing
+        # The very first code no longer verifies once a new one replaces it.
+        response = self.client.post(reverse("verify-email"), {"code": first_code})
+        self.assertContains(response, "code isn")
+
+    def test_verify_email_without_a_session_user_sends_back_to_register(self):
+        self.assertRedirects(self.client.get(reverse("verify-email")), reverse("register"))
+
+    def test_already_verified_user_skips_straight_past_the_otp_page(self):
+        self._register()
+        user = User.objects.get(email="otpuser@example.com")
+        user.email_verified = True
+        user.save(update_fields=["email_verified"])
+        self.assertRedirects(self.client.get(reverse("verify-email")), reverse("register-customer"))
 
 
 class GSTINFormatTests(TestCase):
@@ -401,6 +517,7 @@ class CreateSupplierSecurityTests(TestCase):
         self.client = Client()
         self.user = User.objects.create_user(
             username="unverified", email="unverified@example.com", password="pass12345", role="manufacturer",
+            email_verified=True,  # this class tests the GSTIN check, not email verification
         )
         session = self.client.session
         session["session_user_id"] = self.user.id
@@ -705,7 +822,7 @@ class BuyerRegistrationBindingTests(TestCase):
     every account without a profile, and trusted whichever one was posted."""
 
     def setUp(self):
-        self.new_user = User.objects.create_user(username="fresh", email="fresh@example.com", password="pass12345")
+        self.new_user = User.objects.create_user(username="fresh", email="fresh@example.com", password="pass12345", email_verified=True)
         self.victim = User.objects.create_user(username="victim2", email="victim2@example.com", password="pass12345")
         session = self.client.session
         session["session_user_id"] = self.new_user.id
@@ -783,7 +900,7 @@ class SupplierRegistrationBindingTests(TestCase):
 
     def test_posted_user_is_ignored(self):
         cache.clear()
-        me = User.objects.create_user(username="mfgme", email="mfgme@example.com", password="pass12345", role="manufacturer")
+        me = User.objects.create_user(username="mfgme", email="mfgme@example.com", password="pass12345", role="manufacturer", email_verified=True)
         someone = User.objects.create_user(username="mfgother", email="mfgother@example.com", password="pass12345", role="manufacturer")
         company = Company.objects.create(
             legal_name="Bound Legal Pvt Ltd", trade_name="Bound Trade", gstin=ACTIVE_GSTIN, gst_status="ACTIVE",

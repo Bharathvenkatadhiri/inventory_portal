@@ -1,0 +1,17 @@
+{% extends "emails/_base_email.html" %}
+{% block title %}Order completed — MakeSetu{% endblock %}
+{% block preheader %}Order #{{ order.billno }} is complete{% endblock %}
+{% block body %}
+<p style="margin:0 0 16px;">Hi,</p>
+<p style="margin:0 0 20px;">This order is now marked complete:</p>
+<table role="presentation" width="100%" style="margin:0 0 20px;background-color:#E6F4EC;border-radius:8px;">
+<tr><td style="padding:16px 20px;">
+<p style="margin:0 0 6px;font-size:17px;font-weight:700;color:#11355C;">Order #{{ order.billno }} <span style="color:#56657A;font-weight:400;">— {{ requirement.title }}</span></p>
+<p style="margin:0;color:#56657A;font-size:13px;">{% if recipient_is_buyer %}Manufacturer: {{ supplier_name }}{% else %}Buyer: {{ buyer_name }}{% endif %}</p>
+</td></tr>
+</table>
+{% if recipient_is_buyer %}<p style="margin:0 0 20px;">Take a moment to rate {{ supplier_name }} — it helps other buyers on MakeSetu.</p>{% endif %}
+<p style="margin:0 0 24px;">
+<a href="{{ url }}" style="display:inline-block;padding:12px 24px;background-color:#F57921;color:#FFFFFF;font-weight:700;text-decoration:none;border-radius:8px;">View order{% if recipient_is_buyer %} &amp; rate{% endif %}</a>
+</p>
+{% endblock %}

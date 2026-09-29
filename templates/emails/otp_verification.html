@@ -1,0 +1,12 @@
+{% extends "emails/_base_email.html" %}
+{% block title %}Verify your email — MakeSetu{% endblock %}
+{% block preheader %}Your verification code is {{ code }}{% endblock %}
+{% block body %}
+<p style="margin:0 0 16px;">Hi {{ name }},</p>
+<p style="margin:0 0 20px;">Use this code to verify your email address and continue setting up your MakeSetu account:</p>
+<p style="margin:0 0 20px;text-align:center;">
+<span style="display:inline-block;padding:14px 28px;background-color:#FEF1E6;color:#B6530F;font-size:28px;font-weight:800;letter-spacing:6px;border-radius:8px;">{{ code }}</span>
+</p>
+<p style="margin:0 0 8px;color:#56657A;font-size:13px;">This code expires in {{ ttl_minutes }} minutes.</p>
+<p style="margin:0;color:#56657A;font-size:13px;">If you didn't try to create a MakeSetu account, you can ignore this email — nothing will be set up without it.</p>
+{% endblock %}

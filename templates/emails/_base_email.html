@@ -1,0 +1,40 @@
+{% comment %}
+Shared wrapper for every HTML email. Email clients ignore external and
+often <style> CSS, so everything here is inline. A child template fills
+{% block preheader %} (the hidden preview snippet) and {% block body %}
+(the actual message, as a series of <p>/<div> — no layout assumptions
+beyond what's set up here).
+{% endcomment %}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}MakeSetu{% endblock %}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#F3F5F8;font-family:'Segoe UI',Helvetica,Arial,sans-serif;">
+<div style="display:none;max-height:0;overflow:hidden;">{% block preheader %}{% endblock %}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F3F5F8;padding:32px 16px;">
+<tr><td align="center">
+<table role="presentation" width="100%" style="max-width:560px;background-color:#FFFFFF;border-radius:12px;overflow:hidden;border:1px solid #DCE2EA;">
+<tr>
+<td style="background-color:#11355C;padding:20px 28px;">
+<span style="font-size:20px;font-weight:800;color:#FFFFFF;">Make<span style="color:#F7893A;">Setu</span></span>
+</td>
+</tr>
+<tr>
+<td style="padding:32px 28px;color:#0F1E33;font-size:15px;line-height:1.6;">
+{% block body %}{% endblock %}
+</td>
+</tr>
+<tr>
+<td style="padding:20px 28px;background-color:#F3F5F8;color:#56657A;font-size:12px;line-height:1.5;">
+This is an automated message from MakeSetu. If something here looks wrong, contact us at
+<a href="mailto:support@makesetu.com" style="color:#B6530F;">support@makesetu.com</a>.
+</td>
+</tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>

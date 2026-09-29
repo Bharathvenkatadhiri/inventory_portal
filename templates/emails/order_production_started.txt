@@ -1,0 +1,13 @@
+{% autoescape off %}Hi {{ buyer_name }},
+
+{{ supplier_name }} has started production on your order:
+
+    Order #{{ order.billno }} — {{ requirement.title }}
+
+Track progress and updates here:
+
+    {{ url }}
+
+Thanks,
+The MakeSetu Team
+{% endautoescape %}

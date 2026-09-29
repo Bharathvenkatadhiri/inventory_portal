@@ -29,7 +29,7 @@ from django_fsm import TransitionNotAllowed
 
 from accounts.models import ManufacturerProfile, ConsumerProfile
 
-from . import documents, reports, search, services
+from . import documents, emails, reports, search, services
 from .models import (
     Requirement, RequirementPart, Quote, Order,
     RFQDecline, RequirementNDAAcceptance,
@@ -316,6 +316,7 @@ class RequirementCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView)
                 formset.save()
                 _sync_part_count(requirement)
                 logger.info("Requirement #%s created by %s", requirement.pk, request.user)
+                emails.notify_new_rfq(requirement)
                 messages.success(request, self.success_message)
                 return redirect(self.success_url)
             # Parts were invalid — undo the just-created requirement and re-show the form.
@@ -717,6 +718,8 @@ class QuoteCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView):
         quote.is_draft = request.POST.get('action') == 'draft'
         quote.save()
         logger.info("Quote #%s submitted for requirement #%s by %s", quote.pk, requirement.pk, request.user)
+        if not quote.is_draft:
+            emails.notify_quote_submitted(quote)
         messages.success(request, "Quote saved as draft." if quote.is_draft else self.success_message)
         if getattr(request, 'htmx', False):
             quotes = services.annotate_quote_badges(Quote.objects.filter(requirement=requirement, is_deleted=False))
@@ -771,6 +774,7 @@ class QuoteUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
 
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
+        was_draft = self.object.is_draft  # captured before form binding overwrites it below
         form = self.get_form()
         if not form.is_valid():
             return self.render_to_response(self.get_context_data(form=form))
@@ -782,9 +786,14 @@ class QuoteUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
             quote.revision_requested_at = None
             quote.revision_note = ''
             quote.save()
+            emails.notify_quote_submitted(quote)
             messages.success(request, "Revised quote sent to the buyer.")
             return redirect(reverse('requirement', kwargs={'pk': quote.requirement.pk}))
         quote.save()
+        if was_draft and not quote.is_draft:
+            # A draft going out for the first time — same event as a
+            # fresh submission, from the buyer's side.
+            emails.notify_quote_submitted(quote)
         messages.success(request, "Quote saved as draft." if quote.is_draft else self.success_message)
         return redirect(reverse('requirement', kwargs={'pk': quote.requirement.pk}))
 
@@ -850,6 +859,7 @@ class QuoteStatusUpdateView(LoginRequiredMixin, View):
             quote.decided_at = timezone.now()
             quote.save()
             logger.info("Quote #%s rejected by %s", quote.pk, request.user)
+            emails.notify_quote_not_selected(quote)
             messages.success(request, f"Quote from {quote.supplier.companyname or quote.supplier} rejected.")
 
         if getattr(request, 'htmx', False):
@@ -931,11 +941,13 @@ class RequirementStatusUpdateView(LoginRequiredMixin, View):
             if order is not None and order.status == 'quote_selected':
                 order.start_production(note="Supplier started production")
                 order.save()
+                emails.notify_order_status(order, order.status)
             messages.success(request, "Production started.")
         elif status == 'Completed' and requirement.status == 'Production':
             if order is not None and order.status == 'quote_selected':
                 order.start_production(note="Supplier started production")
                 order.save()
+                emails.notify_order_status(order, order.status)
             requirement.status = 'Completed'
             requirement.save()
             messages.success(request, "RFQ marked completed.")
@@ -1030,6 +1042,7 @@ class OrderProductionAdvanceView(LoginRequiredMixin, View):
             messages.success(request, f"Marked '{order.get_production_stage_display()}' complete.")
         if advanced and order.production_stage == 'dispatched':
             invoice = documents.issue_invoice(order)
+            emails.notify_order_dispatched(order, invoice)
             messages.success(request, f"Tax invoice {invoice.number} issued to the buyer.")
             if getattr(request, 'htmx', False):
                 # The invoice appears in the Documents card, outside the swapped tracker.
@@ -1130,6 +1143,7 @@ class OrderStatusUpdateView(LoginRequiredMixin, View):
                 order.save()
                 services.sync_after_order_transition(order)
                 logger.info("Order #%s -> %s by %s", order.billno, order.status, request.user)
+                emails.notify_order_status(order, order.status)
                 messages.success(request, f"Order moved to {order.get_status_display()}.")
             except TransitionNotAllowed:
                 logger.warning(
