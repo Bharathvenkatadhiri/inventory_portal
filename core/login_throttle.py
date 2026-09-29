@@ -39,6 +39,18 @@ def ip_failure_count(request):
     return cache.get(_ip_key(request), 0)
 
 
+def registration_hint_allowed(request):
+    """Whether a registration attempt may say plainly that the email
+    already has an account. Shares login's own per-IP counter and window
+    (and LOGIN_UNREGISTERED_HINT_LIMIT, the same cap login's "not
+    registered" hint uses) so an attacker can't just switch from the
+    login form to the registration form to keep learning which emails
+    are registered — each check here spends from the same budget a
+    failed login would. Only call this where a matching account was
+    actually found; a genuinely new email should never consume it."""
+    return _increment(_ip_key(request)) <= settings.LOGIN_UNREGISTERED_HINT_LIMIT
+
+
 def _increment(key):
     # add() only sets the key if it's missing, so the window starts at the
     # first failure and isn't extended by later ones.
@@ -48,6 +60,22 @@ def _increment(key):
     except ValueError:  # expired between add() and incr()
         cache.set(key, 1, timeout=settings.LOGIN_FAILURE_WINDOW_SECONDS)
         return 1
+
+
+def password_reset_allowed(request, email):
+    """Whether a password-reset email may be sent. Django's reset view has
+    no limit of its own, so anyone could flood a buyer's or supplier's
+    inbox with reset emails, or burn through the sending quota. Counted
+    per IP and per email in the same fixed window as login failures;
+    every request counts, whether or not the email has an account, so the
+    limit reveals nothing either."""
+    ip_count = _increment(f"pwreset:ip:{request.META.get('REMOTE_ADDR', 'unknown')}")
+    email_count = 0
+    if email:
+        digest = hashlib.sha256(email.strip().lower().encode()).hexdigest()
+        email_count = _increment(f"pwreset:email:{digest}")
+    return (ip_count <= settings.PASSWORD_RESET_LIMIT_PER_IP
+            and email_count <= settings.PASSWORD_RESET_LIMIT_PER_EMAIL)
 
 
 def record_failure(request, email):

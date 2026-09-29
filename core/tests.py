@@ -1,4 +1,7 @@
 import io
+import os
+import subprocess
+import sys
 
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -68,3 +71,76 @@ class ValidateUploadTests(TestCase):
         self.assertFalse(is_new_upload(existing))
         self.assertFalse(is_new_upload(None))
         self.assertFalse(is_new_upload(False))
+
+
+class ProductionStorageGuardTests(TestCase):
+    """Without a bucket configured, uploads fall back to local disk served
+    unsigned from /media/ — fine for local dev, but with DEBUG=False that
+    means RFQ files and guessable purchase-order/invoice filenames become
+    fetchable by anyone with the path. core/settings.py now refuses to
+    start rather than fall back to that silently.
+
+    The check runs once at settings-module import time, before this test
+    process's own DEBUG=True even applies, so it can't be exercised with
+    override_settings (which only patches an already-loaded settings
+    object) — each case boots a fresh interpreter instead."""
+
+    def _boot(self, **env_overrides):
+        env = os.environ.copy()
+        # CI sets the opt-out for its own run; each case here decides it.
+        env["ALLOW_LOCAL_MEDIA_STORAGE"] = "False"
+        env.update({k: str(v) for k, v in env_overrides.items()})
+        return subprocess.run(
+            [sys.executable, "-c", "import django; django.setup()"],
+            env=env, capture_output=True, text=True, timeout=30,
+        )
+
+    def test_refuses_to_start_without_a_bucket_in_production(self):
+        result = self._boot(DEBUG="False", AWS_STORAGE_BUCKET_NAME="")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("AWS_STORAGE_BUCKET_NAME is required", result.stderr)
+
+    def test_starts_fine_in_production_with_a_bucket_configured(self):
+        result = self._boot(DEBUG="False", AWS_STORAGE_BUCKET_NAME="prod-bucket")
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_dev_mode_is_unaffected_without_a_bucket(self):
+        result = self._boot(DEBUG="True", AWS_STORAGE_BUCKET_NAME="")
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_ci_can_opt_out_explicitly(self):
+        # CI runs production settings without a bucket (.github/workflows/ci.yml).
+        result = self._boot(DEBUG="False", AWS_STORAGE_BUCKET_NAME="", ALLOW_LOCAL_MEDIA_STORAGE="True")
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+
+class EmailBackendTests(TestCase):
+    """The backend must return None on any failure (never raise, which
+    leaked "no such user" vs "wrong password"), and pay for a password hash
+    even for an unknown email so timing doesn't reveal registration."""
+
+    def setUp(self):
+        User.objects.create_user(username="backend", email="backend@example.com", password="right-password")
+
+    def test_failures_return_none_instead_of_raising(self):
+        from django.contrib.auth import authenticate
+        self.assertIsNone(authenticate(username="nobody@example.com", password="x"))
+        self.assertIsNone(authenticate(username="backend@example.com", password="wrong"))
+        self.assertIsNotNone(authenticate(username="backend@example.com", password="right-password"))
+
+    def test_unknown_email_still_runs_the_password_hasher(self):
+        from unittest import mock
+        from django.contrib.auth import authenticate
+        from django.contrib.auth.hashers import make_password
+        with mock.patch("django.contrib.auth.base_user.make_password", wraps=make_password) as hasher:
+            authenticate(username="nobody@example.com", password="x")
+        self.assertTrue(hasher.called)
+
+    def test_username_is_not_a_second_way_in(self):
+        from django.contrib.auth import authenticate
+        self.assertIsNone(authenticate(username="backend", password="right-password"))
+
+    def test_inactive_users_cannot_sign_in(self):
+        from django.contrib.auth import authenticate
+        User.objects.filter(email="backend@example.com").update(is_active=False)
+        self.assertIsNone(authenticate(username="backend@example.com", password="right-password"))

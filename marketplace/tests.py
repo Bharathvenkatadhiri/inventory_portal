@@ -11,7 +11,7 @@ from django.utils import timezone
 from core.models import User
 from accounts.models import ConsumerProfile, ManufacturerProfile, ManufacturingTech, MaterialCapability
 from marketplace import services
-from marketplace.models import Requirement, RequirementPart, Quote, Order, OrderEvent, MessageThread, Message, RFQDecline, RequirementAmendment, AmendmentResponse, SupplierReview
+from marketplace.models import Requirement, RequirementPart, Quote, Order, OrderEvent, MessageThread, Message, RFQDecline, RequirementAmendment, AmendmentResponse, SupplierReview, RequirementNDAAcceptance
 
 # See homepage/tests.py's LoginViewTests for why: templates using {% static %}
 # need this override under `manage.py test`'s settings — the manifest
@@ -590,6 +590,44 @@ class OwnershipAndAwardTests(TestCase):
         self.login(self.rival)
         self.assertEqual(self.client.get(reverse("requirement", kwargs={"pk": self.requirement.pk})).status_code, 200)
 
+    def _late_maker(self):
+        # A manufacturer with no quote and no decline on self.requirement —
+        # never in scope for it once it's no longer open.
+        user = User.objects.create_user(username="latemaker", email="latemaker@example.com", password="pass12345", role="manufacturer")
+        ManufacturerProfile.objects.create(
+            user=user, companyname="Latecomer", phone="8500000099", address="1 Rd", city="Pune", state="MH",
+            country="India", amount_of_employees="10-20", turnover_per_year="<1", email="latemaker@example.com",
+        )
+        return user
+
+    def test_awarded_rfq_is_hidden_by_direct_url_from_manufacturers_who_never_quoted(self):
+        late_maker = self._late_maker()
+        self.login(late_maker)
+        url = reverse("requirement", kwargs={"pk": self.requirement.pk})
+        poll_url = reverse("live-quotes", kwargs={"pk": self.requirement.pk})
+        self.assertEqual(self.client.get(url).status_code, 200)  # still open: visible
+        self.award()
+        self.login(late_maker)
+        self.assertEqual(self.client.get(url).status_code, 404)
+        self.assertEqual(self.client.get(poll_url, HTTP_HX_REQUEST="true").status_code, 404)
+
+    def test_a_supplier_who_quoted_keeps_access_after_losing(self):
+        self.award()  # awards self.quote (self.supplier); self.rival_quote loses
+        self.login(self.rival)
+        self.assertEqual(self.client.get(reverse("requirement", kwargs={"pk": self.requirement.pk})).status_code, 200)
+
+    def test_deleted_rfq_is_hidden_from_its_own_buyer_and_manufacturers_but_not_staff(self):
+        self.requirement.is_deleted = True
+        self.requirement.save()
+        url = reverse("requirement", kwargs={"pk": self.requirement.pk})
+        self.login(self.buyer)
+        self.assertEqual(self.client.get(url).status_code, 404)
+        self.login(self.maker)
+        self.assertEqual(self.client.get(url).status_code, 404)
+        staff = User.objects.create_user(username="rfqstaff", email="rfqstaff@example.com", password="pass12345", is_staff=True)
+        self.login(staff)
+        self.assertEqual(self.client.get(url).status_code, 200)
+
     def test_awarded_rfq_can_no_longer_be_edited(self):
         self.award()
         self.assertEqual(self.client.get(reverse("edit-requirement", kwargs={"pk": self.requirement.pk})).status_code, 403)
@@ -642,6 +680,89 @@ class OwnershipAndAwardTests(TestCase):
         self.assertEqual(self.client.get(url).status_code, 404)
         self.login(self.maker)
         self.assertEqual(self.client.get(url).status_code, 200)
+
+    def test_a_draft_is_hidden_from_the_buyer_but_shown_to_its_supplier(self):
+        self.rival_quote.is_draft = True
+        self.rival_quote.save()
+        url = reverse("requirement", kwargs={"pk": self.requirement.pk})
+        self.login(self.buyer)
+        page = self.client.get(url)
+        self.assertNotContains(page, "Rival Maker")
+        self.assertNotContains(page, "Best price")  # a lone submitted quote has nothing to beat
+        self.login(self.rival)
+        self.assertContains(self.client.get(url), "Rival Maker")
+
+    def _expire_recent_auth(self):
+        from core.session_security import AUTH_AT
+        session = self.client.session
+        session[AUTH_AT] = 0
+        session.save()
+
+    def test_awarding_needs_a_recently_entered_password(self):
+        self.login(self.buyer)
+        self._expire_recent_auth()
+        url = reverse("quote-update-status", kwargs={"pk": self.quote.pk, "status": "Approved"})
+        response = self.client.post(url)
+        self.assertTrue(response["Location"].startswith(reverse("reauth")))
+        self.assertFalse(Order.objects.filter(requirement=self.requirement).exists())
+        # htmx gets an HX-Redirect instead of a redirect swapped into the fragment.
+        response = self.client.post(url, HTTP_HX_REQUEST="true")
+        self.assertTrue(response["HX-Redirect"].startswith(reverse("reauth")))
+        self.client.post(reverse("reauth"), {"password": "pass12345", "next": "/"})
+        self.client.post(url)
+        self.assertTrue(Order.objects.filter(requirement=self.requirement).exists())
+
+    def test_rejecting_a_quote_does_not_need_reauth(self):
+        self.login(self.buyer)
+        self._expire_recent_auth()
+        self.client.post(reverse("quote-update-status", kwargs={"pk": self.rival_quote.pk, "status": "Rejected"}))
+        self.rival_quote.refresh_from_db()
+        self.assertEqual(self.rival_quote.status, "Rejected")
+
+    def test_confirming_payment_needs_a_recently_entered_password(self):
+        self.award()
+        order = Order.objects.get(requirement=self.requirement)
+        self.login(self.maker)
+        self.client.post(reverse("order-update-status", kwargs={"billno": order.billno, "status": "in_production"}))
+        self.client.post(reverse("order-update-status", kwargs={"billno": order.billno, "status": "payment_pending"}))
+        self.login(self.buyer)
+        self._expire_recent_auth()
+        response = self.client.post(reverse("order-update-status", kwargs={"billno": order.billno, "status": "paid"}))
+        self.assertTrue(response["Location"].startswith(reverse("reauth")))
+        order.refresh_from_db()
+        self.assertEqual(order.status, "payment_pending")
+
+    def test_manufacturer_sees_only_their_own_quote_card_and_a_count_of_others(self):
+        self.login(self.maker)
+        page = self.client.get(reverse("requirement", kwargs={"pk": self.requirement.pk}))
+        self.assertContains(page, "Own Maker")
+        self.assertNotContains(page, "Rival Maker")
+        self.assertContains(page, "+1 other quote")
+
+    def test_manufacturer_never_sees_best_price_or_fastest_badges_even_on_their_own_card(self):
+        # self.quote (Own Maker, 100.00) undercuts self.rival_quote (Rival
+        # Maker, 120.00) and would earn the Best price badge on the
+        # buyer's view — a supplier must not learn that about themselves.
+        self.login(self.maker)
+        page = self.client.get(reverse("requirement", kwargs={"pk": self.requirement.pk}))
+        self.assertNotContains(page, "Best price")
+        self.login(self.buyer)
+        page = self.client.get(reverse("requirement", kwargs={"pk": self.requirement.pk}))
+        self.assertContains(page, "Best price")
+
+    def test_buyer_sees_every_quote_card(self):
+        self.login(self.buyer)
+        page = self.client.get(reverse("requirement", kwargs={"pk": self.requirement.pk}))
+        self.assertContains(page, "Own Maker")
+        self.assertContains(page, "Rival Maker")
+
+    def test_manufacturer_without_a_quote_sees_a_private_count_not_cards(self):
+        late_maker = self._late_maker()
+        self.login(late_maker)
+        page = self.client.get(reverse("requirement", kwargs={"pk": self.requirement.pk}))
+        self.assertNotContains(page, "Own Maker")
+        self.assertNotContains(page, "Rival Maker")
+        self.assertContains(page, "2 manufacturers quoted")
 
     def test_selecting_a_quote_requires_post_by_the_rfq_owner(self):
         url = reverse("quote-update-status", kwargs={"pk": self.quote.pk, "status": "Approved"})
@@ -833,6 +954,103 @@ class OwnershipAndAwardTests(TestCase):
         services.mark_notifications_read(self.buyer, [question_key])
         refreshed = services.cached_notification_feed(self.buyer)
         self.assertFalse(next(e for e in refreshed if e["key"] == question_key)["unread"])
+
+
+@DASHBOARD_TEST_STORAGES
+class NDAGateTests(TestCase):
+    """nda_required used to be stored and shown but never enforced: the
+    master file and every part's description/drawing were reachable by
+    any manufacturer who could open the RFQ at all. Now they're hidden
+    from a manufacturer until RequirementNDAAcceptance records they've
+    accepted; the buyer and staff always see everything."""
+
+    def setUp(self):
+        self.buyer = User.objects.create_user(username="ndabuyer", email="ndabuyer@example.com", password="pass12345")
+        ConsumerProfile.objects.create(
+            user=self.buyer, Name="NDA Buyer", type_of_business="electronics", city="Pune", state="MH",
+            country="India", phone="9600000001", email="ndabuyer@example.com", EORI_number="EN", VAT_number="VN",
+        )
+        self.maker = User.objects.create_user(username="ndamaker", email="ndamaker@example.com", password="pass12345", role="manufacturer")
+        self.supplier = ManufacturerProfile.objects.create(
+            user=self.maker, companyname="NDA Maker", phone="8600000001", address="1 Rd", city="Pune", state="MH",
+            country="India", amount_of_employees="10-20", turnover_per_year="<1", email="ndamaker@example.com",
+        )
+        self.requirement = Requirement.objects.create(
+            user=self.buyer, title="Confidential bracket", rfq_desc="d", quote_currency="INR", request_reason="other",
+            nda_required=True, end_date=timezone.now() + timedelta(days=5),
+            file=SimpleUploadedFile("spec.pdf", b"%PDF-secret", content_type="application/pdf"),
+        )
+        RequirementPart.objects.create(
+            requirement=self.requirement, part_name="Bracket", Part_desc="Secret geometry", technology="Milling",
+            Material="Aluminium", quantity=10, file=SimpleUploadedFile("part.pdf", b"%PDF-secret-part", content_type="application/pdf"),
+        )
+        self.url = reverse("requirement", kwargs={"pk": self.requirement.pk})
+        self.accept_url = reverse("requirement-accept-nda", kwargs={"pk": self.requirement.pk})
+
+    def login(self, user):
+        self.client.login(username=user.email, password="pass12345")
+
+    def tearDown(self):
+        self.requirement.file.delete(save=False)
+        for part in self.requirement.requirement_parts.all():
+            if part.file:
+                part.file.delete(save=False)
+
+    def test_manufacturer_sees_the_summary_but_not_files_or_part_details_before_accepting(self):
+        self.login(self.maker)
+        page = self.client.get(self.url)
+        self.assertContains(page, "Confidential bracket")  # the summary
+        self.assertContains(page, "This RFQ requires an NDA")
+        self.assertNotContains(page, "spec.pdf")
+        self.assertNotContains(page, "Secret geometry")
+        self.assertNotContains(page, "part.pdf")
+
+    def test_accepting_the_nda_requires_post_and_is_recorded_once(self):
+        self.login(self.maker)
+        self.assertEqual(self.client.get(self.accept_url).status_code, 405)
+        self.client.post(self.accept_url)
+        self.client.post(self.accept_url)  # idempotent
+        self.assertEqual(RequirementNDAAcceptance.objects.filter(requirement=self.requirement, supplier=self.supplier).count(), 1)
+
+    def test_manufacturer_sees_files_and_part_details_after_accepting(self):
+        self.login(self.maker)
+        self.client.post(self.accept_url)
+        page = self.client.get(self.url)
+        self.assertContains(page, "Download file")
+        self.assertContains(page, "Secret geometry")
+        self.assertContains(page, "Accepted")
+        self.assertNotContains(page, "This RFQ requires an NDA")
+
+    def test_buyer_and_staff_always_see_everything_regardless_of_nda(self):
+        self.login(self.buyer)
+        page = self.client.get(self.url)
+        self.assertContains(page, "Download file")
+        self.assertContains(page, "Secret geometry")
+        self.assertNotContains(page, "This RFQ requires an NDA")
+
+        staff = User.objects.create_user(username="ndastaff", email="ndastaff@example.com", password="pass12345", is_staff=True)
+        self.login(staff)
+        page = self.client.get(self.url)
+        self.assertContains(page, "Download file")
+        self.assertContains(page, "Secret geometry")
+
+    def test_a_buyer_cannot_accept_an_nda_on_their_own_or_anyone_elses_rfq(self):
+        self.login(self.buyer)
+        self.assertEqual(self.client.post(self.accept_url).status_code, 404)
+
+    def test_quote_form_hides_drawings_and_part_notes_until_the_nda_is_accepted(self):
+        # The quote form was a second route to the same files.
+        self.login(self.maker)
+        url = reverse("new-quote", kwargs={"pk": self.requirement.pk})
+        page = self.client.get(url)
+        self.assertContains(page, "This RFQ requires an NDA")
+        self.assertNotContains(page, "Secret geometry")
+        self.assertNotContains(page, self.requirement.file.url)
+        self.client.post(self.accept_url)
+        page = self.client.get(url)
+        self.assertContains(page, "Secret geometry")
+        self.assertContains(page, self.requirement.file.url)
+        self.assertNotContains(page, "This RFQ requires an NDA")
 
 
 @DASHBOARD_TEST_STORAGES

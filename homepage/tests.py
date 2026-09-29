@@ -391,3 +391,45 @@ class HttpsHardeningTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Strict-Transport-Security"], "max-age=3600")
         self.assertEqual(response["X-Frame-Options"], "DENY")
+
+
+@DASHBOARD_TEST_STORAGES
+class AuthSurfaceHardeningTests(TestCase):
+    """Login paths that used to sidestep core/login_throttle, the
+    password-reset rate limit, and session binding."""
+
+    def setUp(self):
+        cache.clear()
+        self.user = User.objects.create_user(username="authsurf", email="authsurf@example.com", password="correct-horse-battery")
+
+    def test_admin_login_goes_through_the_throttled_login_page(self):
+        response = self.client.get("/admin/login/?next=/admin/")
+        self.assertRedirects(response, reverse("login") + "?next=%2Fadmin%2F", fetch_redirect_response=False)
+
+    def test_admin_login_drops_an_off_site_next(self):
+        response = self.client.get("/admin/login/?next=https://evil.example/")
+        self.assertRedirects(response, reverse("login") + "?next=%2Fadmin%2F", fetch_redirect_response=False)
+
+    def test_failed_login_keeps_a_safe_next(self):
+        response = self.client.post(reverse("login"), {"username": "authsurf@example.com", "password": "nope", "next": "/admin/"})
+        self.assertRedirects(response, reverse("login") + "?next=%2Fadmin%2F", fetch_redirect_response=False)
+
+    def test_password_reset_emails_are_rate_limited_without_revealing_it(self):
+        from django.conf import settings
+        from django.core import mail
+        for _ in range(settings.PASSWORD_RESET_LIMIT_PER_EMAIL + 3):
+            response = self.client.post(reverse("password_reset"), {"email": "authsurf@example.com"})
+            self.assertRedirects(response, reverse("password_reset_done"), fetch_redirect_response=False)
+        self.assertEqual(len(mail.outbox), settings.PASSWORD_RESET_LIMIT_PER_EMAIL)
+
+    def test_session_is_logged_out_when_replayed_from_another_browser(self):
+        self.client.login(username="authsurf@example.com", password="correct-horse-battery")
+        self.assertEqual(self.client.get(reverse("profile")).status_code, 200)
+        response = self.client.get(reverse("profile"), HTTP_USER_AGENT="Stolen-Cookie-Browser/1.0")
+        self.assertRedirects(response, reverse("login"), fetch_redirect_response=False)
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_reauth_rejects_an_off_site_next(self):
+        self.client.login(username="authsurf@example.com", password="correct-horse-battery")
+        response = self.client.post(reverse("reauth"), {"password": "correct-horse-battery", "next": "https://evil.example/"})
+        self.assertRedirects(response, reverse("home"), fetch_redirect_response=False)

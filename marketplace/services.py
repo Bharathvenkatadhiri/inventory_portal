@@ -107,6 +107,39 @@ def open_requirements_for(manufacturer):
     ).exclude(quote__is_selected=True).distinct()
 
 
+def visible_requirements_for(user):
+    """RFQs `user` may open directly: a buyer's own (never deleted); for a
+    manufacturer, the ones still open to quote on, any they've already
+    quoted (won, lost or withdrawn), and any recently awarded to someone
+    else that they could have quoted on (awarded_elsewhere_for's own
+    window and exclusions — this is what keeps the "closed, awarded
+    elsewhere" notification's link working instead of 404ing); never
+    deleted. Everything not deleted for staff (a deleted RFQ is handled
+    outside this scope). This is the shared scope behind search and the
+    RFQ inbox/list; the RFQ page's own direct-URL check uses it too, for
+    everyone but staff — without it, any signed-in manufacturer could open
+    any RFQ by guessing its id: deleted, NDA'd, expired, or long since
+    awarded to someone else who isn't them, and download its files."""
+    if user.is_staff:
+        return Requirement.objects.filter(is_deleted=False)
+    if getattr(user, 'role', None) == 'manufacturer':
+        supplier = ManufacturerProfile.objects.filter(user=user).first()
+        if supplier is None:
+            return Requirement.objects.none()
+        open_ids = open_requirements_for(supplier).values('pk')
+        closed_elsewhere_ids = awarded_elsewhere_for(supplier).values('pk')
+        # .distinct(): `quote__supplier` joins the quote table, so an RFQ
+        # with more than one quote (from this supplier or anyone else)
+        # would otherwise come back once per matching quote row — harmless
+        # in a list, but get_object_or_404(qs, pk=pk) raises
+        # MultipleObjectsReturned on the very RFQs suppliers most need to
+        # open.
+        return Requirement.objects.filter(
+            Q(pk__in=open_ids) | Q(quote__supplier=supplier) | Q(pk__in=closed_elsewhere_ids), is_deleted=False,
+        ).distinct()
+    return Requirement.objects.filter(user=user, is_deleted=False)
+
+
 def totals_by_currency(pairs):
     """Sums (currency, amount) pairs per currency, largest first. Each RFQ
     has its own quote currency, so amounts must never be added across

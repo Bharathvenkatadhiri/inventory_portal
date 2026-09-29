@@ -31,6 +31,10 @@ jobs:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/marketplace
       # Tests talk plain HTTP to the test client; don't redirect them to HTTPS.
       SECURE_SSL_REDIRECT: "False"
+      # Production settings refuse to start without an S3 bucket
+      # (core/settings.py). CI has none and uses local disk for uploads, so
+      # opt out explicitly here. Never set this on a real deployment.
+      ALLOW_LOCAL_MEDIA_STORAGE: "True"
 
     steps:
       - uses: actions/checkout@v4

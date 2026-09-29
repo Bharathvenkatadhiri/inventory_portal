@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 import environ
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -46,6 +47,7 @@ MIDDLEWARE = [
     "django_htmx.middleware.HtmxMiddleware",
     "core.middleware.HtmxMessagesMiddleware",
     "core.middleware.GlobalSearchMiddleware",
+    "core.session_security.SessionBindingMiddleware",
     "django.contrib.auth.middleware.LoginRequiredMiddleware",
 ]
 
@@ -135,6 +137,22 @@ if AWS_STORAGE_BUCKET_NAME:
     AWS_S3_FILE_OVERWRITE = False
     STORAGES["default"] = {"BACKEND": "storages.backends.s3.S3Storage"}
 else:
+    # Local disk has two problems in production: it isn't shared across
+    # instances/deploys (per the .env.prod.example note this setting
+    # already carries), and /media/ is served with no signed-URL check —
+    # unlike AWS_QUERYSTRING_AUTH above, so RFQ files, quote files, and
+    # purchase order/invoice PDFs (whose names are guessable, e.g.
+    # PO-2627-0001.pdf) become fetchable by anyone with the path. Refuse
+    # to start rather than silently fall back to that with DEBUG=False.
+    # ALLOW_LOCAL_MEDIA_STORAGE is an explicit opt-out for CI, which runs
+    # production settings (DEBUG=False) without a bucket; never set it on a
+    # real deployment.
+    if not DEBUG and not env.bool("ALLOW_LOCAL_MEDIA_STORAGE", default=False):
+        raise ImproperlyConfigured(
+            "AWS_STORAGE_BUCKET_NAME is required when DEBUG=False. Set it (and the other "
+            "AWS_* settings) so uploads use signed S3 URLs instead of unsigned local disk. "
+            "(CI only: ALLOW_LOCAL_MEDIA_STORAGE=True skips this check.)"
+        )
     MEDIA_URL = "/media/"
     MEDIA_ROOT = BASE_DIR / "media"
     STORAGES["default"] = {"BACKEND": "django.core.files.storage.FileSystemStorage"}
@@ -149,6 +167,13 @@ LOGIN_FAILURE_WINDOW_SECONDS = env.int("LOGIN_FAILURE_WINDOW_SECONDS", default=1
 # an IP's first few failures in the window; after that it gives the generic
 # message, so the form can't be used to check which emails have accounts.
 LOGIN_UNREGISTERED_HINT_LIMIT = env.int("LOGIN_UNREGISTERED_HINT_LIMIT", default=3)
+# Password-reset emails sent per IP and per email address in the same window;
+# past either, the form still shows "check your email" but sends nothing.
+PASSWORD_RESET_LIMIT_PER_IP = env.int("PASSWORD_RESET_LIMIT_PER_IP", default=5)
+PASSWORD_RESET_LIMIT_PER_EMAIL = env.int("PASSWORD_RESET_LIMIT_PER_EMAIL", default=3)
+# Awarding a quote, confirming payment and staff changes to other accounts
+# need the password to have been entered this recently (core/session_security.py).
+REAUTH_WINDOW_SECONDS = env.int("REAUTH_WINDOW_SECONDS", default=15 * 60)
 
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_COOKIE_AGE = 3600
@@ -176,9 +201,13 @@ SECURE_HSTS_PRELOAD = env.bool("SECURE_HSTS_PRELOAD", default=False)
 X_FRAME_OPTIONS = "DENY"
 
 AUTH_USER_MODEL = "core.User"
+# Email sign-in only. ModelBackend used to be listed as a fallback, but
+# EmailBackend raised on every failure so it never ran; now that
+# EmailBackend returns None properly, keeping it would quietly add sign-in
+# by username — a second route with its own per-account lockout counter.
+# EmailBackend subclasses ModelBackend, so permission checks are unchanged.
 AUTHENTICATION_BACKENDS = [
     "core.backends.EmailBackend",
-    "django.contrib.auth.backends.ModelBackend",
 ]
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

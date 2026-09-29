@@ -44,7 +44,7 @@
                 <div><p class="field-label">Process</p><p class="text-sm text-navy-900">{{ part.technology }}</p></div>
                 <div><p class="field-label">Quantity</p><p class="text-sm text-navy-900">{{ part.quantity }} pcs</p></div>
                 <div><p class="field-label">Material</p><p class="text-sm text-navy-900">{{ part.Material }}</p></div>
-                {% if part.Part_desc %}<div class="sm:col-span-2"><p class="field-label">Notes</p><p class="text-sm text-navy-900">{{ part.Part_desc }}</p></div>{% endif %}
+                {% if part.Part_desc and nda_accepted %}<div class="sm:col-span-2"><p class="field-label">Notes</p><p class="text-sm text-navy-900">{{ part.Part_desc }}</p></div>{% endif %}
                 {% empty %}
                 <p class="text-sm text-gray-500 sm:col-span-2">No part details attached to this RFQ.</p>
                 {% endfor %}
@@ -54,6 +54,11 @@
                 <span class="font-bold">Buyer notes:</span> {{ demand.rfq_desc }}
             </div>
             {% endif %}
+            {% if not nda_accepted %}
+            <div class="mt-4 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+                This RFQ requires an NDA. <a href="{% url 'requirement' demand.pk %}" class="font-bold underline">Accept it on the RFQ page</a> to see the drawings and part notes.
+            </div>
+            {% else %}
             {% if demand.file %}
             <a href="{{ demand.file.url }}" target="_blank" class="mt-4 flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm hover:bg-gray-50">
                 <span class="text-navy-900">{{ demand.file.name }}</span>
@@ -68,6 +73,7 @@
             </a>
             {% endif %}
             {% endfor %}
+            {% endif %}
         </div>
 
         <div id="conversations">

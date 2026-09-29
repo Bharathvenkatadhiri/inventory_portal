@@ -1,0 +1,28 @@
+{% extends "auth_shell.html" %}
+{% block title %}Confirm your password — MakeSetu{% endblock %}
+{% block hero_eyebrow %}Security Check{% endblock %}
+{% block hero_title %}One quick<br><span class="text-accent-500">confirmation.</span>{% endblock %}
+{% block hero_subtitle %}Awarding a quote, confirming a payment and changing other accounts need your password again if you signed in a while ago.{% endblock %}
+{% block panel %}
+<h2 class="text-2xl font-extrabold tracking-tight text-navy-900">Confirm your password</h2>
+<p class="mt-1 text-sm text-gray-500">Signed in as {{ request.user.email }}. Enter your password to continue.</p>
+
+<form method="post" class="mt-6 space-y-4">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <div>
+        <label for="id_password" class="sr-only">Password</label>
+        <div class="relative">
+            <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400">
+                <svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>
+            </span>
+            <input type="password" name="password" id="id_password" required autofocus autocomplete="current-password" class="field-input-icon" placeholder="Password">
+        </div>
+    </div>
+    <button type="submit" class="btn-primary w-full">Continue</button>
+</form>
+
+<p class="text-center text-sm text-gray-500 mt-6">
+    <a href="{{ next }}" class="font-semibold text-navy-900 hover:underline">&larr; Cancel</a>
+</p>
+{% endblock %}

@@ -30,6 +30,7 @@ from django.conf import settings
 from django.apps import apps
 from core.settings import subscription_plan_details
 from core.validators import IMAGE_EXTENSIONS, validate_upload
+from core import audit, login_throttle, session_security
 
 model_str = settings.AUTH_USER_MODEL
 app_label, model_name = model_str.split('.')
@@ -53,6 +54,25 @@ class StaffRequiredMixin(UserPassesTestMixin):
 
     def test_func(self):
         return self.request.user.is_staff
+
+    def get_reauth_return_url(self):
+        # The page to come back to after confirming the password. The POST
+        # itself isn't replayed, so it's the page the action started from.
+        return self.request.get_full_path()
+
+    def dispatch(self, request, *args, **kwargs):
+        # Every staff POST changes another account (deactivate, edit,
+        # subscription, moderation): require a recently entered password,
+        # so a hijacked staff session can't do it on its own.
+        if request.method == 'POST' and request.user.is_authenticated and request.user.is_staff:
+            reauth = session_security.require_recent_auth(request, self.get_reauth_return_url())
+            if reauth is not None:
+                return reauth
+        return super().dispatch(request, *args, **kwargs)
+
+
+def _staff_editing_someone_else(request, obj):
+    return request.user.is_staff and obj.user_id != request.user.id
 
 
 def plan_catalog(subscription):
@@ -302,9 +322,17 @@ def register(request):
             # An account under this email already completed registration.
             # Previously this fell through to a silent re-render with no
             # error — the user would click Register and nothing would
-            # visibly happen.
+            # visibly happen. Confirming that outright is exactly what the
+            # login form's own "not registered" hint is capped to stop an
+            # attacker learning by the bucketful, so it's capped the same
+            # way here — registration_hint_allowed shares login's per-IP
+            # counter and limit, so probing through this form instead
+            # spends the same budget a wrong login would.
             form = UserRegistrationForm(request.POST)
-            form.add_error('email', 'An account with this email already exists. Please log in instead.')
+            if login_throttle.registration_hint_allowed(request):
+                form.add_error('email', 'An account with this email already exists. Please log in instead.')
+            else:
+                form.add_error('email', "We couldn't register with these details. If you already have an account, sign in instead.")
             return render(request, 'register_first.html', {'form': form})
 
         existing_user = User.objects.filter(email=email).first()
@@ -316,7 +344,10 @@ def register(request):
             # take over their half-finished account.
             if not existing_user.check_password(request.POST.get('password1', '')):
                 form = UserRegistrationForm(request.POST)
-                form.add_error('email', 'An account with this email already exists. Enter its password to finish registering, or log in.')
+                if login_throttle.registration_hint_allowed(request):
+                    form.add_error('email', 'An account with this email already exists. Enter its password to finish registering, or log in.')
+                else:
+                    form.add_error('email', "We couldn't register with these details. If you already have an account, sign in instead.")
                 return render(request, 'register_first.html', {'form': form})
             _start_profile_step(request, existing_user)
             return redirect('register-supplier' if existing_user.role == 'manufacturer' else 'register-customer')
@@ -492,6 +523,11 @@ class CustomerCreateView(StaffRequiredMixin, SuccessMessageMixin, CreateView):
         context["savebtn"] = 'Add Customer'
         return context
 
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        audit.record(self.request, 'customer.create', self.object)
+        return response
+
 class CustomerUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
     model = ConsumerProfile
     form_class = updateCustomer
@@ -511,6 +547,19 @@ class CustomerUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
             return reverse('customers-list')
         return reverse('profile') + '?tab=company'
 
+    def post(self, request, *args, **kwargs):
+        if _staff_editing_someone_else(request, self.get_object()):
+            reauth = session_security.require_recent_auth(request, request.get_full_path())
+            if reauth is not None:
+                return reauth
+        return super().post(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        if self.object.user_id != self.request.user.id:
+            audit.record(self.request, 'customer.edit', self.object, "Changed: " + ", ".join(form.changed_data))
+        return response
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["title"] = 'Edit company details'
@@ -526,11 +575,11 @@ class CustomerDeleteView(StaffRequiredMixin, View):
         return render(request, self.template_name, {'object' : customer})
 
     def post(self, request, pk):
-        user_id = ConsumerProfile.objects.filter(pk=pk).values('user_id').last()
-        User.objects.filter(id=user_id['user_id']).update(is_active=False)
         customer = get_object_or_404(ConsumerProfile, pk=pk)
+        User.objects.filter(id=customer.user_id).update(is_active=False)
         customer.is_deleted = True
         customer.save()
+        audit.record(request, 'customer.deactivate', customer)
         messages.success(request, self.success_message)
         return redirect('customers-list')
 
@@ -543,11 +592,11 @@ class CustomeractivateView(StaffRequiredMixin, View):
         return render(request, self.template_name, {'object' : customer})
 
     def post(self, request, pk):
-        user_id = ConsumerProfile.objects.filter(pk=pk).values('user_id').last()
-        User.objects.filter(id=user_id['user_id']).update(is_active=True)
         customer = get_object_or_404(ConsumerProfile, pk=pk)
+        User.objects.filter(id=customer.user_id).update(is_active=True)
         customer.is_deleted = False
         customer.save()
+        audit.record(request, 'customer.activate', customer)
         messages.success(request, self.success_message)
         return redirect('customers-list')
 
@@ -578,6 +627,7 @@ class SubscriptionDeleteView(StaffRequiredMixin, View):
         subscription = get_object_or_404(SubscriptionPlan, pk=pk)
         subscription.is_active = False
         subscription.save()
+        audit.record(request, 'subscription.deactivate', subscription)
         messages.success(request, self.success_message)
         return redirect('subscription-list')
 
@@ -593,6 +643,11 @@ class SubscriptionUpdateView(StaffRequiredMixin, SuccessMessageMixin, UpdateView
         context["title"] = 'Edit Customer'
         context["savebtn"] = 'Save Changes'
         return context
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        audit.record(self.request, 'subscription.edit', self.object, "Changed: " + ", ".join(form.changed_data))
+        return response
 
 
 class SupplierListView(StaffRequiredMixin, ListView):
@@ -692,6 +747,19 @@ class SupplierUpdateView(SuccessMessageMixin, UpdateView):
         context["savebtn"] = 'Save Changes'
         return context
 
+    def post(self, request, *args, **kwargs):
+        if _staff_editing_someone_else(request, self.get_object()):
+            reauth = session_security.require_recent_auth(request, request.get_full_path())
+            if reauth is not None:
+                return reauth
+        return super().post(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        if self.object.user_id != self.request.user.id:
+            audit.record(self.request, 'supplier.edit', self.object, "Changed: " + ", ".join(form.changed_data))
+        return response
+
 
 class SupplierDeleteView(StaffRequiredMixin, View):
     template_name = "suppliers/delete_supplier.html"
@@ -703,8 +771,13 @@ class SupplierDeleteView(StaffRequiredMixin, View):
 
     def post(self, request, pk):
         supplier = get_object_or_404(ManufacturerProfile, pk=pk)
+        # Deactivating a buyer always disabled their login; deactivating a
+        # supplier only hid the profile, so a "deleted" manufacturer could
+        # still sign in and keep quoting, messaging and updating orders.
+        User.objects.filter(id=supplier.user_id).update(is_active=False)
         supplier.is_deleted = True
         supplier.save()
+        audit.record(request, 'supplier.deactivate', supplier)
         messages.success(request, self.success_message)
         return redirect('suppliers-list')
 
@@ -718,11 +791,11 @@ class SupplieractivateView(StaffRequiredMixin, View):
         return render(request, self.template_name, {'object': supplier})
 
     def post(self, request, pk):
-        user_id = ManufacturerProfile.objects.filter(pk=pk).values('user_id').last()
-        User.objects.filter(id=user_id['user_id']).update(is_active=True)
         supplier = get_object_or_404(ManufacturerProfile, pk=pk)
+        User.objects.filter(id=supplier.user_id).update(is_active=True)
         supplier.is_deleted = False
         supplier.save()
+        audit.record(request, 'supplier.activate', supplier)
         messages.success(request, self.success_message)
         return redirect('suppliers-list')
 
@@ -730,7 +803,11 @@ class SupplieractivateView(StaffRequiredMixin, View):
 class SupplierView(View):
     def get(self, request, pk=''):
         from marketplace.services import rating_breakdown
-        supplierobj = get_object_or_404(ManufacturerProfile, pk=pk)
+        # A deactivated manufacturer is hidden from the directory; its
+        # profile, certifications and photos shouldn't stay reachable by id
+        # either. Staff still see it, to review before reactivating.
+        profiles = ManufacturerProfile.objects.all() if request.user.is_staff else ManufacturerProfile.objects.filter(is_deleted=False)
+        supplierobj = get_object_or_404(profiles, pk=pk)
         context = {
             'supplier': supplierobj,
             'rating': rating_breakdown(supplierobj),
