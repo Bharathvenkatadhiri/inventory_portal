@@ -81,6 +81,8 @@ class UserRegistrationRoleTests(TestCase):
     """
 
     def setUp(self):
+        cache.clear()
+        mail.outbox.clear()
         self.client = Client()
         self.url = reverse("register")
 
@@ -95,9 +97,19 @@ class UserRegistrationRoleTests(TestCase):
             "account_type": account_type,
         }
 
+    def _verify(self, email):
+        for line in mail.outbox[-1].body.splitlines():
+            line = line.strip()
+            if line.isdigit() and len(line) == 6:
+                return self.client.post(reverse("verify-email"), {"code": line})
+        raise AssertionError(f"No 6-digit code found in email body: {mail.outbox[-1].body!r}")
+
     def test_supplier_signup_gets_manufacturer_role(self):
         response = self.client.post(self.url, data=self._payload("supplier1", "supplier1@example.com", "supplier"))
         self.assertEqual(response.status_code, 302)
+        # No User row until the email is verified.
+        self.assertFalse(User.objects.filter(email="supplier1@example.com").exists())
+        self._verify("supplier1@example.com")
         user = User.objects.get(email="supplier1@example.com")
         self.assertEqual(user.role, "manufacturer")
         self.assertFalse(user.is_staff)
@@ -105,6 +117,7 @@ class UserRegistrationRoleTests(TestCase):
     def test_buyer_signup_gets_consumer_role(self):
         response = self.client.post(self.url, data=self._payload("buyer1", "buyer1@example.com", "buyer"))
         self.assertEqual(response.status_code, 302)
+        self._verify("buyer1@example.com")
         user = User.objects.get(email="buyer1@example.com")
         self.assertEqual(user.role, "consumer")
 
@@ -177,9 +190,17 @@ class RegisterViewTests(TestCase):
         self.assertEqual(self.client.session["session_email"], "abandoned@example.com")
 
     def test_resuming_an_unverified_account_is_sent_back_to_verify_its_email(self):
-        User.objects.create_user(username="halfdone", email="halfdone@example.com", password="a-strong-passw0rd", role="manufacturer")
+        # Step one was submitted earlier but the OTP was never confirmed, so
+        # there's a PendingRegistration but no User row yet.
+        from django.contrib.auth.hashers import make_password
+        from accounts.models import PendingRegistration
+        PendingRegistration.objects.create(
+            email="halfdone@example.com", username="halfdone", first_name="Test", last_name="User",
+            password=make_password("a-strong-passw0rd"), role="manufacturer",
+        )
         response = self.client.post(self.url, data=self._payload("halfdone", "halfdone@example.com", "supplier"))
         self.assertRedirects(response, reverse("verify-email"))
+        self.assertFalse(User.objects.filter(email="halfdone@example.com").exists())
 
     def test_resuming_someone_elses_registration_needs_their_password(self):
         User.objects.create_user(username="victim", email="victim@example.com", password="their-own-passw0rd", role="manufacturer")
@@ -276,9 +297,6 @@ class EmailVerificationTests(TestCase):
         return self.client.post(self.url, data=self._payload(username, email, account_type))
 
     def _sent_code(self):
-        from accounts.models import EmailVerification
-        user = User.objects.get(email="otpuser@example.com")
-        otp_row = EmailVerification.objects.filter(user=user).latest("created_at")
         # The code isn't stored in the clear; pull it back out of the email
         # actually sent, the same way a real user would read it.
         for line in mail.outbox[-1].body.splitlines():
@@ -287,36 +305,40 @@ class EmailVerificationTests(TestCase):
                 return line
         raise AssertionError(f"No 6-digit code found in email body: {mail.outbox[-1].body!r}")
 
-    def test_registering_sends_a_code_and_redirects_to_verify(self):
+    def test_registering_sends_a_code_and_redirects_to_verify_without_creating_a_user(self):
         response = self._register()
         self.assertRedirects(response, reverse("verify-email"))
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn("otpuser@example.com", mail.outbox[0].to)
-        user = User.objects.get(email="otpuser@example.com")
-        self.assertFalse(user.email_verified)
+        # Nothing lands in the users table until the code is confirmed.
+        self.assertFalse(User.objects.filter(email="otpuser@example.com").exists())
+        from accounts.models import PendingRegistration
+        self.assertTrue(PendingRegistration.objects.filter(email="otpuser@example.com").exists())
 
     def test_cannot_reach_the_profile_step_before_verifying(self):
         self._register()
         response = self.client.get(reverse("register-customer"))
         self.assertRedirects(response, reverse("verify-email"))
 
-    def test_correct_code_verifies_and_moves_on_to_the_profile_step(self):
+    def test_correct_code_verifies_creates_the_user_and_moves_on_to_the_profile_step(self):
         self._register()
         code = self._sent_code()
         response = self.client.post(reverse("verify-email"), {"code": code})
         self.assertRedirects(response, reverse("register-customer"))
         user = User.objects.get(email="otpuser@example.com")
         self.assertTrue(user.email_verified)
+        # The pending signup is consumed, not left behind.
+        from accounts.models import PendingRegistration
+        self.assertFalse(PendingRegistration.objects.filter(email="otpuser@example.com").exists())
         # And the profile step is reachable now.
         self.assertEqual(self.client.get(reverse("register-customer")).status_code, 200)
 
-    def test_wrong_code_is_rejected_and_does_not_verify(self):
+    def test_wrong_code_is_rejected_and_does_not_create_a_user(self):
         self._register()
         self._sent_code()
         response = self.client.post(reverse("verify-email"), {"code": "000000"})
         self.assertContains(response, "code isn")
-        user = User.objects.get(email="otpuser@example.com")
-        self.assertFalse(user.email_verified)
+        self.assertFalse(User.objects.filter(email="otpuser@example.com").exists())
 
     def test_too_many_wrong_attempts_locks_the_code(self):
         from accounts.otp import MAX_ATTEMPTS
@@ -326,8 +348,7 @@ class EmailVerificationTests(TestCase):
             self.client.post(reverse("verify-email"), {"code": "000000"})
         response = self.client.post(reverse("verify-email"), {"code": code})  # even the real code, now locked
         self.assertContains(response, "Too many incorrect attempts")
-        user = User.objects.get(email="otpuser@example.com")
-        self.assertFalse(user.email_verified)
+        self.assertFalse(User.objects.filter(email="otpuser@example.com").exists())
 
     def test_resend_issues_a_new_code_and_is_rate_limited(self):
         from accounts.otp import RESEND_LIMIT
@@ -343,15 +364,16 @@ class EmailVerificationTests(TestCase):
         response = self.client.post(reverse("verify-email"), {"code": first_code})
         self.assertContains(response, "code isn")
 
-    def test_verify_email_without_a_session_user_sends_back_to_register(self):
+    def test_verify_email_without_a_pending_registration_sends_back_to_register(self):
         self.assertRedirects(self.client.get(reverse("verify-email")), reverse("register"))
 
-    def test_already_verified_user_skips_straight_past_the_otp_page(self):
+    def test_revisiting_verify_email_after_completing_it_sends_back_to_register(self):
+        # Once verified, the pending signup is gone and session no longer
+        # points at it — register() is what resumes an already-verified,
+        # profile-incomplete account from here.
         self._register()
-        user = User.objects.get(email="otpuser@example.com")
-        user.email_verified = True
-        user.save(update_fields=["email_verified"])
-        self.assertRedirects(self.client.get(reverse("verify-email")), reverse("register-customer"))
+        self.client.post(reverse("verify-email"), {"code": self._sent_code()})
+        self.assertRedirects(self.client.get(reverse("verify-email")), reverse("register"))
 
 
 class GSTINFormatTests(TestCase):

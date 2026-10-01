@@ -469,12 +469,30 @@ class SubscriptionPlan(models.Model):
         return f"{self.user_profile.username} - {self.plan_type}"
 
 
+class PendingRegistration(models.Model):
+    """A registration that hasn't confirmed its email yet (accounts.otp,
+    accounts.views.register/verify_email). Holds everything needed to create
+    the real User once the OTP is confirmed, so an unverified signup never
+    touches the users table — only accounts.views.verify_email ever creates
+    a User from this."""
+    email = models.EmailField(max_length=254, unique=True)
+    username = models.CharField(max_length=150)
+    first_name = models.CharField(max_length=150)
+    last_name = models.CharField(max_length=150)
+    password = models.CharField(max_length=128)  # already hashed by UserRegistrationForm
+    role = models.CharField(max_length=20)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"pending signup for {self.email}"
+
+
 class EmailVerification(models.Model):
-    """One OTP sent to confirm a new account's email during registration
-    (accounts.otp, accounts.views.verify_email). Each row is one code;
-    a fresh resend creates a new row rather than reusing one, so old codes
-    simply expire instead of being extended."""
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='email_verifications')
+    """One OTP sent to confirm a pending registration's email (accounts.otp,
+    accounts.views.verify_email). Each row is one code; a fresh resend
+    creates a new row rather than reusing one, so old codes simply expire
+    instead of being extended."""
+    pending_registration = models.ForeignKey(PendingRegistration, on_delete=models.CASCADE, related_name='codes')
     code_hash = models.CharField(max_length=128)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
@@ -483,7 +501,7 @@ class EmailVerification(models.Model):
 
     class Meta:
         ordering = ['-created_at']
-        indexes = [models.Index(fields=['user', 'consumed_at'])]
+        indexes = [models.Index(fields=['pending_registration', 'consumed_at'])]
 
     def __str__(self):
-        return f"OTP for {self.user_id} issued {self.created_at:%Y-%m-%d %H:%M}"
+        return f"OTP for {self.pending_registration_id} issued {self.created_at:%Y-%m-%d %H:%M}"

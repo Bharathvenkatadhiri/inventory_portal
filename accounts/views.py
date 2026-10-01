@@ -18,7 +18,7 @@ from .forms import (
 )
 from .models import (
     ManufacturerProfile, ConsumerProfile, SubscriptionPlan, Company,
-    Machine, ManufacturerPhoto, Certification, ManufacturingTech,
+    Machine, ManufacturerPhoto, Certification, ManufacturingTech, PendingRegistration,
 )
 from .services.gst_verification import verify_gstin
 from .services.company_matching import company_names_match
@@ -229,17 +229,16 @@ class CreateSupplier(SuccessMessageMixin, CreateView):
         # request.user is still anonymous at this point in the registration
         # flow (the account created in `register` isn't logged in yet), so
         # look the user up from the session instead of using request.user.
+        # Every persisted User is already email-verified (verify_email is
+        # the only thing that creates one), so there's no unverified case
+        # to filter out here.
         return User.objects.filter(
             pk=self.request.session.get('session_user_id'), role='manufacturer', manufacturerprofile__isnull=True,
-            email_verified=True,
         ).first()
 
     def dispatch(self, request, *args, **kwargs):
         if self._pending_user() is None:
-            if User.objects.filter(
-                pk=request.session.get('session_user_id'), role='manufacturer', manufacturerprofile__isnull=True,
-                email_verified=False,
-            ).exists():
+            if request.session.get('pending_registration_id'):
                 return redirect('verify-email')
             messages.error(request, "Start by creating your account.")
             return redirect('register')
@@ -344,9 +343,9 @@ def register(request):
 
         existing_user = User.objects.filter(email=email).first()
         if existing_user is not None:
-            # A User row exists but registration wasn't finished (the
-            # supplier/customer profile step was abandoned) — resume from
-            # there instead of erroring. Only with the right password:
+            # A verified User row exists but registration wasn't finished
+            # (the supplier/customer profile step was abandoned) — resume
+            # from there instead of erroring. Only with the right password:
             # without this check, typing someone else's email was enough to
             # take over their half-finished account.
             if not existing_user.check_password(request.POST.get('password1', '')):
@@ -357,22 +356,29 @@ def register(request):
                     form.add_error('email', "We couldn't register with these details. If you already have an account, sign in instead.")
                 return render(request, 'register_first.html', {'form': form})
             _start_profile_step(request, existing_user)
-            if not existing_user.email_verified:
-                otp.issue_and_send(existing_user)
-                return redirect('verify-email')
             return redirect('register-supplier' if existing_user.role == 'manufacturer' else 'register-customer')
+
+        pending = PendingRegistration.objects.filter(email=email).first()
+        if pending is not None:
+            # Step one was already submitted for this email but never
+            # verified — resume it rather than creating a second pending
+            # signup. Same right-password check as the existing_user case.
+            if not otp.password_matches(pending, request.POST.get('password1', '')):
+                form = UserRegistrationForm(request.POST)
+                if login_throttle.registration_hint_allowed(request):
+                    form.add_error('email', 'An account with this email already exists. Enter its password to finish registering, or log in.')
+                else:
+                    form.add_error('email', "We couldn't register with these details. If you already have an account, sign in instead.")
+                return render(request, 'register_first.html', {'form': form})
+            request.session['pending_registration_id'] = pending.id
+            if otp.resend_allowed(pending):
+                otp.issue_and_send(pending)
+            return redirect('verify-email')
 
         form = UserRegistrationForm(request.POST)
         if form.is_valid():
-            user = form.save()
-            _start_profile_step(request, user)
-            SubscriptionPlan.objects.create(
-                plan_type='basic',
-                price=subscription_plan_details['basic']['price'],
-                rfq_limit=subscription_plan_details['basic']['rfq_limit'],
-                user_profile=user,
-            )
-            otp.issue_and_send(user)
+            pending = otp.start_registration(form)
+            request.session['pending_registration_id'] = pending.id
             return redirect('verify-email')
     else:
         form = UserRegistrationForm()
@@ -382,30 +388,36 @@ def register(request):
 @login_not_required
 def verify_email(request):
     """Between account creation and the profile step: confirms the user
-    controls the email address before letting them proceed (accounts.otp
-    holds the actual OTP logic). Reached only via the session the register
-    flow sets up — there's no user to verify without it."""
-    user = User.objects.filter(pk=request.session.get('session_user_id')).first()
-    if user is None:
+    controls the email address before a User row is ever created for them
+    (accounts.otp holds the actual OTP logic and the pending signup data).
+    Reached only via the session the register flow sets up — there's
+    nothing to verify without it."""
+    pending = PendingRegistration.objects.filter(pk=request.session.get('pending_registration_id')).first()
+    if pending is None:
         messages.error(request, "Start by creating your account.")
         return redirect('register')
-    if user.email_verified:
-        return redirect('register-supplier' if user.role == 'manufacturer' else 'register-customer')
 
     if request.method == 'POST':
         if request.POST.get('action') == 'resend':
-            if otp.resend_allowed(user):
-                otp.issue_and_send(user)
-                messages.success(request, f"A new code was sent to {user.email}.")
+            if otp.resend_allowed(pending):
+                otp.issue_and_send(pending)
+                messages.success(request, f"A new code was sent to {pending.email}.")
             else:
                 messages.error(request, "Too many codes requested. Please wait a few minutes and try again.")
             return redirect('verify-email')
 
         code = (request.POST.get('code') or '').strip()
-        ok, reason = otp.verify(user, code)
+        ok, reason = otp.verify(pending, code)
         if ok:
-            user.email_verified = True
-            user.save(update_fields=['email_verified'])
+            user = otp.complete_registration(pending)
+            SubscriptionPlan.objects.create(
+                plan_type='basic',
+                price=subscription_plan_details['basic']['price'],
+                rfq_limit=subscription_plan_details['basic']['rfq_limit'],
+                user_profile=user,
+            )
+            request.session.pop('pending_registration_id', None)
+            _start_profile_step(request, user)
             messages.success(request, "Email verified.")
             return redirect('register-supplier' if user.role == 'manufacturer' else 'register-customer')
         errors = {
@@ -415,12 +427,12 @@ def verify_email(request):
             'mismatch': "That code isn't right. Please try again.",
         }
         messages.error(request, errors.get(reason, "That code isn't right. Please try again."))
-    elif not otp.has_pending_code(user):
+    elif not otp.has_pending_code(pending):
         # First visit after register(), or the earlier code has expired —
         # make sure there's always a live one to enter.
-        otp.issue_and_send(user)
+        otp.issue_and_send(pending)
 
-    return render(request, 'registration/verify_email.html', {'email': user.email})
+    return render(request, 'registration/verify_email.html', {'email': pending.email})
 
 
 class CreateCustomer(SuccessMessageMixin, CreateView):
@@ -431,17 +443,16 @@ class CreateCustomer(SuccessMessageMixin, CreateView):
     template_name = "register_customer.html"
 
     def _pending_user(self):
+        # Every persisted User is already email-verified (verify_email is
+        # the only thing that creates one), so there's no unverified case
+        # to filter out here.
         return User.objects.filter(
             pk=self.request.session.get('session_user_id'), role='consumer', consumerprofile__isnull=True,
-            email_verified=True,
         ).first()
 
     def dispatch(self, request, *args, **kwargs):
         if self._pending_user() is None:
-            if User.objects.filter(
-                pk=request.session.get('session_user_id'), role='consumer', consumerprofile__isnull=True,
-                email_verified=False,
-            ).exists():
+            if request.session.get('pending_registration_id'):
                 return redirect('verify-email')
             messages.error(request, "Start by creating your account.")
             return redirect('register')

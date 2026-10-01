@@ -13,10 +13,11 @@ settings (or vice versa):
 | | Env template | Compose file(s) | Notes |
 |---|---|---|---|
 | Development | `.env.dev.example` | `docker-compose.yml` (+ `docker-compose.override.yml`, auto-merged) | Bundles a Postgres container, hot-reload volume mount, `runserver` |
-| Production | `.env.prod.example` | `docker-compose.prod.yml` (standalone) | No bundled DB — points at a managed instance; runs `migrate` + `collectstatic` + `gunicorn` |
+| Test/staging | `.env.test.example` | `docker-compose.test.yml` (standalone) | For a single EC2 instance: bundles Postgres + an nginx reverse proxy, local-disk media instead of S3, plain HTTP (no certificate) |
+| Production | `.env.prod.example` | `docker-compose.prod.yml` (standalone) | No bundled DB — points at a managed instance; runs `migrate` + `collectstatic` + `gunicorn`; expects a real load balancer/certificate in front of it |
 
-Both `.env.dev.example`/`.env.prod.example` are templates — copy whichever matches your
-environment to `.env` (gitignored, never commit it) and fill in the blanks.
+Each `.env.*.example` is a template — copy whichever matches your environment to `.env`
+(gitignored, never commit it) and fill in the blanks.
 
 ## Getting Started (development)
 
@@ -143,6 +144,33 @@ Static files use `whitenoise`'s manifest storage, which resolves `{% static %}` 
 hashed-filename manifest — that's what `collectstatic` builds. `DEBUG=True` (dev) bypasses
 this automatically, which is why it's easy to forget; skipping `collectstatic` with
 `DEBUG=False` makes every page referencing `{% static %}` error.
+
+## Deploying (test site on EC2)
+
+A disposable test/staging deployment on a single EC2 instance — no managed Postgres, no
+S3 bucket, no load balancer in front of it, just this one box:
+
+```bash
+cp .env.test.example .env   # fill in SECRET_KEY, ALLOWED_HOSTS (the instance's public
+                             # IP or DNS name), POSTGRES_PASSWORD, SITE_URL
+docker compose -f docker-compose.test.yml up -d --build
+```
+
+This bundles its own Postgres container (unlike prod) and puts nginx (`nginx/test.conf`) in
+front of gunicorn on port 80. It serves plain HTTP only — no certificate — so
+`.env.test.example` explicitly turns off the HTTPS-only cookie/redirect settings that
+`DEBUG=False` would otherwise switch on. Uploaded files go to local disk instead of S3, with
+nginx serving `/media/` directly off a volume shared with the `web` container;
+`ALLOW_LOCAL_MEDIA_STORAGE=True` is what lets this test site opt out of the check that
+otherwise refuses to start without an S3 bucket. Emails (OTP codes, order notifications)
+print to `docker compose -f docker-compose.test.yml logs web` by default instead of actually
+sending — set real SMTP values in `.env` if you want them delivered.
+
+Make sure your EC2 instance's security group allows inbound traffic on port 80 (and 22 for
+SSH) before you test from a browser.
+
+Don't point this compose file at your real domain/production data — it's meant to be
+rebuilt or thrown away freely. For an actual production deployment, see the section below.
 
 ## Roadmap (not yet built)
 
