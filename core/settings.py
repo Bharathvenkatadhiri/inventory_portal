@@ -264,6 +264,7 @@ EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="MakeSetu <no-reply@makesetu.com>")
+AWS_SES_REGION = env("AWS_SES_REGION", default="ap-southeast-2")
 # Base URL used to build absolute links in emails sent outside a request
 # (marketplace.emails) — e.g. the RFQ-matched and order-status notifications,
 # which fire from award_quote/services rather than always from a view.
