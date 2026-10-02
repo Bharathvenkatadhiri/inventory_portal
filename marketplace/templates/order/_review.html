@@ -1,3 +1,4 @@
+{% load team_tags %}
 {# Buyer's rating of the manufacturer, collected once the order is completed. Expects: bill, review_form. #}
 {% with review=bill.review %}
 <div class="card mb-6" id="review">
@@ -10,7 +11,7 @@
         <span class="ml-2 text-xs text-gray-500">{{ review.created_at|date:"d M Y" }}</span>
     </div>
     {% if review.comment %}<p class="mt-2 text-sm text-gray-700">{{ review.comment|linebreaksbr }}</p>{% endif %}
-    {% elif request.user == bill.customer.user %}
+    {% elif request.user|teammate:bill.customer.user_id %}
     <p class="mt-1 text-sm text-gray-500">How was working with {{ bill.supplier.companyname|default:bill.supplier }}? Your rating shows on their profile and quotes.</p>
     <form method="post" action="{% url 'order-review' bill.billno %}" class="mt-3 space-y-3" x-data="{ rating: 0, hover: 0 }">
         {% csrf_token %}

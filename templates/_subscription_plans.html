@@ -1,4 +1,4 @@
-{# Expects: plan_catalog (from accounts.views.plan_catalog), optional `next` (url to return to). #}
+{# Expects: plan_catalog (from accounts.views.plan_catalog), can_change_plan (only the company's manager may), optional `next` (url to return to). #}
 <div class="grid gap-4 sm:grid-cols-3">
     {% for plan in plan_catalog %}
     <div class="flex flex-col rounded-xl border {% if plan.is_current %}border-accent-500 ring-1 ring-accent-500{% else %}border-gray-200{% endif %} bg-white p-5">
@@ -13,11 +13,16 @@
         <p class="mt-3 text-sm text-gray-500">
             {% if plan.rfq_limit == 'unlimited' %}Unlimited RFQs{% else %}Up to {{ plan.rfq_limit }} RFQs / month{% endif %}
         </p>
+        <p class="mt-1 text-sm text-gray-500">
+            {% if plan.team_seats %}Team of up to {{ plan.team_seats }} people{% else %}Unlimited team members{% endif %}
+        </p>
         <div class="mt-5 pt-0">
             {% if plan.is_current %}
             <span class="btn-outline w-full cursor-default justify-center opacity-60">Current plan</span>
             {% elif plan.is_pending %}
             <span class="btn-outline w-full cursor-default justify-center text-center text-xs opacity-80">Requested — we'll send a payment link</span>
+            {% elif not can_change_plan %}
+            <span class="btn-outline w-full cursor-default justify-center text-center text-xs opacity-60">Only your manager can change the plan</span>
             {% else %}
             <form method="post" action="{% url 'subscription-upgrade' %}">
                 {% csrf_token %}

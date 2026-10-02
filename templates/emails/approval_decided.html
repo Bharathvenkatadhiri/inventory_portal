@@ -1,0 +1,16 @@
+{% extends "emails/_base_email.html" %}
+{% block title %}{% if approved %}Approved{% else %}Not approved{% endif %} — MakeSetu{% endblock %}
+{% block preheader %}{{ kind_label }}: {{ subject_line }}{% endblock %}
+{% block body %}
+<p style="margin:0 0 16px;">Hi {{ requester_name }},</p>
+<p style="margin:0 0 20px;"><strong>{{ decider_name }}</strong> {% if approved %}approved{% else %}did not approve{% endif %} your request to {{ kind_label|lower }}:</p>
+<table role="presentation" width="100%" style="margin:0 0 20px;background-color:#F3F5F8;border-radius:8px;">
+<tr><td style="padding:16px 20px;">
+<p style="margin:0;font-size:17px;font-weight:700;color:#11355C;">{{ subject_line }}</p>
+{% if decision_note %}<p style="margin:8px 0 0;color:#56657A;">“{{ decision_note }}”</p>{% endif %}
+</td></tr>
+</table>
+<p style="margin:0 0 24px;">
+<a href="{{ url }}" style="display:inline-block;padding:12px 24px;background-color:#F57921;color:#FFFFFF;font-weight:700;text-decoration:none;border-radius:8px;">Open</a>
+</p>
+{% endblock %}

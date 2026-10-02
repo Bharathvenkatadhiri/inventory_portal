@@ -1,3 +1,4 @@
+{% load team_tags %}
 {# RFQ conversations. Replaced the old per-supplier Q&A: a question to the buyer is now just a message in that supplier's thread. #}
 <div class="card">
     {% if is_buyer %}
@@ -34,8 +35,8 @@
     {% if my_thread_messages %}
     <ul class="mt-4 space-y-2">
         {% for message in my_thread_messages %}
-        <li class="rounded-lg px-3 py-2 text-sm {% if message.sender_id == request.user.id %}bg-accent-50 text-navy-900{% else %}bg-gray-100 text-navy-900{% endif %}">
-            <span class="text-xs font-bold {% if message.sender_id == request.user.id %}text-accent-700{% else %}text-gray-500{% endif %}">{% if message.sender_id == request.user.id %}You{% else %}Buyer{% endif %}</span>
+        <li class="rounded-lg px-3 py-2 text-sm {% if request.user|teammate:message.sender_id %}bg-accent-50 text-navy-900{% else %}bg-gray-100 text-navy-900{% endif %}">
+            <span class="text-xs font-bold {% if request.user|teammate:message.sender_id %}text-accent-700{% else %}text-gray-500{% endif %}">{% if message.sender_id == request.user.id %}You{% elif request.user|teammate:message.sender_id %}{{ message.sender.first_name|default:"Your team" }}{% else %}Buyer{% endif %}</span>
             {% if message.is_deleted %}<span class="italic text-gray-400">Message deleted</span>
             {% elif message.body %}{{ message.body }}
             {% else %}Attachment: {{ message.attachment_name }}{% endif %}

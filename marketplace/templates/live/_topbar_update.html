@@ -8,3 +8,4 @@
 <span hx-swap-oob="innerHTML:.live-badge-open-rfqs">{% include "_live_badge.html" with count=sidebar_open_rfq_count muted=True %}</span>
 <span hx-swap-oob="innerHTML:.live-badge-quotes">{% include "_live_badge.html" with count=sidebar_quotes_to_review_count %}</span>
 {% endif %}
+{% if sidebar_team_role %}<span hx-swap-oob="innerHTML:.live-badge-approvals">{% include "_live_badge.html" with count=sidebar_pending_approvals_count %}</span>{% endif %}

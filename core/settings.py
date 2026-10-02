@@ -292,8 +292,11 @@ MESSAGE_ATTACHMENT_MAX_BYTES = env.int("MESSAGE_ATTACHMENT_MAX_BYTES", default=1
 # Referenced by accounts.forms/accounts.views when creating/updating a
 # SubscriptionPlan. Minimal defaults; adjust pricing/limits as the product
 # requires.
+# team_seats counts everyone on the company account — the manager, active
+# supervisors/users and pending invitations (accounts.team.seats_used);
+# None means unlimited.
 subscription_plan_details = {
-    "basic": {"price": 0, "rfq_limit": "5"},
-    "standard": {"price": 999, "rfq_limit": "50"},
-    "enterprise": {"price": 4999, "rfq_limit": "unlimited"},
+    "basic": {"price": 0, "rfq_limit": "5", "team_seats": 3},
+    "standard": {"price": 999, "rfq_limit": "50", "team_seats": 10},
+    "enterprise": {"price": 4999, "rfq_limit": "unlimited", "team_seats": None},
 }

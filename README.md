@@ -65,19 +65,20 @@ Requires a local PostgreSQL instance and a `DATABASE_URL` in `.env` pointing to 
 - **macOS**: `brew install postgresql@16 && brew services start postgresql@16`
 - **Linux (Debian/Ubuntu)**: `sudo apt install postgresql && sudo systemctl start postgresql`
 
-**Create the database** matching `.env.dev.example`'s defaults (user `postgres`, password
-`postgres`, database `marketplace`, port `5432`) — adjust the `DATABASE_URL` in your `.env`
-instead if you'd rather use different values or an existing Postgres setup:
+**Create the app user and database** matching `.env.dev.example`'s defaults (user
+`makesetu_app`, password `makesetu_app`, database `makesetu`, port `5432` — the same names
+the test site uses) — adjust the `DATABASE_URL` in your `.env` instead if you'd rather use
+different values or an existing Postgres setup:
 
 ```bash
 # Windows: open "SQL Shell (psql)" from the Start menu, or run psql from the install dir
 # macOS/Linux: just `psql postgres`
-psql -U postgres -c "CREATE DATABASE marketplace;"
+psql -U postgres -c "CREATE ROLE makesetu_app LOGIN PASSWORD 'makesetu_app' CREATEDB;"
+psql -U postgres -c "CREATE DATABASE makesetu OWNER makesetu_app;"
 ```
 
-(If your `postgres` user's password isn't `postgres`, either set it to match —
-`psql -U postgres -c "ALTER USER postgres PASSWORD 'postgres';"` — or edit `DATABASE_URL`
-in `.env` after copying the template below to use your real password instead.)
+(`CREATEDB` is only so the test runner can create its own throwaway `test_makesetu`
+database.)
 
 ```bash
 python -m venv venv
@@ -117,6 +118,14 @@ npm run build-css     # one-shot minified build — run before committing UI cha
 ```bash
 pytest
 ```
+
+## Company teams and approvals
+
+Each buyer or manufacturer company has a Manager (whoever registered it) who can invite
+Supervisors and Users; Users' RFQs, quotes, awards and payment confirmations wait for a
+Supervisor's or the Manager's approval. What each role can do, on each side, is in
+[docs/roles-and-permissions.md](docs/roles-and-permissions.md). The rules live in
+`accounts/team.py` (roles) and `marketplace/approvals.py` (approvals).
 
 ## Project layout
 
@@ -171,6 +180,31 @@ SSH) before you test from a browser.
 
 Don't point this compose file at your real domain/production data — it's meant to be
 rebuilt or thrown away freely. For an actual production deployment, see the section below.
+
+## Sample companies for GST verification
+
+Dev and the test site use the mock GST provider (`GST_VERIFICATION_PROVIDER=mock`), which
+recognises these fictional companies (defined in `SAMPLE_COMPANIES` in
+`accounts/services/gst_verification.py`). Enter the GSTIN and the company name on the
+supplier or buyer sign-up step — "Pvt Ltd" vs "Private Limited", case and small typos don't
+matter.
+
+| Use as | Company name | GSTIN | City |
+|---|---|---|---|
+| Supplier | Sri Lakshmi Precision Engineering Pvt Ltd | `33AABCS1234K1Z7` | Chennai |
+| Supplier | Kaveri Castings Pvt Ltd | `27AADCK5678M1Z3` | Pune |
+| Supplier | Vega Sheet Metal Works LLP | `29AAFCV2468P1Z9` | Bengaluru |
+| Supplier | Rudra Polymers Pvt Ltd | `24AAGCR1357Q1Z2` | Ahmedabad |
+| Buyer | Tejas Electronics Pvt Ltd | `36AAHCT9753L1Z4` | Hyderabad |
+| Buyer | Northline Infrastructure Ltd | `07AAJCN8642R1Z6` | New Delhi |
+| Buyer | Malabar Automation Pvt Ltd | `32AAKCM3141S1Z8` | Kochi |
+| Buyer | Haryana Agro Machines Pvt Ltd | `06AALCH2718T1Z5` | Gurugram |
+
+Each GSTIN can be registered once per role (one buyer and one supplier account), so a
+company can also be used for both roles. To try the failure paths, use any valid-format GSTIN
+not in the table: one ending in `0` is reported **cancelled**, ending in `1` **suspended**, and
+starting with `00` **not found**. A wrong company name for a valid GSTIN gives the "name
+doesn't match" message.
 
 ## Roadmap (not yet built)
 

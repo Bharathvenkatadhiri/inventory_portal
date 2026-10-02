@@ -8,7 +8,7 @@
         <p class="mt-1 text-sm text-gray-500">Placed {{ bill.created_at|date:"d M Y" }} with {{ supplier.companyname|default:supplier }} &middot; {{ demand.total_parts_quantity }} pcs &middot; from RFQ-{{ demand.pk }}</p>
     </div>
     <div class="flex shrink-0 gap-2">
-        {% if request.user == bill.customer.user or request.user == bill.supplier.user %}
+        {% if is_buyer or is_supplier %}
         <form method="post" action="{% url 'message-thread-start' demand.pk supplier.pk %}">
             {% csrf_token %}
             <button type="submit" class="btn-outline">

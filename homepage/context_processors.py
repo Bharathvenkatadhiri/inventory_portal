@@ -1,4 +1,4 @@
-from accounts.models import ManufacturerProfile, ConsumerProfile
+from accounts import team
 from marketplace import services
 from marketplace.models import Order
 
@@ -6,6 +6,7 @@ from marketplace.models import Order
 LIVE_KEYS = (
     'topbar_unread_notifications', 'sidebar_unread_message_threads', 'sidebar_new_rfq_count',
     'sidebar_active_orders_count', 'sidebar_open_rfq_count', 'sidebar_quotes_to_review_count',
+    'sidebar_pending_approvals_count',
 )
 
 
@@ -38,8 +39,15 @@ def _counts(request):
         'topbar_notifications': feed[:6],
     }
 
+    profile = team.company(user)
+    if profile is not None:
+        counts['sidebar_team_role'] = team.role_label(user)
+        if team.can_approve(user):
+            from marketplace import approvals
+            counts['sidebar_pending_approvals_count'] = approvals.pending_for(profile).count()
+
     if user.role == 'manufacturer':
-        supplier = ManufacturerProfile.objects.filter(user=user).first()
+        supplier = team.supplier_profile(user)
         if supplier is None:
             return counts
         counts['sidebar_company_name'] = supplier.companyname
@@ -54,7 +62,7 @@ def _counts(request):
             'sidebar_active_orders_count': active_orders_count,
         })
     else:
-        customer = ConsumerProfile.objects.filter(user=user).first()
+        customer = team.buyer_profile(user)
         if customer:
             counts['sidebar_company_name'] = customer.Name
         counts.update({

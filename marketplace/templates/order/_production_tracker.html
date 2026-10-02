@@ -1,3 +1,4 @@
+{% load team_tags %}
 <div class="flex items-center justify-between mb-4">
     <h2 class="text-lg font-bold text-navy-900">Production stages</h2>
     {% if can_manage_production and next_production_stage %}
@@ -14,7 +15,7 @@
     {% if bill.status == 'cancelled' %}This order was cancelled.
     {% elif bill.status == 'completed' %}This order is completed.
     {% elif bill.status == 'submitted' or bill.status == 'quoted' or bill.status == 'quote_selected' %}Production hasn't started yet. Click <span class="font-bold text-navy-900">Start production</span> in the Status card to begin tracking stages.
-    {% elif request.user == bill.supplier.user %}Stages can't be changed at this point.
+    {% elif request.user|teammate:bill.supplier.user_id %}Stages can't be changed at this point.
     {% else %}{{ bill.supplier.companyname|default:"The manufacturer" }} marks each stage complete as work progresses. You'll see updates here.
     {% endif %}
 </p>

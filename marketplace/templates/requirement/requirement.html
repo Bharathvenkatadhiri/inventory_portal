@@ -1,4 +1,5 @@
 {% extends "dashboard_base.html" %}
+{% load team_tags %}
 {% load custom_filters %}
 {% block title %}{{ demand.title }} — MakeSetu{% endblock %}
 {% block page_header %}
@@ -14,6 +15,10 @@
                 {% else %}
                 <span class="badge bg-gray-100 text-gray-700">Closed &middot; awarded to another manufacturer</span>
                 {% endif %}
+            {% elif demand.approval_status == 'pending' %}
+            <span class="badge bg-yellow-50 text-yellow-700">Awaiting internal approval &middot; suppliers can't see it yet</span>
+            {% elif demand.approval_status == 'rejected' %}
+            <span class="badge bg-red-50 text-red-700">Not approved internally &middot; edit to resend</span>
             {% elif demand.status == 'Approved' %}
             <span class="badge bg-green-50 text-green-700">Awarded</span>
             {% elif demand.status == 'Production' %}
@@ -36,7 +41,7 @@
         </div>
     </div>
     <div class="flex shrink-0 flex-col items-end gap-2">
-        {% if selected_quote and selected_quote.supplier.user_id == request.user.id %}
+        {% if selected_quote and request.user|teammate:selected_quote.supplier.user_id %}
             {% if demand.status == 'Approved' or demand.status == 'Production' %}
             <form method="post" action="{% if demand.status == 'Approved' %}{% url 'requirement-update-status' demand.pk 'Production' %}{% else %}{% url 'requirement-update-status' demand.pk 'Completed' %}{% endif %}">
                 {% csrf_token %}
@@ -44,10 +49,10 @@
             </form>
             {% endif %}
         {% endif %}
-        {% if demand.orders.exists and request.user.id == demand.user_id or demand.orders.exists and selected_quote.supplier.user_id == request.user.id %}
+        {% if demand.orders.exists and request.user|teammate:demand.user_id or demand.orders.exists and request.user|teammate:selected_quote.supplier.user_id %}
         <a href="{% url 'order-detail' demand.orders.first.billno %}" class="text-sm font-bold text-accent-500 hover:text-accent-600">View order &rarr;</a>
         {% endif %}
-        {% if demand.user == request.user and not demand.status %}
+        {% if request.user|teammate:demand.user_id and not demand.status %}
         <div class="flex gap-3">
             <a href="{% url 'edit-requirement' demand.pk %}" class="text-sm text-gray-500 hover:text-gray-700">Edit</a>
             <a href="{% url 'delete-requirement' demand.pk %}" class="text-sm text-red-600 hover:text-red-700">Delete</a>

@@ -40,6 +40,18 @@ def gst_treatment(requirement, supplier):
     return GST_EXPORT_LUT if company and company.has_valid_lut() else GST_EXPORT_IGST
 
 
+# Internal sign-off before something leaves the company (marketplace.approvals).
+# Existing rows and anything a supervisor/manager does are 'approved'.
+APPROVAL_PENDING = 'pending'
+APPROVAL_APPROVED = 'approved'
+APPROVAL_REJECTED = 'rejected'
+APPROVAL_STATUS_CHOICES = [
+    (APPROVAL_PENDING, 'Awaiting approval'),
+    (APPROVAL_APPROVED, 'Approved'),
+    (APPROVAL_REJECTED, 'Rejected internally'),
+]
+
+
 # Contains requirements (RFQs) submitted by consumers
 class Requirement(models.Model):
     REQUIREMENT_STATUS = [
@@ -81,6 +93,8 @@ class Requirement(models.Model):
     industry = models.CharField(max_length=200, blank=True, null=True)
     file = models.FileField(upload_to='requirement_files/', blank=True, null=True)
     status = models.CharField(max_length=50, blank=True, null=True, choices=REQUIREMENT_STATUS)
+    # Suppliers only ever see 'approved' RFQs (services.open_requirements_for).
+    approval_status = models.CharField(max_length=10, choices=APPROVAL_STATUS_CHOICES, default=APPROVAL_APPROVED)
     is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -91,8 +105,9 @@ class Requirement(models.Model):
     @cached_property
     def is_export(self):
         """The buyer's company is outside India, so supplies to it are exports."""
-        country = ConsumerProfile.objects.filter(user_id=self.user_id).values_list('country', flat=True).first()
-        return not is_india(country)
+        from accounts import team
+        customer = team.buyer_profile(self.user)
+        return not is_india(customer.country if customer else None)
 
     def total_parts_quantity(self):
         return sum(part.quantity for part in self.requirement_parts.all())
@@ -194,6 +209,10 @@ class Quote(models.Model):
     valid_until = models.DateField(blank=True, null=True)
     quote_file = models.FileField(upload_to='quote_files/', blank=True, null=True)
     is_draft = models.BooleanField(default=False)
+    # A user's first submission waits as a draft (so buyers can't see it)
+    # with approval_status 'pending' until a supervisor/manager approves.
+    approval_status = models.CharField(max_length=10, choices=APPROVAL_STATUS_CHOICES, default=APPROVAL_APPROVED)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     # "Notes to buyer" — widened from a 200-char CharField to a TextField
     # (same column, no data loss) now that the quote form has more to say.
     note = models.TextField(blank=True, null=True)
@@ -526,23 +545,32 @@ class MessageThread(models.Model):
         self.save(update_fields=['closed_at', 'closed_by'])
 
     def is_participant(self, user):
-        return user in (self.requirement.user, self.supplier.user)
+        """Anyone on the buyer's or the supplier's company account."""
+        from accounts import team
+        return team.is_teammate(user, self.requirement.user_id) or team.is_teammate(user, self.supplier.user_id)
+
+    def _is_buyer_side(self, user):
+        from accounts import team
+        return team.is_teammate(user, self.requirement.user_id)
 
     def last_message(self):
         return self.messages.order_by('-created_at').first()
 
     def unread_count_for(self, user):
-        is_buyer = user == self.requirement.user
+        """Messages from the other side newer than this side's last read.
+        Read state is per side, so a colleague opening the thread counts as
+        the company having read it."""
+        from accounts import team
+        is_buyer = self._is_buyer_side(user)
         last_read = self.buyer_last_read_at if is_buyer else self.supplier_last_read_at
-        qs = self.messages.exclude(sender=user).filter(is_deleted=False)
+        qs = self.messages.exclude(sender_id__in=team.team_user_ids(user)).filter(is_deleted=False)
         if last_read:
             qs = qs.filter(created_at__gt=last_read)
         return qs.count()
 
     def mark_read_for(self, user):
         now = timezone.now()
-        is_buyer = user == self.requirement.user
-        field = 'buyer_last_read_at' if is_buyer else 'supplier_last_read_at'
+        field = 'buyer_last_read_at' if self._is_buyer_side(user) else 'supplier_last_read_at'
         setattr(self, field, now)
         self.save(update_fields=[field])
 
@@ -876,3 +904,58 @@ class OrderDocument(models.Model):
 
     def __str__(self):
         return f"{self.get_kind_display()} {self.number} (order #{self.order_id})"
+
+
+class ApprovalRequest(models.Model):
+    """Something a team user (accounts.team.MEMBER) did that waits for a
+    supervisor's or the manager's sign-off before it takes effect — see
+    marketplace.approvals for what each kind does on approval. Belongs to
+    the requester's company (buyer or supplier, exactly one)."""
+    RFQ = 'rfq'
+    QUOTE = 'quote'
+    AWARD = 'award'
+    PAYMENT = 'payment'
+    KIND_CHOICES = [
+        (RFQ, 'Send RFQ to suppliers'),
+        (QUOTE, 'Send quote to buyer'),
+        (AWARD, 'Award quote'),
+        (PAYMENT, 'Confirm payment'),
+    ]
+    PENDING = 'pending'
+    APPROVED = 'approved'
+    REJECTED = 'rejected'
+    CANCELLED = 'cancelled'
+    STATUS_CHOICES = [
+        (PENDING, 'Pending'),
+        (APPROVED, 'Approved'),
+        (REJECTED, 'Rejected'),
+        (CANCELLED, 'Cancelled'),
+    ]
+
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=PENDING)
+    buyer = models.ForeignKey(ConsumerProfile, on_delete=models.CASCADE, null=True, blank=True, related_name='approval_requests')
+    supplier = models.ForeignKey(ManufacturerProfile, on_delete=models.CASCADE, null=True, blank=True, related_name='approval_requests')
+    requirement = models.ForeignKey(Requirement, on_delete=models.CASCADE, null=True, blank=True, related_name='approval_requests')
+    quote = models.ForeignKey(Quote, on_delete=models.CASCADE, null=True, blank=True, related_name='approval_requests')
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, null=True, blank=True, related_name='approval_requests')
+    # Kind-specific detail: a quote revision's new values, or the change
+    # request whose pricing an award accepts.
+    payload = models.JSONField(default=dict, blank=True)
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='+')
+    note = models.TextField(blank=True)
+    decided_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    decided_at = models.DateTimeField(null=True, blank=True)
+    decision_note = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['buyer', 'status']), models.Index(fields=['supplier', 'status'])]
+
+    def __str__(self):
+        return f"{self.get_kind_display()} #{self.pk} ({self.status})"
+
+    @property
+    def is_revision(self):
+        return self.kind == self.QUOTE and 'revision' in self.payload

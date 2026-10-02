@@ -31,7 +31,7 @@ from django.apps import apps
 from core.settings import subscription_plan_details
 from core.validators import IMAGE_EXTENSIONS, validate_upload
 from core import audit, login_throttle, session_security
-from . import otp
+from . import otp, team
 
 model_str = settings.AUTH_USER_MODEL
 app_label, model_name = model_str.split('.')
@@ -91,6 +91,7 @@ def plan_catalog(subscription):
             'label': plan_labels.get(key, key.title()),
             'price': subscription_plan_details[key]['price'],
             'rfq_limit': subscription_plan_details[key]['rfq_limit'],
+            'team_seats': subscription_plan_details[key].get('team_seats'),
             'is_current': rank == current_rank,
             'is_pending': key == pending_plan_type,
             'is_upgrade': rank > current_rank,
@@ -150,7 +151,11 @@ def verify_gstin_view(request):
 
     normalized_gstin = result['gstin']
     existing = Company.objects.filter(gstin=normalized_gstin).first()
-    if existing is not None and hasattr(existing, 'manufacturer_profile'):
+    # A company may hold one buyer and one supplier account, so only a
+    # profile of the role being registered counts as "already registered".
+    role = User.objects.filter(pk=request.session.get('session_user_id')).values_list('role', flat=True).first()
+    taken_by = 'consumer_profile' if role == 'consumer' else 'manufacturer_profile'
+    if existing is not None and hasattr(existing, taken_by):
         return JsonResponse(
             {"verified": False, "message": "This GSTIN is already registered with an existing account."},
             status=409,
@@ -234,6 +239,7 @@ class CreateSupplier(SuccessMessageMixin, CreateView):
         # to filter out here.
         return User.objects.filter(
             pk=self.request.session.get('session_user_id'), role='manufacturer', manufacturerprofile__isnull=True,
+            team_membership__isnull=True,
         ).first()
 
     def dispatch(self, request, *args, **kwargs):
@@ -248,6 +254,11 @@ class CreateSupplier(SuccessMessageMixin, CreateView):
         kwargs = super().get_form_kwargs()
         kwargs['user'] = self._pending_user()
         return kwargs
+
+    def get_initial(self):
+        # The address the OTP step just verified; still editable, since the
+        # company's contact email may differ from the login email.
+        return {**super().get_initial(), 'email': self._pending_user().email}
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -355,6 +366,12 @@ def register(request):
                 else:
                     form.add_error('email', "We couldn't register with these details. If you already have an account, sign in instead.")
                 return render(request, 'register_first.html', {'form': form})
+            if team.company(existing_user) is not None:
+                # Already on a company account (e.g. joined through an
+                # invitation): there's no profile step left to resume.
+                form = UserRegistrationForm(request.POST)
+                form.add_error('email', 'An account with this email already exists. Please log in instead.')
+                return render(request, 'register_first.html', {'form': form})
             _start_profile_step(request, existing_user)
             return redirect('register-supplier' if existing_user.role == 'manufacturer' else 'register-customer')
 
@@ -448,6 +465,7 @@ class CreateCustomer(SuccessMessageMixin, CreateView):
         # to filter out here.
         return User.objects.filter(
             pk=self.request.session.get('session_user_id'), role='consumer', consumerprofile__isnull=True,
+            team_membership__isnull=True,
         ).first()
 
     def dispatch(self, request, *args, **kwargs):
@@ -458,11 +476,41 @@ class CreateCustomer(SuccessMessageMixin, CreateView):
             return redirect('register')
         return super().dispatch(request, *args, **kwargs)
 
+    def get_initial(self):
+        # See CreateSupplier.get_initial.
+        return {**super().get_initial(), 'email': self._pending_user().email}
+
     def form_valid(self, form):
-        form.instance.user = self._pending_user()
-        response = super().form_valid(form)
+        # Same rule as CreateSupplier.form_valid: the only proof of a
+        # verified company is a Company row this session verified through
+        # verify_gstin_view, and the buyer's name/address come from it.
+        company = Company.objects.filter(
+            pk=self.request.session.get('verified_company_id'),
+            verification_status='verified',
+            gst_verified=True,
+        ).first()
+        if company is None:
+            form.add_error(None, "Please verify your company's GSTIN before submitting.")
+            return self.form_invalid(form)
+        if hasattr(company, 'consumer_profile'):
+            form.add_error(None, "This GSTIN is already registered with an existing buyer account.")
+            return self.form_invalid(form)
+
+        profile = form.save(commit=False)
+        profile.user = self._pending_user()
+        profile.company = company
+        profile.Name = (company.trade_name or company.legal_name)[:75]
+        profile.Address = company.registered_address[:150]
+        profile.city = company.city[:50]
+        profile.state = company.state[:25]
+        profile.country = "India"
+        profile.save()
+        self.object = profile
+
+        self.request.session.pop('verified_company_id', None)
         _end_profile_step(self.request)
-        return response
+        messages.success(self.request, self.success_message)
+        return redirect(self.get_success_url())
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -471,6 +519,10 @@ class CreateCustomer(SuccessMessageMixin, CreateView):
         context["session_first_name"] = self.request.session.get('session_first_name')
         context["session_last_name"] = self.request.session.get('session_last_name')
         context["session_email"] = self.request.session.get('session_email')
+        context["verified_company"] = Company.objects.filter(
+            pk=self.request.session.get('verified_company_id'),
+            verification_status='verified',
+        ).first()
         context["title"] = 'New Customer'
         context["savebtn"] = 'Add Customer'
         return context
@@ -487,13 +539,16 @@ def ViewProfileDetails(request):
     customer = None
     supplier = None
     if request.user.role == 'manufacturer':
-        supplier = ManufacturerProfile.objects.filter(user=request.user).first()
+        supplier = team.supplier_profile(request.user)
         context['supplier'] = supplier
     else:
-        customer = ConsumerProfile.objects.filter(user=request.user.id).first()
+        customer = team.buyer_profile(request.user)
         if customer:
             context['customer'] = customer
-    subscription = SubscriptionPlan.objects.filter(user_profile=request.user).first()
+    context['team_role'] = team.role_label(request.user)
+    context['is_manager'] = team.is_manager(request.user)
+    context['can_change_plan'] = team.is_manager(request.user) or team.company(request.user) is None
+    subscription = SubscriptionPlan.objects.filter(user_profile=team.manager_user(request.user)).first()
     context['subscription'] = subscription
     context['plan_catalog'] = plan_catalog(subscription)
     context['tab'] = request.GET.get('tab', 'profile')
@@ -519,6 +574,9 @@ class SubscriptionUpgradeView(LoginRequiredMixin, View):
         next_url = request.POST.get('next')
         if not (next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure())):
             next_url = reverse('profile') + '?tab=billing'
+        if team.company(request.user) is not None and not team.is_manager(request.user):
+            messages.error(request, "Only your company's manager can change the plan.")
+            return redirect(next_url)
         if not details:
             messages.error(request, "Unknown plan selected.")
             return redirect(next_url)
@@ -902,10 +960,13 @@ class CompanyProfileView(LoginRequiredMixin, View):
         # never finished, or role flipped by hand in admin) got a real 404
         # instead of a helpful message. The dashboard already handles this
         # gracefully; this view now matches it instead of crashing.
-        supplier = ManufacturerProfile.objects.filter(user=request.user).first()
+        supplier = team.supplier_profile(request.user)
         if supplier is None:
             messages.info(request, "Your manufacturer profile isn't set up yet. Please contact support to finish setting up your account.")
             return redirect(reverse('home'))
+        if not team.is_manager(request.user):
+            messages.info(request, "Only your company's manager can edit the company profile. This is how buyers see it.")
+            return redirect(reverse('supplier', kwargs={'pk': supplier.pk}))
         from marketplace.services import rating_breakdown
         percent, checklist = supplier.profile_strength()
         context = {

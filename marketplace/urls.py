@@ -40,6 +40,8 @@ urlpatterns = [
     path('search/', views.global_search_view.as_view(), name='global_search_view'),
 
     path('documents/', views.DocumentListView.as_view(), name='document-list'),
+    path('approvals/', views.ApprovalListView.as_view(), name='approvals'),
+    path('approvals/<int:pk>/decide/', views.ApprovalDecisionView.as_view(), name='approval-decide'),
     path('notifications/', views.NotificationListView.as_view(), name='notification-list'),
     path('notifications/open/', views.NotificationOpenView.as_view(), name='notification-open'),
     path('notifications/read/', views.NotificationMarkReadView.as_view(), name='notification-mark-read'),

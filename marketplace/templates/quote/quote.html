@@ -1,4 +1,5 @@
 {% extends "dashboard_base.html" %}
+{% load team_tags %}
 {% block title %}Quote #{{ quote.pk }} — MakeSetu{% endblock %}
 {% block page_header %}
 <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -16,7 +17,7 @@
         {% else %}
         <span class="badge bg-yellow-50 text-yellow-700">Pending</span>
         {% endif %}
-        {% if quote.supplier.user == request.user and not quote.is_selected and not quote.status %}
+        {% if request.user|teammate:quote.supplier.user_id and not quote.is_selected and not quote.status %}
         <a href="{% url 'edit-quote' quote.pk %}" class="text-sm text-accent-500 hover:underline">Edit details</a>
         {% endif %}
     </div>
@@ -90,7 +91,7 @@
             <p class="text-sm text-gray-500">No certifications on file.</p>
             {% endif %}
         </div>
-        {% if request.user == quote.requirement.user %}
+        {% if request.user|teammate:quote.requirement.user_id %}
         <form method="post" action="{% url 'message-thread-start' quote.requirement.pk quote.supplier.pk %}">
             {% csrf_token %}
             <button type="submit" class="btn-outline w-full">Message {{ quote.supplier.companyname|default:quote.supplier }}</button>

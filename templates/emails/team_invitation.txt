@@ -1,0 +1,13 @@
+{% autoescape off %}Hi {{ first_name }},
+
+{{ inviter_name }} has invited you to join {{ company_name }} on MakeSetu as a {{ role_label }}.
+
+Accept the invitation and set your password here (the link works for {{ ttl_days }} days):
+
+    {{ url }}
+
+If you weren't expecting this, you can ignore this email.
+
+Thanks,
+The MakeSetu Team
+{% endautoescape %}

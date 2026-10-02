@@ -1,0 +1,165 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Team — MakeSetu{% endblock %}
+{% block page_header %}
+<div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div>
+        <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">Team</h1>
+        <p class="mt-1 text-sm text-gray-500">{{ company_name }} &middot; you're the {{ my_role }}</p>
+    </div>
+    <p class="text-sm text-gray-500">
+        {{ seats_used }} of {% if seat_limit %}{{ seat_limit }}{% else %}unlimited{% endif %} seats used
+        {% if is_manager and not has_free_seat %}&middot; <a href="{% url 'profile' %}?tab=billing" class="font-bold text-accent-500 hover:text-accent-600">Upgrade for more</a>{% endif %}
+    </p>
+</div>
+{% endblock %}
+{% block content %}
+<div class="mb-4 flex gap-2 border-b border-gray-200">
+    <a href="?tab=members" class="-mb-px border-b-2 px-3 py-2 text-sm font-bold {% if tab == 'members' %}border-accent-500 text-accent-700{% else %}border-transparent text-gray-500 hover:text-navy-900{% endif %}">Members</a>
+    {% if can_see_activity %}
+    <a href="?tab=activity" class="-mb-px border-b-2 px-3 py-2 text-sm font-bold {% if tab == 'activity' %}border-accent-500 text-accent-700{% else %}border-transparent text-gray-500 hover:text-navy-900{% endif %}">Activity</a>
+    {% endif %}
+</div>
+
+{% if tab == 'activity' %}
+<div class="card">
+    <h2 class="mb-1 text-lg font-bold text-navy-900">Activity</h2>
+    <p class="mb-4 text-sm text-gray-500">What everyone on the account did — RFQs, quotes, awards, payments, approvals and team changes. Latest 200 entries.</p>
+    {% if activity %}
+    <ul class="divide-y divide-gray-100">
+        {% for entry in activity %}
+        <li class="flex flex-wrap items-baseline justify-between gap-2 py-3 text-sm">
+            <span><span class="font-bold text-navy-900">{{ entry.actor_name }}</span> <span class="text-gray-600">{% if entry.url %}<a href="{{ entry.url }}" class="hover:text-accent-600 hover:underline">{{ entry.summary }}</a>{% else %}{{ entry.summary }}{% endif %}</span></span>
+            <span class="text-xs text-gray-400">{{ entry.created_at|date:"d M Y, H:i" }}</span>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-sm text-gray-500">Nothing yet.</p>
+    {% endif %}
+</div>
+{% else %}
+<div class="grid gap-6 lg:grid-cols-[1fr_340px]">
+    <div class="space-y-6">
+        <div class="card overflow-x-auto">
+            <h2 class="mb-4 text-lg font-bold text-navy-900">Members</h2>
+            <table class="w-full text-left text-sm">
+                <thead>
+                    <tr class="border-b border-gray-100 text-xs uppercase tracking-wide text-gray-400">
+                        <th class="py-2 pr-4 font-bold">Name</th>
+                        <th class="py-2 pr-4 font-bold">Role</th>
+                        <th class="py-2 pr-4 font-bold">Status</th>
+                        <th class="py-2 font-bold"></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    <tr>
+                        <td class="py-3 pr-4"><p class="font-bold text-navy-900">{{ manager.get_full_name|default:manager.email }}{% if manager == request.user %} <span class="text-xs font-normal text-gray-400">(you)</span>{% endif %}</p><p class="text-xs text-gray-500">{{ manager.email }}</p></td>
+                        <td class="py-3 pr-4"><span class="badge bg-navy-50 text-navy-700">Manager</span></td>
+                        <td class="py-3 pr-4 text-green-700">Active</td>
+                        <td class="py-3"></td>
+                    </tr>
+                    {% for member in members %}
+                    <tr>
+                        <td class="py-3 pr-4"><p class="font-bold text-navy-900">{{ member.user.get_full_name|default:member.user.email }}{% if member.user == request.user %} <span class="text-xs font-normal text-gray-400">(you)</span>{% endif %}</p><p class="text-xs text-gray-500">{{ member.user.email }}</p></td>
+                        <td class="py-3 pr-4">
+                            {% if is_manager %}
+                            <form method="post" action="{% url 'team-member-role' member.pk %}" class="flex items-center gap-2">
+                                {% csrf_token %}
+                                <select name="role" class="field-input py-1 text-sm" onchange="this.form.submit()">
+                                    <option value="supervisor" {% if member.role == 'supervisor' %}selected{% endif %}>Supervisor</option>
+                                    <option value="member" {% if member.role == 'member' %}selected{% endif %}>User</option>
+                                </select>
+                                <noscript><button type="submit" class="btn-outline text-xs">Save</button></noscript>
+                            </form>
+                            {% else %}
+                            <span class="badge {% if member.role == 'supervisor' %}bg-accent-50 text-accent-700{% else %}bg-gray-100 text-gray-600{% endif %}">{{ member.get_role_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 pr-4">{% if member.user.is_active %}<span class="text-green-700">Active</span>{% else %}<span class="text-gray-400">Deactivated</span>{% endif %}</td>
+                        <td class="py-3">
+                            <div class="flex flex-wrap justify-end gap-2">
+                                {% if is_manager and member.role == 'supervisor' and member.user.is_active %}
+                                <form method="post" action="{% url 'team-transfer' member.pk %}" onsubmit="return confirm('Make {{ member.user.get_full_name|default:member.user.email|escapejs }} the manager? They will hold the plan and you will become a supervisor.');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn-outline text-xs">Make manager</button>
+                                </form>
+                                {% endif %}
+                                {% if member.can_manage %}
+                                <form method="post" action="{% url 'team-member-active' member.pk %}">
+                                    {% csrf_token %}
+                                    {% if member.user.is_active %}
+                                    <input type="hidden" name="action" value="deactivate">
+                                    <button type="submit" class="btn-outline text-xs text-red-600">Deactivate</button>
+                                    {% else %}
+                                    <input type="hidden" name="action" value="activate">
+                                    <button type="submit" class="btn-outline text-xs">Reactivate</button>
+                                    {% endif %}
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if invitations %}
+        <div class="card">
+            <h2 class="mb-4 text-lg font-bold text-navy-900">Pending invitations</h2>
+            <ul class="divide-y divide-gray-100">
+                {% for invitation in invitations %}
+                <li class="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
+                    <div>
+                        <p class="font-bold text-navy-900">{{ invitation.first_name }} {{ invitation.last_name }} <span class="font-normal text-gray-500">&middot; {{ invitation.email }}</span></p>
+                        <p class="text-xs text-gray-500">{{ invitation.get_role_display }} &middot; invited by {{ invitation.invited_by.get_full_name|default:invitation.invited_by.email }} &middot; expires {{ invitation.expires_at|date:"d M Y" }}</p>
+                    </div>
+                    {% if invitation.can_manage %}
+                    <form method="post" action="{% url 'team-invitation-revoke' invitation.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-outline text-xs">Revoke</button>
+                    </form>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="space-y-6">
+        {% if can_invite %}
+        <div class="card">
+            <h2 class="mb-1 text-lg font-bold text-navy-900">Invite someone</h2>
+            <p class="mb-4 text-sm text-gray-500">They'll get an email link to set their password and join {{ company_name }}.</p>
+            {% if invite_form.non_field_errors %}
+            <div class="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">{% for error in invite_form.non_field_errors %}<p>{{ error }}</p>{% endfor %}</div>
+            {% endif %}
+            {% if has_free_seat %}
+            <form method="post" action="{% url 'team-invite' %}" class="space-y-3">
+                {% csrf_token %}
+                {% for field in invite_form %}
+                <div>
+                    <label for="{{ field.id_for_label }}" class="field-label">{{ field.label }}</label>
+                    {{ field }}
+                    {% for error in field.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
+                </div>
+                {% endfor %}
+                <button type="submit" class="btn-primary w-full">Send invitation</button>
+            </form>
+            {% else %}
+            <p class="text-sm text-gray-500">Your plan's team is full.{% if is_manager %} <a href="{% url 'profile' %}?tab=billing" class="font-bold text-accent-500 hover:text-accent-600">Upgrade the plan</a>,{% endif %} deactivate someone or revoke an invitation to free a seat.</p>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <div class="card text-sm text-gray-600">
+            <h2 class="mb-3 text-lg font-bold text-navy-900">Who can do what</h2>
+            <p class="mb-2"><span class="font-bold text-navy-900">Manager</span> — everything, including the plan, company details, the team and handing over the manager role.</p>
+            <p class="mb-2"><span class="font-bold text-navy-900">Supervisor</span> — works without approval, approves users' requests, adds and deactivates users, sees the activity log.</p>
+            <p><span class="font-bold text-navy-900">User</span> — day-to-day work. Sending an RFQ to suppliers, sending or revising a quote, awarding a quote and confirming a payment wait for a supervisor's or the manager's <a href="{% url 'approvals' %}" class="font-bold text-accent-500 hover:text-accent-600">approval</a>.</p>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

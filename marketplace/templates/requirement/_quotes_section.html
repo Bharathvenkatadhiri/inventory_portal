@@ -1,4 +1,4 @@
-{% load custom_filters %}
+{% load custom_filters team_tags %}
 <div id="quotes-section"{% if quotes_sig and not demand.status %}
      hx-get="{% url 'live-quotes' demand.pk %}?sig={{ quotes_sig }}"
      hx-trigger="every 20s [document.visibilityState === 'visible']"
@@ -10,6 +10,13 @@
         {% endif %}
     </div>
 
+    {% if pending_award and is_buyer %}
+    <div class="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+        Awarding this RFQ to <span class="font-bold">{{ pending_award.quote.supplier.companyname|default:pending_award.quote.supplier }}</span>
+        is waiting for approval (requested by {{ pending_award.requested_by.get_full_name|default:pending_award.requested_by.email }}).
+        <a href="{% url 'approvals' %}" class="font-bold underline">Approvals</a>
+    </div>
+    {% endif %}
     {% if visible_quotes %}
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {% for quote in visible_quotes %}
@@ -31,7 +38,7 @@
                 {% if quote.badge_fastest %}<span class="badge bg-blue-50 text-blue-700">Fastest</span>{% endif %}
             </div>
 
-            {% if request.user == demand.user or quote.supplier.user == request.user %}
+            {% if is_buyer or request.user|teammate:quote.supplier.user_id %}
             <p class="mt-3 text-2xl font-extrabold text-navy-900">{{ demand.quote_currency }} {{ quote.quote_price }}<span class="text-sm font-normal text-gray-400"> /unit</span></p>
             <dl class="mt-3 space-y-1.5 text-sm">
                 <div class="flex justify-between"><dt class="text-gray-500">Total ({{ quote.get_breakdown.quantity }} pcs)</dt><dd class="text-navy-900">{{ demand.quote_currency }} {{ quote.get_breakdown.total|floatformat:0 }}</dd></div>
@@ -60,11 +67,20 @@
                 <span class="badge bg-gray-100 text-gray-700">Original quote stands</span>
                 {% elif quote.revised_at %}
                 <span class="badge bg-accent-50 text-accent-700">Revised {{ quote.revised_at|timesince }} ago</span>
+                {% elif quote.approval_status == 'pending' %}
+                <span class="badge bg-yellow-50 text-yellow-700">Awaiting internal approval</span>
+                {% elif quote.approval_status == 'rejected' %}
+                <span class="badge bg-red-50 text-red-700">Not approved internally — edit and resend</span>
+                {% elif quote.is_draft %}
+                <span class="badge bg-gray-100 text-gray-700">Draft</span>
                 {% else %}
                 <span class="badge bg-yellow-50 text-yellow-700">Pending</span>
                 {% endif %}
+                {% if quote == my_quote and my_quote_pending_revision %}
+                <p class="mt-2 rounded-md bg-yellow-50 px-2.5 py-1.5 text-xs text-yellow-800">A revision (unit price {{ demand.quote_currency }} {{ my_quote_pending_revision.payload.revision.quote_price }}) is waiting for internal approval. The buyer still sees this quote.</p>
+                {% endif %}
                 {% if quote.awaiting_revision and quote.revision_note %}
-                {% if is_buyer or quote.supplier.user_id == request.user.id %}
+                {% if is_buyer or request.user|teammate:quote.supplier.user_id %}
                 <p class="mt-2 rounded-md bg-blue-50 px-2.5 py-1.5 text-xs text-blue-800"><span class="font-bold">Asked to change:</span> {{ quote.revision_note }}</p>
                 {% endif %}
                 {% endif %}

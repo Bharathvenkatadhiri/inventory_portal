@@ -85,6 +85,32 @@ class BaseGSTProvider:
         raise NotImplementedError
 
 
+# Realistic sample companies the mock provider recognises, so dev and the
+# test site can verify a believable name instead of the generated
+# "BUSINESS <PAN> PRIVATE LIMITED". Fictional — not real GSTINs. Listed in
+# README.md ("Sample companies for GST verification").
+SAMPLE_COMPANIES = {
+    # Suppliers / manufacturers
+    '33AABCS1234K1Z7': ('SRI LAKSHMI PRECISION ENGINEERING PRIVATE LIMITED', 'Sri Lakshmi Precision', 'private_limited',
+                        '14, SIDCO Industrial Estate, Guindy', 'Chennai', '600032'),
+    '27AADCK5678M1Z3': ('KAVERI CASTINGS PRIVATE LIMITED', 'Kaveri Castings', 'private_limited',
+                        'Plot 22, MIDC Bhosari', 'Pune', '411026'),
+    '29AAFCV2468P1Z9': ('VEGA SHEET METAL WORKS LLP', 'Vega Sheet Metal', 'llp',
+                        '3rd Phase, Peenya Industrial Area', 'Bengaluru', '560058'),
+    '24AAGCR1357Q1Z2': ('RUDRA POLYMERS PRIVATE LIMITED', 'Rudra Polymers', 'private_limited',
+                        'Survey 118, Changodar GIDC', 'Ahmedabad', '382213'),
+    # Buyers
+    '36AAHCT9753L1Z4': ('TEJAS ELECTRONICS PRIVATE LIMITED', 'Tejas Electronics', 'private_limited',
+                        'Plot 9, Hardware Park, Raviryal', 'Hyderabad', '501510'),
+    '07AAJCN8642R1Z6': ('NORTHLINE INFRASTRUCTURE LIMITED', 'Northline Infra', 'public_limited',
+                        'A-41, Okhla Industrial Area Phase II', 'New Delhi', '110020'),
+    '32AAKCM3141S1Z8': ('MALABAR AUTOMATION PRIVATE LIMITED', 'Malabar Automation', 'private_limited',
+                        'KINFRA Hi-Tech Park, Kalamassery', 'Kochi', '683503'),
+    '06AALCH2718T1Z5': ('HARYANA AGRO MACHINES PRIVATE LIMITED', 'Haryana Agro Machines', 'private_limited',
+                        'Sector 37, IMT Manesar', 'Gurugram', '122051'),
+}
+
+
 class MockGSTProvider(BaseGSTProvider):
     """
     Deterministic stand-in used when no real GST provider is configured.
@@ -107,6 +133,21 @@ class MockGSTProvider(BaseGSTProvider):
         status = status_by_last_digit.get(gstin[-1], 'ACTIVE')
 
         state_code = gstin[:2]
+        if gstin in SAMPLE_COMPANIES:
+            legal_name, trade_name, entity_type, address, city, pincode = SAMPLE_COMPANIES[gstin]
+            return {
+                'legal_name': legal_name,
+                'trade_name': trade_name,
+                'status': status,
+                'registered_address': f'{address}, {city} - {pincode}',
+                'state': STATE_CODES.get(state_code, ''),
+                'city': city,
+                'pincode': pincode,
+                'entity_type': entity_type,
+                'cin': None,
+                'mca_status': None,
+            }
+
         pan = gstin[2:12]
         return {
             'legal_name': f'BUSINESS {pan} PRIVATE LIMITED',

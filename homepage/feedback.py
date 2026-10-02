@@ -5,7 +5,7 @@ from collections import Counter
 from django.core.cache import cache
 from django.db.models import Avg, Count
 
-from accounts.models import ConsumerProfile, ManufacturerProfile
+from accounts import team
 from .models import PortalFeedback, PORTAL_FEATURES, PUBLIC_FEEDBACK_CACHE_KEY
 
 PUBLIC_REVIEW_LIMIT = 3
@@ -13,11 +13,11 @@ PUBLIC_REVIEW_MIN_RATING = 4
 
 
 def _company_name(user):
-    if user.role == 'manufacturer':
-        profile = ManufacturerProfile.objects.filter(user=user).first()
-        return profile.companyname if profile else ''
-    profile = ConsumerProfile.objects.filter(user=user).first()
-    return profile.Name if profile else ''
+    supplier = team.supplier_profile(user)
+    if supplier is not None:
+        return supplier.companyname or ''
+    customer = team.buyer_profile(user)
+    return customer.Name if customer else ''
 
 
 def _display_name(user):

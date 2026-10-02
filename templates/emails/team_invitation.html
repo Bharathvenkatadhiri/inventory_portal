@@ -1,0 +1,11 @@
+{% extends "emails/_base_email.html" %}
+{% block title %}Join {{ company_name }} on MakeSetu{% endblock %}
+{% block preheader %}{{ inviter_name }} invited you as a {{ role_label }}{% endblock %}
+{% block body %}
+<p style="margin:0 0 16px;">Hi {{ first_name }},</p>
+<p style="margin:0 0 20px;"><strong>{{ inviter_name }}</strong> has invited you to join <strong>{{ company_name }}</strong> on MakeSetu as a <strong>{{ role_label }}</strong>.</p>
+<p style="margin:0 0 24px;">
+<a href="{{ url }}" style="display:inline-block;padding:12px 24px;background-color:#F57921;color:#FFFFFF;font-weight:700;text-decoration:none;border-radius:8px;">Accept invitation</a>
+</p>
+<p style="margin:0;color:#56657A;font-size:13px;">The link works for {{ ttl_days }} days. If you weren't expecting this, you can ignore this email.</p>
+{% endblock %}

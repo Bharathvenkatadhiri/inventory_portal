@@ -424,6 +424,9 @@ class ConsumerProfile(models.Model):
     ]
     id = models.AutoField(primary_key=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    # Nullable only for buyers who registered before GST verification was
+    # required; self-registration always sets it (accounts.views.CreateCustomer).
+    company = models.OneToOneField(Company, on_delete=models.PROTECT, null=True, blank=True, related_name='consumer_profile')
     Name = models.CharField(max_length=75, blank=False, null=False)
     type_of_business = models.CharField(max_length=50, choices=BUSINESS_TYPES)
     Address = models.CharField(max_length=150, blank=True, null=True)
@@ -505,3 +508,83 @@ class EmailVerification(models.Model):
 
     def __str__(self):
         return f"OTP for {self.pending_registration_id} issued {self.created_at:%Y-%m-%d %H:%M}"
+
+
+class TeamMember(models.Model):
+    """A supervisor or user on a company account (accounts.team). The
+    company's manager isn't a row here: it's whoever owns the profile
+    (ConsumerProfile.user / ManufacturerProfile.user), i.e. the person who
+    registered the company. Exactly one of buyer/supplier is set; a member's
+    User.role matches it ('consumer'/'manufacturer'). Deactivating a member
+    sets User.is_active=False so they can't sign in — the row stays, so the
+    RFQs/quotes they created remain the company's."""
+    SUPERVISOR = 'supervisor'
+    MEMBER = 'member'
+    ROLE_CHOICES = [(SUPERVISOR, 'Supervisor'), (MEMBER, 'User')]
+
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='team_membership')
+    buyer = models.ForeignKey(ConsumerProfile, on_delete=models.CASCADE, null=True, blank=True, related_name='team_members')
+    supplier = models.ForeignKey(ManufacturerProfile, on_delete=models.CASCADE, null=True, blank=True, related_name='team_members')
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default=MEMBER)
+    invited_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=(models.Q(buyer__isnull=False, supplier__isnull=True) | models.Q(buyer__isnull=True, supplier__isnull=False)),
+                name='teammember_exactly_one_company',
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.user} ({self.get_role_display()})"
+
+
+class TeamInvitation(models.Model):
+    """An emailed invitation to join a company account. Only a hash of the
+    link's token is stored, like a password reset token."""
+    buyer = models.ForeignKey(ConsumerProfile, on_delete=models.CASCADE, null=True, blank=True, related_name='team_invitations')
+    supplier = models.ForeignKey(ManufacturerProfile, on_delete=models.CASCADE, null=True, blank=True, related_name='team_invitations')
+    email = models.EmailField()
+    first_name = models.CharField(max_length=150)
+    last_name = models.CharField(max_length=150, blank=True)
+    role = models.CharField(max_length=20, choices=TeamMember.ROLE_CHOICES)
+    token_hash = models.CharField(max_length=64, unique=True)
+    invited_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Invitation for {self.email} ({self.get_role_display()})"
+
+    @property
+    def is_open(self):
+        from django.utils import timezone
+        return self.accepted_at is None and self.revoked_at is None and self.expires_at > timezone.now()
+
+
+class TeamActivity(models.Model):
+    """What people on a company account did (accounts.team.log), for the
+    manager's and supervisors' Activity view. actor_name is kept so the
+    entry still reads correctly if the account is later deleted."""
+    buyer = models.ForeignKey(ConsumerProfile, on_delete=models.CASCADE, null=True, blank=True, related_name='team_activity')
+    supplier = models.ForeignKey(ManufacturerProfile, on_delete=models.CASCADE, null=True, blank=True, related_name='team_activity')
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='+')
+    actor_name = models.CharField(max_length=200)
+    action = models.CharField(max_length=40)
+    summary = models.CharField(max_length=300)
+    url = models.CharField(max_length=300, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['buyer', '-created_at']), models.Index(fields=['supplier', '-created_at'])]
+
+    def __str__(self):
+        return f"{self.created_at:%Y-%m-%d %H:%M} {self.actor_name}: {self.summary}"

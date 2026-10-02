@@ -1,10 +1,11 @@
+{% load team_tags %}
 <div class="divide-y divide-gray-100">
     {% for row in thread_rows %}
     {% with thread=row.thread %}
     <a href="{% url 'message-thread' thread.pk %}" class="block p-4 hover:bg-gray-50 {% if active_thread and active_thread.pk == thread.pk %}bg-accent-50{% endif %}">
         <div class="flex items-center justify-between gap-2">
             <p class="truncate font-bold text-navy-900">
-                {% if request.user == thread.requirement.user %}{{ thread.supplier.companyname|default:thread.supplier }}{% else %}{{ thread.requirement.user.get_full_name|default:thread.requirement.user.email }}{% endif %}
+                {% if request.user|teammate:thread.requirement.user_id %}{{ thread.supplier.companyname|default:thread.supplier }}{% else %}{{ thread.requirement.user.get_full_name|default:thread.requirement.user.email }}{% endif %}
             </p>
             {% if row.last_message %}<span class="shrink-0 text-xs text-gray-400">{{ row.last_message.created_at|timesince }} ago</span>{% endif %}
         </div>

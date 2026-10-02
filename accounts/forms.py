@@ -221,16 +221,16 @@ class CustomerRegistrationForm(SelectCustomer):
     """Public buyer sign-up step. Unlike the staff-only SelectCustomer, there
     is no `user` field: the view attaches the account created in step one
     (from the session), so visitors can neither see other users nor attach
-    a profile to someone else's account."""
+    a profile to someone else's account. Name and address aren't fields
+    either — like SupplierDetailsForm, they're copied server-side from the
+    GST-verified Company (accounts.views.CreateCustomer.form_valid)."""
     class Meta(SelectCustomer.Meta):
-        fields = ['Name', 'type_of_business', 'Address', 'phone', 'email', 'EORI_number', 'VAT_number']
+        fields = ['type_of_business', 'phone', 'email', 'EORI_number', 'VAT_number']
 
     def __init__(self, *args, **kwargs):
         forms.ModelForm.__init__(self, *args, **kwargs)
-        for name, field in self.fields.items():
-            field.widget.attrs.update({'class': 'form-control'})
-            if name != 'Address':
-                field.widget.attrs['required'] = 'true'
+        for field in self.fields.values():
+            field.widget.attrs.update({'class': 'form-control', 'required': 'true'})
 
 
 class updateCustomer(forms.ModelForm):
@@ -299,3 +299,47 @@ class UpdateSubscription(forms.ModelForm):
         if commit:
             instance.save()
         return instance    
+
+
+class TeamInviteForm(forms.Form):
+    first_name = forms.CharField(max_length=150, widget=forms.TextInput(attrs={'class': 'field-input'}))
+    last_name = forms.CharField(max_length=150, required=False, widget=forms.TextInput(attrs={'class': 'field-input'}))
+    email = forms.EmailField(widget=forms.EmailInput(attrs={'class': 'field-input'}))
+    role = forms.ChoiceField(choices=[], widget=forms.Select(attrs={'class': 'field-input'}))
+
+    def __init__(self, *args, roles=(), **kwargs):
+        super().__init__(*args, **kwargs)
+        from .models import TeamMember
+        labels = dict(TeamMember.ROLE_CHOICES)
+        self.fields['role'].choices = [(role, labels[role]) for role in roles]
+
+    def clean_email(self):
+        email = self.cleaned_data['email'].strip().lower()
+        if User.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError("This email already has a MakeSetu account. Each person can belong to one company account.")
+        return email
+
+
+class TeamJoinForm(forms.Form):
+    first_name = forms.CharField(max_length=150, widget=forms.TextInput(attrs={'class': 'field-input'}))
+    last_name = forms.CharField(max_length=150, required=False, widget=forms.TextInput(attrs={'class': 'field-input'}))
+    password1 = forms.CharField(label="Password", widget=forms.PasswordInput(attrs={'class': 'field-input', 'autocomplete': 'new-password'}))
+    password2 = forms.CharField(label="Confirm password", widget=forms.PasswordInput(attrs={'class': 'field-input', 'autocomplete': 'new-password'}))
+
+    def __init__(self, *args, email='', **kwargs):
+        self.email = email
+        super().__init__(*args, **kwargs)
+
+    def clean(self):
+        cleaned = super().clean()
+        password1, password2 = cleaned.get('password1'), cleaned.get('password2')
+        if password1 and password2 and password1 != password2:
+            self.add_error('password2', "The two passwords don't match.")
+        elif password1:
+            from django.contrib.auth import password_validation
+            candidate = User(email=self.email, first_name=cleaned.get('first_name', ''), last_name=cleaned.get('last_name', ''))
+            try:
+                password_validation.validate_password(password1, candidate)
+            except forms.ValidationError as exc:
+                self.add_error('password1', exc)
+        return cleaned

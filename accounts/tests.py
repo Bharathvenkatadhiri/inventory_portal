@@ -846,13 +846,19 @@ class BuyerRegistrationBindingTests(TestCase):
     def setUp(self):
         self.new_user = User.objects.create_user(username="fresh", email="fresh@example.com", password="pass12345", email_verified=True)
         self.victim = User.objects.create_user(username="victim2", email="victim2@example.com", password="pass12345")
+        company = Company.objects.create(
+            legal_name="Fresh Legal Pvt Ltd", trade_name="Fresh Co", gstin=ACTIVE_GSTIN, gst_status="ACTIVE",
+            gst_verified=True, gst_verified_at=timezone.now(), registered_address="1 Rd", state="KA", city="Bengaluru",
+            verification_status="verified",
+        )
         session = self.client.session
         session["session_user_id"] = self.new_user.id
+        session["verified_company_id"] = company.id
         session.save()
 
     def _payload(self, **extra):
         data = {
-            "Name": "Fresh Co", "type_of_business": "electronics", "Address": "1 Rd", "phone": "9400000009",
+            "type_of_business": "electronics", "phone": "9400000009",
             "email": "fresh@example.com", "EORI_number": "EF", "VAT_number": "VF",
         }
         data.update(extra)
@@ -874,6 +880,98 @@ class BuyerRegistrationBindingTests(TestCase):
         self.client.session.flush()
         client = Client()
         self.assertRedirects(client.get(reverse("register-customer")), reverse("register"), fetch_redirect_response=False)
+
+
+@DASHBOARD_TEST_STORAGES
+class BuyerCompanyVerificationTests(TestCase):
+    """Buyers must verify their company's GSTIN before the profile step, the
+    same way suppliers do (accounts.views.CreateCustomer.form_valid)."""
+
+    def setUp(self):
+        cache.clear()
+        self.user = User.objects.create_user(
+            username="gstbuyer", email="gstbuyer@example.com", password="pass12345", role="consumer", email_verified=True,
+        )
+        session = self.client.session
+        session["session_user_id"] = self.user.id
+        session.save()
+        self.url = reverse("register-customer")
+
+    def _payload(self, **extra):
+        data = {
+            "type_of_business": "electronics", "phone": "9400000021",
+            "email": "gstbuyer@example.com", "EORI_number": "EB1", "VAT_number": "VB1",
+        }
+        data.update(extra)
+        return data
+
+    def _verified_company(self, gstin=ACTIVE_GSTIN):
+        company = Company.objects.create(
+            legal_name="Buyer Legal Pvt Ltd", trade_name="Buyer Trade", gstin=gstin, gst_status="ACTIVE",
+            gst_verified=True, gst_verified_at=timezone.now(), registered_address="7 Buyer Street",
+            state="Karnataka", city="Bengaluru", verification_status="verified",
+        )
+        session = self.client.session
+        session["verified_company_id"] = company.id
+        session.save()
+        return company
+
+    def test_registration_without_verification_is_rejected(self):
+        response = self.client.post(self.url, self._payload())
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "verify your company")
+        self.assertFalse(ConsumerProfile.objects.exists())
+
+    def test_name_and_address_come_from_the_verified_company_not_the_post(self):
+        company = self._verified_company()
+        self.client.post(self.url, self._payload(Name="Made Up Name", Address="Made up address"))
+        profile = ConsumerProfile.objects.get(user=self.user)
+        self.assertEqual(profile.company_id, company.id)
+        self.assertEqual(profile.Name, "Buyer Trade")
+        self.assertEqual(profile.Address, "7 Buyer Street")
+        self.assertEqual(profile.city, "Bengaluru")
+        self.assertEqual(profile.state, "Karnataka")
+        self.assertNotIn("verified_company_id", self.client.session)
+
+    def test_gstin_already_used_by_another_buyer_is_rejected(self):
+        company = self._verified_company()
+        other = User.objects.create_user(username="firstbuyer", email="firstbuyer@example.com", password="pass12345")
+        ConsumerProfile.objects.create(
+            user=other, company=company, Name="First", type_of_business="electronics", city="X", state="Y",
+            country="India", phone="9400000022", email="firstbuyer@example.com", EORI_number="E0", VAT_number="V0",
+        )
+        response = self.client.post(self.url, self._payload())
+        self.assertContains(response, "already registered")
+        self.assertFalse(ConsumerProfile.objects.filter(user=self.user).exists())
+
+    def test_verify_endpoint_lets_a_buyer_use_a_gstin_a_supplier_already_has(self):
+        # One company may both buy and sell; only the same role is a duplicate.
+        supplier_user = User.objects.create_user(username="sellerco", email="sellerco@example.com", password="pass12345", role="manufacturer")
+        company = Company.objects.create(legal_name="Acme Engineering Private Limited", gstin=ACTIVE_GSTIN, verification_status="verified")
+        ManufacturerProfile.objects.create(
+            user=supplier_user, company=company, phone="9400000023", address="x", city="Chennai", state="TN",
+            country="India", amount_of_employees="10-20", turnover_per_year="<1", email="sellerco@example.com",
+        )
+        response = self.client.post(
+            reverse("verify-gstin"),
+            data=json.dumps({"gstin": ACTIVE_GSTIN, "company_name": "Acme Engineering Private Limited"}),
+            content_type="application/json",
+        )
+        self.assertNotEqual(response.status_code, 409)
+
+    def test_verify_endpoint_blocks_a_gstin_another_buyer_already_has(self):
+        company = Company.objects.create(legal_name="Acme Engineering Private Limited", gstin=ACTIVE_GSTIN, verification_status="verified")
+        other = User.objects.create_user(username="firstbuyer2", email="firstbuyer2@example.com", password="pass12345")
+        ConsumerProfile.objects.create(
+            user=other, company=company, Name="First", type_of_business="electronics", city="X", state="Y",
+            country="India", phone="9400000024", email="firstbuyer2@example.com", EORI_number="E2", VAT_number="V2",
+        )
+        response = self.client.post(
+            reverse("verify-gstin"),
+            data=json.dumps({"gstin": ACTIVE_GSTIN, "company_name": "Acme Engineering Private Limited"}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 409)
 
 
 @DASHBOARD_TEST_STORAGES
@@ -994,3 +1092,98 @@ class SupplierProfileLayoutTests(TestCase):
         response = self.client.get(reverse("supplier", kwargs={"pk": self.supplier.pk}))
         self.assertTemplateUsed(response, "base.html")
         self.assertTemplateNotUsed(response, "dashboard_base.html")
+
+
+class SampleCompanyTests(TestCase):
+    """The mock provider's sample companies (README: "Sample companies for
+    GST verification") must stay usable for manual testing in dev and on
+    the test site."""
+
+    def test_every_sample_is_a_valid_active_gstin_with_city_and_pincode(self):
+        from accounts.services.gst_verification import SAMPLE_COMPANIES
+        for gstin, (legal_name, *_rest) in SAMPLE_COMPANIES.items():
+            result = verify_gstin(gstin)
+            self.assertTrue(result["success"], gstin)
+            self.assertEqual(result["status"], "ACTIVE", gstin)
+            self.assertEqual(result["legal_name"], legal_name)
+            self.assertTrue(result["city"] and result["pincode"] and result["state"], gstin)
+
+    def test_short_typed_name_matches_the_sample_legal_name(self):
+        result = verify_gstin("27AADCK5678M1Z3")
+        self.assertTrue(company_names_match("Kaveri Castings Pvt Ltd", result["legal_name"]))
+        self.assertFalse(company_names_match("Some Other Company", result["legal_name"]))
+
+
+@DASHBOARD_TEST_STORAGES
+class ProfileCompanyTabTests(TestCase):
+    """Settings > Company used to only have a supplier branch, so buyers
+    were told their "manufacturer profile isn't set up yet"."""
+
+    def _company(self, gstin):
+        return Company.objects.create(
+            legal_name="TEJAS ELECTRONICS PRIVATE LIMITED", trade_name="Tejas Electronics", gstin=gstin,
+            gst_status="ACTIVE", gst_verified=True, gst_verified_at=timezone.now(), pincode="501510",
+            registered_address="Plot 9, Hardware Park", state="Telangana", city="Hyderabad",
+            entity_type="private_limited", verification_status="verified",
+        )
+
+    def test_buyer_sees_their_verified_company(self):
+        company = self._company("36AAHCT9753L1Z4")
+        user = User.objects.create_user(username="tabbuyer", email="tabbuyer@example.com", password="pass12345", role="consumer")
+        ConsumerProfile.objects.create(
+            user=user, company=company, Name="Tejas Electronics", type_of_business="electronics",
+            Address="Plot 9, Hardware Park", city="Hyderabad", state="Telangana", country="India",
+            phone="9400000031", email="tabbuyer@example.com", EORI_number="ET", VAT_number="VT",
+        )
+        self.client.login(username="tabbuyer@example.com", password="pass12345")
+        response = self.client.get(reverse("profile") + "?tab=company")
+        self.assertNotContains(response, "isn't set up yet")
+        for text in ("TEJAS ELECTRONICS PRIVATE LIMITED", "36AAHCT9753L1Z4", "Verified", "501510", "Hyderabad", "Private Limited"):
+            self.assertContains(response, text)
+
+    def test_supplier_sees_gstin_and_legal_name(self):
+        company = self._company("33AABCS1234K1Z7")
+        user = User.objects.create_user(username="tabmaker", email="tabmaker@example.com", password="pass12345", role="manufacturer")
+        ManufacturerProfile.objects.create(
+            user=user, company=company, companyname="Tejas Electronics", phone="9400000032", address="Plot 9",
+            city="Hyderabad", state="Telangana", country="India", amount_of_employees="10-20",
+            turnover_per_year="<1", email="tabmaker@example.com",
+        )
+        self.client.login(username="tabmaker@example.com", password="pass12345")
+        response = self.client.get(reverse("profile") + "?tab=company")
+        for text in ("TEJAS ELECTRONICS PRIVATE LIMITED", "33AABCS1234K1Z7", "Verified", "501510"):
+            self.assertContains(response, text)
+
+    def test_buyer_without_a_profile_is_not_called_a_manufacturer(self):
+        User.objects.create_user(username="tabnoprof", email="tabnoprof@example.com", password="pass12345", role="consumer")
+        self.client.login(username="tabnoprof@example.com", password="pass12345")
+        response = self.client.get(reverse("profile") + "?tab=company")
+        self.assertContains(response, "buyer profile isn't set up yet")
+        self.assertNotContains(response, "manufacturer profile")
+
+
+@DASHBOARD_TEST_STORAGES
+class ProfileStepEmailPrefillTests(TestCase):
+    """After the OTP step, the profile step's email field starts with the
+    address that was just verified, for both roles."""
+
+    def setUp(self):
+        cache.clear()
+        mail.outbox.clear()
+
+    def _register_and_verify(self, email, account_type):
+        self.client.post(reverse("register"), {
+            "username": email.split("@")[0], "first_name": "Test", "last_name": "User",
+            "password1": "a-strong-passw0rd", "password2": "a-strong-passw0rd",
+            "email": email, "account_type": account_type,
+        })
+        code = next(l.strip() for l in mail.outbox[-1].body.splitlines() if l.strip().isdigit() and len(l.strip()) == 6)
+        return self.client.post(reverse("verify-email"), {"code": code}, follow=True)
+
+    def test_buyer_profile_step_prefills_the_verified_email(self):
+        response = self._register_and_verify("prefillbuyer@example.com", "buyer")
+        self.assertContains(response, 'value="prefillbuyer@example.com"')
+
+    def test_supplier_profile_step_prefills_the_verified_email(self):
+        response = self._register_and_verify("prefillmaker@example.com", "supplier")
+        self.assertContains(response, 'value="prefillmaker@example.com"')

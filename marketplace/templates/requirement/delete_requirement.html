@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load team_tags %}
 {% block title %}Delete Requirement — MakeSetu{% endblock %}
 {% block content %}
 
@@ -6,7 +7,7 @@
     <h1 class="text-xl font-semibold text-gray-900 mb-2">Delete requirement</h1>
     <p class="text-sm text-gray-600 mb-6">Are you sure you want to delete "{{ object }}"? This cannot be undone.</p>
 
-    {% if object.user == request.user %}
+    {% if request.user|teammate:object.user_id %}
     <form method="post">
         {% csrf_token %}
         <div class="flex gap-3">

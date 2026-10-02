@@ -17,7 +17,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from . import documents, emails
-from accounts.models import ManufacturerProfile, ConsumerProfile
+from accounts import team
 from .models import (
     Requirement, Quote, Order, OrderEvent,
     ProductionUpdate, MessageThread, Message, NotificationRead,
@@ -104,7 +104,7 @@ def open_requirements_for(manufacturer):
     RequirementListView.get_queryset() so the dashboard stats and the RFQ
     inbox can't drift apart the way HomeView's old count did."""
     return Requirement.objects.filter(
-        end_date__gte=timezone.now(), is_deleted=False
+        end_date__gte=timezone.now(), is_deleted=False, approval_status='approved',
     ).exclude(quote__is_selected=True).distinct()
 
 
@@ -124,7 +124,7 @@ def visible_requirements_for(user):
     if user.is_staff:
         return Requirement.objects.filter(is_deleted=False)
     if getattr(user, 'role', None) == 'manufacturer':
-        supplier = ManufacturerProfile.objects.filter(user=user).first()
+        supplier = team.supplier_profile(user)
         if supplier is None:
             return Requirement.objects.none()
         open_ids = open_requirements_for(supplier).values('pk')
@@ -138,7 +138,7 @@ def visible_requirements_for(user):
         return Requirement.objects.filter(
             Q(pk__in=open_ids) | Q(quote__supplier=supplier) | Q(pk__in=closed_elsewhere_ids), is_deleted=False,
         ).distinct()
-    return Requirement.objects.filter(user=user, is_deleted=False)
+    return Requirement.objects.filter(user_id__in=team.team_user_ids(user), is_deleted=False)
 
 
 def totals_by_currency(pairs):
@@ -190,11 +190,26 @@ def award_quote(requirement, quote):
     return order, rejected
 
 
+def accept_amendment_pricing(response):
+    """The buyer accepts a supplier's updated pricing for a change request:
+    the RFQ changes are applied, the quote takes the new pricing and is
+    awarded. Call inside a transaction. Returns award_quote's result."""
+    amendment = response.amendment
+    requirement = amendment.requirement
+    amendment.apply()
+    response.apply_pricing()
+    response.status = AmendmentResponse.BUYER_ACCEPTED
+    response.buyer_decided_at = timezone.now()
+    response.save()
+    requirement.refresh_from_db()
+    return award_quote(requirement, response.quote)
+
+
 def create_award_order(requirement, quote):
     """Creates the order the moment the buyer selects a quote, so it can be
     tracked (updates, QC, shipment, payment) from award onwards. It used to
     be created only when the supplier marked the RFQ Completed."""
-    customer = ConsumerProfile.objects.filter(user=requirement.user).first()
+    customer = team.buyer_profile(requirement.user)
     if customer is None:
         logger.warning("Requirement #%s awarded but its buyer has no ConsumerProfile — no order created", requirement.pk)
         return None
@@ -304,7 +319,7 @@ def rfq_allowance(user):
     from accounts.models import SubscriptionPlan
     from core.settings import subscription_plan_details
 
-    plan = SubscriptionPlan.objects.filter(user_profile=user, is_active=True).first()
+    plan = SubscriptionPlan.objects.filter(user_profile=team.manager_user(user), is_active=True).first()
     raw_limit = plan.rfq_limit if plan else subscription_plan_details['basic']['rfq_limit']
     try:
         limit = int(raw_limit)
@@ -312,7 +327,7 @@ def rfq_allowance(user):
         limit = None  # "unlimited"
     month_start = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     # Deleted RFQs still count, otherwise delete-and-repost would bypass the limit.
-    used = Requirement.objects.filter(user=user, created_at__gte=month_start).count()
+    used = Requirement.objects.filter(user_id__in=team.team_user_ids(user), created_at__gte=month_start).count()
     return limit, used
 
 
@@ -320,7 +335,10 @@ def expired_without_quotes(user):
     """The buyer's unawarded RFQs whose due date passed with no quotes."""
     submitted = Quote.objects.filter(requirement=OuterRef('pk'), is_deleted=False, is_draft=False)
     return (
-        Requirement.objects.filter(user=user, is_deleted=False, status__isnull=True, end_date__lt=timezone.now())
+        Requirement.objects.filter(
+            user_id__in=team.team_user_ids(user), is_deleted=False, status__isnull=True,
+            approval_status='approved', end_date__lt=timezone.now(),
+        )
         .exclude(Exists(submitted))
         .order_by('-end_date')[:20]
     )
@@ -336,7 +354,7 @@ def awarded_elsewhere_for(supplier):
     the supplier know why. Only recent awards, only RFQs posted while the
     supplier was on the platform, and not ones they'd already declined."""
     return (
-        Requirement.objects.filter(is_deleted=False, created_at__gte=supplier.created_at)
+        Requirement.objects.filter(is_deleted=False, approval_status='approved', created_at__gte=supplier.created_at)
         .exclude(quote__supplier=supplier)
         .exclude(declines__supplier=supplier)
         .annotate(awarded_at=Max('quote__decided_at', filter=Q(quote__is_selected=True)))
@@ -352,7 +370,7 @@ def quarter_start(now):
 
 def buyer_open_requirements(user):
     """RFQs the buyer posted that haven't reached a final state yet."""
-    return Requirement.objects.filter(user=user, is_deleted=False).exclude(status__in=['Completed', 'Rejected'])
+    return Requirement.objects.filter(user_id__in=team.team_user_ids(user), is_deleted=False).exclude(status__in=['Completed', 'Rejected'])
 
 
 def buyer_pending_quotes(user):
@@ -360,7 +378,7 @@ def buyer_pending_quotes(user):
     RFQ they've posted. Quotes the buyer sent back for revision are waiting
     on the supplier, not the buyer, so they're left out until revised."""
     return Quote.objects.filter(
-        requirement__user=user, requirement__is_deleted=False, is_deleted=False,
+        requirement__user_id__in=team.team_user_ids(user), requirement__is_deleted=False, is_deleted=False,
         is_draft=False, is_selected=False, status__isnull=True, revision_requested_at__isnull=True,
     ).select_related('requirement', 'supplier')
 
@@ -370,7 +388,7 @@ def buyer_action_items(user):
     never fabricated: an order the FSM has actually put in payment_pending
     (the buyer is the one who has to act next), a production update with a
     photo posted recently, and supplier messages the buyer hasn't read."""
-    orders = Order.objects.filter(customer__user=user).exclude(status__in=['completed', 'cancelled'])
+    orders = Order.objects.filter(customer=team.buyer_profile(user)).exclude(status__in=['completed', 'cancelled'])
     items = []
     for order in orders.filter(status='payment_pending').select_related('requirement', 'supplier'):
         items.append({
@@ -398,7 +416,7 @@ def buyer_action_items(user):
         })
 
     unreviewed = Order.objects.filter(
-        customer__user=user, status='completed', review__isnull=True,
+        customer=team.buyer_profile(user), status='completed', review__isnull=True,
         updated_at__gte=timezone.now() - timedelta(days=30),
     ).select_related('requirement', 'supplier')
     for order in unreviewed[:3]:
@@ -417,7 +435,7 @@ def buyer_action_items(user):
             'cta': 'Extend or delete',
         })
     for response in AmendmentResponse.objects.filter(
-        amendment__requirement__user=user, status=AmendmentResponse.ACCEPTED,
+        amendment__requirement__user_id__in=team.team_user_ids(user), status=AmendmentResponse.ACCEPTED,
     ).select_related('amendment', 'quote__supplier')[:3]:
         items.append({
             'title': f"New pricing to review \u00b7 RFQ-{response.amendment.requirement_id}",
@@ -426,13 +444,13 @@ def buyer_action_items(user):
             'cta': 'Review new pricing',
         })
     unread_threads = MessageThread.objects.filter(
-        requirement__user=user, requirement__is_deleted=False, closed_at__isnull=True,
+        requirement__user_id__in=team.team_user_ids(user), requirement__is_deleted=False, closed_at__isnull=True,
     ).select_related('requirement', 'supplier')
     for thread in unread_threads:
         if len(items) >= 6:
             break
         if thread.unread_count_for(user):
-            latest = thread.messages.exclude(sender=user).filter(is_deleted=False).order_by('-created_at').first()
+            latest = thread.messages.exclude(sender_id__in=team.team_user_ids(user)).filter(is_deleted=False).order_by('-created_at').first()
             items.append({
                 'title': f"{thread.supplier.companyname or thread.supplier} sent you a message · RFQ-{thread.requirement_id}",
                 'detail': (latest.body or f"Shared {latest.attachment_name}") if latest else '',
@@ -442,15 +460,19 @@ def buyer_action_items(user):
     return items
 
 
+def team_threads(user):
+    """Message threads the user's company is a party to."""
+    if getattr(user, 'role', None) == 'manufacturer':
+        supplier = team.supplier_profile(user)
+        return MessageThread.objects.filter(supplier=supplier) if supplier else MessageThread.objects.none()
+    return MessageThread.objects.filter(requirement__user_id__in=team.team_user_ids(user))
+
+
 def message_thread_rows(user):
     """Every message thread visible to this user (as buyer or supplier),
     newest activity first — shared by the thread list page and the
     thread-detail page's sidebar so they can't drift apart."""
-    if getattr(user, 'role', None) == 'manufacturer':
-        supplier = ManufacturerProfile.objects.filter(user=user).first()
-        threads = MessageThread.objects.filter(supplier=supplier) if supplier else MessageThread.objects.none()
-    else:
-        threads = MessageThread.objects.filter(requirement__user=user)
+    threads = team_threads(user)
     threads = threads.select_related('requirement', 'supplier').prefetch_related('messages')
     rows = [{'thread': t, 'last_message': t.last_message(), 'unread': t.unread_count_for(user)} for t in threads]
     rows.sort(key=lambda row: row['last_message'].created_at if row['last_message'] else row['thread'].created_at, reverse=True)
@@ -459,13 +481,7 @@ def message_thread_rows(user):
 
 def unread_thread_count(user):
     """Number of message threads (not messages) with something unread for this user."""
-    if getattr(user, 'role', None) == 'manufacturer':
-        supplier = ManufacturerProfile.objects.filter(user=user).first()
-        if supplier is None:
-            return 0
-        threads = MessageThread.objects.filter(supplier=supplier)
-    else:
-        threads = MessageThread.objects.filter(requirement__user=user)
+    threads = team_threads(user)
     return sum(1 for thread in threads if thread.unread_count_for(user) > 0)
 
 
@@ -478,7 +494,7 @@ def notification_feed(user, limit=30):
     events = []
 
     if role == 'manufacturer':
-        supplier = ManufacturerProfile.objects.filter(user=user).first()
+        supplier = team.supplier_profile(user)
         if supplier is None:
             return []
         orders = Order.objects.filter(supplier=supplier)
@@ -538,9 +554,10 @@ def notification_feed(user, limit=30):
                 'timestamp': quote.decided_at,
             })
     else:
-        orders = Order.objects.filter(customer__user=user)
-        threads = MessageThread.objects.filter(requirement__user=user)
-        for quote in Quote.objects.filter(requirement__user=user, is_deleted=False, is_draft=False).select_related(
+        team_ids = team.team_user_ids(user)
+        orders = Order.objects.filter(customer=team.buyer_profile(user))
+        threads = MessageThread.objects.filter(requirement__user_id__in=team_ids)
+        for quote in Quote.objects.filter(requirement__user_id__in=team_ids, is_deleted=False, is_draft=False).select_related(
             'requirement', 'supplier'
         ).order_by('-created_at')[:20]:
             lead_time = f"{quote.lead_time_value} {quote.get_lead_time_unit_display()}" if quote.lead_time_value else "—"
@@ -552,7 +569,7 @@ def notification_feed(user, limit=30):
                 'timestamp': quote.created_at,
             })
         for response in AmendmentResponse.objects.filter(
-            amendment__requirement__user=user, responded_at__isnull=False,
+            amendment__requirement__user_id__in=team_ids, responded_at__isnull=False,
         ).select_related('amendment', 'quote__supplier').order_by('-responded_at')[:20]:
             supplier_name = response.quote.supplier.companyname or str(response.quote.supplier)
             rejected = response.status == AmendmentResponse.REJECTED
@@ -571,7 +588,7 @@ def notification_feed(user, limit=30):
                 'url': reverse('requirement', kwargs={'pk': requirement.pk}),
                 'timestamp': requirement.end_date,
             })
-        for quote in Quote.objects.filter(requirement__user=user, is_deleted=False, revised_at__isnull=False).select_related(
+        for quote in Quote.objects.filter(requirement__user_id__in=team_ids, is_deleted=False, revised_at__isnull=False).select_related(
             'requirement', 'supplier'
         ).order_by('-revised_at')[:20]:
             events.append({
@@ -591,15 +608,16 @@ def notification_feed(user, limit=30):
             'timestamp': event.changed_at,
         })
 
+    own_side = team.team_user_ids(user)
     for thread in threads.select_related('requirement__user', 'supplier'):
-        is_buyer = user == thread.requirement.user
+        is_buyer = thread.requirement.user_id in own_side
         if is_buyer:
             other_party = thread.supplier.companyname or str(thread.supplier)
         else:
             other_party = thread.requirement.user.get_full_name() or thread.requirement.user.email
         # Opening the thread already counts as reading these messages.
         thread_read_at = thread.buyer_last_read_at if is_buyer else thread.supplier_last_read_at
-        for message in thread.messages.exclude(sender=user).filter(is_deleted=False).order_by('-created_at')[:5]:
+        for message in thread.messages.exclude(sender_id__in=own_side).filter(is_deleted=False).order_by('-created_at')[:5]:
             events.append({
                 'key': f'message:{message.pk}', 'kind': 'message',
                 'title': f"New message · {other_party}",
@@ -608,6 +626,9 @@ def notification_feed(user, limit=30):
                 'timestamp': message.created_at,
                 'seen': bool(thread_read_at and message.created_at <= thread_read_at),
             })
+
+    from . import approvals
+    events += approvals.feed_events(user)
 
     events.sort(key=lambda event: event['timestamp'], reverse=True)
     events = events[:limit]
@@ -642,6 +663,13 @@ def cached_notification_feed(user):
 
 def invalidate_notification_cache(user):
     cache.delete(_notification_cache_key(user))
+
+
+def invalidate_team_notification_cache(profile):
+    """Approvals change what everyone on the company account sees."""
+    if profile is None:
+        return
+    cache.delete_many([f"notification-feed:{pk}" for pk in team.team_user_ids(profile.user)])
 
 
 def mark_notifications_read(user, keys):
@@ -711,11 +739,7 @@ def annotate_quote_badges(quotes):
 def message_attachment_documents(user):
     """Files shared in the user's conversations, linked through the
     participant-checked download view rather than their storage URL."""
-    if getattr(user, 'role', None) == 'manufacturer':
-        supplier = ManufacturerProfile.objects.filter(user=user).first()
-        threads = MessageThread.objects.filter(supplier=supplier) if supplier else MessageThread.objects.none()
-    else:
-        threads = MessageThread.objects.filter(requirement__user=user)
+    threads = team_threads(user)
     messages = Message.objects.filter(thread__in=threads, is_deleted=False).exclude(attachment='').select_related('sender', 'thread')
     return [{
         'name': message.attachment_name or 'attachment',
@@ -734,7 +758,8 @@ def buyer_documents(user):
     Requirement/RequirementPart/Quote/ProductionUpdate, so this just
     collects them rather than duplicating storage."""
     docs = []
-    requirements = list(Requirement.objects.filter(user=user, is_deleted=False).prefetch_related('requirement_parts'))
+    team_ids = team.team_user_ids(user)
+    requirements = list(Requirement.objects.filter(user_id__in=team_ids, is_deleted=False).prefetch_related('requirement_parts'))
 
     for requirement in requirements:
         if requirement.file:
@@ -751,7 +776,7 @@ def buyer_documents(user):
                     'uploaded_by': requirement.user.get_full_name() or requirement.user.email, 'date': part.created_at,
                 })
 
-    quotes = Quote.objects.filter(requirement__user=user, is_deleted=False).select_related('requirement', 'supplier')
+    quotes = Quote.objects.filter(requirement__user_id__in=team_ids, is_deleted=False, is_draft=False).select_related('requirement', 'supplier')
     for quote in quotes:
         if quote.quote_file:
             docs.append({
@@ -760,7 +785,7 @@ def buyer_documents(user):
                 'uploaded_by': quote.supplier.companyname or str(quote.supplier), 'date': quote.created_at,
             })
 
-    orders = Order.objects.filter(customer__user=user).select_related('requirement')
+    orders = Order.objects.filter(customer=team.buyer_profile(user)).select_related('requirement')
     for order in orders:
         for update in order.updates.select_related('author').all():
             if update.document:
@@ -779,9 +804,9 @@ def order_document_entries(user):
     Documents page. Links go through the access-checked download view."""
     from .models import OrderDocument
     if getattr(user, 'role', None) == 'manufacturer':
-        found = OrderDocument.objects.filter(order__supplier__user=user)
+        found = OrderDocument.objects.filter(order__supplier=team.supplier_profile(user))
     else:
-        found = OrderDocument.objects.filter(order__customer__user=user)
+        found = OrderDocument.objects.filter(order__customer=team.buyer_profile(user))
     return [{
         'name': f"{document.number}.pdf",
         'url': reverse('order-document', kwargs={'pk': document.pk}),

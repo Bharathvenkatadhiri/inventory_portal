@@ -1,0 +1,1 @@
+{% if approved %}Approved{% else %}Not approved{% endif %}: {{ kind_label }} — {{ subject_line }}

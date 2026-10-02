@@ -1,0 +1,15 @@
+{% autoescape off %}Hi {{ approver_name }},
+
+{{ requester_name }} needs your approval to {{ kind_label|lower }}:
+
+    {{ subject_line }}
+{% if note %}
+Their note: {{ note }}
+{% endif %}
+Review it and approve or reject it here:
+
+    {{ url }}
+
+Thanks,
+The MakeSetu Team
+{% endautoescape %}

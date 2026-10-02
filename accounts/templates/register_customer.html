@@ -35,22 +35,13 @@
             {% endif %}
             <form method="post" class="space-y-4">
                 {% csrf_token %}
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label for="{{ form.Name.id_for_label }}" class="field-label">Name</label>
-                        {{ form.Name|add_class:"field-input" }}
-                        {% for error in form.Name.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
-                    </div>
-                    <div>
-                        <label for="{{ form.type_of_business.id_for_label }}" class="field-label">Sector</label>
-                        {{ form.type_of_business|add_class:"field-input" }}
-                        {% for error in form.type_of_business.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
-                    </div>
-                </div>
+
+                {% include "_company_verification.html" %}
+
                 <div>
-                    <label for="{{ form.Address.id_for_label }}" class="field-label">Address</label>
-                    {{ form.Address|add_class:"field-input" }}
-                    {% for error in form.Address.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+                    <label for="{{ form.type_of_business.id_for_label }}" class="field-label">Sector</label>
+                    {{ form.type_of_business|add_class:"field-input" }}
+                    {% for error in form.type_of_business.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
@@ -78,7 +69,7 @@
                 </div>
                 <div class="flex gap-3">
                     <button type="reset" class="btn-secondary flex-1">Clear</button>
-                    <button type="submit" class="btn-primary flex-1">{{ savebtn|default:"Save" }}</button>
+                    <button type="submit" id="registration-submit-btn" class="btn-primary flex-1" {% if not verified_company %}disabled{% endif %}>{{ savebtn|default:"Save" }}</button>
                 </div>
             </form>
         </div>

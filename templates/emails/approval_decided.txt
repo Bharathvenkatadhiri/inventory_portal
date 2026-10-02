@@ -1,0 +1,13 @@
+{% autoescape off %}Hi {{ requester_name }},
+
+{{ decider_name }} {% if approved %}approved{% else %}did not approve{% endif %} your request to {{ kind_label|lower }}:
+
+    {{ subject_line }}
+{% if decision_note %}
+Their note: {{ decision_note }}
+{% endif %}
+    {{ url }}
+
+Thanks,
+The MakeSetu Team
+{% endautoescape %}

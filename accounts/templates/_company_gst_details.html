@@ -1,0 +1,13 @@
+{# Verified GST identity rows for the profile Company tab; expects `company` (may be None for accounts registered before verification was required). #}
+<div><dt class="text-gray-500">Legal name</dt><dd class="text-navy-900">{{ company.legal_name|default:"—" }}</dd></div>
+<div><dt class="text-gray-500">GSTIN</dt><dd class="font-mono text-navy-900">{{ company.gstin|default:"—" }}</dd></div>
+<div>
+    <dt class="text-gray-500">GST verification</dt>
+    <dd class="text-navy-900">
+        {% if company.verification_status == 'verified' %}<span class="badge bg-green-50 text-green-700">Verified</span>{% else %}{{ company.get_verification_status_display|default:"Not verified" }}{% endif %}
+        {% if company.gst_verified_at %}<span class="text-xs text-gray-500">on {{ company.gst_verified_at|date:"d M Y" }}</span>{% endif %}
+    </dd>
+</div>
+<div><dt class="text-gray-500">GST status</dt><dd class="text-navy-900">{{ company.get_gst_status_display|default:"—" }}</dd></div>
+<div><dt class="text-gray-500">Entity type</dt><dd class="text-navy-900">{{ company.get_entity_type_display|default:"—" }}</dd></div>
+<div><dt class="text-gray-500">Pincode</dt><dd class="text-navy-900">{{ company.pincode|default:"—" }}</dd></div>

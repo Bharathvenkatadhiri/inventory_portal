@@ -41,6 +41,13 @@
             Awarded
             <span class="ml-1 rounded-full {% if tab == 'awarded' %}bg-accent-50 text-accent-600{% else %}bg-gray-100 text-gray-500{% endif %} px-2 py-0.5 text-xs">{{ tab_counts.awarded }}</span>
         </a>
+        {% if tab_counts.approval or tab == 'approval' %}
+        <a href="?tab=approval{% if q %}&q={{ q }}{% endif %}"
+           class="border-b-2 px-4 py-3 text-sm font-bold transition-colors {% if tab == 'approval' %}border-accent-500 text-navy-900{% else %}border-transparent text-gray-500 hover:text-navy-900{% endif %}">
+            Awaiting approval
+            <span class="ml-1 rounded-full {% if tab == 'approval' %}bg-accent-50 text-accent-600{% else %}bg-gray-100 text-gray-500{% endif %} px-2 py-0.5 text-xs">{{ tab_counts.approval }}</span>
+        </a>
+        {% endif %}
         <form method="get" class="ml-auto flex items-center py-2">
             <input type="hidden" name="tab" value="{{ tab }}">
             {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
@@ -78,7 +85,11 @@
                     <td class="px-6 py-3 text-gray-600">{{ demand.quote.count }}</td>
                     <td class="px-6 py-3 text-gray-600">{{ demand.end_date|date:"d M"|default:"—" }}</td>
                     <td class="px-6 py-3">
-                        {% if demand.status == 'Approved' %}
+                        {% if demand.approval_status == 'pending' %}
+                        <span class="badge bg-yellow-50 text-yellow-700">Awaiting internal approval</span>
+                        {% elif demand.approval_status == 'rejected' %}
+                        <span class="badge bg-red-50 text-red-700">Not approved internally</span>
+                        {% elif demand.status == 'Approved' %}
                         <span class="badge bg-green-50 text-green-700">Awarded</span>
                         {% elif demand.status == 'Production' %}
                         <span class="badge bg-yellow-50 text-yellow-700">In production</span>

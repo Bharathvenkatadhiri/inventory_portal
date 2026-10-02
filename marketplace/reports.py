@@ -6,6 +6,7 @@ Spend and revenue count completed orders only, dated by when they were
 completed. An order in a currency with no rate is left out of the INR
 figures and listed in `unconverted` so the page can say so.
 """
+from accounts import team
 from collections import defaultdict
 from datetime import date, datetime
 from decimal import Decimal
@@ -117,7 +118,7 @@ def buyer_spend(user, period=DEFAULT_PERIOD):
     period_key, period_label, first_month = period_window(period)
     since = _since_datetime(first_month)
     convert = InrConverter()
-    rows = _valued(completed_orders().filter(customer__user=user), since, convert)
+    rows = _valued(completed_orders().filter(customer=team.buyer_profile(user)), since, convert)
     converted = [(order, inr, total) for order, inr, total in rows if inr is not None]
 
     total_inr = sum((inr for _, inr, _ in converted), Decimal('0'))

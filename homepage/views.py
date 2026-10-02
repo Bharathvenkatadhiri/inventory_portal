@@ -14,7 +14,8 @@ from django.utils import timezone
 from core import audit, login_throttle, session_security
 from marketplace import services
 from marketplace.models import Requirement, Quote, Order
-from accounts.models import ManufacturerProfile, ConsumerProfile, SubscriptionPlan
+from accounts import team
+from accounts.models import SubscriptionPlan
 from accounts.views import plan_catalog, StaffRequiredMixin
 from .feedback import staff_summary
 from .forms import PortalFeedbackForm
@@ -29,10 +30,12 @@ def custom_404_view(request, exception):
 
 
 def _subscription_context(user):
-    subscription = SubscriptionPlan.objects.filter(user_profile=user).first()
+    # The plan belongs to the company: it's held on the manager's account.
+    subscription = SubscriptionPlan.objects.filter(user_profile=team.manager_user(user)).first()
     return {
         'subscription': subscription,
         'plan_catalog': plan_catalog(subscription),
+        'can_change_plan': team.is_manager(user) or team.company(user) is None,
     }
 
 
@@ -48,18 +51,18 @@ class HomeView(View):
     def _buyer_dashboard(self, request):
         hour = timezone.localtime().hour
         greeting = "Good morning" if hour < 12 else "Good afternoon" if hour < 17 else "Good evening"
-        customer = ConsumerProfile.objects.filter(user=request.user).first()
+        customer = team.buyer_profile(request.user)
 
         open_requirements = services.buyer_open_requirements(request.user)
         pending_quotes = services.buyer_pending_quotes(request.user)
         pending_quotes_value = services.totals_by_currency(
             (q.requirement.quote_currency, q.get_breakdown()['total']) for q in pending_quotes
         )
-        active_orders = Order.objects.filter(customer__user=request.user).exclude(status__in=['completed', 'cancelled'])
+        active_orders = Order.objects.filter(customer=customer).exclude(status__in=['completed', 'cancelled'])
 
         quarter_start = services.quarter_start(timezone.now())
         orders_this_quarter = list(
-            Order.objects.filter(customer__user=request.user, created_at__gte=quarter_start).select_related('quote', 'supplier', 'requirement')
+            Order.objects.filter(customer=customer, created_at__gte=quarter_start).select_related('quote', 'supplier', 'requirement')
         )
         spend_this_quarter = services.totals_by_currency(
             (order.requirement.quote_currency, order.quote.get_breakdown()['total']) for order in orders_this_quarter
@@ -75,7 +78,9 @@ class HomeView(View):
             "stat_active_orders": active_orders.count(),
             "stat_spend_this_quarter": spend_this_quarter,
             "stat_suppliers_this_quarter": suppliers_this_quarter,
-            "recent_requirements": Requirement.objects.filter(user=request.user, is_deleted=False).order_by('-created_at')[:6],
+            "recent_requirements": Requirement.objects.filter(
+                user_id__in=team.team_user_ids(request.user), is_deleted=False,
+            ).order_by('-created_at')[:6],
             "action_items": services.buyer_action_items(request.user)[:3],
             "orders_in_progress": active_orders.order_by('ship_by_date')[:5],
         }
@@ -84,7 +89,7 @@ class HomeView(View):
         return render(request, "home_buyer.html", context)
 
     def _manufacturer_dashboard(self, request):
-        supplier = ManufacturerProfile.objects.filter(user=request.user).first()
+        supplier = team.supplier_profile(request.user)
         hour = timezone.localtime().hour
         greeting = "Good morning" if hour < 12 else "Good afternoon" if hour < 17 else "Good evening"
         context = {"supplier": supplier, "greeting": greeting}

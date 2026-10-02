@@ -13,13 +13,13 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_DB: marketplace
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: makesetu
+          POSTGRES_USER: makesetu_app
+          POSTGRES_PASSWORD: makesetu_app
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U makesetu_app"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -28,7 +28,7 @@ jobs:
       DEBUG: "False"
       SECRET_KEY: ci-test-secret-key
       ALLOWED_HOSTS: localhost,127.0.0.1
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/marketplace
+      DATABASE_URL: postgres://makesetu_app:makesetu_app@localhost:5432/makesetu
       # Tests talk plain HTTP to the test client; don't redirect them to HTTPS.
       SECURE_SSL_REDIRECT: "False"
       # Production settings refuse to start without an S3 bucket

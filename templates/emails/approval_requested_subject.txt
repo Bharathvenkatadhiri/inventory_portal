@@ -1,0 +1,1 @@
+Approval needed: {{ kind_label }} — {{ subject_line }}

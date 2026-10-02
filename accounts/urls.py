@@ -1,8 +1,15 @@
 from django.urls import path
 from django.contrib.auth.decorators import login_not_required
-from . import views
+from . import team_views, views
 
 urlpatterns = [
+    path('team/', team_views.TeamView.as_view(), name='team'),
+    path('team/invite/', team_views.TeamInviteView.as_view(), name='team-invite'),
+    path('team/invitations/<int:pk>/revoke/', team_views.TeamInvitationRevokeView.as_view(), name='team-invitation-revoke'),
+    path('team/members/<int:pk>/role/', team_views.TeamMemberRoleView.as_view(), name='team-member-role'),
+    path('team/members/<int:pk>/active/', team_views.TeamMemberActiveView.as_view(), name='team-member-active'),
+    path('team/members/<int:pk>/make-manager/', team_views.TeamTransferView.as_view(), name='team-transfer'),
+    path('team/join/<str:token>/', team_views.team_join, name='team-join'),
     path('register', views.register, name='register'),
     path('verify-email', views.verify_email, name='verify-email'),
     # login_not_required must wrap the as_view() result, not decorate the

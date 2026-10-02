@@ -1,0 +1,47 @@
+{% extends "auth_shell.html" %}
+{% block title %}Join your team — MakeSetu{% endblock %}
+{% block hero_eyebrow %}Team invitation{% endblock %}
+{% block hero_title %}{% if company_name %}Join {{ company_name }}<br><span class="text-accent-500">on MakeSetu.</span>{% else %}Join your team<br><span class="text-accent-500">on MakeSetu.</span>{% endif %}{% endblock %}
+{% block hero_subtitle %}Work on your company's RFQs, quotes and orders together, with sign-off from your supervisor or manager where it matters.{% endblock %}
+{% block panel %}
+{% if invalid %}
+<div class="mb-6">
+    <h2 class="text-2xl font-extrabold tracking-tight text-navy-900">This invitation isn't valid</h2>
+    <p class="mt-2 text-sm text-gray-500">It may have expired, been revoked, or already been used. Ask your manager or supervisor to send a new one.</p>
+</div>
+<a href="{% url 'login' %}" class="btn-primary w-full justify-center">Go to sign in</a>
+{% elif signed_in_as %}
+<div class="mb-6">
+    <h2 class="text-2xl font-extrabold tracking-tight text-navy-900">You're signed in</h2>
+    <p class="mt-2 text-sm text-gray-500">You're signed in as {{ signed_in_as.email }}. This invitation is for {{ invitation.email }} — sign out first, then open the link again.</p>
+</div>
+{% else %}
+<div class="mb-6">
+    <h2 class="text-2xl font-extrabold tracking-tight text-navy-900">Set up your account</h2>
+    <p class="mt-1 text-sm text-gray-500">
+        {{ invitation.invited_by.get_full_name|default:invitation.invited_by.email }} invited <span class="font-bold text-navy-900">{{ invitation.email }}</span>
+        to {{ company_name }} as a <span class="font-bold text-navy-900">{{ invitation.get_role_display }}</span>.
+    </p>
+</div>
+
+{% if form.non_field_errors %}
+<div class="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">
+    {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+</div>
+{% endif %}
+
+<form method="post" class="space-y-4">
+    {% csrf_token %}
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {% for field in form %}
+        <div{% if field.name == 'password1' or field.name == 'password2' %} class="sm:col-span-2"{% endif %}>
+            <label for="{{ field.id_for_label }}" class="field-label">{{ field.label }}</label>
+            {{ field }}
+            {% for error in field.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+    <button type="submit" class="btn-primary w-full justify-center">Join {{ company_name }}</button>
+</form>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,82 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Approvals — MakeSetu{% endblock %}
+{% block page_header %}
+<div class="mb-6">
+    <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">Approvals</h1>
+    <p class="mt-1 text-sm text-gray-500">
+        {% if can_approve %}Requests from users on your team that need your sign-off before they reach suppliers or buyers, or before money moves.
+        {% else %}Things you've sent for approval, and what your supervisor or manager decided.{% endif %}
+    </p>
+</div>
+{% endblock %}
+{% block content %}
+<div class="space-y-6">
+    <div class="card">
+        <h2 class="mb-4 text-lg font-bold text-navy-900">Waiting for a decision <span class="text-sm font-normal text-gray-400">({{ pending|length }})</span></h2>
+        {% if pending %}
+        <ul class="divide-y divide-gray-100">
+            {% for req in pending %}
+            <li class="py-4">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="text-xs font-bold uppercase tracking-wide text-accent-600">{{ req.get_kind_display }}</p>
+                        <p class="mt-1 font-bold text-navy-900"><a href="{{ req.target }}" class="hover:text-accent-600 hover:underline">{{ req.summary }}</a></p>
+                        <p class="mt-1 text-xs text-gray-500">Requested by {{ req.requested_by.get_full_name|default:req.requested_by.email }} &middot; {{ req.created_at|date:"d M Y, H:i" }}</p>
+                        {% if req.is_revision %}
+                        <p class="mt-2 text-sm text-gray-600">
+                            New values: {{ req.quote.requirement.quote_currency }} {{ req.payload.revision.quote_price }} per unit{% if req.payload.revision.tooling_cost %}, tooling {{ req.payload.revision.tooling_cost }}{% endif %}{% if req.payload.revision.lead_time_value %}, lead time {{ req.payload.revision.lead_time_value }} {{ req.payload.revision.lead_time_unit }}{% endif %}
+                            <span class="text-gray-400">(currently {{ req.quote.quote_price }})</span>
+                        </p>
+                        {% elif req.kind == 'quote' or req.kind == 'award' %}
+                        <p class="mt-2 text-sm text-gray-600">{{ req.quote.requirement.quote_currency }} {{ req.quote.quote_price }} per unit{% if req.quote.lead_time_value %}, lead time {{ req.quote.lead_time_value }} {{ req.quote.get_lead_time_unit_display|lower }}{% endif %}</p>
+                        {% endif %}
+                        {% if req.payload.amendment_response %}<p class="mt-1 text-xs text-gray-500">Accepts the supplier's updated pricing for your change request.</p>{% endif %}
+                        {% if req.note %}<p class="mt-2 text-sm italic text-gray-600">“{{ req.note }}”</p>{% endif %}
+                    </div>
+                    {% if can_approve %}
+                    <form method="post" action="{% url 'approval-decide' req.pk %}" class="w-full space-y-2 sm:w-72">
+                        {% csrf_token %}
+                        <input type="text" name="note" maxlength="1000" class="field-input text-sm" placeholder="Note (required to reject)">
+                        <div class="flex gap-2">
+                            <button type="submit" name="decision" value="approve" class="btn-primary flex-1 justify-center">Approve</button>
+                            <button type="submit" name="decision" value="reject" class="btn-outline flex-1 justify-center">Reject</button>
+                        </div>
+                        {% if req.kind == 'award' or req.kind == 'payment' %}<p class="text-xs text-gray-400">Approving moves money, so you may be asked for your password.</p>{% endif %}
+                    </form>
+                    {% else %}
+                    <span class="badge bg-yellow-50 text-yellow-700">Waiting</span>
+                    {% endif %}
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-sm text-gray-500">Nothing is waiting.</p>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h2 class="mb-4 text-lg font-bold text-navy-900">Decided</h2>
+        {% if history %}
+        <ul class="divide-y divide-gray-100">
+            {% for req in history %}
+            <li class="flex flex-wrap items-start justify-between gap-3 py-3 text-sm">
+                <div class="min-w-0">
+                    <p><span class="font-bold text-navy-900">{{ req.get_kind_display }}</span> &middot; <a href="{{ req.target }}" class="text-gray-600 hover:text-accent-600 hover:underline">{{ req.summary }}</a></p>
+                    <p class="mt-0.5 text-xs text-gray-500">
+                        Requested by {{ req.requested_by.get_full_name|default:req.requested_by.email }}
+                        {% if req.decided_by %}&middot; decided by {{ req.decided_by.get_full_name|default:req.decided_by.email }}{% endif %}
+                        &middot; {{ req.decided_at|date:"d M Y, H:i" }}
+                    </p>
+                    {% if req.decision_note %}<p class="mt-1 text-xs italic text-gray-600">“{{ req.decision_note }}”</p>{% endif %}
+                </div>
+                <span class="badge {% if req.status == 'approved' %}bg-green-50 text-green-700{% elif req.status == 'rejected' %}bg-red-50 text-red-700{% else %}bg-gray-100 text-gray-600{% endif %}">{{ req.get_status_display }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-sm text-gray-500">No decisions yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

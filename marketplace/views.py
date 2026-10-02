@@ -27,10 +27,12 @@ from django.db.models import Q
 from django.apps import apps
 from django_fsm import TransitionNotAllowed
 
-from accounts.models import ManufacturerProfile, ConsumerProfile
+from accounts import team
+from accounts.models import ManufacturerProfile
 
-from . import documents, emails, reports, search, services
+from . import approvals, documents, emails, reports, search, services
 from .models import (
+    APPROVAL_APPROVED, APPROVAL_PENDING, ApprovalRequest,
     Requirement, RequirementPart, Quote, Order,
     RFQDecline, RequirementNDAAcceptance,
     MessageThread, Message,
@@ -83,12 +85,18 @@ CANCELLABLE_ORDER_STATUSES = {'submitted', 'quoted', 'quote_selected'}
 
 
 def _order_role(order, user):
-    """'supplier' or 'buyer' for a party on this order, else None."""
-    if user == order.supplier.user:
+    """'supplier' or 'buyer' when the user is on that party's company
+    account, else None."""
+    supplier = team.supplier_profile(user)
+    if supplier is not None and supplier.pk == order.supplier_id:
         return 'supplier'
-    if user == order.customer.user:
+    customer = team.buyer_profile(user)
+    if customer is not None and customer.pk == order.customer_id:
         return 'buyer'
     return None
+
+
+APPROVERS = "your supervisor or manager"
 
 
 def _may_perform_transition(order, user, status):
@@ -121,12 +129,12 @@ class RequirementListStatusView(LoginRequiredMixin, ListView):
         status = self.kwargs.get('status')
         user = self.request.user
         if user.role == 'manufacturer':
-            supplier = ManufacturerProfile.objects.filter(user=user).first()
+            supplier = team.supplier_profile(user)
             requirement = Requirement.objects.filter(
                 is_deleted=False, status=status, quote__supplier=supplier, quote__is_selected=True
             )
         else:
-            requirement = Requirement.objects.filter(is_deleted=False, status=status, user=user)
+            requirement = Requirement.objects.filter(is_deleted=False, status=status, user_id__in=team.team_user_ids(user))
         return requirement
 
 
@@ -140,7 +148,7 @@ class RequirementListView(LoginRequiredMixin, ListView):
         return ["requirement/requirement_list.html"]
 
     def _manufacturer_supplier(self):
-        return ManufacturerProfile.objects.filter(user=self.request.user).first()
+        return team.supplier_profile(self.request.user)
 
     def get_queryset(self):
         user = self.request.user
@@ -170,9 +178,11 @@ class RequirementListView(LoginRequiredMixin, ListView):
             if process:
                 queryset = queryset.filter(requirement_parts__technology=process).distinct()
         else:
-            queryset = Requirement.objects.filter(user=user, is_deleted=False)
+            queryset = Requirement.objects.filter(user_id__in=team.team_user_ids(user), is_deleted=False)
             tab = self.request.GET.get('tab', 'all')
-            if tab == 'collecting':
+            if tab == 'approval':
+                queryset = queryset.exclude(approval_status=APPROVAL_APPROVED)
+            elif tab == 'collecting':
                 queryset = queryset.filter(status__isnull=True, quote__isnull=True)
             elif tab == 'ready':
                 queryset = queryset.filter(status__isnull=True, quote__isnull=False).distinct()
@@ -237,11 +247,12 @@ class RequirementListView(LoginRequiredMixin, ListView):
                 for requirement in context['object_list']:
                     requirement.match_percent = match_map.get(requirement.pk)
         else:
-            own = Requirement.objects.filter(user=user, is_deleted=False)
+            own = Requirement.objects.filter(user_id__in=team.team_user_ids(user), is_deleted=False)
             context['tab'] = self.request.GET.get('tab', 'all')
             context['q'] = self.request.GET.get('q', '')
             context['tab_counts'] = {
                 'all': own.count(),
+                'approval': own.exclude(approval_status=APPROVAL_APPROVED).count(),
                 'collecting': own.filter(status__isnull=True, quote__isnull=True).count(),
                 'ready': own.filter(status__isnull=True, quote__isnull=False).distinct().count(),
                 'awarded': own.filter(status__in=['Approved', 'Production', 'Completed']).count(),
@@ -260,11 +271,14 @@ def _gst_context(requirement, supplier):
 
 
 def _own_open_requirement(request, pk):
-    """The logged-in buyer's own RFQ, still open for editing (not yet
-    awarded). Anyone else gets a 404, so RFQ ids can't be probed."""
+    """An RFQ of the logged-in buyer's company, still open for editing (not
+    yet awarded). Anyone outside the company gets a 404, so RFQ ids can't be
+    probed; a team user may only change the RFQs they created themselves."""
     requirement = get_object_or_404(Requirement, pk=pk, is_deleted=False)
-    if requirement.user_id != request.user.id:
+    if not team.is_teammate(request.user, requirement.user_id):
         raise Http404
+    if team.needs_approval(request.user) and requirement.user_id != request.user.id:
+        raise PermissionDenied("Only the RFQ's creator, a supervisor or the manager can change it.")
     if requirement.status:
         raise PermissionDenied("This RFQ has already been awarded and can no longer be changed.")
     return requirement
@@ -310,14 +324,26 @@ class RequirementCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView)
         if form.is_valid():
             requirement = form.save(commit=False)
             requirement.user = request.user
+            needs_approval = team.needs_approval(request.user)
+            if needs_approval:
+                requirement.approval_status = APPROVAL_PENDING
             requirement.save()
             formset = RequirementPartInlineFormSet(request.POST, request.FILES, instance=requirement)
             if formset.is_valid():
                 formset.save()
                 _sync_part_count(requirement)
                 logger.info("Requirement #%s created by %s", requirement.pk, request.user)
-                emails.notify_new_rfq(requirement)
-                messages.success(request, self.success_message)
+                if needs_approval:
+                    approvals.submit(request.user, ApprovalRequest.RFQ, requirement=requirement)
+                    messages.success(request, (
+                        f"RFQ saved and sent to {APPROVERS} for approval. "
+                        "Suppliers will see it once it's approved."
+                    ))
+                else:
+                    team.log(request.user, 'rfq.created', f"Posted RFQ-{requirement.pk}: {requirement.title}",
+                             reverse('requirement', kwargs={'pk': requirement.pk}))
+                    emails.notify_new_rfq(requirement)
+                    messages.success(request, self.success_message)
                 return redirect(self.success_url)
             # Parts were invalid — undo the just-created requirement and re-show the form.
             logger.warning(
@@ -370,7 +396,7 @@ class RequirementUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView)
             formset.instance = self.object
             formset.save()
             _sync_part_count(self.object)
-            messages.success(request, self.success_message)
+            messages.success(request, self._settle_approval(request) or self.success_message)
             return redirect(self.success_url)
 
         # Suppliers have priced the current version: stage the edit as a
@@ -402,6 +428,27 @@ class RequirementUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView)
         return redirect(back)
 
 
+    def _settle_approval(self, request):
+        """An RFQ still waiting for (or refused) approval: a user's edit
+        sends it for approval again; a supervisor's/manager's edit releases
+        it to suppliers."""
+        requirement = self.object
+        if requirement.approval_status == APPROVAL_APPROVED:
+            return None
+        url = reverse('requirement', kwargs={'pk': requirement.pk})
+        if team.needs_approval(request.user):
+            Requirement.objects.filter(pk=requirement.pk).update(approval_status=APPROVAL_PENDING)
+            approvals.submit(request.user, ApprovalRequest.RFQ, requirement=requirement)
+            return f"Changes saved and sent to {APPROVERS} for approval."
+        approvals.cancel_open(f"Sent to suppliers directly by {request.user.get_full_name() or request.user.email}.",
+                              requirement=requirement, kind=ApprovalRequest.RFQ)
+        Requirement.objects.filter(pk=requirement.pk).update(approval_status=APPROVAL_APPROVED)
+        requirement.approval_status = APPROVAL_APPROVED
+        team.log(request.user, 'rfq.created', f"Sent RFQ-{requirement.pk} to suppliers: {requirement.title}", url)
+        emails.notify_new_rfq(requirement)
+        return "RFQ saved and sent to suppliers."
+
+
 class RequirementExtendView(LoginRequiredMixin, View):
     """Buyer moves an RFQ's due date (e.g. after it closed with no quotes).
     A future date reopens it: it's back in suppliers' inboxes."""
@@ -431,7 +478,7 @@ class AmendmentWithdrawView(LoginRequiredMixin, View):
 
     def post(self, request, pk):
         amendment = get_object_or_404(RequirementAmendment.objects.select_related('requirement'), pk=pk)
-        if amendment.requirement.user_id != request.user.id:
+        if not team.is_teammate(request.user, amendment.requirement.user_id):
             raise Http404
         if amendment.status == RequirementAmendment.PENDING:
             amendment.close(RequirementAmendment.WITHDRAWN)
@@ -447,7 +494,8 @@ class AmendmentRespondView(LoginRequiredMixin, View):
         response = get_object_or_404(
             AmendmentResponse.objects.select_related('amendment__requirement', 'quote__supplier'), pk=pk,
         )
-        if response.quote.supplier.user_id != request.user.id:
+        supplier = team.supplier_profile(request.user)
+        if supplier is None or response.quote.supplier_id != supplier.pk:
             raise Http404
         back = reverse('requirement', kwargs={'pk': response.amendment.requirement_id}) + '#changes'
         if response.status != AmendmentResponse.PENDING or not response.quote.is_undecided:
@@ -462,6 +510,10 @@ class AmendmentRespondView(LoginRequiredMixin, View):
             messages.success(request, "You rejected the changes. The buyer has been notified and your current quote stands.")
             return redirect(back)
 
+        if team.needs_approval(request.user):
+            # New pricing is a quote revision; users can't send one without sign-off.
+            messages.error(request, "Only a supervisor or the manager can send new pricing to the buyer.")
+            return redirect(back)
         form = AmendmentAcceptForm(request.POST, instance=response)
         if not form.is_valid():
             for errors in form.errors.values():
@@ -488,7 +540,7 @@ class AmendmentDecisionView(LoginRequiredMixin, View):
         )
         amendment = response.amendment
         requirement = amendment.requirement
-        if requirement.user_id != request.user.id:
+        if not team.is_teammate(request.user, requirement.user_id):
             raise Http404
         back = reverse('requirement', kwargs={'pk': requirement.pk}) + '#changes'
         if (response.status != AmendmentResponse.ACCEPTED or amendment.status != RequirementAmendment.PENDING
@@ -497,15 +549,18 @@ class AmendmentDecisionView(LoginRequiredMixin, View):
             return redirect(back)
 
         supplier_name = response.quote.supplier.companyname or response.quote.supplier
-        if request.POST.get('decision') == 'accept':
+        if request.POST.get('decision') == 'accept' and team.needs_approval(request.user):
+            approvals.submit(
+                request.user, ApprovalRequest.AWARD, requirement=requirement, quote=response.quote,
+                payload={'amendment_response': response.pk},
+            )
+            messages.success(request, f"Accepting {supplier_name}'s new pricing (which awards them the RFQ) was sent to {APPROVERS} for approval.")
+        elif request.POST.get('decision') == 'accept':
             with transaction.atomic():
-                amendment.apply()
-                response.apply_pricing()
-                response.status = AmendmentResponse.BUYER_ACCEPTED
-                response.buyer_decided_at = timezone.now()
-                response.save()
-                requirement.refresh_from_db()
-                order, rejected = services.award_quote(requirement, response.quote)
+                order, rejected = services.accept_amendment_pricing(response)
+                approvals.cancel_open("The RFQ was awarded.", requirement=requirement, kind=ApprovalRequest.AWARD)
+            team.log(request.user, 'award.done', f"Awarded RFQ-{requirement.pk} to {supplier_name} at their new pricing",
+                     reverse('requirement', kwargs={'pk': requirement.pk}))
             logger.info(
                 "Change request #%s applied and quote #%s awarded at new pricing by %s (%d other quote(s) rejected, order #%s)",
                 amendment.pk, response.quote_id, request.user, rejected, getattr(order, 'billno', None),
@@ -531,6 +586,8 @@ class RequirementDeleteView(LoginRequiredMixin, View):
         requirement = _own_open_requirement(request, pk)
         requirement.is_deleted = True
         requirement.save()
+        approvals.cancel_open("The RFQ was deleted.", requirement=requirement)
+        team.log(request.user, 'rfq.deleted', f"Deleted RFQ-{requirement.pk}: {requirement.title}")
         messages.success(request, self.success_message)
         return redirect('requirement-list')
 
@@ -552,7 +609,7 @@ class RequirementView(LoginRequiredMixin, View):
         # manufacturer sees the summary only until they've accepted.
         supplier = None
         if not request.user.is_staff and not context['is_buyer']:
-            supplier = ManufacturerProfile.objects.filter(user=request.user).first()
+            supplier = team.supplier_profile(request.user)
         nda_accepted = request.user.is_staff or context['is_buyer'] or requirement.nda_accepted_by(supplier)
         context['nda_accepted'] = nda_accepted
         context['demanddetails'] = RequirementPart.objects.filter(requirement=requirement).all() if nda_accepted else RequirementPart.objects.none()
@@ -569,7 +626,9 @@ class RequirementNDAAcceptView(LoginRequiredMixin, View):
 
     def post(self, request, pk):
         requirement = get_object_or_404(services.visible_requirements_for(request.user), pk=pk, nda_required=True)
-        supplier = get_object_or_404(ManufacturerProfile, user=request.user)
+        supplier = team.supplier_profile(request.user)
+        if supplier is None:
+            raise Http404
         RequirementNDAAcceptance.objects.get_or_create(requirement=requirement, supplier=supplier)
         return redirect(reverse('requirement', kwargs={'pk': requirement.pk}))
 
@@ -577,7 +636,7 @@ class RequirementNDAAcceptView(LoginRequiredMixin, View):
 def _change_request_context(request, requirement, my_quote):
     """Change requests for the RFQ page: the buyer sees every request with
     every supplier's response; a supplier sees only their own responses."""
-    if request.user.id == requirement.user_id:
+    if team.is_teammate(request.user, requirement.user_id):
         amendments = list(requirement.amendments.prefetch_related('responses__quote__supplier'))
         return {
             'amendments': amendments,
@@ -599,10 +658,10 @@ def _rfq_conversation_context(request, requirement):
     """The RFQ page's conversation panel (it replaced the old per-supplier
     Q&A, which was the same thing as a message thread). The buyer sees
     every supplier conversation on this RFQ; a manufacturer sees theirs."""
-    if request.user.id == requirement.user_id:
+    if team.is_teammate(request.user, requirement.user_id):
         rows = [row for row in services.message_thread_rows(request.user) if row['thread'].requirement_id == requirement.pk]
         return {'rfq_threads': rows}
-    supplier = ManufacturerProfile.objects.filter(user=request.user).first()
+    supplier = team.supplier_profile(request.user)
     if supplier is None:
         return {}
     thread = MessageThread.objects.filter(requirement=requirement, supplier=supplier).first()
@@ -617,7 +676,9 @@ class RFQDeclineView(LoginRequiredMixin, View):
 
     def post(self, request, pk):
         requirement = get_object_or_404(Requirement, pk=pk, is_deleted=False)
-        supplier = get_object_or_404(ManufacturerProfile, user=request.user)
+        supplier = team.supplier_profile(request.user)
+        if supplier is None:
+            raise Http404
         if Quote.objects.filter(requirement=requirement, supplier=supplier, is_deleted=False).exists():
             messages.error(request, "You've already quoted on this RFQ — delete your quote instead if you no longer want it.")
             return redirect(reverse('requirement', kwargs={'pk': requirement.pk}))
@@ -642,10 +703,10 @@ class QuoteListView(LoginRequiredMixin, ListView):
     def get_queryset(self):
         user = self.request.user
         if user.role == 'manufacturer':
-            supplier = ManufacturerProfile.objects.filter(user=user).first()
+            supplier = team.supplier_profile(user)
             return Quote.objects.filter(is_deleted=False, supplier=supplier).select_related('requirement', 'supplier').order_by('-created_at')
         return Quote.objects.filter(
-            requirement__user=user, requirement__is_deleted=False, is_deleted=False, is_draft=False,
+            requirement__user_id__in=team.team_user_ids(user), requirement__is_deleted=False, is_deleted=False, is_draft=False,
         ).select_related('requirement', 'supplier').order_by('requirement_id', '-is_selected', 'quote_price')
 
     def get_context_data(self, **kwargs):
@@ -666,7 +727,7 @@ class QuoteCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView):
     def dispatch(self, request, *args, **kwargs):
         if request.user.is_authenticated:
             requirement = get_object_or_404(Requirement, pk=self.kwargs.get('pk'), is_deleted=False)
-            supplier = ManufacturerProfile.objects.filter(user=request.user).first()
+            supplier = team.supplier_profile(request.user)
             if supplier is None:
                 raise PermissionDenied("Only manufacturers can submit quotes.")
             back = reverse('requirement', kwargs={'pk': requirement.pk})
@@ -688,7 +749,7 @@ class QuoteCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView):
         context["demand"] = requirement
         context["parts"] = requirement.requirement_parts.all() if requirement else []
         context["total_quantity"] = requirement.total_parts_quantity() if requirement else 0
-        supplier = ManufacturerProfile.objects.filter(user=self.request.user).first()
+        supplier = team.supplier_profile(self.request.user)
         context["match_percent"] = services.compute_match_percent(requirement, supplier) if (requirement and supplier) else None
         # Same NDA gate as the RFQ page: without it, this form was a second
         # way to the master file, part notes and drawings.
@@ -708,19 +769,34 @@ class QuoteCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView):
         # didn't open.
         self.object = None
         requirement = get_object_or_404(Requirement, pk=self.kwargs.get('pk'))
-        supplier_details = get_object_or_404(ManufacturerProfile, user=request.user)
+        supplier_details = team.supplier_profile(request.user)
+        if supplier_details is None:
+            raise Http404
         form = self.get_form()
         if not form.is_valid():
             return self.render_to_response(self.get_context_data(form=form))
         quote = form.save(commit=False)
         quote.requirement = requirement
         quote.supplier = supplier_details
-        quote.is_draft = request.POST.get('action') == 'draft'
+        quote.created_by = request.user
+        submitting = request.POST.get('action') != 'draft'
+        needs_approval = submitting and team.needs_approval(request.user)
+        # A user's submission stays a draft (invisible to the buyer) until approved.
+        quote.is_draft = not submitting or needs_approval
+        if needs_approval:
+            quote.approval_status = APPROVAL_PENDING
         quote.save()
-        logger.info("Quote #%s submitted for requirement #%s by %s", quote.pk, requirement.pk, request.user)
-        if not quote.is_draft:
+        logger.info("Quote #%s saved for requirement #%s by %s", quote.pk, requirement.pk, request.user)
+        if needs_approval:
+            approvals.submit(request.user, ApprovalRequest.QUOTE, quote=quote)
+            messages.success(request, f"Quote sent to {APPROVERS} for approval. The buyer will see it once it's approved.")
+        elif submitting:
             emails.notify_quote_submitted(quote)
-        messages.success(request, "Quote saved as draft." if quote.is_draft else self.success_message)
+            team.log(request.user, 'quote.submitted', f"Quoted on RFQ-{requirement.pk}: {requirement.title}",
+                     reverse('requirement', kwargs={'pk': requirement.pk}))
+            messages.success(request, self.success_message)
+        else:
+            messages.success(request, "Quote saved as draft.")
         if getattr(request, 'htmx', False):
             quotes = services.annotate_quote_badges(Quote.objects.filter(requirement=requirement, is_deleted=False))
             response = render(request, 'requirement/_quotes_section.html', {
@@ -736,11 +812,15 @@ class QuoteCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView):
 
 
 def _own_open_quote(request, pk):
-    """The logged-in supplier's own quote, still undecided. Anyone else gets
-    a 404; a decided (selected/rejected) quote can't be changed."""
+    """A quote of the logged-in supplier's company, still undecided. Anyone
+    outside the company gets a 404; a team user may only change quotes they
+    created; a decided (selected/rejected) quote can't be changed."""
     quote = get_object_or_404(Quote.objects.select_related('supplier', 'requirement'), pk=pk, is_deleted=False)
-    if quote.supplier.user_id != request.user.id:
+    supplier = team.supplier_profile(request.user)
+    if supplier is None or quote.supplier_id != supplier.pk:
         raise Http404
+    if team.needs_approval(request.user) and quote.created_by_id != request.user.id:
+        raise PermissionDenied("Only the quote's creator, a supervisor or the manager can change it.")
     if quote.is_selected or quote.status:
         raise PermissionDenied("This quote has already been decided and can no longer be changed.")
     return quote
@@ -778,8 +858,32 @@ class QuoteUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
         form = self.get_form()
         if not form.is_valid():
             return self.render_to_response(self.get_context_data(form=form))
+        submitting = request.POST.get('action') != 'draft'
+        back = reverse('requirement', kwargs={'pk': self.object.requirement_id})
+        if team.needs_approval(request.user) and not was_draft:
+            # The buyer already has this quote: stage the revision instead of
+            # changing what they see before it's approved.
+            approvals.submit(request.user, ApprovalRequest.QUOTE, quote=self.object,
+                             payload=approvals.revision_payload(form, self.object))
+            messages.success(request, (
+                f"Revision sent to {APPROVERS} for approval. "
+                "The buyer keeps seeing your current quote until it's approved."
+            ))
+            return redirect(back)
         quote = form.save(commit=False)
-        quote.is_draft = request.POST.get('action') == 'draft'
+        if team.needs_approval(request.user) and submitting:
+            quote.is_draft = True
+            quote.approval_status = APPROVAL_PENDING
+            quote.save()
+            approvals.submit(request.user, ApprovalRequest.QUOTE, quote=quote)
+            messages.success(request, f"Quote sent to {APPROVERS} for approval. The buyer will see it once it's approved.")
+            return redirect(back)
+        quote.is_draft = not submitting
+        if submitting:
+            quote.approval_status = APPROVAL_APPROVED
+            approvals.cancel_open(f"Sent directly by {request.user.get_full_name() or request.user.email}.",
+                                  quote=quote, kind=ApprovalRequest.QUOTE)
+            team.log(request.user, 'quote.submitted', f"Sent quote on RFQ-{quote.requirement_id}: {quote.requirement.title}", back)
         if quote.revision_requested_at and not quote.is_draft:
             # Submitting (not just saving a draft) answers the buyer's request.
             quote.revised_at = timezone.now()
@@ -809,6 +913,8 @@ class QuoteDeleteView(LoginRequiredMixin, View):
         quote = _own_open_quote(request, pk)
         quote.is_deleted = True
         quote.save()
+        approvals.cancel_open("The quote was deleted.", quote=quote)
+        team.log(request.user, 'quote.deleted', f"Withdrew quote on RFQ-{quote.requirement_id}: {quote.requirement.title}")
         messages.success(request, self.success_message)
         return redirect('quote-list')
 
@@ -820,8 +926,9 @@ class QuoteView(View):
     every quote on every RFQ, including a rival's price."""
     def get(self, request, pk):
         quote = get_object_or_404(Quote.objects.select_related('requirement', 'supplier'), pk=pk, is_deleted=False)
-        is_buyer = request.user.id == quote.requirement.user_id and not quote.is_draft
-        is_own_supplier = request.user.id == quote.supplier.user_id
+        is_buyer = team.is_teammate(request.user, quote.requirement.user_id) and not quote.is_draft
+        own_supplier = team.supplier_profile(request.user)
+        is_own_supplier = own_supplier is not None and own_supplier.pk == quote.supplier_id
         if not (is_buyer or is_own_supplier or request.user.is_staff):
             raise Http404
         return render(request, 'quote/quote.html', {'quote': quote})
@@ -836,19 +943,27 @@ class QuoteStatusUpdateView(LoginRequiredMixin, View):
     def post(self, request, pk, status):
         quote = get_object_or_404(Quote.objects.select_related('requirement', 'supplier'), pk=pk, is_deleted=False)
         requirement = quote.requirement
-        if requirement.user_id != request.user.id or status not in ('Approved', 'Rejected'):
+        if not team.is_teammate(request.user, requirement.user_id) or status not in ('Approved', 'Rejected'):
             raise Http404
-        if status == 'Approved':
+        award_needs_approval = status == 'Approved' and team.needs_approval(request.user)
+        if status == 'Approved' and not award_needs_approval:
             # Awarding creates the order and issues a purchase order: a
             # stolen or shared session shouldn't be enough on its own.
             reauth = session_security.require_recent_auth(request, reverse('requirement', kwargs={'pk': requirement.pk}))
             if reauth is not None:
                 return reauth
+        supplier_name = quote.supplier.companyname or quote.supplier
         if requirement.status or quote.status or quote.is_draft:
             messages.error(request, "This quote can no longer be changed.")
+        elif award_needs_approval:
+            approvals.submit(request.user, ApprovalRequest.AWARD, requirement=requirement, quote=quote)
+            messages.success(request, f"Award to {supplier_name} sent to {APPROVERS} for approval.")
         elif status == 'Approved':
             with transaction.atomic():
                 order, rejected = services.award_quote(requirement, quote)
+                approvals.cancel_open("The RFQ was awarded.", requirement=requirement, kind=ApprovalRequest.AWARD)
+            team.log(request.user, 'award.done', f"Awarded RFQ-{requirement.pk} to {supplier_name}",
+                     reverse('requirement', kwargs={'pk': requirement.pk}))
             logger.info(
                 "Quote #%s selected for requirement #%s by %s (%d other quote(s) auto-rejected, order #%s)",
                 quote.pk, requirement.pk, request.user, rejected, getattr(order, 'billno', None),
@@ -859,6 +974,8 @@ class QuoteStatusUpdateView(LoginRequiredMixin, View):
             quote.decided_at = timezone.now()
             quote.save()
             logger.info("Quote #%s rejected by %s", quote.pk, request.user)
+            team.log(request.user, 'quote.rejected', f"Rejected {supplier_name}'s quote on RFQ-{requirement.pk}",
+                     reverse('requirement', kwargs={'pk': requirement.pk}))
             emails.notify_quote_not_selected(quote)
             messages.success(request, f"Quote from {quote.supplier.companyname or quote.supplier} rejected.")
 
@@ -877,7 +994,7 @@ class QuoteRevisionRequestView(LoginRequiredMixin, View):
     def post(self, request, pk):
         quote = get_object_or_404(Quote.objects.select_related('requirement', 'supplier'), pk=pk, is_deleted=False)
         requirement = quote.requirement
-        if requirement.user_id != request.user.id:
+        if not team.is_teammate(request.user, requirement.user_id):
             raise Http404
         note = request.POST.get('note', '').strip()[:1000]
         if requirement.status or not quote.is_undecided or quote.is_draft:
@@ -905,7 +1022,8 @@ class QuoteRevisionDeclineView(LoginRequiredMixin, View):
 
     def post(self, request, pk):
         quote = get_object_or_404(Quote.objects.select_related('supplier', 'requirement'), pk=pk, is_deleted=False)
-        if quote.supplier.user_id != request.user.id:
+        supplier = team.supplier_profile(request.user)
+        if supplier is None or quote.supplier_id != supplier.pk:
             raise Http404
         if not quote.awaiting_revision:
             messages.error(request, "There's no open revision request on this quote.")
@@ -927,7 +1045,8 @@ class RequirementStatusUpdateView(LoginRequiredMixin, View):
     def post(self, request, pk, status):
         requirement = get_object_or_404(Requirement, pk=pk, is_deleted=False)
         selected = Quote.objects.filter(requirement=requirement, is_selected=True).select_related('supplier').first()
-        if selected is None or selected.supplier.user_id != request.user.id:
+        supplier = team.supplier_profile(request.user)
+        if selected is None or supplier is None or selected.supplier_id != supplier.pk:
             raise Http404
 
         order = requirement.orders.order_by('-created_at').first()
@@ -965,12 +1084,12 @@ class OrderListView(ListView):
     def get(self, request):
         user = self.request.user
         if user.role == 'manufacturer':
-            supplier = ManufacturerProfile.objects.filter(user=user).first()
+            supplier = team.supplier_profile(user)
             orders = Order.objects.filter(supplier=supplier)
             template_name = "order/order_list_manufacturer.html"
             context = {'bills': orders.order_by('-created_at')}
         else:
-            customer = ConsumerProfile.objects.filter(user=user).first()
+            customer = team.buyer_profile(user)
             orders = Order.objects.filter(customer=customer)
             template_name = "order/order_list.html"
             month_start = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -989,7 +1108,8 @@ class OrderDetailView(View):
 
     def get(self, request, billno):
         order = get_object_or_404(Order.objects.select_related('supplier', 'customer'), billno=billno)
-        if not (request.user.is_staff or request.user in (order.supplier.user, order.customer.user)):
+        party = _order_role(order, request.user)
+        if not (request.user.is_staff or party):
             raise Http404
         requirement = order.requirement
         items = RequirementPart.objects.filter(requirement=requirement.id)
@@ -998,7 +1118,7 @@ class OrderDetailView(View):
         customer = order.customer
         breakdown = quote.get_breakdown()
         next_status = _next_order_status(order)
-        is_supplier = request.user.is_authenticated and request.user == order.supplier.user
+        is_supplier = party == 'supplier'
         can_advance = (
             request.user.is_authenticated and next_status is not None
             and _may_perform_transition(order, request.user, next_status)
@@ -1027,6 +1147,9 @@ class OrderDetailView(View):
             'shipment_form': ShipmentForm(instance=order),
             'review_form': SupplierReviewForm(),
             'order_documents': order.documents.all(),
+            'is_buyer': party == 'buyer',
+            'payment_approval': order.approval_requests.filter(kind=ApprovalRequest.PAYMENT, status=ApprovalRequest.PENDING).first(),
+            'payment_needs_approval': team.needs_approval(request.user),
         }
         return render(request, self.template_name, context)
 
@@ -1034,7 +1157,7 @@ class OrderDetailView(View):
 class OrderProductionAdvanceView(LoginRequiredMixin, View):
     def post(self, request, billno):
         order = get_object_or_404(Order, billno=billno)
-        if request.user != order.supplier.user:
+        if _order_role(order, request.user) != 'supplier':
             messages.error(request, "Only the manufacturer on this order can update production.")
             return redirect(reverse('order-detail', kwargs={'billno': order.billno}))
         advanced = order.advance_production_stage(note=request.POST.get('note', ''))
@@ -1064,7 +1187,7 @@ class OrderProductionAdvanceView(LoginRequiredMixin, View):
 class OrderUpdateCreateView(LoginRequiredMixin, View):
     def post(self, request, billno):
         order = get_object_or_404(Order, billno=billno)
-        if request.user != order.supplier.user:
+        if _order_role(order, request.user) != 'supplier':
             messages.error(request, "Only the manufacturer on this order can post updates.")
             return redirect(reverse('order-detail', kwargs={'billno': order.billno}))
         form = ProductionUpdateForm(request.POST, request.FILES)
@@ -1086,7 +1209,7 @@ class OrderUpdateCreateView(LoginRequiredMixin, View):
 class QCChecklistToggleView(LoginRequiredMixin, View):
     def post(self, request, billno, index):
         order = get_object_or_404(Order, billno=billno)
-        if request.user != order.supplier.user:
+        if _order_role(order, request.user) != 'supplier':
             messages.error(request, "Only the manufacturer on this order can update the QC checklist.")
             return redirect(reverse('order-detail', kwargs={'billno': order.billno}))
         if not order.toggle_qc_item(index, request.user):
@@ -1099,7 +1222,7 @@ class QCChecklistToggleView(LoginRequiredMixin, View):
 class OrderShipmentUpdateView(LoginRequiredMixin, View):
     def post(self, request, billno):
         order = get_object_or_404(Order, billno=billno)
-        if request.user != order.supplier.user:
+        if _order_role(order, request.user) != 'supplier':
             messages.error(request, "Only the manufacturer on this order can update shipment details.")
             return redirect(reverse('order-detail', kwargs={'billno': order.billno}))
         form = ShipmentForm(request.POST, instance=order)
@@ -1114,8 +1237,19 @@ class OrderShipmentUpdateView(LoginRequiredMixin, View):
 class OrderStatusUpdateView(LoginRequiredMixin, View):
     def post(self, request, billno, status):
         order = get_object_or_404(Order.objects.select_related('supplier', 'customer', 'requirement'), billno=billno)
-        if request.user not in (order.supplier.user, order.customer.user):
+        if _order_role(order, request.user) is None:
             raise Http404
+        if status == 'paid' and _may_perform_transition(order, request.user, status) and team.needs_approval(request.user):
+            if order.status != 'payment_pending':
+                messages.error(request, "This order isn't waiting for payment.")
+            else:
+                approvals.submit(request.user, ApprovalRequest.PAYMENT, order=order, requirement=order.requirement)
+                messages.success(request, f"Payment confirmation sent to {APPROVERS} for approval.")
+            if getattr(request, 'htmx', False):
+                response = HttpResponse(status=204)
+                response['HX-Refresh'] = 'true'
+                return response
+            return redirect(reverse('order-detail', kwargs={'billno': order.billno}))
         if status == 'paid' and _may_perform_transition(order, request.user, status):
             # Confirming payment is the other step that moves money.
             reauth = session_security.require_recent_auth(request, reverse('order-detail', kwargs={'billno': order.billno}))
@@ -1143,6 +1277,10 @@ class OrderStatusUpdateView(LoginRequiredMixin, View):
                 order.save()
                 services.sync_after_order_transition(order)
                 logger.info("Order #%s -> %s by %s", order.billno, order.status, request.user)
+                if order.status == 'paid':
+                    approvals.cancel_open("Payment was confirmed directly.", order=order, kind=ApprovalRequest.PAYMENT)
+                team.log(request.user, f"order.{order.status}", f"Moved ORD-{order.billno} to {order.get_status_display()}",
+                         reverse('order-detail', kwargs={'billno': order.billno}))
                 emails.notify_order_status(order, order.status)
                 messages.success(request, f"Order moved to {order.get_status_display()}.")
             except TransitionNotAllowed:
@@ -1176,7 +1314,7 @@ class OrderReviewCreateView(LoginRequiredMixin, View):
     review per order; it can't be edited afterwards."""
     def post(self, request, billno):
         order = get_object_or_404(Order.objects.select_related('customer', 'supplier'), billno=billno)
-        if request.user != order.customer.user:
+        if _order_role(order, request.user) != 'buyer':
             raise Http404
         detail_url = reverse('order-detail', kwargs={'billno': order.billno}) + '#review'
         if order.status != 'completed':
@@ -1273,7 +1411,9 @@ class DocumentListView(LoginRequiredMixin, View):
         if request.user.role == 'manufacturer':
             # A manufacturer's own uploads (quote files) plus whatever the
             # buyer shared back through production updates on their orders.
-            supplier = get_object_or_404(ManufacturerProfile, user=request.user)
+            supplier = team.supplier_profile(request.user)
+            if supplier is None:
+                raise Http404
             docs = []
             for quote in Quote.objects.filter(supplier=supplier, is_deleted=False).select_related('requirement'):
                 if quote.quote_file:
@@ -1355,7 +1495,7 @@ class MessageThreadStartView(LoginRequiredMixin, View):
         back = reverse('requirement', kwargs={'pk': requirement_pk})
 
         if supplier_pk is None:
-            supplier = ManufacturerProfile.objects.filter(user=request.user).first()
+            supplier = team.supplier_profile(request.user)
             can_see = supplier is not None and (
                 services.open_requirements_for(supplier).filter(pk=requirement.pk).exists()
                 or Quote.objects.filter(requirement=requirement, supplier=supplier).exists()
@@ -1364,7 +1504,7 @@ class MessageThreadStartView(LoginRequiredMixin, View):
             if not can_see:
                 raise Http404
         else:
-            if request.user != requirement.user:
+            if not team.is_teammate(request.user, requirement.user_id):
                 messages.error(request, "Only the buyer who posted this RFQ can start this conversation.")
                 return redirect(back)
             supplier = get_object_or_404(ManufacturerProfile, pk=supplier_pk)
@@ -1493,16 +1633,17 @@ def quotes_section_context(request, requirement):
     # A draft is the supplier's unsent work: only its author sees it. It
     # used to be listed (price included) to the buyer, and counted in the
     # Best price / Fastest comparison, before it was ever submitted.
+    is_manufacturer = request.user.role == 'manufacturer'
+    own_supplier = team.supplier_profile(request.user) if is_manufacturer else None
     quotes = services.annotate_quote_badges(
         Quote.objects.filter(requirement=requirement, is_deleted=False)
-        .filter(Q(is_draft=False) | Q(supplier__user=request.user))
+        .filter(Q(is_draft=False) | Q(supplier=own_supplier))
         .select_related('supplier', 'supplier__company')
     )
-    is_manufacturer = request.user.role == 'manufacturer'
     my_quote = None
     my_declined = False
     if is_manufacturer:
-        supplier = ManufacturerProfile.objects.filter(user=request.user).first()
+        supplier = own_supplier
         my_quote = next((q for q in quotes if q.supplier_id == getattr(supplier, 'pk', None)), None)
         my_declined = supplier is not None and RFQDecline.objects.filter(requirement=requirement, supplier=supplier).exists()
     if is_manufacturer:
@@ -1528,8 +1669,11 @@ def quotes_section_context(request, requirement):
         'visible_quotes': visible_quotes,
         'other_quote_count': other_quote_count,
         'is_manufacturer': is_manufacturer,
-        'is_buyer': request.user.id == requirement.user_id,
+        'is_buyer': team.is_teammate(request.user, requirement.user_id),
         'my_quote': my_quote,
+        'my_quote_pending_revision': approvals.pending_revision(my_quote) if my_quote else None,
+        'pending_award': requirement.approval_requests.filter(kind=ApprovalRequest.AWARD, status=ApprovalRequest.PENDING)
+        .select_related('quote__supplier', 'requested_by').first(),
         'my_declined': my_declined,
         'selected_quote': next((q for q in quotes if q.is_selected), None),
         'quotes_sig': services.quotes_signature(requirement),
@@ -1592,7 +1736,7 @@ class ReportsView(LoginRequiredMixin, View):
     def get(self, request):
         period = request.GET.get('period', reports.DEFAULT_PERIOD)
         if request.user.role == 'manufacturer':
-            supplier = ManufacturerProfile.objects.filter(user=request.user).first()
+            supplier = team.supplier_profile(request.user)
             if supplier is None:
                 messages.info(request, "Your manufacturer profile isn't set up yet.")
                 return redirect(reverse('home'))
@@ -1615,7 +1759,69 @@ class OrderDocumentDownloadView(LoginRequiredMixin, View):
     """A PO or tax invoice PDF, for the order's buyer, its manufacturer or staff."""
     def get(self, request, pk):
         document = get_object_or_404(OrderDocument.objects.select_related('order__supplier', 'order__customer'), pk=pk)
-        if not (request.user.is_staff or request.user in (document.order.supplier.user, document.order.customer.user)):
+        if not (request.user.is_staff or _order_role(document.order, request.user)):
             raise Http404
         documents.ensure_pdf(document)
         return FileResponse(document.pdf.open('rb'), content_type='application/pdf', filename=f"{document.number}.pdf")
+
+
+class ApprovalListView(LoginRequiredMixin, View):
+    """The company's approval queue. Supervisors and the manager see every
+    pending request and decide them; a user sees the requests they made."""
+    def get(self, request):
+        profile = team.company(request.user)
+        if profile is None:
+            messages.info(request, "Your company profile isn't set up yet.")
+            return redirect(reverse('home'))
+        can_approve = team.can_approve(request.user)
+        rows = ApprovalRequest.objects.filter(**team.company_filter(profile)).select_related(
+            'requirement', 'quote__requirement', 'quote__supplier', 'order__requirement', 'requested_by', 'decided_by',
+        )
+        if not can_approve:
+            rows = rows.filter(requested_by=request.user)
+        pending = list(rows.filter(status=ApprovalRequest.PENDING))
+        history = list(rows.exclude(status=ApprovalRequest.PENDING).order_by('-decided_at')[:50])
+        for req in pending + history:
+            req.summary = approvals.describe(req)
+            req.target = approvals.target_url(req)
+        return render(request, 'approvals/approval_list.html', {
+            'pending': pending, 'history': history, 'can_approve': can_approve,
+        })
+
+
+class ApprovalDecisionView(LoginRequiredMixin, View):
+    """A supervisor or the manager approves or rejects a request. Awards and
+    payment confirmations move money, so they need a recent password, the
+    same as doing them directly."""
+    http_method_names = ['post']
+
+    def post(self, request, pk):
+        req = get_object_or_404(
+            ApprovalRequest.objects.select_related('requirement', 'quote__requirement', 'quote__supplier', 'order__requirement', 'requested_by'),
+            pk=pk,
+        )
+        if not approvals.can_decide(request.user, req):
+            raise Http404
+        decision = request.POST.get('decision')
+        note = request.POST.get('note', '').strip()[:1000]
+        summary = approvals.describe(req)
+        if decision == 'approve':
+            if req.kind in (ApprovalRequest.AWARD, ApprovalRequest.PAYMENT):
+                reauth = session_security.require_recent_auth(request, reverse('approvals'))
+                if reauth is not None:
+                    return reauth
+            try:
+                approvals.approve(req, request.user, note)
+                messages.success(request, f"Approved: {summary}")
+            except approvals.ApprovalError as exc:
+                messages.error(request, f"This can no longer be approved — {exc}. The request was cancelled.")
+        elif decision == 'reject':
+            if not note:
+                messages.error(request, "Add a short reason so the requester knows what to change.")
+                return redirect(reverse('approvals'))
+            try:
+                approvals.reject(req, request.user, note)
+                messages.success(request, f"Rejected: {summary}")
+            except approvals.ApprovalError as exc:
+                messages.error(request, str(exc))
+        return redirect(reverse('approvals'))
