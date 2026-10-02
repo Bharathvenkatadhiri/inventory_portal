@@ -190,6 +190,11 @@ CSRF_COOKIE_SECURE = env.bool("CSRF_COOKIE_SECURE", default=not DEBUG)
 SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=not DEBUG)
 if env.bool("SECURE_PROXY_SSL_HEADER", default=not DEBUG):
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# Full origins (scheme included) allowed to POST forms, e.g.
+# https://test.makesetu.in. Django already trusts its own origin when
+# SECURE_PROXY_SSL_HEADER reports the scheme correctly; listing it here keeps
+# forms working if a proxy in front ever drops X-Forwarded-Proto.
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 # Start small: browsers cache HSTS for this long, so a mistake (e.g. a
 # subdomain still on HTTP) is locked in for that period. Raise to a year
 # (31536000) once HTTPS is confirmed working everywhere.
