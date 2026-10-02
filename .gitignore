@@ -147,3 +147,6 @@ dmypy.json
 major project.code-workspace
 
 # End of https://www.gitignore.io/api/django
+
+# Cloudflare Origin SSL certificates
+nginx/ssl/
