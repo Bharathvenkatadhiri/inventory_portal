@@ -41,7 +41,8 @@
         </div>
         {% endfor %}
     </div>
-    <button type="submit" class="btn-primary w-full justify-center">Join {{ company_name }}</button>
+    {% include "_password_rules.html" with password_id=form.password1.id_for_label confirm_id=form.password2.id_for_label submit_id="join-submit-btn" %}
+    <button type="submit" id="join-submit-btn" class="btn-primary w-full justify-center">Join {{ company_name }}</button>
 </form>
 {% endif %}
 {% endblock %}

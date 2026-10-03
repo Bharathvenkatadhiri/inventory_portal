@@ -52,6 +52,5 @@ urlpatterns = [
     path('subscription', views.SubscriptionView.as_view(), name='subscription-list'),
     path('subscription/<pk>/delete', views.SubscriptionDeleteView.as_view(), name='delete-subscription'),
     path('subscription/<pk>/edit', views.SubscriptionUpdateView.as_view(), name='edit-subscription'),
-    path('subscription/upgrade/', views.SubscriptionUpgradeView.as_view(), name='subscription-upgrade'),
 
 ]

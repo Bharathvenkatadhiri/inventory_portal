@@ -1,0 +1,18 @@
+{# One plan on one billing cycle: what choosing it does now. Expects option (from accounts.views.plan_catalog), plan, cycle, can_change_plan. #}
+{% if option.scheduled %}
+<span class="btn-outline w-full cursor-default justify-center text-center text-xs opacity-80">Scheduled</span>
+{% elif option.action == 'none' %}
+<span class="btn-outline w-full cursor-default justify-center opacity-60">{% if plan.is_current %}Current plan{% else %}—{% endif %}</span>
+{% elif option.action == 'unavailable' %}
+<p class="text-center text-xs text-gray-500">{{ option.note }}</p>
+{% elif not can_change_plan %}
+<span class="btn-outline w-full cursor-default justify-center text-center text-xs opacity-60">Only your company's owner can change the plan</span>
+{% else %}
+<form method="post" action="{% url 'billing-change' %}">
+    {% csrf_token %}
+    <input type="hidden" name="plan_type" value="{{ plan.key }}">
+    <input type="hidden" name="billing_cycle" value="{{ cycle }}">
+    <button type="submit" class="w-full {% if option.action == 'new' or option.action == 'upgrade' or option.action == 'renew' %}btn-primary{% else %}btn-outline{% endif %}">{{ option.label }}</button>
+</form>
+{% if option.note %}<p class="mt-2 text-xs text-gray-500">{{ option.note }}</p>{% endif %}
+{% endif %}

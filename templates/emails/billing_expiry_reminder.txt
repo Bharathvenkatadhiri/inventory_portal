@@ -1,0 +1,6 @@
+{% autoescape off %}Hi {{ owner_name }},
+
+{% include "emails/_billing_expiry_details.txt" %}
+Thanks,
+The MakeSetu Team
+{% endautoescape %}

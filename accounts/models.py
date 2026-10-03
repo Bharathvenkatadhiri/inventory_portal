@@ -2,6 +2,7 @@
 from django.db import models
 #from django.contrib.auth.models import User
 from django.conf import settings
+from django.utils import timezone
 
 from plans.catalog import BILLING_CYCLES, DEFAULT_PLAN, MONTHLY, PLAN_LABELS
 
@@ -422,32 +423,70 @@ class ConsumerProfile(models.Model):
         return f"#{self.id} - {self.Name}"
 
 class SubscriptionPlan(models.Model):
-    """A company's MakeSetu subscription, held on its owner's account. What
-    the plan includes lives in plans.catalog (the only place limits and
-    features are described); plans.access applies it."""
+    """A company's MakeSetu subscription, held on its owner's account: the
+    plan it's entitled to now and where it is in its billing lifecycle.
+    Every change goes through billing.services (payments, upgrades,
+    scheduled changes, renewals, grace, expiry); what each plan includes
+    lives in plans.catalog, and plans.access applies it.
+
+    Times are exact timestamps, so proration and "upgrade one minute before
+    expiry" are computed to the second. A Free subscription has no expiry;
+    its usage window rolls every 30 days from current_period_start.
+    """
     PLAN_CHOICES = [(key, label) for key, label in PLAN_LABELS.items()]
+    ACTIVE, PAST_DUE = 'active', 'past_due'
+    STATUS_CHOICES = [(ACTIVE, 'Active'), (PAST_DUE, 'Past due')]
 
     user_profile = models.ForeignKey(settings.AUTH_USER_MODEL, to_field='email', on_delete=models.CASCADE)
     plan_type = models.CharField(max_length=20, choices=PLAN_CHOICES, default=DEFAULT_PLAN)
     billing_cycle = models.CharField(max_length=10, choices=BILLING_CYCLES, default=MONTHLY)
-    # What the current plan and cycle cost, recorded when it was set.
+    # The full-period price of the current plan and cycle, locked for the
+    # current period (a catalogue price change applies from the next one).
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=ACTIVE)
 
-    # Additional fields for subscription management
-    start_date = models.DateField(auto_now=True)
-    end_date = models.DateField(blank=True, null=True) # Set this for expiration
+    # When this subscription (this run of paid or free service) started,
+    # when the current billing period started, and when it ends.
+    started_at = models.DateTimeField(default=timezone.now)
+    current_period_start = models.DateTimeField(default=timezone.now)
+    expires_at = models.DateTimeField(blank=True, null=True)
+
+    # Renews at expiry unless cancelled; turning it back on before expiry
+    # reactivates the same subscription.
+    auto_renew = models.BooleanField(default=False)
+    # A change that takes effect at expiry: a downgrade, a switch of billing
+    # cycle, or 'free' (stop paying).
+    scheduled_plan_type = models.CharField(max_length=20, choices=PLAN_CHOICES, blank=True)
+    scheduled_billing_cycle = models.CharField(max_length=10, choices=BILLING_CYCLES, blank=True)
+
+    # Failed renewal: paid access continues until grace_until while the
+    # renewal is retried at next_retry_at.
+    grace_until = models.DateTimeField(blank=True, null=True)
+    next_retry_at = models.DateTimeField(blank=True, null=True)
+    renewal_attempts = models.PositiveSmallIntegerField(default=0)
+
+    # The expiry each reminder email was last sent for, so each goes once
+    # per period (billing.services.send_expiry_reminders).
+    reminder_before_sent_for = models.DateTimeField(blank=True, null=True)
+    reminder_day_sent_for = models.DateTimeField(blank=True, null=True)
+
+    # The gateway's saved payment method / mandate for automatic renewals.
+    gateway_mandate_id = models.CharField(max_length=100, blank=True)
+    # A paid plan chosen at sign-up, waiting for its first payment.
+    intended_plan_type = models.CharField(max_length=20, choices=PLAN_CHOICES, blank=True)
+    intended_billing_cycle = models.CharField(max_length=10, choices=BILLING_CYCLES, blank=True)
+
+    # Staff switch: off means the company is treated as Free whatever else
+    # this row says.
     is_active = models.BooleanField(default=True)
-
-    # A paid upgrade the owner asked for but hasn't paid for yet. There is no
-    # payment integration, so staff apply it (from the subscriptions admin
-    # screen) once payment is confirmed; plan_type/billing_cycle/price only
-    # change then.
-    pending_plan_type = models.CharField(max_length=20, choices=PLAN_CHOICES, blank=True)
-    pending_billing_cycle = models.CharField(max_length=10, choices=BILLING_CYCLES, blank=True)
-    pending_requested_at = models.DateTimeField(blank=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.user_profile.username} - {self.plan_type}"
+
+    @property
+    def is_paid(self):
+        return self.plan_type != DEFAULT_PLAN
 
 
 class PendingRegistration(models.Model):

@@ -40,7 +40,7 @@
                     <span x-show="yearly" x-cloak>&#8377;{{ card.yearly }}<span class="ml-1.5 text-sm font-medium opacity-60">/ year</span></span>
                     {% else %}&#8377;0<span class="ml-1.5 text-sm font-medium opacity-60">forever</span>{% endif %}
                 </p>
-                <a href="{% url 'register' %}" class="{% if featured %}btn-primary{% else %}btn-outline{% endif %} mt-6 w-full">{% if card.monthly %}Start {{ card.label }}{% else %}Get started{% endif %}</a>
+                <a href="{% url 'register' %}{% if card.monthly %}?plan={{ card.key }}{% endif %}"{% if card.monthly %} :href="'{% url 'register' %}?plan={{ card.key }}&cycle=' + (yearly ? 'yearly' : 'monthly')"{% endif %} class="{% if featured %}btn-primary{% else %}btn-outline{% endif %} mt-6 w-full">{% if card.monthly %}Start {{ card.label }}{% else %}Get started{% endif %}</a>
                 <ul class="mt-7 space-y-3 text-sm {% if featured %}text-white/85{% else %}text-gray-600{% endif %}">
                     {% for line in card.highlights %}
                     <li class="flex items-start gap-2">

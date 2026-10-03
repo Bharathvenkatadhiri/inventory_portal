@@ -1,0 +1,13 @@
+{% autoescape off %}Hi {{ owner_name }},
+
+We received your payment of Rs {{ payment.amount }} for MakeSetu {{ plan_label }} ({{ payment.billing_cycle }}).
+
+Your plan is active until {{ subscription.expires_at|date:"d M Y, H:i" }}{% if subscription.auto_renew %} and renews automatically{% endif %}.
+
+Plan and payment details:
+
+    {{ billing_url }}
+
+Thanks,
+The MakeSetu Team
+{% endautoescape %}

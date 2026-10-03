@@ -6,8 +6,6 @@ from django.contrib.auth.decorators import login_not_required
 from django.db import transaction
 from django.db.models import F
 from django.http import Http404
-from django.utils import timezone
-from django.utils.http import url_has_allowed_host_and_scheme
 from django.core.exceptions import PermissionDenied, ValidationError
 from .forms import (
     SupplierDetailsForm, updateSupplierDetailsForm, UserRegistrationForm, SelectCustomer, CustomerRegistrationForm,
@@ -68,16 +66,40 @@ def _staff_editing_someone_else(request, obj):
 
 def plan_catalog(subscription, side=catalog.BUYER):
     """The plans for this company's side (buyer or supplier) from
-    plans.catalog, annotated with which one it's on, which one (if any) is
-    awaiting payment, and whether each is an upgrade or a downgrade — never
-    fabricated pricing or features."""
-    current = subscription.plan_type if subscription and subscription.plan_type in catalog.PLAN_LABELS else catalog.DEFAULT_PLAN
-    current_cycle = subscription.billing_cycle if subscription else catalog.MONTHLY
-    pending = subscription.pending_plan_type if subscription else ''
-    current_rank = catalog.PLAN_ORDER.index(current)
+    plans.catalog, each with what choosing it would do right now on monthly
+    and on yearly billing (billing.services.quote): subscribe, upgrade for
+    the prorated amount, pay an overdue renewal, schedule a change at
+    expiry, or nothing. Never fabricated pricing or features."""
+    from billing import services as billing
+    from django.utils import timezone
+    subscription = subscription or SubscriptionPlan(plan_type=catalog.DEFAULT_PLAN)
+    entitled = billing.entitled_plan(subscription)
+    now = timezone.now()
     plans = []
-    for rank, key in enumerate(catalog.PLAN_ORDER):
+    for key in catalog.PLAN_ORDER:
         limits = catalog.plan_entry(side, key)['limits']
+        options = {}
+        for cycle in (catalog.MONTHLY, catalog.YEARLY):
+            try:
+                result = billing.quote(subscription, key, cycle, now)
+            except billing.BillingError as exc:
+                options[cycle] = {'action': 'unavailable', 'note': str(exc)}
+                continue
+            when = timezone.localtime(result.effective_at).strftime('%d %b %Y') if result.effective_at else ''
+            label = {
+                'new': f"Subscribe — ₹{result.amount:,.0f}",
+                'upgrade': f"Upgrade now — pay ₹{result.amount:,.2f}",
+                'renew': f"Pay overdue renewal — ₹{result.amount:,.0f}",
+                'reactivate': "Keep this plan",
+                'schedule': (f"Move to Free on {when}" if key == catalog.DEFAULT_PLAN else f"Switch on {when}"),
+            }.get(result.action, '')
+            note = {
+                'upgrade': f"Prorated for the time left in this period; renews on {when or 'the same date'} at ₹{catalog.price(key, subscription.billing_cycle):,}/{'month' if subscription.billing_cycle == catalog.MONTHLY else 'year'}.",
+                'schedule': "You keep your current plan until then.",
+                'new': f"Starts now and renews every {'30 days' if cycle == catalog.MONTHLY else '365 days'}.",
+            }.get(result.action, result.message)
+            options[cycle] = {'action': result.action, 'label': label, 'note': note,
+                              'scheduled': subscription.scheduled_plan_type == key and subscription.scheduled_billing_cycle == cycle}
         plans.append({
             'key': key,
             'label': catalog.PLAN_LABELS[key],
@@ -90,12 +112,40 @@ def plan_catalog(subscription, side=catalog.BUYER):
                 *([f"{catalog.describe_limit(k, limits[k])} quotes / month"] if (k := catalog.QUOTES_PER_MONTH) in limits else []),
                 f"{catalog.describe_limit(catalog.STORAGE_BYTES, limits.get(catalog.STORAGE_BYTES))} file storage",
             ],
-            'is_current': rank == current_rank,
-            'current_cycle': current_cycle if rank == current_rank else '',
-            'is_pending': key == pending,
-            'is_upgrade': rank > current_rank,
+            'is_current': key == entitled,
+            'current_cycle': subscription.billing_cycle if key == entitled and key != catalog.DEFAULT_PLAN else '',
+            'is_upgrade': catalog.rank(key) > catalog.rank(entitled),
+            'monthly': options[catalog.MONTHLY],
+            'yearly': options[catalog.YEARLY],
         })
     return plans
+
+
+def billing_summary(subscription):
+    """The billing tab's account of where the subscription stands."""
+    from billing import services as billing
+    if subscription is None:
+        return None
+    entitled = billing.entitled_plan(subscription)
+    return {
+        'plan_label': catalog.PLAN_LABELS[entitled],
+        'is_paid': entitled != catalog.DEFAULT_PLAN,
+        'cycle': subscription.billing_cycle,
+        'price': subscription.price,
+        'status': subscription.status,
+        'started_at': subscription.started_at,
+        'period_start': subscription.current_period_start,
+        'expires_at': subscription.expires_at,
+        'auto_renew': subscription.auto_renew,
+        'grace_until': subscription.grace_until,
+        'next_retry_at': subscription.next_retry_at,
+        'scheduled_label': catalog.PLAN_LABELS.get(subscription.scheduled_plan_type, ''),
+        'scheduled_cycle': subscription.scheduled_billing_cycle,
+        'intended_label': catalog.PLAN_LABELS.get(subscription.intended_plan_type, '') if entitled == catalog.DEFAULT_PLAN else '',
+        'intended_plan': subscription.intended_plan_type,
+        'intended_cycle': subscription.intended_billing_cycle or catalog.MONTHLY,
+        'payments': list(subscription.payments.exclude(status='canceled')[:10]) if subscription.pk else [],
+    }
 
 
 class CreateSupplier(SuccessMessageMixin, CreateView):
@@ -199,8 +249,27 @@ def _end_profile_step(request):
         request.session.pop(key, None)
 
 
+SIGNUP_PLAN_SESSION_KEY = 'signup_plan'
+
+
+def _remember_signup_plan(request):
+    """UC-02/03: a paid plan picked on the pricing page (register?plan=&cycle=)
+    is remembered through sign-up and recorded as the plan the company
+    intends to buy. It isn't granted until its first payment succeeds; the
+    company starts on Free either way."""
+    plan = request.GET.get('plan')
+    if plan is None:
+        return
+    cycle = request.GET.get('cycle') if request.GET.get('cycle') in (catalog.MONTHLY, catalog.YEARLY) else catalog.MONTHLY
+    if plan in catalog.PLAN_ORDER and plan != catalog.DEFAULT_PLAN and catalog.purchasable(plan):
+        request.session[SIGNUP_PLAN_SESSION_KEY] = [plan, cycle]
+    else:
+        request.session.pop(SIGNUP_PLAN_SESSION_KEY, None)
+
+
 @login_not_required
 def register(request):
+    _remember_signup_plan(request)
     if request.method == 'POST':
         email = request.POST.get('email')
 
@@ -297,7 +366,9 @@ def verify_email(request):
         ok, reason = otp.verify(pending, code)
         if ok:
             user = otp.complete_registration(pending)
-            SubscriptionPlan.objects.create(plan_type=catalog.DEFAULT_PLAN, price=0, user_profile=user)
+            intended_plan, intended_cycle = request.session.pop(SIGNUP_PLAN_SESSION_KEY, None) or ('', '')
+            SubscriptionPlan.objects.create(plan_type=catalog.DEFAULT_PLAN, price=0, user_profile=user,
+                                            intended_plan_type=intended_plan, intended_billing_cycle=intended_cycle)
             request.session.pop('pending_registration_id', None)
             _start_profile_step(request, user)
             messages.success(request, "Email verified.")
@@ -414,6 +485,7 @@ def ViewProfileDetails(request):
     context['subscription'] = subscription
     context['plan_catalog'] = plan_catalog(subscription, team.company_kind(request.user) or catalog.BUYER)
     context['usage'] = access.usage_rows(team.company(request.user))
+    context['billing'] = billing_summary(subscription)
     context['tab'] = request.GET.get('tab', 'profile')
     # Pre-fills the Contact us tab with the sender's own details.
     if supplier:
@@ -422,60 +494,6 @@ def ViewProfileDetails(request):
         context.update(contact_company=customer.Name, contact_phone=customer.phone)
     context['contact_role'] = 'Manufacturer looking for RFQs' if request.user.role == 'manufacturer' else 'Buyer looking for parts'
     return render(request, 'profile.html', context)
-
-
-class SubscriptionUpgradeView(LoginRequiredMixin, View):
-    """Self-service plan change by the company's owner (buyer or
-    manufacturer). Prices come from plans.catalog; the client only picks a
-    plan and a billing cycle. Moving down applies immediately. Anything that
-    costs more is recorded as a pending request: there is no payment
-    integration yet, so staff apply it once payment is confirmed."""
-    def post(self, request):
-        plan_type = request.POST.get('plan_type')
-        cycle = request.POST.get('billing_cycle') or catalog.MONTHLY
-        next_url = request.POST.get('next')
-        if not (next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure())):
-            next_url = reverse('profile') + '?tab=billing'
-        if not team.can_manage_subscription(request.user):
-            messages.error(request, "Only your company's owner can change the plan.")
-            return redirect(next_url)
-        if plan_type not in catalog.PLAN_LABELS or cycle not in dict(catalog.BILLING_CYCLES):
-            messages.error(request, "Unknown plan selected.")
-            return redirect(next_url)
-
-        subscription = SubscriptionPlan.objects.filter(user_profile=request.user).first()
-        if subscription is None:
-            subscription = SubscriptionPlan(user_profile=request.user, plan_type=catalog.DEFAULT_PLAN, price=0)
-        label = catalog.PLAN_LABELS[plan_type]
-        current = subscription.plan_type if subscription.plan_type in catalog.PLAN_LABELS else catalog.DEFAULT_PLAN
-        moving_down = catalog.PLAN_ORDER.index(plan_type) < catalog.PLAN_ORDER.index(current)
-        new_price = catalog.price(plan_type, cycle)
-
-        if new_price and not moving_down and (plan_type, cycle) != (current, subscription.billing_cycle):
-            subscription.pending_plan_type = plan_type
-            subscription.pending_billing_cycle = cycle
-            subscription.pending_requested_at = timezone.now()
-            subscription.save()
-            logger.info("Subscription change to '%s' (%s) requested by %s (awaiting payment)", plan_type, cycle, request.user)
-            messages.success(
-                request,
-                f"{label} ({cycle}) requested. We'll send you a payment link — your plan changes as soon as payment is confirmed.",
-            )
-            return redirect(next_url)
-
-        subscription.plan_type = plan_type
-        subscription.billing_cycle = cycle
-        subscription.price = new_price
-        subscription.is_active = True
-        subscription.pending_plan_type = ''
-        subscription.pending_billing_cycle = ''
-        subscription.pending_requested_at = None
-        subscription.save()
-        logger.info("Subscription for %s changed to '%s'", request.user, plan_type)
-        messages.success(request, f"You're now on the {label} plan.")
-        return redirect(next_url)
-
-
 
 
 class CustomerListView(StaffRequiredMixin, ListView):

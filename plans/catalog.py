@@ -225,3 +225,24 @@ def plan_highlights(side, plan):
             lower = label if label[1:2].isupper() else label[0].lower() + label[1:]
             lines.append(f"{wording or ('Full' if level == STANDARD else LEVEL_LABELS[level])} {lower}")
     return lines
+
+
+# --- Billing periods -----------------------------------------------------------
+# A paid period lasts this long; monthly limits (RFQs, quotes) apply to
+# 30-day windows counted from the start of the current period, for every
+# company (plans.access.usage_window_start).
+PERIOD_DAYS = {MONTHLY: 30, YEARLY: 365}
+USAGE_WINDOW_DAYS = 30
+
+# Retired plans can't be bought any more. Existing subscriptions keep them
+# until their period ends, then renew into the successor (or Free if None).
+# e.g. RETIRED_PLANS = {'starter': 'business'}
+RETIRED_PLANS = {}
+
+
+def purchasable(plan):
+    return plan in PLAN_LABELS and plan != DEFAULT_PLAN and plan not in RETIRED_PLANS
+
+
+def rank(plan):
+    return PLAN_ORDER.index(plan) if plan in PLAN_ORDER else 0

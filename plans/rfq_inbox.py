@@ -1,6 +1,6 @@
 """Relevant RFQs received per month, for supplier plans.
 
-Each month a supplier company receives up to its plan's
+In each 30-day usage window a supplier company receives up to its plan's
 rfqs_received_per_month open RFQs, best capability match first. Receiving
 one records an RFQReceipt; the inbox shows received RFQs, new-RFQ alerts
 only go out for RFQs being received, and opening an RFQ's link receives it

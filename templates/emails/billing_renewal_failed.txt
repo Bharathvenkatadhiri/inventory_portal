@@ -1,0 +1,13 @@
+{% autoescape off %}Hi {{ owner_name }},
+
+We couldn't charge Rs {{ payment.amount }} to renew MakeSetu {{ plan_label }}{% if payment.failure_reason %} ({{ payment.failure_reason }}){% endif %}.
+
+You keep {{ plan_label }} until {{ grace_until|date:"d M Y, H:i" }}. We'll try again on {{ next_retry_at|date:"d M Y, H:i" }}. If the payment doesn't go through by then, your company moves to the Free plan.
+
+Pay now to avoid any interruption:
+
+    {{ billing_url }}
+
+Thanks,
+The MakeSetu Team
+{% endautoescape %}

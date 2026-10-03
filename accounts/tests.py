@@ -11,7 +11,7 @@ from core.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from accounts.models import (
     ConsumerProfile, ManufacturerProfile, Company, Machine, Certification,
-    ManufacturingTech, MaterialCapability, ManufacturerPhoto,
+    ManufacturingTech, MaterialCapability, ManufacturerPhoto, PendingRegistration,
 )
 from gst.models import GSTVerification
 from gst.views import SESSION_KEY as GST_SESSION_KEY
@@ -101,8 +101,8 @@ class UserRegistrationRoleTests(TestCase):
             "username": username,
             "first_name": "Test",
             "last_name": "User",
-            "password1": "a-strong-passw0rd",
-            "password2": "a-strong-passw0rd",
+            "password1": "A-strong-passw0rd",
+            "password2": "A-strong-passw0rd",
             "email": email,
             "account_type": account_type,
         }
@@ -132,6 +132,66 @@ class UserRegistrationRoleTests(TestCase):
         self.assertEqual(user.role, "consumer")
 
 
+@DASHBOARD_TEST_STORAGES
+class StrongPasswordTests(TestCase):
+    """Registration only accepts a strong password, entered the same way
+    twice (core.validators.StrongPasswordValidator plus Django's own)."""
+
+    def setUp(self):
+        cache.clear()
+        mail.outbox.clear()
+
+    def register(self, password, confirm=None):
+        return self.client.post(reverse("register"), {
+            "username": "pwuser", "first_name": "Priya", "last_name": "Sharma", "email": "pwuser@example.com",
+            "password1": password, "password2": password if confirm is None else confirm, "account_type": "buyer",
+        })
+
+    def password_errors(self, response):
+        form = response.context["form"]
+        return list(form.errors.get("password1", [])), list(form.errors.get("password2", []))
+
+    def test_each_missing_rule_is_reported_under_the_password(self):
+        cases = {
+            "lowercase-only-1!": "uppercase",
+            "UPPERCASE-ONLY-1!": "lowercase",
+            "No-Digits-Here!": "number",
+            "NoSymbols123abc": "special character",
+            "Sh0rt!": "too short",
+        }
+        for password, expected in cases.items():
+            response = self.register(password)
+            self.assertEqual(response.status_code, 200, password)
+            password1, password2 = self.password_errors(response)
+            self.assertTrue(any(expected in error for error in password1), (password, password1))
+            self.assertEqual(password2, [], password)
+        self.assertFalse(PendingRegistration.objects.exists())
+
+    def test_common_or_personal_passwords_are_refused(self):
+        password1, _ = self.password_errors(self.register("Password@123"))
+        self.assertTrue(password1)
+        password1, _ = self.password_errors(self.register("Pwuser@example1"))
+        self.assertTrue(any("too similar" in error for error in password1), password1)
+
+    def test_mismatched_confirmation_is_refused(self):
+        response = self.register("Str0ng!Passphrase", confirm="Str0ng!Passphrasf")
+        _, password2 = self.password_errors(response)
+        self.assertTrue(any("match" in error for error in password2), password2)
+        self.assertFalse(PendingRegistration.objects.exists())
+        self.assertEqual(mail.outbox, [])
+
+    def test_strong_matching_password_proceeds(self):
+        response = self.register("Str0ng!Passphrase")
+        self.assertRedirects(response, reverse("verify-email"), fetch_redirect_response=False)
+        self.assertTrue(PendingRegistration.objects.filter(email="pwuser@example.com").exists())
+
+    def test_page_lists_the_rules_and_the_match_check(self):
+        page = self.client.get(reverse("register"))
+        for text in ("At least 8 characters", "An uppercase letter", "A lowercase letter", "A number", "A special character",
+                     'id="password-match"', "Passwords match"):
+            self.assertContains(page, text)
+
+
 @override_settings(
     # register_first.html/register_supplier.html use {% static %}; see the
     # identical note on CreateSupplierSecurityTests above.
@@ -158,8 +218,8 @@ class RegisterViewTests(TestCase):
             "username": username,
             "first_name": "Test",
             "last_name": "User",
-            "password1": "a-strong-passw0rd",
-            "password2": "a-strong-passw0rd",
+            "password1": "A-strong-passw0rd",
+            "password2": "A-strong-passw0rd",
             "email": email,
             "account_type": account_type,
         }
@@ -192,7 +252,7 @@ class RegisterViewTests(TestCase):
         # email already verified, but the supplier/customer form (step 2)
         # never being submitted.
         User.objects.create_user(
-            username="abandoned", email="abandoned@example.com", password="a-strong-passw0rd", role="manufacturer",
+            username="abandoned", email="abandoned@example.com", password="A-strong-passw0rd", role="manufacturer",
             email_verified=True,
         )
         response = self.client.post(self.url, data=self._payload("abandoned", "abandoned@example.com", "supplier"))
@@ -206,7 +266,7 @@ class RegisterViewTests(TestCase):
         from accounts.models import PendingRegistration
         PendingRegistration.objects.create(
             email="halfdone@example.com", username="halfdone", first_name="Test", last_name="User",
-            password=make_password("a-strong-passw0rd"), role="manufacturer",
+            password=make_password("A-strong-passw0rd"), role="manufacturer",
         )
         response = self.client.post(self.url, data=self._payload("halfdone", "halfdone@example.com", "supplier"))
         self.assertRedirects(response, reverse("verify-email"))
@@ -299,7 +359,7 @@ class EmailVerificationTests(TestCase):
     def _payload(self, username, email, account_type="buyer"):
         return {
             "username": username, "first_name": "Test", "last_name": "User",
-            "password1": "a-strong-passw0rd", "password2": "a-strong-passw0rd",
+            "password1": "A-strong-passw0rd", "password2": "A-strong-passw0rd",
             "email": email, "account_type": account_type,
         }
 
@@ -838,44 +898,27 @@ class BuyerCompanyVerificationTests(TestCase):
         self.assertFalse(ConsumerProfile.objects.filter(user=self.user).exists())
 
 @DASHBOARD_TEST_STORAGES
-class SubscriptionUpgradeTests(TestCase):
+class StaffSubscriptionEditTests(TestCase):
+    """Staff can set a plan directly (billing.tests covers paying for one)."""
     def setUp(self):
         from accounts.models import SubscriptionPlan
-        self.SubscriptionPlan = SubscriptionPlan
         self.buyer, _ = _buyer("planner", "9400000011")
         self.plan = SubscriptionPlan.objects.create(user_profile=self.buyer, plan_type="starter", price=999)
-        self.client.login(username="planner@example.com", password="pass12345")
-
-    def test_paid_upgrade_is_pending_until_staff_apply_it(self):
-        self.client.post(reverse("subscription-upgrade"), {"plan_type": "business", "billing_cycle": "yearly"})
-        self.plan.refresh_from_db()
-        self.assertEqual(self.plan.plan_type, "starter")
-        self.assertEqual((self.plan.pending_plan_type, self.plan.pending_billing_cycle), ("business", "yearly"))
-        self.assertContains(self.client.get(reverse("profile") + "?tab=billing"), "Awaiting payment")
-
-    def test_switching_to_yearly_billing_waits_for_payment_too(self):
-        self.client.post(reverse("subscription-upgrade"), {"plan_type": "starter", "billing_cycle": "yearly"})
-        self.plan.refresh_from_db()
-        self.assertEqual((self.plan.billing_cycle, self.plan.pending_plan_type, self.plan.pending_billing_cycle), ("monthly", "starter", "yearly"))
-
-    def test_moving_to_a_cheaper_plan_applies_immediately(self):
-        self.client.post(reverse("subscription-upgrade"), {"plan_type": "free"})
-        self.plan.refresh_from_db()
-        self.assertEqual(self.plan.plan_type, "free")
-        self.assertEqual(self.plan.price, 0)
-
-    def test_staff_setting_the_plan_clears_the_pending_request(self):
-        self.client.post(reverse("subscription-upgrade"), {"plan_type": "business"})
         User.objects.create_user(username="planstaff", email="planstaff@example.com", password="pass12345", is_staff=True)
         self.client.login(username="planstaff@example.com", password="pass12345")
-        self.client.post(reverse("edit-subscription", kwargs={"pk": self.plan.pk}), {"plan_type": "business", "billing_cycle": "yearly", "is_active": "on"})
+
+    def test_staff_setting_a_paid_plan_prices_it_from_the_catalogue_and_starts_a_period(self):
+        self.client.post(reverse("edit-subscription", kwargs={"pk": self.plan.pk}),
+                         {"plan_type": "business", "billing_cycle": "yearly", "status": "active", "is_active": "on"})
         self.plan.refresh_from_db()
         self.assertEqual((self.plan.plan_type, self.plan.billing_cycle, self.plan.price), ("business", "yearly", 29990))
-        self.assertEqual(self.plan.pending_plan_type, "")
+        self.assertIsNotNone(self.plan.expires_at)
 
-    def test_next_cannot_redirect_off_site(self):
-        response = self.client.post(reverse("subscription-upgrade"), {"plan_type": "free", "next": "https://evil.example.com/"})
-        self.assertEqual(response["Location"], reverse("profile") + "?tab=billing")
+    def test_staff_moving_to_free_clears_the_expiry(self):
+        self.client.post(reverse("edit-subscription", kwargs={"pk": self.plan.pk}),
+                         {"plan_type": "free", "billing_cycle": "monthly", "status": "active", "is_active": "on"})
+        self.plan.refresh_from_db()
+        self.assertEqual((self.plan.plan_type, self.plan.price, self.plan.expires_at), ("free", 0, None))
 
 
 @override_settings(STORAGES={
@@ -1017,7 +1060,7 @@ class ProfileStepEmailPrefillTests(TestCase):
     def _register_and_verify(self, email, account_type):
         self.client.post(reverse("register"), {
             "username": email.split("@")[0], "first_name": "Test", "last_name": "User",
-            "password1": "a-strong-passw0rd", "password2": "a-strong-passw0rd",
+            "password1": "A-strong-passw0rd", "password2": "A-strong-passw0rd",
             "email": email, "account_type": account_type,
         })
         code = next(l.strip() for l in mail.outbox[-1].body.splitlines() if l.strip().isdigit() and len(l.strip()) == 6)

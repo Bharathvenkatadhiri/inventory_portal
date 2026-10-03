@@ -74,3 +74,41 @@ def is_new_upload(value):
     re-downloading from storage to run through Pillow, a file that's
     already stored and was already validated when it was first uploaded."""
     return isinstance(value, UploadedFile)
+
+
+class StrongPasswordValidator:
+    """A password needs an uppercase letter, a lowercase letter, a number
+    and a special character (length, common passwords and similarity to
+    the person's details are Django's own validators, alongside this one in
+    settings.AUTH_PASSWORD_VALIDATORS). The registration page shows the same
+    rules live (accounts/templates/_password_rules.html)."""
+
+    RULES = [
+        (lambda p: any(c.isupper() for c in p), 'password_no_upper', "Add an uppercase letter (A-Z)."),
+        (lambda p: any(c.islower() for c in p), 'password_no_lower', "Add a lowercase letter (a-z)."),
+        (lambda p: any(c.isdigit() for c in p), 'password_no_digit', "Add a number (0-9)."),
+        (lambda p: any(not c.isalnum() and not c.isspace() for c in p), 'password_no_symbol',
+         "Add a special character, such as ! @ # $ % or &."),
+    ]
+
+    def validate(self, password, user=None):
+        errors = [ValidationError(message, code=code) for check, code, message in self.RULES if not check(password)]
+        if self._is_decorated_common_password(password):
+            errors.append(ValidationError(
+                "This is a common password with numbers or symbols added, which is easy to guess.",
+                code='password_decorated_common',
+            ))
+        if errors:
+            raise ValidationError(errors)
+
+    @staticmethod
+    def _is_decorated_common_password(password):
+        """"Password@123", "Welcome#2024": a password from Django's
+        common-passwords list once its digits and symbols are stripped."""
+        import re
+        from django.contrib.auth.password_validation import CommonPasswordValidator
+        letters = re.sub(r'[^a-z]', '', password.lower())
+        return len(letters) >= 4 and letters in CommonPasswordValidator().passwords
+
+    def get_help_text(self):
+        return "Your password must contain an uppercase letter, a lowercase letter, a number and a special character."

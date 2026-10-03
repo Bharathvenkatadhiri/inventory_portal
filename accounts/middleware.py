@@ -27,7 +27,10 @@ _ORDER_STATUS_ACTIONS = {
 WRITE_ACTIONS = {
     'team-invite': 'team.manage', 'team-invitation-revoke': 'team.manage',
     'team-member-role': 'team.manage', 'team-member-active': 'team.manage',
-    'team-transfer': 'subscription.manage', 'subscription-upgrade': 'subscription.manage',
+    'team-transfer': 'subscription.manage',
+    'billing-change': 'subscription.manage', 'billing-cancel': 'subscription.manage',
+    'billing-reactivate': 'subscription.manage', 'billing-cancel-change': 'subscription.manage',
+    'billing-dismiss-intended': 'subscription.manage', 'billing-mock-checkout': 'subscription.manage',
     'company-about-update': 'company.edit', 'company-contact-update': 'company.edit',
     'company-capacity-update': 'company.edit', 'company-lut-update': 'company.edit',
     'company-photo-upload': 'company.edit', 'company-photo-delete': 'company.edit',

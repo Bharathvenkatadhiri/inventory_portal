@@ -1,0 +1,27 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Checkout — MakeSetu{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-md">
+    <div class="card p-6">
+        <p class="text-xs font-bold uppercase tracking-wide text-yellow-700">Test checkout &middot; no real money moves</p>
+        <h1 class="mt-2 text-xl font-bold text-navy-900">Pay &#8377;{{ payment.amount }}</h1>
+        <dl class="mt-4 space-y-2 text-sm">
+            <div class="flex justify-between gap-4"><dt class="text-gray-500">Plan</dt><dd class="text-navy-900">{{ plan_label }} ({{ payment.billing_cycle }})</dd></div>
+            <div class="flex justify-between gap-4"><dt class="text-gray-500">What</dt><dd class="text-navy-900">{{ payment.get_kind_display }}</dd></div>
+            {% if payment.period_start %}<div class="flex justify-between gap-4"><dt class="text-gray-500">Period</dt><dd class="tabular-nums text-navy-900">{{ payment.period_start|date:"d M Y, H:i" }} – {{ payment.period_end|date:"d M Y, H:i" }}</dd></div>{% endif %}
+            <div class="flex justify-between gap-4"><dt class="text-gray-500">Order</dt><dd class="font-mono text-xs text-navy-900">{{ payment.gateway_order_id }}</dd></div>
+        </dl>
+        {% if payment.status == 'pending' %}
+        <form method="post" class="mt-6 grid gap-2">
+            {% csrf_token %}
+            <button type="submit" name="outcome" value="pay" class="btn-primary">Pay (success)</button>
+            <button type="submit" name="outcome" value="pay_delay_webhook" class="btn-outline">Pay, webhook arrives later</button>
+            <button type="submit" name="outcome" value="fail" class="btn-outline text-red-600">Decline the payment</button>
+            <button type="submit" name="outcome" value="close" class="btn-outline">Close checkout</button>
+        </form>
+        {% else %}
+        <p class="mt-6 text-sm text-gray-500">This payment is already {{ payment.get_status_display|lower }}.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

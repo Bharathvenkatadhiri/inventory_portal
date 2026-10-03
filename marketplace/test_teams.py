@@ -400,12 +400,12 @@ class TeamManagementTests(TeamTestCase):
         self.assertNotIn(invitation.token_hash, mail.outbox[-1].body)  # only the raw token is emailed
         self.client.logout()
         link = self.join_link()
-        self.client.post(link, {"first_name": "New", "last_name": "Person", "password1": "a-strong-passw0rd", "password2": "a-strong-passw0rd"})
+        self.client.post(link, {"first_name": "New", "last_name": "Person", "password1": "A-strong-passw0rd", "password2": "A-strong-passw0rd"})
         user = User.objects.get(email="newadmin@example.com")
         self.assertEqual(team.team_role(user), team.ADMIN)
         self.assertEqual(team.buyer_profile(user), solo)
         self.assertTrue(user.email_verified)
-        self.assertTrue(self.client.login(username="newadmin@example.com", password="a-strong-passw0rd"))
+        self.assertTrue(self.client.login(username="newadmin@example.com", password="A-strong-passw0rd"))
         # The link can't be used twice.
         self.client.logout()
         self.assertEqual(self.client.get(link).status_code, 404)
@@ -484,8 +484,8 @@ class TeamManagementTests(TeamTestCase):
         from accounts.models import SubscriptionPlan
         on_plan(self.owner, 'starter')
         self.login(self.admin)
-        self.client.post(reverse("subscription-upgrade"), {"plan_type": "business"})
-        self.assertFalse(SubscriptionPlan.objects.filter(pending_plan_type="business").exists())
+        self.client.post(reverse("billing-change"), {"plan_type": "business", "billing_cycle": "monthly"})
+        self.assertEqual(SubscriptionPlan.objects.get(user_profile=self.owner).plan_type, "starter")
         self.assertContains(self.client.get(reverse("profile") + "?tab=billing"), "Only your company's owner can change the plan")
 
     def test_activity_log_by_role(self):

@@ -133,8 +133,11 @@ limit.
   `accounts/team.py` and `accounts/middleware.py`; approvals in `marketplace/approvals.py`.
 - Plans: [docs/plans.md](docs/plans.md), defined in `plans/catalog.py` and applied by
   `plans/access.py`.
-- After deploying, run `python manage.py rebuild_storage_ledger` once, and schedule
-  `python manage.py send_rfq_digests` daily (Free suppliers' RFQ alerts).
+- Billing (subscriptions, payments, renewals): `billing/`, described in docs/plans.md. Only the
+  mock gateway exists so far.
+- After deploying, run `python manage.py rebuild_storage_ledger` once, schedule
+  `python manage.py send_rfq_digests` daily (Free suppliers' RFQ alerts), and schedule
+  `python manage.py process_subscriptions` hourly (renewals, retries, expiries).
 
 ## Project layout
 
@@ -217,7 +220,8 @@ LIMITED". Every lookup, including failed ones, is listed under GST verifications
 
 ## Roadmap (not yet built)
 
-- Payments (no app/model exists yet — deferred until the flow is actually being built)
+- A real payment gateway (billing works end to end on the mock gateway; adding one means a new
+  adapter in `billing/gateways/`)
 - AI-assisted diagram/spec extraction
 - Background/async work (notifications, quote-expiry timers) — no task queue is wired up
   yet; add Celery + Redis back in when there's an actual task to run

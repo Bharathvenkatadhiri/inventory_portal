@@ -1,0 +1,9 @@
+{% if renews %}Your company's {{ plan_label }} plan renews on {{ expires_at|date:"d M Y, H:i" }}. We'll charge Rs {{ next_amount }} to your saved payment method for {% if changes_plan %}{{ next_label }} ({{ next_cycle }}), the change you scheduled{% else %}the next {{ next_cycle }} period{% endif %}.
+
+Nothing to do if that's right. To change or cancel before then, go to your billing page:
+{% else %}Your company's {{ plan_label }} plan ends on {{ expires_at|date:"d M Y, H:i" }} and won't renew. After that, your company moves to the Free plan: your data is kept, and Free plan limits apply.
+
+To keep {{ plan_label }}, turn renewal back on from your billing page:
+{% endif %}
+    {{ billing_url }}
+

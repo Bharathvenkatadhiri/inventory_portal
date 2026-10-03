@@ -1,0 +1,11 @@
+{% autoescape off %}Hi {{ owner_name }},
+
+Your company's MakeSetu {{ previous_label }} plan has ended{% if reason == 'renewal_failed' %} because the renewal payment didn't go through{% endif %}. You're now on the Free plan; your data is kept, and Free plan limits apply from now on.
+
+You can subscribe again at any time:
+
+    {{ billing_url }}
+
+Thanks,
+The MakeSetu Team
+{% endautoescape %}

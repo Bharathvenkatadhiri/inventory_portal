@@ -1,0 +1,1 @@
+{% if renews %}Your MakeSetu {{ plan_label }} plan renews today{% else %}Your MakeSetu {{ plan_label }} plan ends today{% endif %}

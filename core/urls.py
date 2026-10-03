@@ -53,6 +53,7 @@ urlpatterns = [
 
     path('', include('homepage.urls')),
     path('accounts/', include('accounts.urls')),
+    path('billing/', include('billing.urls')),
     path('marketplace/', include('marketplace.urls')),
 ]
 

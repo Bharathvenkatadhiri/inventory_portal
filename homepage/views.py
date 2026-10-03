@@ -17,7 +17,7 @@ from marketplace.models import Requirement, Quote, Order
 from accounts import team
 from accounts.models import SubscriptionPlan
 from plans import access, catalog, rfq_inbox
-from accounts.views import plan_catalog, StaffRequiredMixin
+from accounts.views import billing_summary, plan_catalog, StaffRequiredMixin
 from .feedback import staff_summary
 from .forms import PortalFeedbackForm
 from .models import PortalFeedback
@@ -36,6 +36,7 @@ def _subscription_context(user):
     return {
         'subscription': subscription,
         'plan_catalog': plan_catalog(subscription, team.company_kind(user) or 'buyer'),
+        'billing': billing_summary(subscription),
         'can_change_plan': team.can_manage_subscription(user),
     }
 

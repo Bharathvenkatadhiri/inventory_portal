@@ -120,12 +120,6 @@
             </span>
             {{ form.password1|add_class:"field-input-icon"|attr:"placeholder:Create a password" }}
         </div>
-        <div class="mt-2 flex items-center gap-2">
-            <div class="h-1.5 flex-1 rounded-full bg-gray-200 overflow-hidden">
-                <div id="password-strength-bar" class="h-full w-0 rounded-full transition-all"></div>
-            </div>
-            <span id="password-strength-label" class="text-xs text-gray-400 w-12 shrink-0"></span>
-        </div>
         {% for error in form.password1.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
     </div>
 
@@ -139,6 +133,7 @@
         </div>
         {% for error in form.password2.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
     </div>
+    {% include "_password_rules.html" with password_id=form.password1.id_for_label confirm_id=form.password2.id_for_label submit_id="register-submit-btn" %}
 
     <label class="flex items-start gap-2 pt-1 text-sm text-gray-600">
         <input type="checkbox" required class="mt-0.5 h-4 w-4 rounded border-gray-300 text-accent-500 focus:ring-accent-500">
@@ -154,13 +149,9 @@
 
 <script>
     (function () {
-        var pw = document.getElementById('{{ form.password1.id_for_label }}');
-        var bar = document.getElementById('password-strength-bar');
-        var label = document.getElementById('password-strength-label');
         var form = document.getElementById('register-form');
         var submitBtn = document.getElementById('register-submit-btn');
         var roleInputs = form.querySelectorAll('input[name="account_type"]');
-        var currentStrength = '';
 
         function updateSubmitLabel() {
             var checked = form.querySelector('input[name="account_type"]:checked');
@@ -171,52 +162,6 @@
         });
         updateSubmitLabel();
 
-        function scorePassword(value) {
-            var score = 0;
-            if (value.length >= 8) score++;
-            if (value.length >= 12) score++;
-            if (/[a-z]/.test(value)) score++;
-            if (/[A-Z]/.test(value)) score++;
-            if (/[0-9]/.test(value)) score++;
-            if (/[^A-Za-z0-9]/.test(value)) score++;
-            return score;
-        }
-
-        function strengthOf(value) {
-            if (!value) return '';
-            var score = scorePassword(value);
-            if (score <= 2) return 'Poor';
-            if (score <= 4) return 'Good';
-            return 'Strong';
-        }
-
-        var colors = {
-            Poor: { bar: 'bg-red-500', text: 'text-red-600' },
-            Good: { bar: 'bg-yellow-500', text: 'text-yellow-600' },
-            Strong: { bar: 'bg-green-500', text: 'text-green-600' }
-        };
-
-        if (pw && bar && label) {
-            pw.addEventListener('input', function () {
-                currentStrength = strengthOf(pw.value);
-                var score = scorePassword(pw.value);
-                bar.style.width = (pw.value ? Math.min(100, (score / 6) * 100) : 0) + '%';
-                bar.className = 'h-full rounded-full transition-all ' + (colors[currentStrength] ? colors[currentStrength].bar : '');
-                label.textContent = currentStrength;
-                label.className = 'text-xs w-12 shrink-0 ' + (colors[currentStrength] ? colors[currentStrength].text : 'text-gray-400');
-            });
-        }
-
-        if (form) {
-            form.addEventListener('submit', function (e) {
-                if (pw && pw.value && currentStrength === 'Poor') {
-                    e.preventDefault();
-                    label.textContent = 'Too weak';
-                    label.className = 'text-xs w-12 shrink-0 text-red-600';
-                    pw.focus();
-                }
-            });
-        }
     })();
 </script>
 {% endblock %}

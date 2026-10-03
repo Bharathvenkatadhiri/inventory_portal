@@ -114,14 +114,16 @@ def subscription_of(profile):
 
 
 def plan_of(profile):
-    """The company's current plan key. No subscription, or an inactive one,
-    means Free. Cached on the profile object for the request."""
+    """The plan the company is entitled to right now (billing.services.
+    entitled_plan): no subscription, an inactive one, or a paid one past its
+    expiry and grace means Free. Cached on the profile object for the
+    request."""
     if profile is None:
         return catalog.DEFAULT_PLAN
     cached = getattr(profile, '_plan_key', None)
     if cached is None:
-        subscription = subscription_of(profile)
-        cached = subscription.plan_type if subscription and subscription.is_active else catalog.DEFAULT_PLAN
+        from billing.services import entitled_plan
+        cached = entitled_plan(subscription_of(profile))
         if cached not in catalog.PLAN_LABELS:
             cached = catalog.DEFAULT_PLAN
         profile._plan_key = cached
@@ -153,6 +155,22 @@ def month_start():
     return timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
 
+def usage_window_start(profile, now=None):
+    """Where the company's current monthly-limit window began: 30-day
+    windows counted from the start of its current billing period (a Free
+    company's period starts when it joined or last moved to Free). A
+    renewal or a new paid period starts a new window; an upgrade keeps it,
+    so usage carries over and only the limit rises."""
+    from datetime import timedelta
+    now = now or timezone.now()
+    subscription = subscription_of(profile)
+    anchor = subscription.current_period_start if subscription else None
+    if anchor is None or anchor > now:
+        return month_start()
+    window = timedelta(days=catalog.USAGE_WINDOW_DAYS)
+    return anchor + ((now - anchor) // window) * window
+
+
 def usage(profile, key):
     """How much of `key` the company has used (this month, for monthly
     limits)."""
@@ -165,14 +183,14 @@ def usage(profile, key):
         from marketplace.models import Requirement
         member_ids = [profile.user_id, *profile.team_members.values_list('user_id', flat=True)]
         # Deleted RFQs still count, otherwise delete-and-repost would bypass the limit.
-        return Requirement.objects.filter(user_id__in=member_ids, created_at__gte=month_start()).count()
+        return Requirement.objects.filter(user_id__in=member_ids, created_at__gte=usage_window_start(profile)).count()
     if key == catalog.QUOTES_PER_MONTH:
         from marketplace.models import Quote
         # Withdrawn quotes still count, for the same reason.
-        return Quote.objects.filter(supplier=profile, submitted_at__gte=month_start()).count()
+        return Quote.objects.filter(supplier=profile, submitted_at__gte=usage_window_start(profile)).count()
     if key == catalog.RFQS_RECEIVED_PER_MONTH:
         from .models import RFQReceipt
-        return RFQReceipt.objects.filter(supplier=profile, received_at__gte=month_start()).count()
+        return RFQReceipt.objects.filter(supplier=profile, received_at__gte=usage_window_start(profile)).count()
     raise ValueError(f"unknown limit {key!r}")
 
 
@@ -243,8 +261,20 @@ def with_plan_levels(suppliers, *features):
     from django.db.models import Case, IntegerField, OuterRef, Subquery, Value, When
     from django.db.models.functions import Coalesce
 
+    from datetime import timedelta
+
+    from django.conf import settings
+    from django.db.models import Q
+
     from accounts.models import SubscriptionPlan
-    active_plan = SubscriptionPlan.objects.filter(user_profile_id=OuterRef('user__email'), is_active=True).values('plan_type')[:1]
+    # The same rule as billing.services.entitled_plan, in SQL.
+    now = timezone.now()
+    entitled = (
+        Q(expires_at__isnull=True) | Q(expires_at__gt=now)
+        | Q(status=SubscriptionPlan.PAST_DUE, grace_until__gt=now)
+        | Q(status=SubscriptionPlan.ACTIVE, auto_renew=True, expires_at__gt=now - timedelta(days=settings.BILLING_GRACE_DAYS))
+    )
+    active_plan = SubscriptionPlan.objects.filter(entitled, user_profile_id=OuterRef('user__email'), is_active=True).values('plan_type')[:1]
     suppliers = suppliers.annotate(plan_key=Coalesce(Subquery(active_plan), Value(catalog.DEFAULT_PLAN)))
     for feature in features:
         suppliers = suppliers.annotate(**{f'{feature}_level': Case(

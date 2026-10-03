@@ -1,0 +1,48 @@
+{# Where the subscription stands, with the owner's controls. Expects billing (accounts.views.billing_summary) and can_change_plan. #}
+{% if billing %}
+<div class="space-y-3 text-sm">
+    {% if billing.intended_label %}
+    <div class="rounded-md bg-accent-50 px-4 py-3 text-accent-700">
+        <p class="font-bold">Finish subscribing to {{ billing.intended_label }}</p>
+        <p class="mt-1">You chose {{ billing.intended_label }} ({{ billing.intended_cycle }}) when you signed up. You're on Free until it's paid.</p>
+        {% if can_change_plan %}
+        <div class="mt-2 flex flex-wrap gap-2">
+            <form method="post" action="{% url 'billing-change' %}">{% csrf_token %}<input type="hidden" name="plan_type" value="{{ billing.intended_plan }}"><input type="hidden" name="billing_cycle" value="{{ billing.intended_cycle }}"><button type="submit" class="btn-primary text-xs">Pay and activate</button></form>
+            <form method="post" action="{% url 'billing-dismiss-intended' %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button type="submit" class="btn-outline text-xs">Stay on Free</button></form>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if billing.status == 'past_due' %}
+    <div class="rounded-md bg-red-50 px-4 py-3 text-red-700">
+        <p class="font-bold">Your renewal payment failed</p>
+        <p class="mt-1">You keep {{ billing.plan_label }} until {{ billing.grace_until|date:"d M Y, H:i" }}. We'll try again on {{ billing.next_retry_at|date:"d M Y, H:i" }}; if it doesn't go through, your company moves to Free.</p>
+        {% if can_change_plan %}<form method="post" action="{% url 'billing-change' %}" class="mt-2">{% csrf_token %}<input type="hidden" name="plan_type" value="{{ subscription.plan_type }}"><input type="hidden" name="billing_cycle" value="{{ billing.cycle }}"><button type="submit" class="btn-primary text-xs">Pay now</button></form>{% endif %}
+    </div>
+    {% endif %}
+
+    {% if billing.is_paid %}
+    <dl class="grid gap-x-6 gap-y-2 sm:grid-cols-2">
+        <div><dt class="text-gray-500">Billing</dt><dd class="text-navy-900">₹{{ billing.price|floatformat:0 }} / {% if billing.cycle == 'yearly' %}year{% else %}month{% endif %}</dd></div>
+        <div><dt class="text-gray-500">Current period</dt><dd class="text-navy-900 tabular-nums">{{ billing.period_start|date:"d M Y, H:i" }} – {{ billing.expires_at|date:"d M Y, H:i" }}</dd></div>
+        <div class="sm:col-span-2"><dt class="text-gray-500">Renewal</dt><dd class="text-navy-900">
+            {% if billing.scheduled_label %}Changes to {{ billing.scheduled_label }}{% if billing.scheduled_label != 'Free' %} ({{ billing.scheduled_cycle }}){% endif %} on {{ billing.expires_at|date:"d M Y, H:i" }}.
+            {% elif billing.auto_renew %}Renews automatically on {{ billing.expires_at|date:"d M Y, H:i" }}.
+            {% else %}Cancelled. Ends on {{ billing.expires_at|date:"d M Y, H:i" }}, then Free.{% endif %}
+        </dd></div>
+    </dl>
+    {% if can_change_plan and billing.status != 'past_due' %}
+    <div class="flex flex-wrap gap-2">
+        {% if billing.scheduled_label %}
+        <form method="post" action="{% url 'billing-cancel-change' %}">{% csrf_token %}<button type="submit" class="btn-outline text-xs">Cancel scheduled change</button></form>
+        {% elif billing.auto_renew %}
+        <form method="post" action="{% url 'billing-cancel' %}">{% csrf_token %}<button type="submit" class="btn-outline text-xs text-red-600">Cancel subscription</button></form>
+        {% else %}
+        <form method="post" action="{% url 'billing-reactivate' %}">{% csrf_token %}<button type="submit" class="btn-outline text-xs">Turn renewal back on</button></form>
+        {% endif %}
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
+{% endif %}

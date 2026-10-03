@@ -30,6 +30,18 @@ class UserRegistrationForm(UserCreationForm):
         self.fields['first_name'].required = True
         self.fields['last_name'].required = True
         self.fields['email'].required = True
+        # The page lists the rules itself (_password_rules.html).
+        self.fields['password1'].help_text = ''
+        self.fields['password2'].help_text = ''
+
+    def _post_clean(self):
+        # Django checks strength against the confirmation field; report it
+        # under the password itself, and leave the confirmation field to say
+        # only whether the two match. Every AUTH_PASSWORD_VALIDATORS rule
+        # applies (length, common, similar to name/email, all-numeric, and
+        # core.validators.StrongPasswordValidator).
+        forms.ModelForm._post_clean(self)
+        self.validate_password_for_user(self.instance, password_field_name='password1')
 
     def save(self, commit=True):
         user = super().save(commit=False)
@@ -249,34 +261,41 @@ class updateCustomer(forms.ModelForm):
 
 
 class UpdateSubscription(forms.ModelForm):
-    """Staff set a company's plan (e.g. once an upgrade is paid for). The
-    price always comes from plans.catalog."""
+    """Staff set a company's subscription by hand (support, refunds,
+    migrations). The price always comes from plans.catalog; a paid plan with
+    no expiry gets a fresh period starting now."""
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['plan_type'].widget.attrs.update({'class': 'form-control', 'required': 'true'})
-        self.fields['billing_cycle'].widget.attrs.update({'class': 'form-control', 'required': 'true'})
-        self.fields['end_date'].widget.attrs.update({'class': 'form-control'})
-        self.fields['is_active'].widget.attrs.update({'class': 'form-check-input'})
+        for name in ('plan_type', 'billing_cycle', 'status', 'expires_at'):
+            self.fields[name].widget.attrs.update({'class': 'form-control'})
+        for name in ('auto_renew', 'is_active'):
+            self.fields[name].widget.attrs.update({'class': 'form-check-input'})
+        self.fields['expires_at'].help_text = "Leave blank on Free; for a paid plan, blank starts a new period now."
 
     class Meta:
         model = SubscriptionPlan
-        fields = ['plan_type', 'billing_cycle', 'end_date', 'is_active']
-        widgets = {
-            'end_date': forms.DateInput(attrs={'type': 'date'})  # HTML5 date picker
-        }
+        fields = ['plan_type', 'billing_cycle', 'status', 'expires_at', 'auto_renew', 'is_active']
+        widgets = {'expires_at': forms.DateTimeInput(attrs={'type': 'datetime-local'}, format='%Y-%m-%dT%H:%M')}
 
     def save(self, commit=True):
+        from datetime import timedelta
+        from django.utils import timezone
         from plans import catalog
         instance = super().save(commit=False)
         instance.price = catalog.price(instance.plan_type, instance.billing_cycle)
-        # Staff setting the plan resolves any pending upgrade request.
-        instance.pending_plan_type = ''
-        instance.pending_billing_cycle = ''
-        instance.pending_requested_at = None
-
+        if instance.plan_type == catalog.DEFAULT_PLAN:
+            instance.expires_at = None
+            instance.auto_renew = False
+        elif instance.expires_at is None:
+            instance.current_period_start = timezone.now()
+            instance.expires_at = instance.current_period_start + timedelta(days=catalog.PERIOD_DAYS[instance.billing_cycle])
+        if instance.status == SubscriptionPlan.ACTIVE:
+            instance.grace_until = None
+            instance.next_retry_at = None
+            instance.renewal_attempts = 0
         if commit:
             instance.save()
-        return instance    
+        return instance
 
 
 class TeamInviteForm(forms.Form):

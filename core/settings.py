@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "gst",
     "marketplace",
     "plans",
+    "billing",
 ]
 
 MIDDLEWARE = [
@@ -106,6 +107,9 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+    # Uppercase, lowercase, number and special character (registration,
+    # team invitations and password resets alike).
+    {"NAME": "core.validators.StrongPasswordValidator"},
 ]
 
 LANGUAGE_CODE = "en-us"
@@ -296,4 +300,26 @@ MESSAGE_ATTACHMENT_MAX_BYTES = env.int("MESSAGE_ATTACHMENT_MAX_BYTES", default=1
 
 # --- Subscription plans ---------------------------------------------------
 # Plans, prices, limits and features live in plans/catalog.py.
+
+# --- Billing (billing app) ----------------------------------------------------
+# Payment gateway: "mock" (dev/test: MakeSetu's own checkout page and signed
+# webhooks). A real gateway is an adapter in billing/gateways/.
+BILLING_GATEWAY = env("BILLING_GATEWAY", default="mock")
+# Signs and verifies webhooks. Required with a real gateway: a known secret
+# would let anyone forge "payment succeeded".
+BILLING_WEBHOOK_SECRET = env("BILLING_WEBHOOK_SECRET", default="" if BILLING_GATEWAY != "mock" else "dev-only-billing-webhook-secret")
+if not BILLING_WEBHOOK_SECRET:
+    raise ImproperlyConfigured("Set BILLING_WEBHOOK_SECRET to a long random value for this payment gateway.")
+# Failed renewal: paid access continues this many days, with retries this
+# many days after expiry; after the last one fails, the company moves to Free.
+BILLING_GRACE_DAYS = env.int("BILLING_GRACE_DAYS", default=3)
+BILLING_RETRY_DAYS = [int(d) for d in env.list("BILLING_RETRY_DAYS", default=["1", "3"])]
+# Reminder emails to the Owner this many days before expiry, and on the
+# expiry date itself.
+BILLING_REMINDER_DAYS_BEFORE = env.int("BILLING_REMINDER_DAYS_BEFORE", default=2)
+# A checkout not completed within this long is closed (after checking the
+# gateway one last time).
+BILLING_PENDING_MINUTES = env.int("BILLING_PENDING_MINUTES", default=30)
+# Mock gateway only: "fail" makes automatic renewals fail, to try past-due.
+BILLING_MOCK_RENEWAL_RESULT = env("BILLING_MOCK_RENEWAL_RESULT", default="succeed")
 

@@ -59,8 +59,22 @@ Reaching a limit never undoes anything. It only blocks the next one until the mo
 
 ## Billing
 
-- **Changing plans.** Only the Owner changes the plan, on the billing tab (monthly or yearly). Moving to a smaller plan applies straight away. An upgrade, or a switch to yearly billing, is recorded as a request. There's no payment integration yet, so staff apply it from the subscriptions admin screen once payment is confirmed. The price is always taken from the catalogue.
-- **No subscription.** A company without an active subscription is on Free.
+The lifecycle is in `billing/services.py`; payments go through a gateway adapter (`billing/gateways/`). Only the mock gateway exists so far: its checkout page lets you pay, pay with the webhook delayed, decline, or close.
+
+- **Who.** Only the Owner subscribes, upgrades, downgrades, cancels or pays, on the billing tab. Other roles see the plan.
+- **Times.** Subscriptions store exact timestamps: `started_at`, `current_period_start`, `expires_at`. Monthly is 30 days and yearly is 365 days, counted from the moment of payment.
+- **Sign-up with a plan.** The pricing page links to `register?plan=…&cycle=…`. The company starts on Free and the billing tab offers "Pay and activate" for the plan it picked. Nothing paid is granted before payment.
+- **New subscription** (from Free, or after expiry): full price, and a new period starting when the payment succeeds.
+- **Upgrade:** charged straight away for the time left, to the second: (new price − current price) × time left ÷ period length. The higher plan applies at once; the period and expiry stay the same, and usage carries over. A charge under ₹1 (seconds before expiry) applies without a payment. An upgrade keeps the current billing cycle.
+- **Downgrade, switch of billing cycle, or Free:** scheduled for the current expiry. The current plan continues until then, and the change can be cancelled.
+- **Renewal:** at expiry, the hourly job charges the saved payment method the plan's catalogue price at that moment, or the scheduled plan's price. A price change therefore applies from the next renewal. A retired plan (`RETIRED_PLANS` in `plans/catalog.py`) keeps working until renewal, then renews into its successor.
+- **Expiry reminders:** the Owner is emailed 2 days before a paid plan expires (`BILLING_REMINDER_DAYS_BEFORE`) and again on the expiry date. Each email goes once per period. It says what happens next: the plan renews and how much will be charged; it changes to the scheduled plan at that price; or it ends and the company moves to Free, with a link to turn renewal back on. Past-due subscriptions get the failed-payment emails instead.
+- **Failed renewal:** the subscription becomes past due. The paid plan continues for a 3-day grace period, and the charge is retried 1 and 3 days after expiry (`BILLING_GRACE_DAYS`, `BILLING_RETRY_DAYS`). The Owner can pay from the billing tab at any time. After the last failed retry the company moves to Free. The Owner gets an email at each step.
+- **Cancel:** automatic renewal turns off, and the plan continues until expiry, then Free. "Turn renewal back on" before expiry restores it.
+- **Payments are applied once.** A payment is applied whether its result arrives by webhook (signed; each event ID is processed once), by the payer's return from checkout (checked with the gateway, never taken from the URL), or by the hourly job. Each payment records the plan and expiry it was priced against. If the subscription has changed by the time it succeeds, the payment isn't applied and is marked "to be refunded" (in Django admin under Billing › Payments). A failure arriving after a success is ignored.
+- **Monthly limits** (RFQs, quotes, RFQs received) count in 30-day windows from the start of the current billing period, for Free companies too. A new period or renewal starts a fresh window; an upgrade doesn't.
+- **No subscription.** A company without an active subscription is on Free. Staff can still set a plan from the subscriptions screen. A paid plan set there without an expiry stays until changed, and the Owner choosing another paid plan starts a new paid period.
+- **Moving to timestamps.** The migration gave each existing paid plan its end date (end of that day) as its expiry, with automatic renewal on. Paid plans with no end date got one period from the migration. With the mock gateway these companies have no saved payment method, so their first renewal fails and the Owner is asked to pay.
 - **Earlier plans.** Existing subscriptions moved to the new names when the migration ran: basic → Free, standard → Starter, enterprise → Business, billed monthly at the new prices.
 
 ## Running it
@@ -68,3 +82,5 @@ Reaching a limit never undoes anything. It only blocks the next one until the mo
 - **After deploying:** run `python manage.py rebuild_storage_ledger` once, so files uploaded before storage limits existed count toward storage. New uploads are recorded automatically.
 - **Daily RFQ digest:** schedule `python manage.py send_rfq_digests` once a day (e.g. cron `0 7 * * *`). Free suppliers get their RFQ alerts this way; without it they get none.
 - **Changing a plan:** edit `plans/catalog.py`. The pricing page and every check follow.
+- **Subscriptions:** schedule `python manage.py process_subscriptions` hourly (e.g. cron `0 * * * *`). It sends the expiry reminders and handles renewals, scheduled changes, retries, the end of grace periods, and payments left pending for more than 30 minutes. Without it, nothing renews or expires.
+- **Gateway settings:** `BILLING_GATEWAY` (only `mock` for now) and `BILLING_WEBHOOK_SECRET`. Set a long random secret in production. Gateways send webhooks to `/billing/webhook/<gateway>/`. With the mock gateway, `BILLING_MOCK_RENEWAL_RESULT=fail` makes renewals fail, for trying out the past-due flow.

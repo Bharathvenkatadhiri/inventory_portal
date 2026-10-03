@@ -1,0 +1,1 @@
+{% if renews %}Your MakeSetu {{ plan_label }} plan renews on {{ expires_at|date:"d M" }}{% else %}Your MakeSetu {{ plan_label }} plan ends on {{ expires_at|date:"d M" }}{% endif %}
