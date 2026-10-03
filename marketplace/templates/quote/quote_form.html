@@ -101,6 +101,17 @@
         </div>
         {% endif %}
 
+        {% if can_use_templates and quote_templates %}
+        <form method="get" class="mt-4 flex items-end gap-2 rounded-lg bg-gray-50 p-3 text-sm">
+            <label class="flex-1"><span class="field-label">Start from a template</span>
+                <select name="template" class="field-input py-1">
+                    {% for template in quote_templates %}<option value="{{ template.pk }}" {% if request.GET.template == template.pk|stringformat:"s" %}selected{% endif %}>{{ template.name }}</option>{% endfor %}
+                </select>
+            </label>
+            <button type="submit" class="btn-outline">Use</button>
+        </form>
+        {% endif %}
+
         <form method="post" enctype="multipart/form-data" class="mt-4 space-y-4">
             {% csrf_token %}
             <div class="grid grid-cols-2 gap-4">
@@ -145,6 +156,13 @@
                 <label class="field-label" for="{{ form.quote_file.id_for_label }}">Attach detailed quote (PDF)</label>
                 {{ form.quote_file|add_class:"field-input" }}
             </div>
+            {% if can_use_templates %}
+            <div>
+                <label class="field-label" for="save_as_template">Save these terms as a template (optional)</label>
+                <input type="text" id="save_as_template" name="save_as_template" maxlength="100" class="field-input" placeholder="e.g. Standard CNC terms">
+                <p class="mt-1 text-xs text-gray-500">Saves tooling, lead time, payment terms, validity and notes — not the price.</p>
+            </div>
+            {% endif %}
 
             <div class="rounded-lg bg-gray-50 p-4 text-sm">
                 <div class="flex justify-between py-1"><span class="text-gray-500">{{ total_quantity }} pcs &times; unit price</span><span class="text-navy-900" x-text="'{{ demand.quote_currency|default:'INR' }} ' + (unitPrice * quantity).toLocaleString('en-IN', {maximumFractionDigits: 2})"></span></div>
@@ -153,6 +171,7 @@
                 <div class="mt-1 flex justify-between border-t border-gray-200 pt-2 font-bold"><span class="text-navy-900">Total to buyer</span><span class="text-navy-900" x-text="'{{ demand.quote_currency|default:'INR' }} ' + total.toLocaleString('en-IN', {maximumFractionDigits: 2})"></span></div>
             </div>
 
+            {% if quotes_left is not None %}<p class="text-center text-xs {% if quotes_left == 0 %}font-bold text-red-600{% else %}text-gray-500{% endif %}">{% if quotes_left == 0 %}You've sent all the quotes your plan includes this month — submitting will save a draft.{% else %}{{ quotes_left }} quote submission{{ quotes_left|pluralize }} left this month.{% endif %}</p>{% endif %}
             <button type="submit" name="action" value="submit" class="btn-primary w-full">{{ savebtn|default:"Submit quote" }}</button>
             <button type="submit" name="action" value="draft" class="btn-outline w-full">Save draft</button>
         </form>

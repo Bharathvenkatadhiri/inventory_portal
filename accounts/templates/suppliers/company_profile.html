@@ -10,12 +10,14 @@
 </div>
 {% endblock %}
 {% block content %}
+{% if not can_edit_profile %}<style>[data-profile-edit] { display: none !important; }</style>
+<p class="mb-4 rounded-md bg-gray-50 px-4 py-2 text-xs text-gray-600">You can update capabilities, materials, machines and certifications. The rest of the profile is edited by your company's owner or an admin.</p>{% endif %}
 <div class="mb-6 overflow-hidden rounded-xl border border-gray-200 bg-white">
     <div class="relative h-36 bg-navy-900">
         {% if supplier.cover_image %}
         <img src="{{ supplier.cover_image.url }}" alt="" class="h-full w-full object-cover">
         {% endif %}
-        <form method="post" action="{% url 'company-about-update' %}" enctype="multipart/form-data" class="absolute right-3 top-3">
+        <form data-profile-edit method="post" action="{% url 'company-about-update' %}" enctype="multipart/form-data" class="absolute right-3 top-3">
             {% csrf_token %}
             <input type="hidden" name="about" value="{{ supplier.about }}">
             <label class="btn-outline cursor-pointer bg-white text-sm">
@@ -32,7 +34,7 @@
             <div>
                 <div class="flex items-center gap-2">
                     <h2 class="text-xl font-extrabold text-navy-900">{{ supplier.companyname }}</h2>
-                    {% if supplier.company.verification_status == 'verified' %}<span class="badge bg-green-50 text-green-700">Verified</span>{% endif %}
+                    {% if supplier.company.gst_verified %}<span class="badge bg-green-50 text-green-700">Verified</span>{% endif %}
                 </div>
                 <p class="text-sm text-gray-500">{{ supplier.city }}, {{ supplier.state }} &middot; Member since {{ supplier.created_at|date:"Y" }}</p>
             </div>
@@ -46,7 +48,7 @@
             <div class="mb-2 flex items-center justify-between">
                 <h2 class="text-lg font-bold text-navy-900">About</h2>
             </div>
-            <form method="post" action="{% url 'company-about-update' %}" class="space-y-3">
+            <form data-profile-edit method="post" action="{% url 'company-about-update' %}" class="space-y-3">
                 {% csrf_token %}
                 {{ about_form.about|add_class:"field-input" }}
                 <button type="submit" class="btn-outline">Save changes</button>
@@ -152,13 +154,13 @@
                 {% for photo in supplier.photos.all %}
                 <div class="group relative aspect-square overflow-hidden rounded-lg">
                     <img src="{{ photo.image.url }}" alt="{{ photo.caption }}" class="h-full w-full object-cover">
-                    <form method="post" action="{% url 'company-photo-delete' photo.pk %}" class="absolute right-1 top-1 opacity-0 transition-opacity group-hover:opacity-100">
+                    <form data-profile-edit method="post" action="{% url 'company-photo-delete' photo.pk %}" class="absolute right-1 top-1 opacity-0 transition-opacity group-hover:opacity-100">
                         {% csrf_token %}
                         <button type="submit" class="flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white">&times;</button>
                     </form>
                 </div>
                 {% endfor %}
-                <form method="post" action="{% url 'company-photo-upload' %}" enctype="multipart/form-data">
+                <form data-profile-edit method="post" action="{% url 'company-photo-upload' %}" enctype="multipart/form-data">
                     {% csrf_token %}
                     <label class="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-gray-200 text-gray-400 hover:border-accent-400 hover:text-accent-500">
                         <span class="text-2xl leading-none">+</span>
@@ -228,7 +230,7 @@
 
         <div class="card">
             <h2 class="mb-3 text-lg font-bold text-navy-900">Capacity</h2>
-            <form method="post" action="{% url 'company-capacity-update' %}" class="space-y-3">
+            <form data-profile-edit method="post" action="{% url 'company-capacity-update' %}" class="space-y-3">
                 {% csrf_token %}
                 <div>
                     <label class="field-label" for="{{ capacity_form.minimum_order_qty.id_for_label }}">Minimum order</label>
@@ -250,7 +252,7 @@
             <h2 class="text-lg font-bold text-navy-900">Exports (LUT)</h2>
             <p class="mt-1 mb-3 text-xs text-gray-500">With a valid Letter of Undertaking, quotes and invoices for buyers outside India carry no GST. Without one, exports are charged IGST, which you can claim back.</p>
             {% if lut_form %}
-            <form method="post" action="{% url 'company-lut-update' %}" class="space-y-3">
+            <form data-profile-edit method="post" action="{% url 'company-lut-update' %}" class="space-y-3">
                 {% csrf_token %}
                 <div>
                     <label class="field-label" for="{{ lut_form.lut_reference.id_for_label }}">LUT ARN</label>
@@ -275,7 +277,7 @@
             <div class="mb-3 flex items-center justify-between">
                 <h2 class="text-lg font-bold text-navy-900">Primary contact</h2>
             </div>
-            <form method="post" action="{% url 'company-contact-update' %}" class="space-y-3">
+            <form data-profile-edit method="post" action="{% url 'company-contact-update' %}" class="space-y-3">
                 {% csrf_token %}
                 {{ contact_form.contact_name|add_class:"field-input"|attr:"placeholder:Name" }}
                 {{ contact_form.contact_role|add_class:"field-input"|attr:"placeholder:Role" }}

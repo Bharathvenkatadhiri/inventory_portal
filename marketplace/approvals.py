@@ -1,16 +1,20 @@
-"""Internal approvals: what a team user (accounts.team.MEMBER) does that
-must wait for a supervisor's or the manager's sign-off.
+"""Internal approvals: what waits for the company owner's or an admin's
+sign-off.
 
-- RFQ: a user's new RFQ is saved with approval_status 'pending'. Suppliers
-  can't see it (services.open_requirements_for) and aren't emailed until
-  it's approved.
-- QUOTE: a user's first submission stays a draft (buyers never see drafts)
-  until approved. A user's revision of a quote the buyer already has is
-  staged in the request's payload instead, so the buyer keeps seeing the
-  current quote until the revision is approved.
-- AWARD: a user's "award this quote" (directly, or by accepting a
-  supplier's pricing for a change request) is held until approved.
-- PAYMENT: a user's "confirm payment" on an order is held until approved.
+- AWARD: a Procurement user's "accept this quotation" (directly, or by
+  accepting a supplier's pricing for a change request) is held until
+  approved. This is the only kind created now (accounts.team).
+
+Under the earlier Supervisor/User roles, RFQs, quotes and payment
+confirmations by users also waited for approval. No new ones are created,
+but requests still pending from then can be decided as before:
+
+- RFQ: the RFQ has approval_status 'pending'. Suppliers can't see it
+  (services.open_requirements_for) and aren't emailed until it's approved.
+- QUOTE: a first submission is a draft (buyers never see drafts) until
+  approved; a revision of a quote the buyer already has is staged in the
+  request's payload, so the buyer keeps seeing the current quote.
+- PAYMENT: the order's "confirm payment" is held until approved.
 
 approve() re-checks that the action still makes sense (the RFQ might have
 been awarded meanwhile, the quote withdrawn...) and cancels the request
@@ -69,7 +73,7 @@ def pending_for(profile):
 
 
 def can_decide(user, req):
-    return team.can_approve(user) and team.belongs_to(req, team.company(user))
+    return team.can_manage_company(user) and team.belongs_to(req, team.company(user))
 
 
 def _absolute(path):
@@ -153,7 +157,7 @@ def reject(req, user, note=''):
 
 def cancel_open(reason, **targets):
     """Cancels pending requests for these targets, e.g. when the RFQ or
-    quote is deleted, or a supervisor/manager acts on it directly."""
+    quote is deleted, or the owner or an admin acts on it directly."""
     for req in ApprovalRequest.objects.filter(status=ApprovalRequest.PENDING, **targets):
         _discard_staged_file(req)
         _decide(req, None, ApprovalRequest.CANCELLED, reason)
@@ -249,6 +253,7 @@ def _approve_quote(req, user):
             raise ApprovalError("the RFQ is no longer open for quotes")
         quote.is_draft = False
         quote.approval_status = APPROVAL_APPROVED
+        quote.submitted_at = quote.submitted_at or timezone.now()
         quote.save()
     transaction.on_commit(lambda: emails.notify_quote_submitted(quote))
 
@@ -294,7 +299,7 @@ def feed_events(user):
     if profile is None:
         return []
     events = []
-    if team.can_approve(user):
+    if team.can_manage_company(user):
         for req in pending_for(profile).select_related('requirement', 'quote__requirement', 'quote__supplier', 'order__requirement', 'requested_by')[:20]:
             events.append({
                 'key': f'approval:{req.pk}', 'kind': 'approval',

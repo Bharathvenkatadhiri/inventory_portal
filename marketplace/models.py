@@ -41,7 +41,7 @@ def gst_treatment(requirement, supplier):
 
 
 # Internal sign-off before something leaves the company (marketplace.approvals).
-# Existing rows and anything a supervisor/manager does are 'approved'.
+# Existing rows, and everything since RFQs and quotes stopped needing approval, are 'approved'.
 APPROVAL_PENDING = 'pending'
 APPROVAL_APPROVED = 'approved'
 APPROVAL_REJECTED = 'rejected'
@@ -209,8 +209,11 @@ class Quote(models.Model):
     valid_until = models.DateField(blank=True, null=True)
     quote_file = models.FileField(upload_to='quote_files/', blank=True, null=True)
     is_draft = models.BooleanField(default=False)
+    # When the quote was first sent to the buyer (not saved as a draft): what
+    # a supplier plan's quotes-per-month limit counts (plans.access).
+    submitted_at = models.DateTimeField(blank=True, null=True)
     # A user's first submission waits as a draft (so buyers can't see it)
-    # with approval_status 'pending' until a supervisor/manager approves.
+    # with approval_status 'pending' until the owner or an admin approves.
     approval_status = models.CharField(max_length=10, choices=APPROVAL_STATUS_CHOICES, default=APPROVAL_APPROVED)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     # "Notes to buyer" — widened from a 200-char CharField to a TextField
@@ -907,8 +910,8 @@ class OrderDocument(models.Model):
 
 
 class ApprovalRequest(models.Model):
-    """Something a team user (accounts.team.MEMBER) did that waits for a
-    supervisor's or the manager's sign-off before it takes effect — see
+    """Something a team member did that waits for the owner's or an
+    admin's sign-off before it takes effect — see
     marketplace.approvals for what each kind does on approval. Belongs to
     the requester's company (buyer or supplier, exactly one)."""
     RFQ = 'rfq'
@@ -959,3 +962,73 @@ class ApprovalRequest(models.Model):
     @property
     def is_revision(self):
         return self.kind == self.QUOTE and 'revision' in self.payload
+
+
+class QuoteRevision(models.Model):
+    """What a quote said before a change the buyer could already see — the
+    revision history on supplier plans with advanced quote management."""
+    quote = models.ForeignKey(Quote, on_delete=models.CASCADE, related_name='revisions')
+    quote_price = models.DecimalField(max_digits=10, decimal_places=2)
+    tooling_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    lead_time_value = models.PositiveIntegerField(blank=True, null=True)
+    lead_time_unit = models.CharField(max_length=10, blank=True)
+    payment_terms = models.CharField(max_length=20, blank=True)
+    valid_until = models.DateField(blank=True, null=True)
+    note = models.TextField(blank=True)
+    changed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    @classmethod
+    def snapshot(cls, quote, user):
+        """Records `quote` as it is in the database now, before a change."""
+        current = Quote.objects.get(pk=quote.pk)
+        return cls.objects.create(
+            quote=current, quote_price=current.quote_price, tooling_cost=current.tooling_cost,
+            lead_time_value=current.lead_time_value, lead_time_unit=current.lead_time_unit or '',
+            payment_terms=current.payment_terms or '', valid_until=current.valid_until, note=current.note or '',
+            changed_by=user,
+        )
+
+
+class QuoteTemplate(models.Model):
+    """A supplier's reusable quote terms, to prefill new quotes from."""
+    supplier = models.ForeignKey(ManufacturerProfile, on_delete=models.CASCADE, related_name='quote_templates')
+    name = models.CharField(max_length=100)
+    tooling_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    lead_time_value = models.PositiveIntegerField(blank=True, null=True)
+    lead_time_unit = models.CharField(max_length=10, choices=Quote.LEAD_TIME_UNIT_CHOICES, default='days')
+    payment_terms = models.CharField(max_length=20, choices=Quote.PAYMENT_TERMS_CHOICES, blank=True)
+    valid_for_days = models.PositiveIntegerField(blank=True, null=True)
+    note = models.TextField(blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+        constraints = [models.UniqueConstraint(fields=['supplier', 'name'], name='quotetemplate_unique_name')]
+
+    def __str__(self):
+        return self.name
+
+    def initial(self):
+        """Form initial data for a new quote."""
+        data = {
+            'tooling_cost': self.tooling_cost, 'lead_time_value': self.lead_time_value,
+            'lead_time_unit': self.lead_time_unit, 'payment_terms': self.payment_terms, 'note': self.note,
+        }
+        if self.valid_for_days:
+            data['valid_until'] = timezone.localdate() + timedelta(days=self.valid_for_days)
+        return data
+
+
+class RFQAlertPreference(models.Model):
+    """What a supplier wants RFQ alerts about, on plans with advanced RFQ
+    alerts. Empty lists mean "anything that matches our capabilities"."""
+    supplier = models.OneToOneField(ManufacturerProfile, on_delete=models.CASCADE, related_name='rfq_alert_preference')
+    processes = models.JSONField(default=list, blank=True)
+    materials = models.JSONField(default=list, blank=True)
+    min_quantity = models.PositiveIntegerField(blank=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True)

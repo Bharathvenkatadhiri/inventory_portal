@@ -3,6 +3,8 @@ from django.db import models
 #from django.contrib.auth.models import User
 from django.conf import settings
 
+from plans.catalog import BILLING_CYCLES, DEFAULT_PLAN, MONTHLY, PLAN_LABELS
+
 
 class ManufacturingTech(models.Model):
     TECH_CHOICES = [
@@ -52,58 +54,36 @@ class MaterialCapability(models.Model):
 
 class Company(models.Model):
     """
-    A GST-verified business entity. Kept separate from ManufacturerProfile
-    (which holds the supplier's marketplace-facing details) so the same
-    verified-identity record can later be reused by other roles (e.g. a
-    buyer's company) without duplicating GST verification.
+    A business entity's current GST identity: the trusted state buyers,
+    suppliers and (later) invoices read. How it got here — every lookup,
+    including failed and lapsed ones — is in gst.GSTVerification. Only
+    gst.services.verification.GSTVerificationService writes the GST fields.
 
-    No continuous GST monitoring for the MVP — `gst_verified_at` is a
-    point-in-time snapshot from the last verify/refresh call, not a live
-    status. Historical documents (e.g. future invoices) must copy the
-    fields they need at creation time rather than referencing this row,
-    since this row can change on a manual re-verify.
+    Kept separate from ManufacturerProfile/ConsumerProfile (the marketplace
+    profiles) so one GST-verified company can hold a buyer and a supplier
+    account. Historical documents must copy the fields they need, since a
+    re-verification can change this row.
     """
 
-    ENTITY_TYPE_CHOICES = [
-        ('private_limited', 'Private Limited'),
-        ('public_limited', 'Public Limited'),
-        ('llp', 'LLP'),
-        ('partnership', 'Partnership'),
-        ('proprietorship', 'Proprietorship'),
-        ('other', 'Other'),
-    ]
-
-    GST_STATUS_CHOICES = [
-        ('ACTIVE', 'Active'),
-        ('CANCELLED', 'Cancelled'),
-        ('SUSPENDED', 'Suspended'),
-        ('INACTIVE', 'Inactive'),
-        ('UNKNOWN', 'Unknown'),
-    ]
-
-    VERIFICATION_STATUS_CHOICES = [
-        ('pending', 'Pending'),
-        ('verified', 'Verified'),
-        ('failed', 'Failed'),
-        ('manual_review', 'Manual Review'),
-    ]
-
+    # What the person called the company on MakeSetu. Not the legal identity:
+    # that's legal_name, from GST.
+    name = models.CharField(max_length=255, blank=True)
     legal_name = models.CharField(max_length=255)
     trade_name = models.CharField(max_length=255, blank=True)
     gstin = models.CharField(max_length=15, unique=True, null=True, blank=True)
-    gst_status = models.CharField(max_length=20, choices=GST_STATUS_CHOICES, blank=True)
     gst_verified = models.BooleanField(default=False)
-    gst_verified_at = models.DateTimeField(null=True, blank=True)
-    registered_address = models.TextField(blank=True)
-    state = models.CharField(max_length=50, blank=True)
+    # As GSTN words it: "Active", "Cancelled", "Suspended", ...
+    gst_status = models.CharField(max_length=50, blank=True)
+    gst_registration_date = models.DateField(null=True, blank=True)
+    gst_cancellation_date = models.DateField(null=True, blank=True)
+    taxpayer_type = models.CharField(max_length=100, blank=True)
+    business_constitution = models.CharField(max_length=100, blank=True)
+    principal_address = models.TextField(blank=True)
     city = models.CharField(max_length=100, blank=True)
+    state = models.CharField(max_length=100, blank=True)
+    state_code = models.CharField(max_length=10, blank=True)
     pincode = models.CharField(max_length=10, blank=True)
-    # Not every Indian business entity has a CIN (e.g. proprietorships,
-    # partnerships) — kept nullable and out of the mandatory flow.
-    cin = models.CharField(max_length=21, unique=True, null=True, blank=True)
-    mca_status = models.CharField(max_length=30, null=True, blank=True)
-    entity_type = models.CharField(max_length=30, choices=ENTITY_TYPE_CHOICES, blank=True)
-    verification_status = models.CharField(max_length=20, choices=VERIFICATION_STATUS_CHOICES, default='pending')
+    gst_verified_at = models.DateTimeField(null=True, blank=True)
     # Letter of Undertaking for zero-rated exports without paying IGST. Filed
     # on the GST portal once per financial year; the ARN is quoted on
     # export invoices. Leave blank if the company exports on payment of IGST.
@@ -113,13 +93,10 @@ class Company(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        indexes = [
-            models.Index(fields=['gstin']),
-            models.Index(fields=['verification_status']),
-        ]
+        verbose_name_plural = 'companies'
 
     def __str__(self):
-        return self.legal_name or self.trade_name or f"Company #{self.pk}"
+        return self.legal_name or self.name or f"Company #{self.pk}"
 
     def has_valid_lut(self, on=None):
         from django.utils import timezone
@@ -369,8 +346,7 @@ class Certification(models.Model):
     valid_until = models.DateField(blank=True, null=True)
     document = models.FileField(upload_to='manufacturer/certifications/', blank=True, null=True)
     # Manually flipped by staff for now — no automated certificate
-    # verification in scope yet, same point-in-time-manual-flag pattern as
-    # Company.verification_status.
+    # verification in scope yet.
     is_verified = models.BooleanField(default=False)
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
@@ -446,26 +422,28 @@ class ConsumerProfile(models.Model):
         return f"#{self.id} - {self.Name}"
 
 class SubscriptionPlan(models.Model):
-    PLAN_CHOICES = [
-        ('basic', 'Basic'),
-        ('standard', 'Standard'),
-        ('enterprise', 'Enterprise'),
-    ]
+    """A company's MakeSetu subscription, held on its owner's account. What
+    the plan includes lives in plans.catalog (the only place limits and
+    features are described); plans.access applies it."""
+    PLAN_CHOICES = [(key, label) for key, label in PLAN_LABELS.items()]
+
     user_profile = models.ForeignKey(settings.AUTH_USER_MODEL, to_field='email', on_delete=models.CASCADE)
-    plan_type = models.CharField(max_length=20, choices=PLAN_CHOICES)
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-    rfq_limit = models.CharField(max_length=50) # unlimited for Enterprise
+    plan_type = models.CharField(max_length=20, choices=PLAN_CHOICES, default=DEFAULT_PLAN)
+    billing_cycle = models.CharField(max_length=10, choices=BILLING_CYCLES, default=MONTHLY)
+    # What the current plan and cycle cost, recorded when it was set.
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     # Additional fields for subscription management
     start_date = models.DateField(auto_now=True)
     end_date = models.DateField(blank=True, null=True) # Set this for expiration
     is_active = models.BooleanField(default=True)
 
-    # A paid upgrade the user asked for but hasn't paid for yet. There is no
+    # A paid upgrade the owner asked for but hasn't paid for yet. There is no
     # payment integration, so staff apply it (from the subscriptions admin
-    # screen) once payment is confirmed; plan_type/price/rfq_limit only
+    # screen) once payment is confirmed; plan_type/billing_cycle/price only
     # change then.
     pending_plan_type = models.CharField(max_length=20, choices=PLAN_CHOICES, blank=True)
+    pending_billing_cycle = models.CharField(max_length=10, choices=BILLING_CYCLES, blank=True)
     pending_requested_at = models.DateTimeField(blank=True, null=True)
 
     def __str__(self):
@@ -511,21 +489,28 @@ class EmailVerification(models.Model):
 
 
 class TeamMember(models.Model):
-    """A supervisor or user on a company account (accounts.team). The
-    company's manager isn't a row here: it's whoever owns the profile
-    (ConsumerProfile.user / ManufacturerProfile.user), i.e. the person who
-    registered the company. Exactly one of buyer/supplier is set; a member's
+    """A team member on a company account (accounts.team): an admin,
+    procurement user or viewer on a buyer company; an admin, sales,
+    operations or viewer on a supplier company. The company's owner isn't a
+    row here: it's whoever owns the profile (ConsumerProfile.user /
+    ManufacturerProfile.user), i.e. the person who registered the company
+    or was handed it. Exactly one of buyer/supplier is set; a member's
     User.role matches it ('consumer'/'manufacturer'). Deactivating a member
     sets User.is_active=False so they can't sign in — the row stays, so the
     RFQs/quotes they created remain the company's."""
-    SUPERVISOR = 'supervisor'
-    MEMBER = 'member'
-    ROLE_CHOICES = [(SUPERVISOR, 'Supervisor'), (MEMBER, 'User')]
+    ADMIN = 'admin'
+    PROCUREMENT = 'procurement'   # buyer companies
+    SALES = 'sales'               # supplier companies
+    OPERATIONS = 'operations'     # supplier companies
+    VIEWER = 'viewer'
+    ROLE_CHOICES = [
+        (ADMIN, 'Admin'), (PROCUREMENT, 'Procurement'), (SALES, 'Sales'), (OPERATIONS, 'Operations'), (VIEWER, 'Viewer'),
+    ]
 
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='team_membership')
     buyer = models.ForeignKey(ConsumerProfile, on_delete=models.CASCADE, null=True, blank=True, related_name='team_members')
     supplier = models.ForeignKey(ManufacturerProfile, on_delete=models.CASCADE, null=True, blank=True, related_name='team_members')
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default=MEMBER)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default=PROCUREMENT)
     invited_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -571,7 +556,7 @@ class TeamInvitation(models.Model):
 
 class TeamActivity(models.Model):
     """What people on a company account did (accounts.team.log), for the
-    manager's and supervisors' Activity view. actor_name is kept so the
+    owner's and admins' Activity view. actor_name is kept so the
     entry still reads correctly if the account is later deleted."""
     buyer = models.ForeignKey(ConsumerProfile, on_delete=models.CASCADE, null=True, blank=True, related_name='team_activity')
     supplier = models.ForeignKey(ManufacturerProfile, on_delete=models.CASCADE, null=True, blank=True, related_name='team_activity')

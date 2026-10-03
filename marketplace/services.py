@@ -314,21 +314,12 @@ def diff_rfq_edit(requirement, form, formset):
 
 def rfq_allowance(user):
     """(monthly RFQ limit or None for unlimited, RFQs posted so far this
-    month) from the user's plan. Users without a plan row get Basic's
-    limit, the same tier registration assigns."""
-    from accounts.models import SubscriptionPlan
-    from core.settings import subscription_plan_details
-
-    plan = SubscriptionPlan.objects.filter(user_profile=team.manager_user(user), is_active=True).first()
-    raw_limit = plan.rfq_limit if plan else subscription_plan_details['basic']['rfq_limit']
-    try:
-        limit = int(raw_limit)
-    except (TypeError, ValueError):
-        limit = None  # "unlimited"
-    month_start = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    # Deleted RFQs still count, otherwise delete-and-repost would bypass the limit.
-    used = Requirement.objects.filter(user_id__in=team.team_user_ids(user), created_at__gte=month_start).count()
-    return limit, used
+    month) on the buyer company's plan (plans.access)."""
+    from plans import access, catalog
+    profile = team.company(user)
+    if profile is None:
+        return None, 0
+    return access.limit(profile, catalog.RFQS_PER_MONTH), access.usage(profile, catalog.RFQS_PER_MONTH)
 
 
 def expired_without_quotes(user):
@@ -816,3 +807,55 @@ def order_document_entries(user):
         'uploaded_by': document.buyer['name'] if document.kind == OrderDocument.PURCHASE_ORDER else document.seller['name'],
         'date': document.issued_at,
     } for document in found.order_by('-issued_at')]
+
+
+def suggested_suppliers(requirement, exclude=(), limit=5):
+    """Manufacturers to invite for an RFQ (buyer plans with supplier
+    matching): those whose capabilities fit its processes, best match
+    first, leaving out ones already quoting."""
+    from .emails import _matching_suppliers
+    candidates = [s for s in _matching_suppliers(requirement).exclude(pk__in=list(exclude))[:100]]
+    scored = [(compute_match_percent(requirement, supplier), supplier) for supplier in candidates]
+    scored = [(score, supplier) for score, supplier in scored if score]
+    scored.sort(key=lambda pair: pair[0], reverse=True)
+    for score, supplier in scored:
+        supplier.match_percent = score
+    return [supplier for _score, supplier in scored[:limit]]
+
+
+def recommended_rfqs(supplier, advanced=False, limit=5):
+    """'Recommended for you' (supplier plans with matched RFQ
+    recommendations): received, open RFQs the supplier hasn't quoted on,
+    best match first. Advanced matching also weighs the supplier's win rate
+    on each RFQ's process, so likelier wins come first."""
+    from plans import rfq_inbox
+    open_rfqs = list(
+        rfq_inbox.received(open_requirements_for(supplier), supplier)
+        .exclude(quote__supplier=supplier).exclude(declines__supplier=supplier)
+        .prefetch_related('requirement_parts')[:200]
+    )
+    matches = bulk_match_percent(open_rfqs, supplier)
+    win_rates = {}
+    if advanced:
+        outcomes = Quote.objects.filter(supplier=supplier, is_deleted=False, is_draft=False).filter(
+            Q(is_selected=True) | Q(status='Rejected'),
+        ).values_list('requirement__requirement_parts__technology', 'is_selected')
+        totals = {}
+        for technology, won in outcomes:
+            won_count, all_count = totals.get(technology, (0, 0))
+            totals[technology] = (won_count + int(won), all_count + 1)
+        win_rates = {tech: won / count for tech, (won, count) in totals.items() if count}
+    scored = []
+    for requirement in open_rfqs:
+        match = matches.get(requirement.pk)
+        if not match:
+            continue
+        score = match
+        if advanced:
+            rates = [win_rates.get(part.technology) for part in requirement.requirement_parts.all()]
+            rates = [rate for rate in rates if rate is not None]
+            score = match * (1 + (max(rates) if rates else 0))
+        requirement.match_percent = match
+        scored.append((score, requirement))
+    scored.sort(key=lambda pair: pair[0], reverse=True)
+    return [requirement for _score, requirement in scored[:limit]]

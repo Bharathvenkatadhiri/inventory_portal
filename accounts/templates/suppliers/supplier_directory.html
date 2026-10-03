@@ -18,6 +18,7 @@
             <label class="field-label" for="directory-q">Search</label>
             <input id="directory-q" type="search" name="q" value="{{ q }}" placeholder="Company, process, material, certification…" class="field-input">
         </div>
+        {% if full_directory %}
         <div>
             <label class="field-label" for="directory-sort">Sort by</label>
             <select id="directory-sort" name="sort" class="field-input" onchange="this.form.submit()">
@@ -58,9 +59,27 @@
             <label class="field-label">Minimum order at most</label>
             <input type="number" name="min_order" value="{{ min_order }}" placeholder="Any quantity" class="field-input" onchange="this.form.submit()">
         </div>
+        {% else %}
+        <p class="rounded-md bg-accent-50 px-3 py-2 text-xs text-accent-700">Filters by process, certification, location and order size, sorting and every page of results are part of the Starter plan.</p>
+        {% endif %}
     </form>
 
     <div>
+        {% if featured %}
+        <div class="mb-6">
+            <h2 class="mb-3 text-sm font-bold uppercase tracking-wide text-gray-400">Featured manufacturers</h2>
+            <div class="grid gap-4 sm:grid-cols-3">
+                {% for supplier in featured %}
+                <a href="{% url 'supplier' supplier.pk %}" class="card block hover:ring-1 hover:ring-accent-500">
+                    <span class="badge bg-accent-50 text-accent-700">Featured</span>
+                    <p class="mt-2 truncate font-bold text-navy-900">{{ supplier.companyname|default:"Unnamed company" }}</p>
+                    <p class="truncate text-xs text-gray-500">{{ supplier.city }}</p>
+                    <div class="mt-1">{% include "_star_rating.html" with avg=supplier.rating_avg count=supplier.rating_count %}</div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
         <p class="mb-4 text-sm text-gray-500">{{ paginator.count }} manufacturer{{ paginator.count|pluralize }} match{% if q %} "{{ q }}"{% endif %}{% if process or certification or city or min_order %}{% if q %} and{% endif %} your filters{% endif %}</p>
         {% if object_list %}
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -71,7 +90,8 @@
                     <div class="min-w-0">
                         <div class="flex items-center gap-1.5">
                             <p class="truncate font-bold text-navy-900">{{ supplier.companyname|default:"Unnamed company" }}</p>
-                            {% if supplier.company.verification_status == 'verified' %}
+                            {% if supplier.is_priority %}<span class="badge bg-navy-50 text-navy-700">Top supplier</span>{% endif %}
+                            {% if supplier.company.gst_verified %}
                             <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 text-green-600" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
                             {% endif %}
                         </div>
@@ -114,8 +134,10 @@
             {% if page_obj.has_previous %}
             <a class="btn-outline" href="?{{ querystring }}&page={{ page_obj.previous_page_number }}">Previous</a>
             {% endif %}
-            {% if page_obj.has_next %}
+            {% if page_obj.has_next and full_directory or page_obj.has_next and page_obj.number < basic_directory_pages %}
             <a class="btn-outline" href="?{{ querystring }}&page={{ page_obj.next_page_number }}">Next</a>
+            {% elif page_obj.has_next %}
+            <span class="text-sm text-gray-500">More results are part of the Starter plan.</span>
             {% endif %}
         </div>
         {% endif %}

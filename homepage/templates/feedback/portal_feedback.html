@@ -7,7 +7,7 @@
 </div>
 {% endblock %}
 {% block content %}
-<form method="post" class="max-w-3xl space-y-6" x-data="{ rating: {{ form.rating.value|default:0 }}, hover: 0 }">
+<form method="post" data-viewer-ok class="max-w-3xl space-y-6" x-data="{ rating: {{ form.rating.value|default:0 }}, hover: 0 }">
     {% csrf_token %}
 
     <div class="card">

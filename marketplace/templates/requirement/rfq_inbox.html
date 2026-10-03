@@ -1,10 +1,12 @@
 {% extends "dashboard_base.html" %}
+{% load team_tags %}
 {% block title %}RFQ Inbox — MakeSetu{% endblock %}
 {% block page_header %}
 <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
     <div>
         <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">RFQ inbox</h1>
-        <p class="mt-1 text-sm text-gray-500">Requests matched to your processes, materials and capacity.</p>
+        <p class="mt-1 text-sm text-gray-500">Requests matched to your processes, materials and capacity.{% if rfq_limit %} Your plan includes {{ rfq_limit }} relevant RFQs a month, best match first.{% endif %}</p>
+        {% if request.user|can:'rfq.alerts' %}<a href="{% url 'rfq-alert-preferences' %}" class="mt-1 inline-block text-xs font-bold text-accent-500 hover:text-accent-600">RFQ alert preferences &rarr;</a>{% endif %}
     </div>
     <form method="get" class="flex flex-wrap items-end gap-3">
         <input type="hidden" name="tab" value="{{ tab }}">
@@ -21,7 +23,7 @@
             <select name="sort" class="field-input" onchange="this.form.submit()">
                 <option value="">Deadline soonest</option>
                 <option value="date_desc" {% if sort == 'date_desc' %}selected{% endif %}>Deadline latest</option>
-                <option value="match_desc" {% if sort == 'match_desc' %}selected{% endif %}>Best match</option>
+                {% if show_match %}<option value="match_desc" {% if sort == 'match_desc' %}selected{% endif %}>Best match</option>{% endif %}
                 <option value="cr_date_desc" {% if sort == 'cr_date_desc' %}selected{% endif %}>Newest</option>
             </select>
         </div>
@@ -29,6 +31,12 @@
 </div>
 {% endblock %}
 {% block content %}
+{% if rfqs_waiting and tab == 'new' %}
+<div class="mb-4 rounded-md bg-accent-50 px-4 py-3 text-sm text-accent-700">
+    {{ rfqs_waiting }} more open RFQ{{ rfqs_waiting|pluralize }} {{ rfqs_waiting|pluralize:"is,are" }} waiting — you've received all {{ rfq_limit }} your plan includes this month.
+    <a href="{% url 'profile' %}?tab=billing" class="font-bold underline">Upgrade to receive more</a>.
+</div>
+{% endif %}
 <div class="card p-0">
     <div class="flex gap-1 border-b border-gray-100 px-4">
         <a href="?tab=new{% if process %}&process={{ process }}{% endif %}"
@@ -81,7 +89,7 @@
                     {% if demand.end_date %}
                     <span class="text-sm font-bold text-accent-600">Due {{ demand.end_date|timeuntil }}</span>
                     {% endif %}
-                    {% if demand.match_percent is not None %}
+                    {% if show_match and demand.match_percent is not None %}
                     <span class="badge bg-green-50 text-green-700">{{ demand.match_percent }}% match</span>
                     {% endif %}
                     <div class="flex gap-2">
@@ -90,7 +98,7 @@
                             {% csrf_token %}
                             <button type="submit" class="btn-outline">Decline</button>
                         </form>
-                        <a href="{% url 'new-quote' demand.pk %}" class="btn-primary">Prepare quote</a>
+                        {% if request.user|can:'quotes.manage' %}<a href="{% url 'new-quote' demand.pk %}" class="btn-primary">Prepare quote</a>{% else %}<a href="{% url 'requirement' demand.pk %}" class="btn-outline">View</a>{% endif %}
                         {% else %}
                         <a href="{% url 'requirement' demand.pk %}" class="btn-outline">View</a>
                         {% endif %}

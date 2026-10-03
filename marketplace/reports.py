@@ -305,3 +305,49 @@ def supplier_win_rate(supplier, period=DEFAULT_PERIOD):
         'csv_rows': csv_rows,
         'csv_header': ['RFQ', 'Title', 'Quoted on', 'Currency', 'Unit price', 'Outcome', 'Gap to winning price'],
     }
+
+
+def supplier_performance(supplier, period=DEFAULT_PERIOD):
+    """Performance insights (supplier Business plans): how fast the
+    supplier quotes, how often it dispatches by the ship-by date, and how
+    buyers have rated it month by month."""
+    from .models import SupplierReview
+    period_key, period_label, first_month = period_window(period)
+    since = _since_datetime(first_month)
+
+    quotes = Quote.objects.filter(supplier=supplier, submitted_at__isnull=False).select_related('requirement')
+    if since:
+        quotes = quotes.filter(submitted_at__gte=since)
+    response_hours = [
+        (quote.submitted_at - quote.requirement.created_at).total_seconds() / 3600
+        for quote in quotes if quote.submitted_at >= quote.requirement.created_at
+    ]
+
+    dispatches = OrderEvent.objects.filter(
+        order__supplier=supplier, kind=OrderEvent.KIND_STAGE, to_value='dispatched', order__ship_by_date__isnull=False,
+    ).select_related('order')
+    if since:
+        dispatches = dispatches.filter(changed_at__gte=since)
+    on_time = sum(1 for event in dispatches if timezone.localdate(event.changed_at) <= event.order.ship_by_date)
+    dispatched = dispatches.count()
+
+    ratings = defaultdict(list)
+    reviews = SupplierReview.objects.filter(order__supplier=supplier)
+    if since:
+        reviews = reviews.filter(created_at__gte=since)
+    for review in reviews:
+        ratings[_month_start(timezone.localdate(review.created_at))].append(review.rating)
+    averages = {month: sum(values) / len(values) for month, values in ratings.items()}
+    return {
+        'period': period_key, 'period_label': period_label, 'periods': PERIODS,
+        'quotes_measured': len(response_hours),
+        'median_response_hours': median(response_hours) if response_hours else None,
+        'dispatched': dispatched,
+        'on_time': on_time,
+        'on_time_rate': round(on_time * 100 / dispatched) if dispatched else None,
+        'rating_months': [
+            {**row, 'average': averages.get(row['month'])}
+            for row in _month_series({m: v for m, v in averages.items()}, first_month)
+        ],
+        'reviews': sum(len(v) for v in ratings.values()),
+    }

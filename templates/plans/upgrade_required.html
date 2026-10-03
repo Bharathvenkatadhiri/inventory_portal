@@ -1,0 +1,17 @@
+{% extends "dashboard_base.html" %}
+{# A page whose feature the company's plan (or the user's role) doesn't include. Expects title, decision (plans.access.Decision), can_change_plan. #}
+{% block title %}{{ title }} — MakeSetu{% endblock %}
+{% block content %}
+<div class="card mx-auto max-w-xl text-center">
+    <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">{{ title }}</h1>
+    <p class="mt-3 text-sm text-gray-600">{{ decision.reason }}</p>
+    {% if decision.upgrade_to %}
+        {% if can_change_plan %}
+        <a href="{% url 'profile' %}?tab=billing" class="btn-primary mt-6 inline-flex">See the {{ decision.upgrade_label }} plan</a>
+        {% else %}
+        <p class="mt-4 text-sm text-gray-500">Ask your company's owner to upgrade to {{ decision.upgrade_label }}.</p>
+        {% endif %}
+        <p class="mt-3 text-xs text-gray-400"><a href="{% url 'pricing' %}" class="hover:underline">Compare plans</a></p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "dashboard_base.html" %}
+{# An RFQ beyond this month's received-RFQ quota (plans.rfq_inbox). Expects demand, limit, plan_label. #}
+{% block title %}RFQ-{{ demand.pk }} — MakeSetu{% endblock %}
+{% block content %}
+<div class="card mx-auto max-w-xl text-center">
+    <p class="text-xs font-bold uppercase tracking-wide text-gray-400">RFQ-{{ demand.pk }}</p>
+    <h1 class="mt-1 text-2xl font-extrabold tracking-tight text-navy-900">{{ demand.title }}</h1>
+    <p class="mt-3 text-sm text-gray-600">Your company has received all {{ limit }} RFQs the {{ plan_label }} plan includes this month, so this one's details are locked. It'll unlock next month if it's still open, or straight away on a bigger plan.</p>
+    <a href="{% url 'profile' %}?tab=billing" class="btn-primary mt-6 inline-flex">See plans</a>
+    <p class="mt-3 text-xs text-gray-400"><a href="{% url 'requirement-list' %}" class="hover:underline">Back to the RFQ inbox</a></p>
+</div>
+{% endblock %}

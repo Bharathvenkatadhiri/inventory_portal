@@ -1,15 +1,15 @@
-{# Compact "current plan" card with an inline upgrade modal. Expects: subscription (SubscriptionPlan or None), plan_catalog; optionally rfq_used/rfq_limit. The modal opens on load when the URL has ?upgrade=1. #}
+{# Compact "current plan" card with an inline upgrade modal. Expects: subscription (SubscriptionPlan or None), plan_catalog; optionally usage (homepage.views._usage_rows). The modal opens on load when the URL has ?upgrade=1. #}
 <div class="card" x-data="{ planModalOpen: {% if request.GET.upgrade %}true{% else %}false{% endif %} }">
     <div class="flex items-center justify-between gap-3">
         <div>
             <p class="text-sm text-gray-500">Current plan</p>
-            <p class="text-lg font-bold text-navy-900">{{ subscription.get_plan_type_display|default:"Basic" }}</p>
-            <p class="mt-1 text-xs text-gray-500">
-                {% if subscription.rfq_limit == 'unlimited' %}Unlimited RFQs{% else %}Up to {{ subscription.rfq_limit|default:5 }} RFQs / month{% endif %}
-            </p>
-            {% if rfq_used is not None and rfq_limit %}
-            <p class="mt-1 text-xs {% if rfq_used >= rfq_limit %}font-bold text-red-600{% else %}text-gray-500{% endif %}">{{ rfq_used }} of {{ rfq_limit }} used this month</p>
-            {% endif %}
+            <p class="text-lg font-bold text-navy-900">{{ subscription.get_plan_type_display|default:"Free" }}{% if subscription.price %} <span class="text-xs font-normal text-gray-400">&middot; billed {{ subscription.billing_cycle }}</span>{% endif %}</p>
+            {% for row in usage %}
+            <div class="mt-2">
+                <div class="flex justify-between gap-4 text-xs"><span class="text-gray-500">{{ row.label }}</span><span class="{% if row.full %}font-bold text-red-600{% else %}text-gray-600{% endif %}">{{ row.used }} of {{ row.limit }}</span></div>
+                {% if row.percent %}<span class="mt-1 block h-1.5 overflow-hidden rounded-full bg-gray-100"><span class="block h-full rounded-full {% if row.full %}bg-red-500{% else %}bg-navy-600{% endif %}" style="width: {{ row.percent|floatformat:0 }}%"></span></span>{% endif %}
+            </div>
+            {% endfor %}
         </div>
         <button type="button" @click="planModalOpen = true" class="btn-outline shrink-0 text-xs">Upgrade plan</button>
     </div>

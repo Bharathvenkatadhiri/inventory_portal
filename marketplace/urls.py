@@ -18,6 +18,10 @@ urlpatterns = [
     path('changes/response/<int:pk>/decide/', views.AmendmentDecisionView.as_view(), name='amendment-decide'),
 
     path('quote/', views.QuoteListView.as_view(), name='quote-list'),
+    path('quote/bulk/', views.QuoteBulkView.as_view(), name='quotes-bulk'),
+    path('quote/templates/<int:pk>/delete/', views.QuoteTemplateDeleteView.as_view(), name='quote-template-delete'),
+    path('requirement/alerts/', views.RFQAlertPreferenceView.as_view(), name='rfq-alert-preferences'),
+    path('contacts/', views.ContactsView.as_view(), name='contacts'),
     path('quote/new/<pk>', views.QuoteCreateView.as_view(), name='new-quote'),
     path('quote/<pk>/edit', views.QuoteUpdateView.as_view(), name='edit-quote'),
     path('quote/<pk>/delete', views.QuoteDeleteView.as_view(), name='delete-quote'),

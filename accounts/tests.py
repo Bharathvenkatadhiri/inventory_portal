@@ -1,4 +1,4 @@
-import json
+from datetime import timedelta
 
 from django.conf import settings
 from django.core import mail
@@ -13,12 +13,8 @@ from accounts.models import (
     ConsumerProfile, ManufacturerProfile, Company, Machine, Certification,
     ManufacturingTech, MaterialCapability, ManufacturerPhoto,
 )
-from accounts.services.gst_verification import (
-    is_valid_gstin_format,
-    normalize_gstin,
-    verify_gstin,
-)
-from accounts.services.company_matching import company_names_match, normalize_company_name
+from gst.models import GSTVerification
+from gst.views import SESSION_KEY as GST_SESSION_KEY
 
 # See homepage/tests.py's LoginViewTests for why: templates using {% static %}
 # need this override under `manage.py test`'s settings — the manifest
@@ -31,11 +27,25 @@ DASHBOARD_TEST_STORAGES = override_settings(
     }
 )
 
-# Format-valid GSTINs the MockGSTProvider resolves deterministically by
-# their last character: '0' -> CANCELLED, '1' -> SUSPENDED, else ACTIVE.
 ACTIVE_GSTIN = "33AAAAA0000A1Z5"
-CANCELLED_GSTIN = "33AAAAA0000A1Z0"
-SUSPENDED_GSTIN = "33AAAAA0000A1Z1"
+
+
+def verify_gstin_for_session(client, gstin=ACTIVE_GSTIN, **fields):
+    """What gst.views.verify_gstin leaves behind for the sign-up step: a
+    successful GSTVerification remembered in the session."""
+    values = dict(
+        gstin=gstin, provider="mock", status=GSTVerification.Status.SUCCESS,
+        legal_name="Verified Legal Name Private Limited", trade_name="Verified Trade Name", gst_status="Active",
+        business_constitution="Private Limited Company", taxpayer_type="Regular", state="Tamil Nadu",
+        state_code=gstin[:2], pincode="600001", verified_at=timezone.now(),
+        principal_address={"address": "1 Verified Street, Chennai - 600001", "city": "Chennai"},
+    )
+    values.update(fields)
+    verification = GSTVerification.objects.create(**values)
+    session = client.session
+    session[GST_SESSION_KEY] = verification.pk
+    session.save()
+    return verification
 
 
 class ProfileModelTests(TestCase):
@@ -376,146 +386,6 @@ class EmailVerificationTests(TestCase):
         self.assertRedirects(self.client.get(reverse("verify-email")), reverse("register"))
 
 
-class GSTINFormatTests(TestCase):
-    def test_valid_gstin_accepted(self):
-        self.assertTrue(is_valid_gstin_format(ACTIVE_GSTIN))
-
-    def test_normalize_trims_and_uppercases(self):
-        self.assertEqual(normalize_gstin("  33aaaaa0000a1z5 "), ACTIVE_GSTIN)
-
-    def test_wrong_length_rejected(self):
-        self.assertFalse(is_valid_gstin_format("33AAAAA0000A1Z"))
-
-    def test_missing_literal_z_rejected(self):
-        self.assertFalse(is_valid_gstin_format("33AAAAA0000A1Y5"))
-
-    def test_lowercase_rejected_before_normalization(self):
-        self.assertFalse(is_valid_gstin_format("33aaaaa0000a1z5"))
-
-
-class CompanyNameMatchingTests(TestCase):
-    def test_legal_suffix_variants_are_equivalent(self):
-        self.assertEqual(
-            normalize_company_name("ABC Engineering Pvt Ltd"),
-            normalize_company_name("ABC ENGINEERING PRIVATE LIMITED"),
-        )
-
-    def test_repeated_whitespace_normalized(self):
-        self.assertEqual(normalize_company_name("ABC   Engineering   Ltd"), "ABC ENGINEERING")
-
-    def test_likely_match_across_suffix_variants(self):
-        self.assertTrue(company_names_match("ABC Engineering Pvt Ltd", "ABC ENGINEERING PRIVATE LIMITED"))
-
-    def test_unrelated_names_do_not_match(self):
-        self.assertFalse(company_names_match("ABC Engineering Pvt Ltd", "XYZ Traders Limited"))
-
-    def test_blank_names_do_not_match(self):
-        self.assertFalse(company_names_match("", "ABC ENGINEERING PRIVATE LIMITED"))
-
-
-class VerifyGstinServiceTests(TestCase):
-    def test_invalid_format_short_circuits_without_calling_provider(self):
-        result = verify_gstin("not-a-gstin")
-        self.assertFalse(result["success"])
-        self.assertEqual(result["error_code"], "invalid_format")
-        self.assertEqual(result["http_status"], 400)
-
-    def test_active_gstin_returns_normalized_success_payload(self):
-        result = verify_gstin(ACTIVE_GSTIN)
-        self.assertTrue(result["success"])
-        self.assertEqual(result["gstin"], ACTIVE_GSTIN)
-        self.assertEqual(result["status"], "ACTIVE")
-        self.assertIn("legal_name", result)
-        self.assertIn("state", result)
-
-    def test_gstin_starting_00_is_not_found(self):
-        result = verify_gstin("00AAAAA0000A1Z5")
-        self.assertFalse(result["success"])
-        self.assertEqual(result["error_code"], "not_found")
-        self.assertEqual(result["http_status"], 404)
-
-    def test_cancelled_gstin_reported_as_such(self):
-        result = verify_gstin(CANCELLED_GSTIN)
-        self.assertTrue(result["success"])
-        self.assertEqual(result["status"], "CANCELLED")
-
-
-class VerifyGstinViewTests(TestCase):
-    def setUp(self):
-        cache.clear()
-        self.client = Client()
-        self.url = reverse("verify-gstin")
-
-    def _post(self, gstin, company_name):
-        return self.client.post(
-            self.url,
-            data=json.dumps({"gstin": gstin, "company_name": company_name}),
-            content_type="application/json",
-        )
-
-    def test_matching_active_gstin_is_verified_and_stores_session(self):
-        response = self._post(ACTIVE_GSTIN, "Business AAAAA0000A Private Limited")
-        data = response.json()
-        self.assertTrue(data["verified"])
-        self.assertEqual(data["verification_status"], "verified")
-        company = Company.objects.get(gstin=ACTIVE_GSTIN)
-        self.assertTrue(company.gst_verified)
-        self.assertIsNotNone(company.gst_verified_at)
-        self.assertEqual(self.client.session["verified_company_id"], company.id)
-
-    def test_name_mismatch_on_active_gstin_requires_manual_review(self):
-        response = self._post(ACTIVE_GSTIN, "Completely Unrelated Traders Co")
-        data = response.json()
-        self.assertFalse(data["verified"])
-        self.assertEqual(data["verification_status"], "manual_review")
-        self.assertNotIn("verified_company_id", self.client.session)
-
-    def test_cancelled_gstin_is_rejected(self):
-        response = self._post(CANCELLED_GSTIN, "Any Company Name Ltd")
-        data = response.json()
-        self.assertFalse(data["verified"])
-        self.assertEqual(data["verification_status"], "failed")
-
-    def test_invalid_format_returns_400_without_leaking_internals(self):
-        response = self._post("garbage", "Any Company Name Ltd")
-        self.assertEqual(response.status_code, 400)
-        self.assertFalse(response.json()["verified"])
-
-    def test_missing_company_name_returns_400(self):
-        response = self._post(ACTIVE_GSTIN, "")
-        self.assertEqual(response.status_code, 400)
-
-    def test_already_registered_gstin_is_rejected(self):
-        user = User.objects.create_user(username="s1", email="s1@example.com", password="pass12345")
-        company = Company.objects.create(
-            legal_name="Business AAAAA0000A Private Limited",
-            gstin=ACTIVE_GSTIN,
-            gst_status="ACTIVE",
-            gst_verified=True,
-            gst_verified_at=timezone.now(),
-            verification_status="verified",
-        )
-        ManufacturerProfile.objects.create(
-            user=user, company=company, phone="7777777777", address="x",
-            city="Chennai", state="TN", country="India",
-            amount_of_employees="10-20", turnover_per_year="<1", email="s1@example.com",
-        )
-        response = self._post(ACTIVE_GSTIN, "Business AAAAA0000A Private Limited")
-        self.assertEqual(response.status_code, 409)
-        self.assertFalse(response.json()["verified"])
-
-    def test_repeated_requests_are_rate_limited(self):
-        for _ in range(5):
-            self._post(ACTIVE_GSTIN, "Business AAAAA0000A Private Limited")
-        response = self._post(ACTIVE_GSTIN, "Business AAAAA0000A Private Limited")
-        self.assertEqual(response.status_code, 429)
-        self.assertFalse(response.json()["verified"])
-
-    def test_get_not_allowed(self):
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, 405)
-
-
 @override_settings(
     # register_supplier.html re-renders on validation failure and uses
     # {% static %}; the manifest storage used in prod requires a
@@ -565,49 +435,66 @@ class CreateSupplierSecurityTests(TestCase):
         self.assertEqual(response.status_code, 200)  # re-renders the form with an error
         self.assertFalse(ManufacturerProfile.objects.exists())
 
-    def test_posted_gst_verified_flag_is_ignored(self):
+    def test_posted_gst_identity_is_ignored(self):
         payload = self._base_payload()
         payload.update({
+            "gstin": ACTIVE_GSTIN,
             "gst_verified": "true",
-            "verification_status": "verified",
+            "status": "SUCCESS",
             "legal_name": "Fake Legal Name Pvt Ltd",
-            "registered_address": "Fake address the client made up",
+            "principal_address": "Fake address the client made up",
         })
         response = self.client.post(self.url, data=payload)
         self.assertEqual(response.status_code, 200)
         self.assertFalse(ManufacturerProfile.objects.exists())
+        self.assertFalse(Company.objects.exists())
 
-    def test_registration_succeeds_after_session_verified_company(self):
-        company = Company.objects.create(
-            legal_name="Verified Legal Name Private Limited",
-            trade_name="Verified Trade Name",
-            gstin=ACTIVE_GSTIN,
-            gst_status="ACTIVE",
-            gst_verified=True,
-            gst_verified_at=timezone.now(),
-            registered_address="1 Verified Street",
-            state="Tamil Nadu",
-            city="Chennai",
-            verification_status="verified",
-        )
-        session = self.client.session
-        session["verified_company_id"] = company.id
-        session.save()
-
+    def test_registration_builds_the_company_from_the_session_verification(self):
+        verification = verify_gstin_for_session(self.client)
         payload = self._base_payload()
-        # Even if a malicious client sends a different name/address, the
-        # backend must derive these from the verified Company, not the POST.
-        payload.update({"legal_name": "Something Else Entirely"})
-        response = self.client.post(self.url, data=payload)
+        # Even if a malicious client sends a different legal name/address,
+        # the backend must take them from the verification, not the POST.
+        payload.update({"legal_name": "Something Else Entirely", "principal_address": "Elsewhere"})
+        self.client.post(self.url, data=payload)
 
         profile = ManufacturerProfile.objects.get(user=self.user)
-        self.assertEqual(profile.company_id, company.id)
+        company = profile.company
+        self.assertEqual(company.gstin, ACTIVE_GSTIN)
+        self.assertEqual(company.legal_name, "Verified Legal Name Private Limited")
+        self.assertTrue(company.gst_verified)
+        self.assertEqual(company.principal_address, "1 Verified Street, Chennai - 600001")
+        self.assertEqual(company.name, "Verified Trade Name")  # display name defaults to the trade name
         self.assertEqual(profile.companyname, "Verified Trade Name")
-        self.assertEqual(profile.address, "1 Verified Street")
-        self.assertEqual(profile.city, "Chennai")
-        self.assertEqual(profile.state, "Tamil Nadu")
-        # The session marker is consumed so it can't be replayed.
-        self.assertNotIn("verified_company_id", self.client.session)
+        self.assertEqual(profile.address, "1 Verified Street, Chennai - 600001")
+        self.assertEqual((profile.city, profile.state), ("Chennai", "Tamil Nadu"))
+        verification.refresh_from_db()
+        self.assertEqual(verification.company, company)
+        # The verification is consumed so it can't be replayed.
+        self.assertNotIn(GST_SESSION_KEY, self.client.session)
+
+    def test_page_reshows_this_sessions_verification(self):
+        self.assertContains(self.client.get(self.url), 'id="registration-submit-btn" class="btn-primary flex-1" disabled')
+        verify_gstin_for_session(self.client)
+        page = self.client.get(self.url)
+        self.assertContains(page, 'id="gst-verification-initial"')
+        self.assertContains(page, "Verified Legal Name Private Limited")
+        self.assertNotContains(page, 'id="registration-submit-btn" class="btn-primary flex-1" disabled')
+
+    def test_display_name_is_the_users_but_the_legal_name_is_gsts(self):
+        verify_gstin_for_session(self.client)
+        self.client.post(self.url, data={**self._base_payload(), "company_display_name": "  Lakshmi   Precision "})
+        profile = ManufacturerProfile.objects.get(user=self.user)
+        self.assertEqual(profile.companyname, "Lakshmi Precision")
+        self.assertEqual(profile.company.name, "Lakshmi Precision")
+        self.assertEqual(profile.company.legal_name, "Verified Legal Name Private Limited")
+
+    def test_stale_or_unsuccessful_verifications_are_not_accepted(self):
+        stale = verify_gstin_for_session(self.client)
+        GSTVerification.objects.filter(pk=stale.pk).update(created_at=timezone.now() - timedelta(hours=2))
+        self.assertContains(self.client.post(self.url, data=self._base_payload()), "verify your company")
+        verify_gstin_for_session(self.client, status=GSTVerification.Status.INACTIVE, gst_status="Cancelled")
+        self.assertContains(self.client.post(self.url, data=self._base_payload()), "verify your company")
+        self.assertFalse(ManufacturerProfile.objects.exists())
 
 
 import itertools
@@ -846,15 +733,10 @@ class BuyerRegistrationBindingTests(TestCase):
     def setUp(self):
         self.new_user = User.objects.create_user(username="fresh", email="fresh@example.com", password="pass12345", email_verified=True)
         self.victim = User.objects.create_user(username="victim2", email="victim2@example.com", password="pass12345")
-        company = Company.objects.create(
-            legal_name="Fresh Legal Pvt Ltd", trade_name="Fresh Co", gstin=ACTIVE_GSTIN, gst_status="ACTIVE",
-            gst_verified=True, gst_verified_at=timezone.now(), registered_address="1 Rd", state="KA", city="Bengaluru",
-            verification_status="verified",
-        )
         session = self.client.session
         session["session_user_id"] = self.new_user.id
-        session["verified_company_id"] = company.id
         session.save()
+        verify_gstin_for_session(self.client, legal_name="Fresh Legal Pvt Ltd", trade_name="Fresh Co")
 
     def _payload(self, **extra):
         data = {
@@ -905,16 +787,11 @@ class BuyerCompanyVerificationTests(TestCase):
         data.update(extra)
         return data
 
-    def _verified_company(self, gstin=ACTIVE_GSTIN):
-        company = Company.objects.create(
-            legal_name="Buyer Legal Pvt Ltd", trade_name="Buyer Trade", gstin=gstin, gst_status="ACTIVE",
-            gst_verified=True, gst_verified_at=timezone.now(), registered_address="7 Buyer Street",
-            state="Karnataka", city="Bengaluru", verification_status="verified",
+    def _verify(self, gstin=ACTIVE_GSTIN):
+        return verify_gstin_for_session(
+            self.client, gstin, legal_name="Buyer Legal Pvt Ltd", trade_name="Buyer Trade", state="Karnataka",
+            principal_address={"address": "7 Buyer Street", "city": "Bengaluru"},
         )
-        session = self.client.session
-        session["verified_company_id"] = company.id
-        session.save()
-        return company
 
     def test_registration_without_verification_is_rejected(self):
         response = self.client.post(self.url, self._payload())
@@ -922,19 +799,35 @@ class BuyerCompanyVerificationTests(TestCase):
         self.assertContains(response, "verify your company")
         self.assertFalse(ConsumerProfile.objects.exists())
 
-    def test_name_and_address_come_from_the_verified_company_not_the_post(self):
-        company = self._verified_company()
+    def test_name_and_address_come_from_the_verification_not_the_post(self):
+        self._verify()
         self.client.post(self.url, self._payload(Name="Made Up Name", Address="Made up address"))
         profile = ConsumerProfile.objects.get(user=self.user)
-        self.assertEqual(profile.company_id, company.id)
+        self.assertEqual(profile.company.legal_name, "Buyer Legal Pvt Ltd")
         self.assertEqual(profile.Name, "Buyer Trade")
         self.assertEqual(profile.Address, "7 Buyer Street")
         self.assertEqual(profile.city, "Bengaluru")
         self.assertEqual(profile.state, "Karnataka")
-        self.assertNotIn("verified_company_id", self.client.session)
+        self.assertNotIn(GST_SESSION_KEY, self.client.session)
+
+    def test_a_supplier_company_signing_up_as_a_buyer_reuses_its_company(self):
+        supplier_user = User.objects.create_user(username="sellerco", email="sellerco@example.com", password="pass12345", role="manufacturer")
+        company = Company.objects.create(name="Acme", legal_name="Old Legal Name", gstin=ACTIVE_GSTIN, gst_verified=True)
+        ManufacturerProfile.objects.create(
+            user=supplier_user, company=company, phone="9400000023", address="x", city="Chennai", state="TN",
+            country="India", amount_of_employees="10-20", turnover_per_year="<1", email="sellerco@example.com",
+        )
+        self._verify()
+        self.client.post(self.url, self._payload())
+        profile = ConsumerProfile.objects.get(user=self.user)
+        self.assertEqual(profile.company, company)
+        company.refresh_from_db()
+        self.assertEqual(company.legal_name, "Buyer Legal Pvt Ltd")  # refreshed from the new verification
+        self.assertEqual(company.name, "Acme")  # the existing display name stays
 
     def test_gstin_already_used_by_another_buyer_is_rejected(self):
-        company = self._verified_company()
+        self._verify()
+        company = Company.objects.create(legal_name="Buyer Legal Pvt Ltd", gstin=ACTIVE_GSTIN, gst_verified=True)
         other = User.objects.create_user(username="firstbuyer", email="firstbuyer@example.com", password="pass12345")
         ConsumerProfile.objects.create(
             user=other, company=company, Name="First", type_of_business="electronics", city="X", state="Y",
@@ -944,69 +837,44 @@ class BuyerCompanyVerificationTests(TestCase):
         self.assertContains(response, "already registered")
         self.assertFalse(ConsumerProfile.objects.filter(user=self.user).exists())
 
-    def test_verify_endpoint_lets_a_buyer_use_a_gstin_a_supplier_already_has(self):
-        # One company may both buy and sell; only the same role is a duplicate.
-        supplier_user = User.objects.create_user(username="sellerco", email="sellerco@example.com", password="pass12345", role="manufacturer")
-        company = Company.objects.create(legal_name="Acme Engineering Private Limited", gstin=ACTIVE_GSTIN, verification_status="verified")
-        ManufacturerProfile.objects.create(
-            user=supplier_user, company=company, phone="9400000023", address="x", city="Chennai", state="TN",
-            country="India", amount_of_employees="10-20", turnover_per_year="<1", email="sellerco@example.com",
-        )
-        response = self.client.post(
-            reverse("verify-gstin"),
-            data=json.dumps({"gstin": ACTIVE_GSTIN, "company_name": "Acme Engineering Private Limited"}),
-            content_type="application/json",
-        )
-        self.assertNotEqual(response.status_code, 409)
-
-    def test_verify_endpoint_blocks_a_gstin_another_buyer_already_has(self):
-        company = Company.objects.create(legal_name="Acme Engineering Private Limited", gstin=ACTIVE_GSTIN, verification_status="verified")
-        other = User.objects.create_user(username="firstbuyer2", email="firstbuyer2@example.com", password="pass12345")
-        ConsumerProfile.objects.create(
-            user=other, company=company, Name="First", type_of_business="electronics", city="X", state="Y",
-            country="India", phone="9400000024", email="firstbuyer2@example.com", EORI_number="E2", VAT_number="V2",
-        )
-        response = self.client.post(
-            reverse("verify-gstin"),
-            data=json.dumps({"gstin": ACTIVE_GSTIN, "company_name": "Acme Engineering Private Limited"}),
-            content_type="application/json",
-        )
-        self.assertEqual(response.status_code, 409)
-
-
 @DASHBOARD_TEST_STORAGES
 class SubscriptionUpgradeTests(TestCase):
     def setUp(self):
         from accounts.models import SubscriptionPlan
         self.SubscriptionPlan = SubscriptionPlan
         self.buyer, _ = _buyer("planner", "9400000011")
-        self.plan = SubscriptionPlan.objects.create(user_profile=self.buyer, plan_type="standard", price=999, rfq_limit="50")
+        self.plan = SubscriptionPlan.objects.create(user_profile=self.buyer, plan_type="starter", price=999)
         self.client.login(username="planner@example.com", password="pass12345")
 
     def test_paid_upgrade_is_pending_until_staff_apply_it(self):
-        self.client.post(reverse("subscription-upgrade"), {"plan_type": "enterprise"})
+        self.client.post(reverse("subscription-upgrade"), {"plan_type": "business", "billing_cycle": "yearly"})
         self.plan.refresh_from_db()
-        self.assertEqual(self.plan.plan_type, "standard")
-        self.assertEqual(self.plan.pending_plan_type, "enterprise")
+        self.assertEqual(self.plan.plan_type, "starter")
+        self.assertEqual((self.plan.pending_plan_type, self.plan.pending_billing_cycle), ("business", "yearly"))
         self.assertContains(self.client.get(reverse("profile") + "?tab=billing"), "Awaiting payment")
 
-    def test_moving_to_a_cheaper_plan_applies_immediately(self):
-        self.client.post(reverse("subscription-upgrade"), {"plan_type": "basic"})
+    def test_switching_to_yearly_billing_waits_for_payment_too(self):
+        self.client.post(reverse("subscription-upgrade"), {"plan_type": "starter", "billing_cycle": "yearly"})
         self.plan.refresh_from_db()
-        self.assertEqual(self.plan.plan_type, "basic")
-        self.assertEqual(self.plan.rfq_limit, "5")
+        self.assertEqual((self.plan.billing_cycle, self.plan.pending_plan_type, self.plan.pending_billing_cycle), ("monthly", "starter", "yearly"))
+
+    def test_moving_to_a_cheaper_plan_applies_immediately(self):
+        self.client.post(reverse("subscription-upgrade"), {"plan_type": "free"})
+        self.plan.refresh_from_db()
+        self.assertEqual(self.plan.plan_type, "free")
+        self.assertEqual(self.plan.price, 0)
 
     def test_staff_setting_the_plan_clears_the_pending_request(self):
-        self.client.post(reverse("subscription-upgrade"), {"plan_type": "enterprise"})
+        self.client.post(reverse("subscription-upgrade"), {"plan_type": "business"})
         User.objects.create_user(username="planstaff", email="planstaff@example.com", password="pass12345", is_staff=True)
         self.client.login(username="planstaff@example.com", password="pass12345")
-        self.client.post(reverse("edit-subscription", kwargs={"pk": self.plan.pk}), {"plan_type": "enterprise", "is_active": "on"})
+        self.client.post(reverse("edit-subscription", kwargs={"pk": self.plan.pk}), {"plan_type": "business", "billing_cycle": "yearly", "is_active": "on"})
         self.plan.refresh_from_db()
-        self.assertEqual(self.plan.plan_type, "enterprise")
+        self.assertEqual((self.plan.plan_type, self.plan.billing_cycle, self.plan.price), ("business", "yearly", 29990))
         self.assertEqual(self.plan.pending_plan_type, "")
 
     def test_next_cannot_redirect_off_site(self):
-        response = self.client.post(reverse("subscription-upgrade"), {"plan_type": "basic", "next": "https://evil.example.com/"})
+        response = self.client.post(reverse("subscription-upgrade"), {"plan_type": "free", "next": "https://evil.example.com/"})
         self.assertEqual(response["Location"], reverse("profile") + "?tab=billing")
 
 
@@ -1022,15 +890,10 @@ class SupplierRegistrationBindingTests(TestCase):
         cache.clear()
         me = User.objects.create_user(username="mfgme", email="mfgme@example.com", password="pass12345", role="manufacturer", email_verified=True)
         someone = User.objects.create_user(username="mfgother", email="mfgother@example.com", password="pass12345", role="manufacturer")
-        company = Company.objects.create(
-            legal_name="Bound Legal Pvt Ltd", trade_name="Bound Trade", gstin=ACTIVE_GSTIN, gst_status="ACTIVE",
-            gst_verified=True, gst_verified_at=timezone.now(), registered_address="1 St", state="TN", city="Chennai",
-            verification_status="verified",
-        )
         session = self.client.session
         session["session_user_id"] = me.id
-        session["verified_company_id"] = company.id
         session.save()
+        verify_gstin_for_session(self.client)
         self.client.post(reverse("register-supplier"), {
             "user": someone.id, "email": "mfgme-co@example.com", "phone": "7000000001",
             "amount_of_employees": "10-20", "turnover_per_year": "<1",
@@ -1094,26 +957,6 @@ class SupplierProfileLayoutTests(TestCase):
         self.assertTemplateNotUsed(response, "dashboard_base.html")
 
 
-class SampleCompanyTests(TestCase):
-    """The mock provider's sample companies (README: "Sample companies for
-    GST verification") must stay usable for manual testing in dev and on
-    the test site."""
-
-    def test_every_sample_is_a_valid_active_gstin_with_city_and_pincode(self):
-        from accounts.services.gst_verification import SAMPLE_COMPANIES
-        for gstin, (legal_name, *_rest) in SAMPLE_COMPANIES.items():
-            result = verify_gstin(gstin)
-            self.assertTrue(result["success"], gstin)
-            self.assertEqual(result["status"], "ACTIVE", gstin)
-            self.assertEqual(result["legal_name"], legal_name)
-            self.assertTrue(result["city"] and result["pincode"] and result["state"], gstin)
-
-    def test_short_typed_name_matches_the_sample_legal_name(self):
-        result = verify_gstin("27AADCK5678M1Z3")
-        self.assertTrue(company_names_match("Kaveri Castings Pvt Ltd", result["legal_name"]))
-        self.assertFalse(company_names_match("Some Other Company", result["legal_name"]))
-
-
 @DASHBOARD_TEST_STORAGES
 class ProfileCompanyTabTests(TestCase):
     """Settings > Company used to only have a supplier branch, so buyers
@@ -1122,9 +965,9 @@ class ProfileCompanyTabTests(TestCase):
     def _company(self, gstin):
         return Company.objects.create(
             legal_name="TEJAS ELECTRONICS PRIVATE LIMITED", trade_name="Tejas Electronics", gstin=gstin,
-            gst_status="ACTIVE", gst_verified=True, gst_verified_at=timezone.now(), pincode="501510",
-            registered_address="Plot 9, Hardware Park", state="Telangana", city="Hyderabad",
-            entity_type="private_limited", verification_status="verified",
+            gst_status="Active", gst_verified=True, gst_verified_at=timezone.now(), pincode="501510",
+            principal_address="Plot 9, Hardware Park", state="Telangana", city="Hyderabad",
+            business_constitution="Private Limited Company",
         )
 
     def test_buyer_sees_their_verified_company(self):

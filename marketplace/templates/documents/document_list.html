@@ -1,9 +1,12 @@
 {% extends "dashboard_base.html" %}
 {% block title %}Documents — MakeSetu{% endblock %}
 {% block page_header %}
-<div class="mb-6">
-    <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">Documents</h1>
-    <p class="mt-1 text-sm text-gray-500">Drawings, quotes, certificates and message attachments across all your RFQs and orders.</p>
+<div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div>
+        <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">Documents</h1>
+        <p class="mt-1 text-sm text-gray-500">Drawings, quotes, certificates and message attachments across all your RFQs and orders.</p>
+    </div>
+    {% if can_export %}<a href="?export=csv" class="btn-outline">Export POs &amp; invoices (CSV)</a>{% endif %}
 </div>
 {% endblock %}
 {% block content %}

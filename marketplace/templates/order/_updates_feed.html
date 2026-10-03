@@ -1,7 +1,8 @@
+{% load team_tags %}
 {% load widget_tweaks %}
 <h2 class="text-lg font-bold text-navy-900">Production updates</h2>
 
-{% if is_supplier %}
+{% if is_supplier and request.user|can:'order.production_docs' %}
 <form method="post" action="{% url 'order-post-update' bill.billno %}" enctype="multipart/form-data"
       hx-post="{% url 'order-post-update' bill.billno %}" hx-target="#updates-feed-block" hx-swap="innerHTML"
       class="mt-3 space-y-3">

@@ -1,0 +1,1 @@
+{{ requirements|length }} new RFQ{{ requirements|length|pluralize }} for {{ company_name }} on MakeSetu

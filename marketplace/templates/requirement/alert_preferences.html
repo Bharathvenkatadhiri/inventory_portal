@@ -1,0 +1,34 @@
+{% extends "dashboard_base.html" %}
+{% block title %}RFQ alert preferences — MakeSetu{% endblock %}
+{% block page_header %}
+<div class="mb-6">
+    <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">RFQ alert preferences</h1>
+    <p class="mt-1 text-sm text-gray-500">Get instant emails only for the RFQs you want. Leave a section empty to hear about anything that matches your capabilities.</p>
+</div>
+{% endblock %}
+{% block content %}
+<form method="post" class="card max-w-3xl space-y-6">
+    {% csrf_token %}
+    <div>
+        <p class="field-label">Processes</p>
+        <div class="mt-2 grid gap-2 sm:grid-cols-3">
+            {% for value, label in process_choices %}
+            <label class="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" name="processes" value="{{ value }}" {% if value in preference.processes %}checked{% endif %} class="rounded border-gray-300"> {{ label }}</label>
+            {% endfor %}
+        </div>
+    </div>
+    <div>
+        <p class="field-label">Materials</p>
+        <div class="mt-2 grid gap-2 sm:grid-cols-3">
+            {% for value, label in material_choices %}
+            <label class="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" name="materials" value="{{ value }}" {% if value in preference.materials %}checked{% endif %} class="rounded border-gray-300"> {{ label }}</label>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="max-w-xs">
+        <label for="min_quantity" class="field-label">Minimum total quantity</label>
+        <input type="number" min="0" id="min_quantity" name="min_quantity" value="{{ preference.min_quantity|default:'' }}" class="field-input" placeholder="Any">
+    </div>
+    <button type="submit" class="btn-primary">Save preferences</button>
+</form>
+{% endblock %}

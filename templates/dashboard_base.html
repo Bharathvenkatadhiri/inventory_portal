@@ -9,6 +9,12 @@
     <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
     <script src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
     {% block extra_head %}{% endblock %}
+    {% if read_only %}
+    {# Buyer viewers are read-only (accounts.team). accounts.middleware refuses their writes anyway; this hides the controls. Forms a Viewer may use carry data-viewer-ok. #}
+    <style>main form[method="post" i]:not([data-viewer-ok]), main [hx-post]:not([data-viewer-ok]), main [data-hide-for-viewer] { display: none !important; }</style>
+    {% elif is_viewer %}
+    <style>main [data-hide-for-viewer] { display: none !important; }</style>
+    {% endif %}
 </head>
 <body class="h-full antialiased text-navy-900" {% if request.htmx %}hx-boost="true"{% endif %} x-data="{ sidebarOpen: false }" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 <div class="flex min-h-screen">
@@ -30,6 +36,7 @@
 
         <main class="flex-1 px-6 py-8 lg:px-10">
             {% include "_flash_messages.html" %}
+            {% if read_only %}<p class="mb-4 rounded-md bg-navy-50 px-4 py-2 text-sm text-navy-700">You have view-only access to this company account.</p>{% endif %}
             {% if live_sig %}{% include "live/_topbar_poller.html" %}{% endif %}
             {% block page_header %}{% endblock %}
             {% block content %}{% endblock %}

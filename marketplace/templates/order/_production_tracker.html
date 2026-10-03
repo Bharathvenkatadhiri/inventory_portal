@@ -1,7 +1,7 @@
 {% load team_tags %}
 <div class="flex items-center justify-between mb-4">
     <h2 class="text-lg font-bold text-navy-900">Production stages</h2>
-    {% if can_manage_production and next_production_stage %}
+    {% if can_manage_production and next_production_stage and request.user|can:'order.production' %}
     <form method="post" action="{% url 'order-production-advance' bill.billno %}"
           hx-post="{% url 'order-production-advance' bill.billno %}" hx-target="#production-tracker-block" hx-swap="innerHTML">
         {% csrf_token %}

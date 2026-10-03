@@ -1,9 +1,16 @@
 {% extends base_template %}
 {% block title %}{{ supplier.companyname }}{% endblock title %}
 {% block content %}
+{# What buyers see depends on the supplier's plan (accounts.views.SupplierView): profile_full adds photos, machines and certifications; profile_advanced the cover image, export badge and rating breakdown. #}
+{% if profile_advanced and supplier.cover_image %}
+<div class="mb-6 h-40 overflow-hidden rounded-xl bg-gray-100"><img src="{{ supplier.cover_image.url }}" alt="" class="h-full w-full object-cover"></div>
+{% endif %}
 <div class="flex items-center justify-between mb-6">
     <div>
-        <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">{{ supplier.companyname }}</h1>
+        <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">{{ supplier.companyname }}
+            {% if is_featured %}<span class="badge bg-accent-50 align-middle text-accent-700">Featured</span>{% endif %}
+            {% if profile_advanced and supplier.company and supplier.company.has_valid_lut %}<span class="badge bg-blue-50 align-middle text-blue-700">Exports under LUT</span>{% endif %}
+        </h1>
         <p class="text-sm text-gray-500">{{ supplier.get_activity_type_display }} &middot; created {{ supplier.created_at|date:"Y-m-d" }}</p>
     </div>
     <div class="flex gap-2">
@@ -18,9 +25,56 @@
     </div>
 </div>
 
+{% if is_own_profile %}
+<p class="mb-4 rounded-md bg-gray-50 px-4 py-2 text-xs text-gray-600">Buyers see the {{ profile_level_label|default:"Basic" }} version of this profile on your plan.{% if not profile_advanced or profile_level_label != "Advanced" %} <a href="{% url 'profile' %}?tab=billing" class="font-bold text-accent-500 hover:text-accent-600">Upgrade</a> to show more.{% endif %}</p>
+{% endif %}
+
+{% if profile_advanced %}
 <div class="mb-6 max-w-md">
     {% include "_rating_breakdown.html" %}
 </div>
+{% elif rating.count %}
+<p class="mb-6 text-sm text-gray-600"><span class="font-bold text-navy-900">{{ rating.avg|floatformat:1 }}</span> / 5 from {{ rating.count }} rating{{ rating.count|pluralize }}</p>
+{% endif %}
+
+{% if supplier.about %}
+<div class="card mb-6">
+    <h2 class="mb-2 text-sm font-semibold text-gray-900">About</h2>
+    <p class="whitespace-pre-line text-sm text-gray-700">{{ supplier.about }}</p>
+</div>
+{% endif %}
+<div class="card mb-6 grid gap-6 sm:grid-cols-2">
+    <div>
+        <h2 class="mb-2 text-sm font-semibold text-gray-900">Capabilities</h2>
+        <div class="flex flex-wrap gap-2">{% for capability in supplier.capabilities.all %}<span class="badge bg-gray-100 text-gray-700">{{ capability }}</span>{% empty %}<span class="text-sm text-gray-400">—</span>{% endfor %}</div>
+    </div>
+    <div>
+        <h2 class="mb-2 text-sm font-semibold text-gray-900">Materials</h2>
+        <div class="flex flex-wrap gap-2">{% for material in supplier.materials.all %}<span class="badge bg-gray-100 text-gray-700">{{ material }}</span>{% empty %}<span class="text-sm text-gray-400">—</span>{% endfor %}</div>
+    </div>
+</div>
+{% if profile_full %}
+{% with photos=supplier.photos.all machines=supplier.machines.all certifications=supplier.certifications.all %}
+{% if photos %}
+<div class="card mb-6">
+    <h2 class="mb-3 text-sm font-semibold text-gray-900">Photos</h2>
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">{% for photo in photos %}<img src="{{ photo.image.url }}" alt="" class="h-28 w-full rounded-md object-cover">{% endfor %}</div>
+</div>
+{% endif %}
+{% if machines or certifications %}
+<div class="card mb-6 grid gap-6 sm:grid-cols-2">
+    <div>
+        <h2 class="mb-2 text-sm font-semibold text-gray-900">Machines</h2>
+        <ul class="space-y-1 text-sm text-gray-700">{% for machine in machines %}<li>{{ machine }}</li>{% empty %}<li class="text-gray-400">—</li>{% endfor %}</ul>
+    </div>
+    <div>
+        <h2 class="mb-2 text-sm font-semibold text-gray-900">Certifications</h2>
+        <ul class="space-y-1 text-sm text-gray-700">{% for certification in certifications %}<li>{{ certification.name }}{% if certification.is_verified %} <span class="badge bg-green-50 text-green-700">Verified</span>{% endif %}{% if certification.valid_until %} <span class="text-xs text-gray-400">valid until {{ certification.valid_until|date:"M Y" }}</span>{% endif %}</li>{% empty %}<li class="text-gray-400">—</li>{% endfor %}</ul>
+    </div>
+</div>
+{% endif %}
+{% endwith %}
+{% endif %}
 
 <div class="card grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
     <div>
@@ -89,12 +143,10 @@
 <div class="card mt-6">
     <div class="flex items-center justify-between mb-4">
         <h6 class="text-sm font-semibold text-gray-900">GST Verification</h6>
-        {% if supplier.company.verification_status == 'verified' %}
+        {% if supplier.company.gst_verified %}
         <span class="badge bg-green-50 text-green-700">Verified</span>
-        {% elif supplier.company.verification_status == 'manual_review' %}
-        <span class="badge bg-amber-50 text-amber-700">Manual Review</span>
         {% else %}
-        <span class="badge bg-red-50 text-red-700">{{ supplier.company.get_verification_status_display }}</span>
+        <span class="badge bg-red-50 text-red-700">Not verified</span>
         {% endif %}
     </div>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -112,19 +164,19 @@
         </div>
         <div>
             <h6 class="field-label">GST Status</h6>
-            <p class="text-sm text-gray-900">{{ supplier.company.get_gst_status_display|default:"—" }}</p>
+            <p class="text-sm text-gray-900">{{ supplier.company.gst_status|default:"—" }}</p>
         </div>
         <div>
-            <h6 class="field-label">Entity Type</h6>
-            <p class="text-sm text-gray-900">{{ supplier.company.get_entity_type_display|default:"—" }}</p>
+            <h6 class="field-label">Constitution of Business</h6>
+            <p class="text-sm text-gray-900">{{ supplier.company.business_constitution|default:"—" }}</p>
         </div>
         <div>
-            <h6 class="field-label">CIN</h6>
-            <p class="text-sm text-gray-900">{{ supplier.company.cin|default:"—" }}</p>
+            <h6 class="field-label">Taxpayer Type</h6>
+            <p class="text-sm text-gray-900">{{ supplier.company.taxpayer_type|default:"—" }}</p>
         </div>
         <div class="sm:col-span-2 lg:col-span-3">
-            <h6 class="field-label">Registered Address</h6>
-            <p class="text-sm text-gray-900">{{ supplier.company.registered_address|default:"—" }}</p>
+            <h6 class="field-label">Principal Place of Business</h6>
+            <p class="text-sm text-gray-900">{{ supplier.company.principal_address|default:"—" }}</p>
         </div>
         <div>
             <h6 class="field-label">Verified At</h6>

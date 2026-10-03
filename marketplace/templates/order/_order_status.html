@@ -23,8 +23,8 @@
         >{{ next_status|order_action_label }}</button>
         {% endif %}
     </div>
-    {% if next_status == 'paid' and can_advance and payment_needs_approval and not payment_approval %}
-    <p class="-mt-2 mb-4 text-xs text-gray-500">Your supervisor or manager approves payment confirmations before the order is marked paid.</p>
+    {% if payment_for_admins %}
+    <p class="-mt-2 mb-4 text-xs text-gray-500">Your company's owner or an admin confirms payments.</p>
     {% endif %}
     {% if next_status == 'in_production' and can_advance %}
     <p class="-mt-2 mb-4 text-xs text-gray-500">Starting production unlocks the stage tracker and QC checklist, and sets the ship-by date from the quote's lead time.</p>

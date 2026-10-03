@@ -21,6 +21,7 @@ from django.urls import reverse
 
 from accounts.models import ManufacturerProfile
 from core.emails import send_template_email
+from plans import rfq_inbox
 
 logger = logging.getLogger(__name__)
 
@@ -98,10 +99,52 @@ def notify_new_rfq(requirement):
     }
     for supplier in suppliers:
         try:
+            if not wants_instant_alert(supplier, requirement):
+                continue
+            # The alert delivers the RFQ: it uses one of the supplier's
+            # RFQs this month, and isn't sent once those are used up.
+            if not rfq_inbox.receive(supplier, requirement):
+                continue
             _send(supplier.user.email, 'new_rfq', {**context_base, 'company_name': supplier.companyname or supplier.user.get_short_name()})
         except Exception:
             # One malformed row shouldn't stop the rest of the fan-out.
             logger.exception("Could not email new-RFQ notification to supplier #%s", supplier.pk)
+
+
+def wants_instant_alert(supplier, requirement):
+    """RFQ opportunity alerts by plan (plans.catalog 'rfq_alerts'): Basic
+    gets the daily digest instead (send_rfq_digests); Standard gets every
+    matched RFQ at once; Advanced only the ones matching its preferences."""
+    from plans import access, catalog
+    level = access.feature_level(supplier, 'rfq_alerts')
+    if level < catalog.STANDARD:
+        return False
+    if level >= catalog.ADVANCED:
+        preference = getattr(supplier, 'rfq_alert_preference', None)
+        if preference is not None and not preference_matches(preference, requirement):
+            return False
+    return True
+
+
+def preference_matches(preference, requirement):
+    parts = list(requirement.requirement_parts.all())
+    if preference.processes and not any(p.technology in preference.processes for p in parts):
+        return False
+    if preference.materials and not any(p.Material in preference.materials for p in parts):
+        return False
+    if preference.min_quantity and sum(p.quantity or 0 for p in parts) < preference.min_quantity:
+        return False
+    return True
+
+
+@_guard
+def send_rfq_digest(supplier, requirements):
+    """The daily digest of RFQs received, for plans with basic RFQ alerts."""
+    _send(supplier.user.email, 'rfq_digest', {
+        'company_name': supplier.companyname or supplier.user.get_short_name(),
+        'requirements': requirements,
+        'url': _url('requirement-list'),
+    })
 
 
 @_guard

@@ -11,7 +11,6 @@ from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme, urlencode
 from homepage.views import CustomLoginView, CustomLogoutView, ReauthView, ThrottledPasswordResetView
-from accounts.views import verify_gstin_view
 
 handler404 = 'homepage.views.custom_404_view'
 
@@ -50,7 +49,7 @@ urlpatterns = [
         template_name='registration/password_reset_complete.html',
     ), name='password_reset_complete'),
 
-    path('api/companies/verify-gstin/', verify_gstin_view, name='verify-gstin'),
+    path('api/gst/', include('gst.urls')),
 
     path('', include('homepage.urls')),
     path('accounts/', include('accounts.urls')),

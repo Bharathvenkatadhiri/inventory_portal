@@ -17,6 +17,42 @@
         <a href="{% url 'approvals' %}" class="font-bold underline">Approvals</a>
     </div>
     {% endif %}
+    {% if is_buyer and accept_blocked and quotes and not demand.status %}
+    <p class="mb-4 rounded-md bg-gray-50 px-4 py-2 text-xs text-gray-600">{{ accept_blocked }}</p>
+    {% endif %}
+
+    {% if comparison_rows %}
+    <div class="card mb-6 overflow-x-auto">
+        <h3 class="mb-3 font-bold text-navy-900">Side-by-side comparison</h3>
+        <table class="w-full text-left text-sm">
+            <thead>
+                <tr class="border-b border-gray-100 text-xs uppercase tracking-wide text-gray-400">
+                    <th class="py-2 pr-4 font-bold">Supplier</th><th class="py-2 pr-4 font-bold">Unit price</th>
+                    <th class="py-2 pr-4 font-bold">Parts subtotal</th><th class="py-2 pr-4 font-bold">Tooling</th>
+                    <th class="py-2 pr-4 font-bold">GST</th><th class="py-2 pr-4 font-bold">Landed cost</th>
+                    <th class="py-2 pr-4 font-bold">Lead time</th><th class="py-2 font-bold">Payment terms</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for row in comparison_rows %}
+                <tr class="{% if row.is_cheapest %}bg-green-50{% endif %}">
+                    <td class="py-2 pr-4 font-bold text-navy-900">{{ row.quote.supplier.companyname|default:row.quote.supplier }}</td>
+                    <td class="py-2 pr-4">{{ demand.quote_currency }} {{ row.unit_price }}</td>
+                    <td class="py-2 pr-4">{{ row.subtotal }}</td>
+                    <td class="py-2 pr-4">{{ row.tooling }}</td>
+                    <td class="py-2 pr-4">{{ row.gst }}</td>
+                    <td class="py-2 pr-4 font-bold text-navy-900">{{ demand.quote_currency }} {{ row.landed }}{% if row.is_cheapest %} <span class="badge bg-green-100 text-green-700">Lowest</span>{% endif %}</td>
+                    <td class="py-2 pr-4">{{ row.lead_time|default:"—" }}</td>
+                    <td class="py-2">{{ row.quote.get_payment_terms_display|default:"—" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <p class="mt-2 text-xs text-gray-400">Landed cost = parts incl. GST + tooling.</p>
+    </div>
+    {% elif compare_upgrade %}
+    <p class="mb-4 text-xs text-gray-500">A side-by-side comparison with landed cost is part of the {{ compare_upgrade }} plan.</p>
+    {% endif %}
     {% if visible_quotes %}
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {% for quote in visible_quotes %}
@@ -33,7 +69,7 @@
             </div>
 
             <div class="mt-3 flex flex-wrap gap-1.5">
-                {% if quote.supplier.company.verification_status == 'verified' %}<span class="badge bg-green-50 text-green-700">Verified</span>{% endif %}
+                {% if quote.supplier.company.gst_verified %}<span class="badge bg-green-50 text-green-700">Verified</span>{% endif %}
                 {% if quote.badge_best_price %}<span class="badge bg-accent-50 text-accent-700">Best price</span>{% endif %}
                 {% if quote.badge_fastest %}<span class="badge bg-blue-50 text-blue-700">Fastest</span>{% endif %}
             </div>
@@ -97,12 +133,14 @@
                     {% endif %}
                 </div>
                 {% if is_buyer and quote.is_undecided and not quote.is_draft and not demand.status %}
+                {% if accept_mode %}
                 <button
                     class="btn-primary mt-2 w-full text-xs"
                     hx-post="{% url 'quote-update-status' quote.pk 'Approved' %}"
                     hx-target="#quotes-section"
                     hx-swap="outerHTML"
-                >Select this quote</button>
+                >{% if accept_mode == 'approval' %}Ask to select this quote{% else %}Select this quote{% endif %}</button>
+                {% endif %}
                 <div class="mt-2" x-data="{ revising: false }">
                     <div class="flex gap-2" x-show="!revising">
                         {% if not quote.awaiting_revision %}
@@ -149,9 +187,9 @@
         <p class="text-sm text-gray-500">This RFQ is closed to new quotes.</p>
         {% elif my_declined %}
         <p class="text-sm text-gray-500">You declined this RFQ.</p>
-        <a href="{% url 'new-quote' demand.pk %}" class="btn-outline">Quote anyway</a>
+        {% if request.user|can:'quotes.manage' %}<a href="{% url 'new-quote' demand.pk %}" class="btn-outline">Quote anyway</a>{% endif %}
         {% else %}
-        <a href="{% url 'new-quote' demand.pk %}" class="btn-primary">Submit a quote</a>
+        {% if request.user|can:'quotes.manage' %}<a href="{% url 'new-quote' demand.pk %}" class="btn-primary">Submit a quote</a>{% endif %}
         <form method="post" action="{% url 'requirement-decline' demand.pk %}">
             {% csrf_token %}
             <button type="submit" class="btn-outline" title="Removes it from your RFQ inbox. The buyer isn't notified.">Not interested</button>
@@ -176,6 +214,36 @@
         {% if demand.status == 'Approved' %}
         <span class="badge bg-white/15 text-white">Awarded — awaiting production</span>
         {% endif %}
+    </div>
+    {% endif %}
+{% if suggested_suppliers %}
+    <div class="card mt-6">
+        <h3 class="font-bold text-navy-900">Suggested manufacturers</h3>
+        <p class="mb-3 text-xs text-gray-500">Matched to this RFQ's processes and materials. Message them to invite a quote.</p>
+        <ul class="divide-y divide-gray-100">
+            {% for supplier in suggested_suppliers %}
+            <li class="flex flex-wrap items-center justify-between gap-3 py-2 text-sm">
+                <span><a href="{% url 'supplier' supplier.pk %}" class="font-bold text-navy-900 hover:text-accent-500">{{ supplier.companyname|default:supplier }}</a> <span class="text-gray-500">{{ supplier.city }}</span></span>
+                <span class="flex items-center gap-2">
+                    <span class="badge bg-green-50 text-green-700">{{ supplier.match_percent }}% match</span>
+                    <form method="post" action="{% url 'message-thread-start' demand.pk supplier.pk %}">{% csrf_token %}<button type="submit" class="btn-outline text-xs">Invite to quote</button></form>
+                </span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+    {% if my_quote_revisions %}
+    <div class="card mt-6">
+        <h3 class="mb-3 font-bold text-navy-900">Revision history</h3>
+        <ul class="divide-y divide-gray-100 text-sm">
+            {% for revision in my_quote_revisions %}
+            <li class="flex flex-wrap justify-between gap-2 py-2">
+                <span class="text-navy-900">{{ demand.quote_currency }} {{ revision.quote_price }} / unit &middot; tooling {{ revision.tooling_cost }}{% if revision.lead_time_value %} &middot; {{ revision.lead_time_value }} {{ revision.lead_time_unit }}{% endif %}</span>
+                <span class="text-xs text-gray-400">before {{ revision.changed_by.get_full_name|default:revision.changed_by.email|default:"a change" }}'s edit, {{ revision.created_at|date:"d M Y, H:i" }}</span>
+            </li>
+            {% endfor %}
+        </ul>
     </div>
     {% endif %}
 </div>

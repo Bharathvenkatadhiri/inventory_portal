@@ -904,8 +904,16 @@ class OwnershipAndAwardTests(TestCase):
 
     # --- Plan limits --------------------------------------------------------
     def test_rfq_limit_is_enforced(self):
+        from accounts import team
         from accounts.models import SubscriptionPlan
-        SubscriptionPlan.objects.create(user_profile=self.buyer, plan_type="basic", price=0, rfq_limit="1")
+        from plans import access, catalog
+        SubscriptionPlan.objects.create(user_profile=self.buyer, plan_type="free", price=0)
+        buyer_company = team.buyer_profile(self.buyer)
+        while access.usage(buyer_company, catalog.RFQS_PER_MONTH) < 5:  # Free includes 5 a month
+            Requirement.objects.create(
+                user=self.buyer, title="Filler", rfq_desc="", quote_currency="INR", request_reason="other",
+                end_date=timezone.now() + timedelta(days=5),
+            )
         self.login(self.buyer)
         response = self.client.get(reverse("new-requirement"))
         self.assertRedirects(response, reverse("home") + "?upgrade=1", fetch_redirect_response=False)
@@ -913,11 +921,12 @@ class OwnershipAndAwardTests(TestCase):
         self.assertEqual(self.client.post(reverse("new-requirement"), {}).status_code, 302)
         dashboard = self.client.get(reverse("home") + "?upgrade=1")
         self.assertContains(dashboard, "planModalOpen: true")
-        self.assertContains(dashboard, "1 of 1 used this month")
+        self.assertContains(dashboard, "RFQs posted this month")
+        self.assertContains(dashboard, "5 of 5")
 
-    def test_unlimited_plan_is_not_limited(self):
+    def test_a_bigger_plan_has_room(self):
         from accounts.models import SubscriptionPlan
-        SubscriptionPlan.objects.create(user_profile=self.buyer, plan_type="enterprise", price=4999, rfq_limit="unlimited")
+        SubscriptionPlan.objects.create(user_profile=self.buyer, plan_type="business", price=2999)
         self.login(self.buyer)
         self.assertEqual(self.client.get(reverse("new-requirement")).status_code, 200)
 
@@ -932,6 +941,9 @@ class OwnershipAndAwardTests(TestCase):
 
     # --- Documents ----------------------------------------------------------
     def test_message_attachments_appear_in_documents_via_the_protected_link(self):
+        from accounts.models import SubscriptionPlan
+        for user in (self.buyer, self.maker):  # the Documents page is Starter+
+            SubscriptionPlan.objects.create(user_profile=user, plan_type="starter", price=999)
         thread = MessageThread.objects.create(requirement=self.requirement, supplier=self.supplier)
         message = Message.objects.create(
             thread=thread, sender=self.maker, body="", attachment=SimpleUploadedFile("spec.pdf", b"%PDF"),
@@ -1037,7 +1049,9 @@ class NDAGateTests(TestCase):
 
     def test_a_buyer_cannot_accept_an_nda_on_their_own_or_anyone_elses_rfq(self):
         self.login(self.buyer)
-        self.assertEqual(self.client.post(self.accept_url).status_code, 404)
+        # Refused by the role check (a buyer role can't accept NDAs) or as not found.
+        self.assertIn(self.client.post(self.accept_url).status_code, (302, 404))
+        self.assertFalse(RequirementNDAAcceptance.objects.exists())
 
     def test_quote_form_hides_drawings_and_part_notes_until_the_nda_is_accepted(self):
         # The quote form was a second route to the same files.
@@ -1089,6 +1103,9 @@ class LifecycleEmailTests(TestCase):
         })
 
     def test_posting_an_rfq_emails_only_matching_accepting_suppliers(self):
+        from accounts.models import SubscriptionPlan
+        # Instant new-RFQ emails are Starter+; Free suppliers get the daily digest.
+        SubscriptionPlan.objects.create(user_profile=self.supplier.user, plan_type="starter", price=999)
         no_match = self._maker("nomatch", accepting_rfqs=True)
         not_accepting = self._maker("notaccepting", capability="milling", accepting_rfqs=False)
         self._post_rfq()
@@ -2038,7 +2055,12 @@ class SupplierReviewTests(TestCase):
 
         self.login(self.buyer)
         page = self.client.get(reverse("supplier", kwargs={"pk": self.supplier.pk}))
-        self.assertContains(page, "2 ratings from completed orders")
+        self.assertContains(page, "4.0</span> / 5 from 2 ratings")  # Basic profile: the average
+        self.assertNotContains(page, "Secret comment")
+        from accounts.models import SubscriptionPlan
+        SubscriptionPlan.objects.create(user_profile=self.maker, plan_type="business", price=2999)
+        page = self.client.get(reverse("supplier", kwargs={"pk": self.supplier.pk}))
+        self.assertContains(page, "2 ratings from completed orders")  # Advanced profile: the breakdown
         self.assertNotContains(page, "Secret comment")
         self.login(self.maker)
         page = self.client.get(reverse("company-profile"))

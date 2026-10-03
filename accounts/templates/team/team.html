@@ -7,8 +7,8 @@
         <p class="mt-1 text-sm text-gray-500">{{ company_name }} &middot; you're the {{ my_role }}</p>
     </div>
     <p class="text-sm text-gray-500">
-        {{ seats_used }} of {% if seat_limit %}{{ seat_limit }}{% else %}unlimited{% endif %} seats used
-        {% if is_manager and not has_free_seat %}&middot; <a href="{% url 'profile' %}?tab=billing" class="font-bold text-accent-500 hover:text-accent-600">Upgrade for more</a>{% endif %}
+        {{ plan_label }} plan &middot; {{ users_used }} of {% if user_limit %}{{ user_limit }}{% else %}unlimited{% endif %} users
+        {% if is_owner and not has_room %}&middot; <a href="{% url 'profile' %}?tab=billing" class="font-bold text-accent-500 hover:text-accent-600">Upgrade for more</a>{% endif %}
     </p>
 </div>
 {% endblock %}
@@ -23,7 +23,28 @@
 {% if tab == 'activity' %}
 <div class="card">
     <h2 class="mb-1 text-lg font-bold text-navy-900">Activity</h2>
-    <p class="mb-4 text-sm text-gray-500">What everyone on the account did — RFQs, quotes, awards, payments, approvals and team changes. Latest 200 entries.</p>
+    <p class="mb-4 text-sm text-gray-500">{% if activity_own_only %}What you did{% else %}What everyone on the account did{% endif %} — RFQs, quotes, awards, payments, approvals and team changes{% if activity_days %}, over the last {{ activity_days }} days{% endif %}. Latest 200 entries.{% if activity_days and is_owner %} <a href="{% url 'profile' %}?tab=billing" class="font-bold text-accent-500 hover:text-accent-600">Upgrade</a> to keep more history.{% endif %}</p>
+    {% if can_filter_activity %}
+    <form method="get" class="mb-4 flex flex-wrap items-end gap-3 text-sm">
+        <input type="hidden" name="tab" value="activity">
+        {% if activity_people %}
+        <label class="flex flex-col"><span class="field-label">Person</span>
+            <select name="person" class="field-input py-1">
+                <option value="">Everyone</option>
+                {% for person in activity_people %}<option value="{{ person.pk }}" {% if activity_person == person.pk|stringformat:"s" %}selected{% endif %}>{{ person.get_full_name|default:person.email }}</option>{% endfor %}
+            </select>
+        </label>
+        {% endif %}
+        <label class="flex flex-col"><span class="field-label">Kind</span>
+            <select name="action" class="field-input py-1">
+                <option value="">Everything</option>
+                {% for action in activity_actions %}<option value="{{ action }}" {% if activity_action == action %}selected{% endif %}>{{ action|title }}</option>{% endfor %}
+            </select>
+        </label>
+        <button type="submit" class="btn-outline">Filter</button>
+        <a href="?tab=activity&amp;person={{ activity_person }}&amp;action={{ activity_action }}&amp;export=csv" class="btn-outline">Export CSV</a>
+    </form>
+    {% endif %}
     {% if activity %}
     <ul class="divide-y divide-gray-100">
         {% for entry in activity %}
@@ -53,8 +74,8 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     <tr>
-                        <td class="py-3 pr-4"><p class="font-bold text-navy-900">{{ manager.get_full_name|default:manager.email }}{% if manager == request.user %} <span class="text-xs font-normal text-gray-400">(you)</span>{% endif %}</p><p class="text-xs text-gray-500">{{ manager.email }}</p></td>
-                        <td class="py-3 pr-4"><span class="badge bg-navy-50 text-navy-700">Manager</span></td>
+                        <td class="py-3 pr-4"><p class="font-bold text-navy-900">{{ owner.get_full_name|default:owner.email }}{% if owner == request.user %} <span class="text-xs font-normal text-gray-400">(you)</span>{% endif %}</p><p class="text-xs text-gray-500">{{ owner.email }}</p></td>
+                        <td class="py-3 pr-4"><span class="badge bg-navy-50 text-navy-700">Owner</span></td>
                         <td class="py-3 pr-4 text-green-700">Active</td>
                         <td class="py-3"></td>
                     </tr>
@@ -62,26 +83,27 @@
                     <tr>
                         <td class="py-3 pr-4"><p class="font-bold text-navy-900">{{ member.user.get_full_name|default:member.user.email }}{% if member.user == request.user %} <span class="text-xs font-normal text-gray-400">(you)</span>{% endif %}</p><p class="text-xs text-gray-500">{{ member.user.email }}</p></td>
                         <td class="py-3 pr-4">
-                            {% if is_manager %}
+                            {% if member.can_manage %}
                             <form method="post" action="{% url 'team-member-role' member.pk %}" class="flex items-center gap-2">
                                 {% csrf_token %}
                                 <select name="role" class="field-input py-1 text-sm" onchange="this.form.submit()">
-                                    <option value="supervisor" {% if member.role == 'supervisor' %}selected{% endif %}>Supervisor</option>
-                                    <option value="member" {% if member.role == 'member' %}selected{% endif %}>User</option>
+                                    {% for role, label in role_options %}
+                                    <option value="{{ role }}" {% if member.role == role %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
                                 </select>
                                 <noscript><button type="submit" class="btn-outline text-xs">Save</button></noscript>
                             </form>
                             {% else %}
-                            <span class="badge {% if member.role == 'supervisor' %}bg-accent-50 text-accent-700{% else %}bg-gray-100 text-gray-600{% endif %}">{{ member.get_role_display }}</span>
+                            <span class="badge {% if member.role == 'admin' %}bg-accent-50 text-accent-700{% else %}bg-gray-100 text-gray-600{% endif %}">{{ member.get_role_display }}</span>
                             {% endif %}
                         </td>
                         <td class="py-3 pr-4">{% if member.user.is_active %}<span class="text-green-700">Active</span>{% else %}<span class="text-gray-400">Deactivated</span>{% endif %}</td>
                         <td class="py-3">
                             <div class="flex flex-wrap justify-end gap-2">
-                                {% if is_manager and member.role == 'supervisor' and member.user.is_active %}
-                                <form method="post" action="{% url 'team-transfer' member.pk %}" onsubmit="return confirm('Make {{ member.user.get_full_name|default:member.user.email|escapejs }} the manager? They will hold the plan and you will become a supervisor.');">
+                                {% if is_owner and member.role == 'admin' and member.user.is_active %}
+                                <form method="post" action="{% url 'team-transfer' member.pk %}" onsubmit="return confirm('Make {{ member.user.get_full_name|default:member.user.email|escapejs }} the owner? They will hold the plan and billing, and you will become an admin.');">
                                     {% csrf_token %}
-                                    <button type="submit" class="btn-outline text-xs">Make manager</button>
+                                    <button type="submit" class="btn-outline text-xs">Make owner</button>
                                 </form>
                                 {% endif %}
                                 {% if member.can_manage %}
@@ -131,11 +153,10 @@
         {% if can_invite %}
         <div class="card">
             <h2 class="mb-1 text-lg font-bold text-navy-900">Invite someone</h2>
-            <p class="mb-4 text-sm text-gray-500">They'll get an email link to set their password and join {{ company_name }}.</p>
+            <p class="mb-4 text-sm text-gray-500">They'll get an email link to set their password and join {{ company_name }}.{% if not has_room %} All {{ user_limit }} users on your plan are in use.{% endif %}</p>
             {% if invite_form.non_field_errors %}
             <div class="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">{% for error in invite_form.non_field_errors %}<p>{{ error }}</p>{% endfor %}</div>
             {% endif %}
-            {% if has_free_seat %}
             <form method="post" action="{% url 'team-invite' %}" class="space-y-3">
                 {% csrf_token %}
                 {% for field in invite_form %}
@@ -147,17 +168,23 @@
                 {% endfor %}
                 <button type="submit" class="btn-primary w-full">Send invitation</button>
             </form>
-            {% else %}
-            <p class="text-sm text-gray-500">Your plan's team is full.{% if is_manager %} <a href="{% url 'profile' %}?tab=billing" class="font-bold text-accent-500 hover:text-accent-600">Upgrade the plan</a>,{% endif %} deactivate someone or revoke an invitation to free a seat.</p>
-            {% endif %}
+            {% if not has_room and is_owner %}<p class="mt-3 text-xs text-gray-500"><a href="{% url 'profile' %}?tab=billing" class="font-bold text-accent-500 hover:text-accent-600">Upgrade the plan</a> for more users.</p>{% endif %}
         </div>
         {% endif %}
 
         <div class="card text-sm text-gray-600">
             <h2 class="mb-3 text-lg font-bold text-navy-900">Who can do what</h2>
-            <p class="mb-2"><span class="font-bold text-navy-900">Manager</span> — everything, including the plan, company details, the team and handing over the manager role.</p>
-            <p class="mb-2"><span class="font-bold text-navy-900">Supervisor</span> — works without approval, approves users' requests, adds and deactivates users, sees the activity log.</p>
-            <p><span class="font-bold text-navy-900">User</span> — day-to-day work. Sending an RFQ to suppliers, sending or revising a quote, awarding a quote and confirming a payment wait for a supervisor's or the manager's <a href="{% url 'approvals' %}" class="font-bold text-accent-500 hover:text-accent-600">approval</a>.</p>
+            <p class="mb-2"><span class="font-bold text-navy-900">Owner</span> — everything, including the subscription, billing and handing over ownership.</p>
+            <p class="mb-2"><span class="font-bold text-navy-900">Admin</span> — everything except the subscription and billing: company details, the team and roles{% if is_supplier_team %}, quotes and orders{% else %}, accepting quotations, confirming payments and approvals{% endif %}.</p>
+            {% if is_supplier_team %}
+            <p class="mb-2"><span class="font-bold text-navy-900">Sales</span> — RFQs, quotations, buyer conversations, capabilities, invoices and sales analytics.</p>
+            <p class="mb-2"><span class="font-bold text-navy-900">Operations</span> — orders: production, dispatch, production and quality documents, invoices, capabilities and order analytics.</p>
+            <p><span class="font-bold text-navy-900">Viewer</span> — sees RFQs, orders and invoices, and can update production and dispatch status and quality documents. Can't quote.</p>
+            {% else %}
+            <p class="mb-2"><span class="font-bold text-navy-900">Procurement</span> — RFQs, quotations, orders and invoices. Can't accept a quotation{% if plan_label == 'Business' %} without an owner's or admin's <a href="{% url 'approvals' %}" class="font-bold text-accent-500 hover:text-accent-600">approval</a>{% endif %} or confirm payments.</p>
+            <p><span class="font-bold text-navy-900">Viewer</span> — sees the company, RFQs, quotations, orders and invoices, but can't change anything.</p>
+            {% endif %}
+            <p class="mt-3 text-xs text-gray-400">Everyone counts toward your plan's users, Viewers included.</p>
         </div>
     </div>
 </div>

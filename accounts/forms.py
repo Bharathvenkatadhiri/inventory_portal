@@ -9,7 +9,6 @@ from .models import (
     Machine, Certification, ManufacturingTech, MaterialCapability, Company,
 )
 from django.apps import apps
-from core.settings import subscription_plan_details
 from core.validators import DOCUMENT_EXTENSIONS, IMAGE_EXTENSIONS, is_new_upload, validate_upload
 
 model_str = settings.AUTH_USER_MODEL
@@ -250,50 +249,29 @@ class updateCustomer(forms.ModelForm):
 
 
 class UpdateSubscription(forms.ModelForm):
+    """Staff set a company's plan (e.g. once an upgrade is paid for). The
+    price always comes from plans.catalog."""
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['plan_type'].widget.attrs.update({'class': 'form-control', 'required': 'true'})
+        self.fields['billing_cycle'].widget.attrs.update({'class': 'form-control', 'required': 'true'})
         self.fields['end_date'].widget.attrs.update({'class': 'form-control'})
         self.fields['is_active'].widget.attrs.update({'class': 'form-check-input'})
 
     class Meta:
         model = SubscriptionPlan
-        fields = ['plan_type','end_date','is_active']
+        fields = ['plan_type', 'billing_cycle', 'end_date', 'is_active']
         widgets = {
             'end_date': forms.DateInput(attrs={'type': 'date'})  # HTML5 date picker
         }
-        
-    def clean(self):
-        cleaned_data = super().clean()
-        plan_type = cleaned_data.get('plan_type')
-        
-        # Set the value of dependent_field based on the selection
-        if plan_type == 'basic':
-            cleaned_data['price'] = subscription_plan_details[plan_type]['price']
-            cleaned_data['rfq_limit'] = subscription_plan_details[plan_type]['rfq_limit']
-        elif plan_type == 'standard':
-            cleaned_data['price'] = subscription_plan_details[plan_type]['price']
-            cleaned_data['rfq_limit'] = subscription_plan_details[plan_type]['rfq_limit']
-        else:
-            cleaned_data['price'] = subscription_plan_details[plan_type]['price']
-            cleaned_data['rfq_limit'] = subscription_plan_details[plan_type]['rfq_limit']
-        
-        return cleaned_data
-    
+
     def save(self, commit=True):
+        from plans import catalog
         instance = super().save(commit=False)
-        # Ensure the dependent_field is set correctly
-        if self.cleaned_data['plan_type'] == 'basic':
-            instance.price = subscription_plan_details[self.cleaned_data['plan_type']]['price']
-            instance.rfq_limit = subscription_plan_details[self.cleaned_data['plan_type']]['rfq_limit']
-        elif self.cleaned_data['plan_type'] == 'standard':
-            instance.price = subscription_plan_details[self.cleaned_data['plan_type']]['price']
-            instance.rfq_limit = subscription_plan_details[self.cleaned_data['plan_type']]['rfq_limit']
-        else:
-            instance.price = subscription_plan_details[self.cleaned_data['plan_type']]['price']
-            instance.rfq_limit = subscription_plan_details[self.cleaned_data['plan_type']]['rfq_limit']
+        instance.price = catalog.price(instance.plan_type, instance.billing_cycle)
         # Staff setting the plan resolves any pending upgrade request.
         instance.pending_plan_type = ''
+        instance.pending_billing_cycle = ''
         instance.pending_requested_at = None
 
         if commit:

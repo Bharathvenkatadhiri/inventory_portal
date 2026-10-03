@@ -1,61 +1,60 @@
 {# GSTIN verification box shared by the supplier and buyer sign-up steps. #}
-{# Expects `verified_company` in context and a submit button with id="registration-submit-btn" in the same form. #}
+{# Expects `gst_verification` (this session's successful verification, or None) and a submit button with id="registration-submit-btn" in the same form. #}
+{# Posts only `company_display_name`; the legal identity comes from the server-side verification (accounts.services.company_registration). #}
 <div class="rounded-lg border border-gray-200 p-4">
     <h3 class="text-sm font-semibold text-navy-900 mb-3">Company Details</h3>
 
-    <div id="gst-verified-panel" class="hidden mb-4 rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-800">
-        <p class="font-medium mb-2">&check; Company verified</p>
+    <div>
+        <label for="gstin-input" class="field-label">GSTIN</label>
+        <div class="flex gap-2">
+            <input type="text" id="gstin-input" class="field-input flex-1 font-mono uppercase" maxlength="15" autocomplete="off"
+                placeholder="e.g. 33ABCDE1234F1Z5" value="{{ gst_verification.gstin|default:'' }}">
+            <button type="button" id="verify-gstin-btn" class="btn-secondary whitespace-nowrap">Verify GSTIN</button>
+        </div>
+        <p id="gst-verify-message" class="text-xs mt-1" role="status" aria-live="polite"></p>
+    </div>
+
+    <div id="gst-result-panel" class="hidden mt-4 rounded-md border p-4 text-sm">
+        <div class="mb-2 flex items-center justify-between gap-2">
+            <p id="gst-result-title" class="font-medium"></p>
+            <button type="button" id="gst-change-btn" class="text-xs font-bold text-accent-500 hover:text-accent-600">Use a different GSTIN</button>
+        </div>
         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
-            <div>
-                <dt class="text-xs text-green-700">Legal Name</dt>
-                <dd id="gst-legal-name" class="font-medium"></dd>
-            </div>
-            <div>
-                <dt class="text-xs text-green-700">GST Status</dt>
-                <dd id="gst-status" class="font-medium"></dd>
-            </div>
-            <div class="sm:col-span-2">
-                <dt class="text-xs text-green-700">Registered Address</dt>
-                <dd id="gst-address" class="font-medium"></dd>
-            </div>
-            <div>
-                <dt class="text-xs text-green-700">State</dt>
-                <dd id="gst-state" class="font-medium"></dd>
-            </div>
+            <div class="sm:col-span-2"><dt class="text-xs opacity-70">Registered legal name</dt><dd data-gst="legal_name" class="font-medium"></dd></div>
+            <div><dt class="text-xs opacity-70">Trade name</dt><dd data-gst="trade_name" class="font-medium"></dd></div>
+            <div><dt class="text-xs opacity-70">GST status</dt><dd data-gst="gst_status" class="font-medium"></dd></div>
+            <div><dt class="text-xs opacity-70">Constitution of business</dt><dd data-gst="business_constitution" class="font-medium"></dd></div>
+            <div><dt class="text-xs opacity-70">Taxpayer type</dt><dd data-gst="taxpayer_type" class="font-medium"></dd></div>
+            <div class="sm:col-span-2"><dt class="text-xs opacity-70">Principal place of business</dt><dd data-gst="principal_address" class="font-medium"></dd></div>
+            <div><dt class="text-xs opacity-70">State</dt><dd data-gst="state_label" class="font-medium"></dd></div>
+            <div><dt class="text-xs opacity-70">Registered on</dt><dd data-gst="registration_date" class="font-medium"></dd></div>
         </dl>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
-        <div class="sm:col-span-2">
-            <label for="company-name-input" class="field-label">Legal / Company Name</label>
-            <input type="text" id="company-name-input" class="field-input" placeholder="e.g. ABC Engineering Pvt Ltd"
-                value="{{ verified_company.legal_name|default:'' }}" {% if verified_company %}readonly{% endif %}>
-        </div>
-        <div class="sm:col-span-2">
-            <label for="gstin-input" class="field-label">GSTIN</label>
-            <div class="flex gap-2">
-                <input type="text" id="gstin-input" class="field-input flex-1" maxlength="15" placeholder="e.g. 33ABCDE1234F1Z5"
-                    value="{{ verified_company.gstin|default:'' }}" {% if verified_company %}readonly{% endif %}>
-                <button type="button" id="verify-gstin-btn" class="btn-secondary whitespace-nowrap">{% if verified_company %}Verified{% else %}Verify Company{% endif %}</button>
-            </div>
-            <p id="gst-verify-message" class="text-xs mt-1{% if verified_company %} text-green-700{% endif %}">{% if verified_company %}Company verified.{% endif %}</p>
-        </div>
+    <div id="display-name-field" class="hidden mt-4">
+        <label for="company-display-name" class="field-label">Company name on MakeSetu</label>
+        <input type="text" id="company-display-name" name="company_display_name" class="field-input" maxlength="75"
+            value="{{ request.POST.company_display_name|default:'' }}">
+        <p class="text-xs text-gray-500 mt-1">How others see you on MakeSetu. Purchase orders and invoices use your registered legal name.</p>
     </div>
 </div>
 
+{{ gst_verification.as_payload|json_script:"gst-verification-initial" }}
 <script>
 (function () {
     var verifyBtn = document.getElementById('verify-gstin-btn');
+    var changeBtn = document.getElementById('gst-change-btn');
     var gstinInput = document.getElementById('gstin-input');
-    var nameInput = document.getElementById('company-name-input');
     var messageEl = document.getElementById('gst-verify-message');
-    var panel = document.getElementById('gst-verified-panel');
+    var panel = document.getElementById('gst-result-panel');
+    var title = document.getElementById('gst-result-title');
+    var nameField = document.getElementById('display-name-field');
+    var nameInput = document.getElementById('company-display-name');
     var csrfToken = document.querySelector('input[name=csrfmiddlewaretoken]').value;
-
-    function submitBtn() { return document.getElementById('registration-submit-btn'); }
+    var GSTIN_PATTERN = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
 
     function setSubmitEnabled(enabled) {
-        var btn = submitBtn();
+        var btn = document.getElementById('registration-submit-btn');
         btn.disabled = !enabled;
         btn.classList.toggle('opacity-50', !enabled);
         btn.classList.toggle('cursor-not-allowed', !enabled);
@@ -66,61 +65,91 @@
         messageEl.className = 'text-xs mt-1 ' + (isError ? 'text-red-600' : 'text-green-700');
     }
 
-    function showVerified(company) {
-        document.getElementById('gst-legal-name').textContent = company.legal_name;
-        document.getElementById('gst-status').textContent = company.gst_status;
-        document.getElementById('gst-address').textContent = company.registered_address;
-        document.getElementById('gst-state').textContent = company.state;
-        panel.classList.remove('hidden');
-        nameInput.value = company.legal_name;
-        nameInput.readOnly = true;
-        gstinInput.readOnly = true;
+    function formatDate(iso) {
+        if (!iso) return '';
+        var d = new Date(iso + 'T00:00:00');
+        return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
     }
 
-    {% if not verified_company %}document.addEventListener('DOMContentLoaded', function () { setSubmitEnabled(false); });{% endif %}
+    function fill(data) {
+        var values = {
+            legal_name: data.legal_name,
+            trade_name: data.trade_name,
+            gst_status: data.gst_status,
+            business_constitution: data.business_constitution,
+            taxpayer_type: data.taxpayer_type,
+            principal_address: data.principal_address,
+            state_label: data.state ? data.state + (data.state_code ? ' (' + data.state_code + ')' : '') : '',
+            registration_date: formatDate(data.registration_date),
+        };
+        panel.querySelectorAll('[data-gst]').forEach(function (el) {
+            el.textContent = values[el.getAttribute('data-gst')] || '—';
+        });
+    }
+
+    // A found GSTIN, verified (green) or not active (amber). Text only, never HTML.
+    function showResult(data) {
+        fill(data);
+        var ok = data.success;
+        panel.className = 'mt-4 rounded-md border p-4 text-sm ' +
+            (ok ? 'border-green-200 bg-green-50 text-green-800' : 'border-amber-200 bg-amber-50 text-amber-800');
+        title.textContent = ok ? '✓ GSTIN verified' : 'GSTIN found, but not active';
+        nameField.classList.toggle('hidden', !ok);
+        if (ok && !nameInput.value) nameInput.value = data.trade_name || data.legal_name;
+        gstinInput.readOnly = ok;
+        verifyBtn.classList.toggle('hidden', ok);
+        setSubmitEnabled(ok);
+    }
+
+    function reset() {
+        panel.classList.add('hidden');
+        nameField.classList.add('hidden');
+        gstinInput.readOnly = false;
+        verifyBtn.classList.remove('hidden');
+        verifyBtn.disabled = false;
+        verifyBtn.textContent = 'Verify GSTIN';
+        setSubmitEnabled(false);
+    }
+
+    changeBtn.addEventListener('click', function () {
+        reset();
+        nameInput.value = '';
+        setMessage('', false);
+        gstinInput.focus();
+    });
 
     verifyBtn.addEventListener('click', function () {
-        var gstin = gstinInput.value.trim();
-        var companyName = nameInput.value.trim();
-        if (!companyName) {
-            setMessage('Enter your company name first.', true);
-            return;
-        }
-        if (!gstin) {
-            setMessage('Enter a GSTIN to verify.', true);
-            return;
-        }
+        var gstin = gstinInput.value.replace(/\s+/g, '').toUpperCase();
+        gstinInput.value = gstin;
+        if (!gstin) { setMessage('Enter a GSTIN to verify.', true); return; }
+        if (!GSTIN_PATTERN.test(gstin)) { setMessage("That doesn't look like a valid GSTIN. Please check and try again.", true); return; }
 
+        reset();
         verifyBtn.disabled = true;
         verifyBtn.textContent = 'Verifying...';
-        setSubmitEnabled(false);
-        panel.classList.add('hidden');
         setMessage('', false);
 
-        fetch("{% url 'verify-gstin' %}", {
+        fetch("{% url 'gst-verify' %}", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-            body: JSON.stringify({ gstin: gstin, company_name: companyName }),
+            body: JSON.stringify({ gstin: gstin }),
         })
             .then(function (res) { return res.json(); })
             .then(function (data) {
-                if (data.verified) {
-                    showVerified(data.company);
-                    setMessage(data.message, false);
-                    setSubmitEnabled(true);
-                    verifyBtn.textContent = 'Verified';
-                } else {
-                    setSubmitEnabled(false);
-                    setMessage(data.message || 'Verification failed.', true);
-                    verifyBtn.textContent = (data.verification_status === 'manual_review') ? 'Name mismatch — retry' : 'Verify Company';
-                    verifyBtn.disabled = false;
-                }
+                verifyBtn.disabled = false;
+                verifyBtn.textContent = 'Verify GSTIN';
+                if (data.success || data.status === 'INACTIVE') showResult(data);
+                setMessage(data.message || 'Verification failed.', !data.success);
             })
             .catch(function () {
+                reset();
                 setMessage('Something went wrong. Please try again.', true);
-                verifyBtn.textContent = 'Verify Company';
-                verifyBtn.disabled = false;
             });
+    });
+
+    var initial = JSON.parse(document.getElementById('gst-verification-initial').textContent || 'null');
+    document.addEventListener('DOMContentLoaded', function () {
+        if (initial) { showResult(initial); setMessage(initial.message, false); } else { setSubmitEnabled(false); }
     });
 })();
 </script>

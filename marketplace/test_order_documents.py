@@ -9,7 +9,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from core.models import User
-from accounts.models import Company, ConsumerProfile
+from accounts.models import SubscriptionPlan, Company, ConsumerProfile
 from marketplace import documents
 from marketplace.models import ExchangeRate, Order, OrderDocument
 from marketplace.test_search_reports import Fixtures
@@ -34,8 +34,8 @@ class OrderDocumentTests(Fixtures, TestCase):
         self.supplier = self.make_supplier("invmaker")
         self.supplier.company = Company.objects.create(
             legal_name="Invmaker Engineering Pvt Ltd", trade_name="Invmaker", gstin="27AABCI1234F1Z5",
-            registered_address="Plot 4, Bhosari", city="Pune", state="Maharashtra", pincode="411026",
-            verification_status="verified",
+            principal_address="Plot 4, Bhosari", city="Pune", state="Maharashtra", pincode="411026",
+            gst_verified=True,
         )
         self.supplier.save()
         self.rfq = self.make_rfq(self.buyer, "Pump housing", quantity=10)
@@ -136,6 +136,8 @@ class OrderDocumentTests(Fixtures, TestCase):
         page = self.client.get(reverse("order-detail", kwargs={"billno": order.billno}))
         self.assertContains(page, po.number)
         self.assertContains(page, "issued automatically when the order is marked Dispatched")
+        self.assertEqual(self.client.get(reverse("document-list")).status_code, 402)  # Free: per-order downloads only
+        SubscriptionPlan.objects.create(user_profile=self.buyer, plan_type="starter", price=999)
         self.assertContains(self.client.get(reverse("document-list")), f"{po.number}.pdf")
 
     def test_backfill_command_issues_missing_documents(self):

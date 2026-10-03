@@ -3,10 +3,11 @@ from decimal import Decimal
 
 from django.test import TestCase
 from django.urls import reverse
+
 from django.utils import timezone
 
 from core.models import User
-from accounts.models import Certification, ConsumerProfile, ManufacturerProfile, ManufacturingTech
+from accounts.models import Certification, ConsumerProfile, ManufacturerProfile, ManufacturingTech, SubscriptionPlan
 from marketplace import reports
 from marketplace.models import ExchangeRate, Order, Quote, Requirement, RequirementPart, RFQDecline, SupplierReview
 from marketplace.templatetags.custom_filters import inr, inr_compact, search_highlight
@@ -131,6 +132,7 @@ class SupplierSearchTests(Fixtures, TestCase):
 class BuyerSpendReportTests(Fixtures, TestCase):
     def setUp(self):
         self.buyer = self.make_buyer("spendbuyer")
+        SubscriptionPlan.objects.create(user_profile=self.buyer, plan_type="business", price=2999)  # reports are Business
         self.alpha = self.make_supplier("alphaparts")
         self.beta = self.make_supplier("betaworks")
         self.inr_order = self.make_order(self.make_rfq(self.buyer, "INR job", quantity=10), self.alpha, "100.00")
@@ -188,6 +190,7 @@ class SupplierWinRateReportTests(Fixtures, TestCase):
     def setUp(self):
         self.buyer = self.make_buyer("winbuyer")
         self.me = self.make_supplier("mefab")
+        SubscriptionPlan.objects.create(user_profile=self.me.user, plan_type="business", price=2999)  # incl. price comparison
         self.rival = self.make_supplier("rivalfab")
         # Won (and completed)
         self.make_order(self.make_rfq(self.buyer, "Won job"), self.me, "100.00")

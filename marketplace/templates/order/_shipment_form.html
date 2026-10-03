@@ -1,6 +1,7 @@
+{% load team_tags %}
 {% load widget_tweaks %}
 <h2 class="text-lg font-bold text-navy-900">Shipment</h2>
-{% if is_supplier %}
+{% if is_supplier and request.user|can:'order.dispatch' %}
 <form method="post" action="{% url 'order-shipment-update' bill.billno %}"
       hx-post="{% url 'order-shipment-update' bill.billno %}" hx-target="#shipment-form-block" hx-swap="innerHTML"
       class="mt-3 space-y-3">

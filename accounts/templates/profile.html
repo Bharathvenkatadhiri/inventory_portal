@@ -22,7 +22,7 @@
         <div class="card">
             <div class="mb-4 flex items-center justify-between">
                 <h2 class="text-lg font-bold text-navy-900">Company</h2>
-                {% if is_manager %}<a href="{% url 'company-profile' %}" class="text-sm font-bold text-accent-500 hover:text-accent-600">Manage full company profile &rarr;</a>{% endif %}
+                {% if can_manage_company %}<a href="{% url 'company-profile' %}" class="text-sm font-bold text-accent-500 hover:text-accent-600">Manage full company profile &rarr;</a>{% endif %}
             </div>
             <dl class="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
                 <div><dt class="text-gray-500">Company name</dt><dd class="text-navy-900">{{ supplier.companyname|default:"—" }}</dd></div>
@@ -70,6 +70,16 @@
             </div>
             {% if subscription and subscription.end_date %}
             <p class="mb-4 text-xs text-gray-400">Renews / expires {{ subscription.end_date|date:"d M Y" }}</p>
+            {% endif %}
+            {% if usage %}
+            <div class="mb-6 grid gap-3 sm:grid-cols-2">
+                {% for row in usage %}
+                <div>
+                    <div class="flex justify-between gap-4 text-xs"><span class="text-gray-500">{{ row.label }}</span><span class="{% if row.full %}font-bold text-red-600{% else %}text-gray-600{% endif %}">{{ row.used }} of {{ row.limit }}</span></div>
+                    {% if row.percent %}<span class="mt-1 block h-1.5 overflow-hidden rounded-full bg-gray-100"><span class="block h-full rounded-full {% if row.full %}bg-red-500{% else %}bg-navy-600{% endif %}" style="width: {{ row.percent|floatformat:0 }}%"></span></span>{% endif %}
+                </div>
+                {% endfor %}
+            </div>
             {% endif %}
             {% include "_subscription_plans.html" with next=request.get_full_path %}
         </div>

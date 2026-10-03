@@ -18,7 +18,7 @@
         <span class="badge bg-yellow-50 text-yellow-700">Pending</span>
         {% endif %}
         {% if request.user|teammate:quote.supplier.user_id and not quote.is_selected and not quote.status %}
-        <a href="{% url 'edit-quote' quote.pk %}" class="text-sm text-accent-500 hover:underline">Edit details</a>
+        {% if request.user|can:'quotes.manage' %}<a href="{% url 'edit-quote' quote.pk %}" class="text-sm text-accent-500 hover:underline">Edit details</a>{% endif %}
         {% endif %}
     </div>
 </div>

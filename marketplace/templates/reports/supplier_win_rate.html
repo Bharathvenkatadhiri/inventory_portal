@@ -1,16 +1,17 @@
 {% extends "dashboard_base.html" %}
 {% load custom_filters %}
-{% block title %}Win-rate report — MakeSetu{% endblock %}
+{% block title %}Reports — MakeSetu{% endblock %}
 {% block page_header %}
 <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
     <div>
-        <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">Win-rate report</h1>
-        <p class="mt-1 text-sm text-gray-500">Quotes you submitted in the period and how they turned out. Win rate counts decided quotes only (won ÷ won + lost).</p>
+        <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">Reports</h1>
+        <p class="mt-1 text-sm text-gray-500">{% if show_sales %}Quotes you submitted in the period and how they turned out. Win rate counts decided quotes only (won ÷ won + lost).{% else %}How your company performs on orders.{% endif %}</p>
     </div>
     {% include "reports/_period_tabs.html" %}
 </div>
 {% endblock %}
 {% block content %}
+{% if show_sales %}
 <div class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
     <div class="card">
         <p class="text-sm text-gray-500">Win rate</p>
@@ -86,6 +87,7 @@
         </table>
         {% else %}<p class="mt-2 text-sm text-gray-500">Nothing to show yet.</p>{% endif %}
     </div>
+    {% if show_price_comparison %}
     <div class="card">
         <h2 class="text-lg font-bold text-navy-900">Price position on lost quotes</h2>
         <p class="mt-1 text-xs text-gray-400">How your unit price compared with the winning quote. Competitors' names and prices are never shown.</p>
@@ -102,6 +104,51 @@
         {% else %}
         <p class="mt-3 text-sm text-gray-500">No lost quotes with an awarded competitor in this period.</p>
         {% endif %}
+        {% else %}
+    <div class="card">
+        <h2 class="text-lg font-bold text-navy-900">Price position on lost quotes</h2>
+        <p class="mt-2 text-sm text-gray-500">See how your price compared with the winning quote on RFQs you lost — part of the Business plan.</p>
+    </div>
+    {% endif %}
+</div>
+</div>
+{% endif %}
+
+{% if performance %}
+<h2 class="mb-4 mt-2 text-xl font-extrabold tracking-tight text-navy-900">Performance insights</h2>
+<div class="mb-6 grid gap-4 sm:grid-cols-3">
+    <div class="card">
+        <p class="text-sm text-gray-500">Median time to quote</p>
+        <p class="mt-1 text-2xl font-extrabold text-navy-900">{% if performance.median_response_hours is not None %}{{ performance.median_response_hours|floatformat:0 }} h{% else %}—{% endif %}</p>
+        <p class="text-xs text-gray-400">From RFQ posted to quote sent, over {{ performance.quotes_measured }} quote{{ performance.quotes_measured|pluralize }}</p>
+    </div>
+    <div class="card">
+        <p class="text-sm text-gray-500">On-time dispatch</p>
+        <p class="mt-1 text-2xl font-extrabold text-navy-900">{% if performance.on_time_rate is not None %}{{ performance.on_time_rate }}%{% else %}—{% endif %}</p>
+        <p class="text-xs text-gray-400">{{ performance.on_time }} of {{ performance.dispatched }} dispatched by the ship-by date</p>
+    </div>
+    <div class="card">
+        <p class="text-sm text-gray-500">Reviews</p>
+        <p class="mt-1 text-2xl font-extrabold text-navy-900">{{ performance.reviews }}</p>
+        <p class="text-xs text-gray-400">In the period</p>
     </div>
 </div>
+<div class="card mb-6">
+    <h2 class="mb-4 text-lg font-bold text-navy-900">Average rating by month</h2>
+    <ul class="space-y-2">
+        {% for row in performance.rating_months %}
+        <li class="grid grid-cols-[6rem_1fr_3rem] items-center gap-3 text-sm">
+            <span class="text-gray-500">{{ row.month|date:"M Y" }}</span>
+            <span class="h-2 overflow-hidden rounded-full bg-gray-100"><span class="block h-full rounded-full bg-navy-600" style="width: {% if row.average %}{% widthratio row.average 5 100 %}{% else %}0{% endif %}%"></span></span>
+            <span class="text-right text-gray-600">{% if row.average %}{{ row.average|floatformat:1 }}{% else %}—{% endif %}</span>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% elif performance_upgrade %}
+<div class="card mb-6 text-sm text-gray-600">
+    <h2 class="text-lg font-bold text-navy-900">Performance insights</h2>
+    <p class="mt-1">Median time to quote, on-time dispatch and your rating trend are part of the {{ performance_upgrade }} plan.</p>
+</div>
+{% endif %}
 {% endblock %}

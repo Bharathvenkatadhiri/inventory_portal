@@ -40,9 +40,14 @@ def _counts(request):
     }
 
     profile = team.company(user)
+    # Buyer-side viewers are read-only: dashboard_base.html hides every
+    # write control. Supplier-side viewers may update production, dispatch,
+    # quality documents and invoices, so only marked controls are hidden.
+    counts['is_viewer'] = team.is_viewer(user)
+    counts['read_only'] = counts['is_viewer'] and team.company_kind(user) == team.BUYER
     if profile is not None:
         counts['sidebar_team_role'] = team.role_label(user)
-        if team.can_approve(user):
+        if team.can_manage_company(user):
             from marketplace import approvals
             counts['sidebar_pending_approvals_count'] = approvals.pending_for(profile).count()
 
@@ -51,7 +56,8 @@ def _counts(request):
         if supplier is None:
             return counts
         counts['sidebar_company_name'] = supplier.companyname
-        new_rfq_count = services.open_requirements_for(supplier).exclude(
+        from plans import rfq_inbox
+        new_rfq_count = rfq_inbox.received(services.open_requirements_for(supplier), supplier).exclude(
             quote__supplier=supplier
         ).exclude(declines__supplier=supplier).count()
         active_orders_count = Order.objects.filter(supplier=supplier).exclude(

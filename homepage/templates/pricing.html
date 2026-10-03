@@ -2,139 +2,110 @@
 {% load portal_feedback %}
 {% block title %}Pricing — MakeSetu{% endblock %}
 {% block hero %}
-{% include "_page_hero.html" with eyebrow="Pricing" heading="Simple, <span class='text-accent-500'>transparent</span> pricing." sub="Start free and upgrade as your sourcing grows. No setup fees, cancel anytime." show_rating=True %}
+{% include "_page_hero.html" with eyebrow="Pricing" heading="Simple, <span class='text-accent-500'>transparent</span> pricing." sub="Start free and upgrade as your sourcing grows. Pay monthly, or yearly and get two months free." show_rating=True %}
 {% endblock %}
 {% block content %}
-<div x-data="{ buyer: true, annual: false }">
+{# Every price, limit and tick here comes from plans/catalog.py (homepage.views.PricingView). #}
+<div x-data="{ side: 'buyer', yearly: false }">
     <div class="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div class="inline-flex self-start rounded-lg bg-gray-100 p-1 text-sm">
-            <button type="button" @click="buyer = true" class="rounded-md px-5 py-2 font-semibold transition-colors" :class="buyer ? 'bg-navy-900 text-white shadow' : 'text-gray-500'">For Buyers</button>
-            <button type="button" @click="buyer = false" class="rounded-md px-5 py-2 font-semibold transition-colors" :class="!buyer ? 'bg-navy-900 text-white shadow' : 'text-gray-500'">For Manufacturers</button>
+            {% for side in sides %}
+            <button type="button" @click="side = '{{ side.key }}'" class="rounded-md px-5 py-2 font-semibold transition-colors" :class="side === '{{ side.key }}' ? 'bg-navy-900 text-white shadow' : 'text-gray-500'">{{ side.title }}</button>
+            {% endfor %}
         </div>
         <div class="flex items-center gap-3 text-sm">
-            <span class="font-medium" :class="annual ? 'text-gray-400' : 'text-navy-900'">Monthly</span>
-            <button type="button" role="switch" :aria-checked="annual ? 'true' : 'false'" @click="annual = !annual"
+            <span class="font-medium" :class="yearly ? 'text-gray-400' : 'text-navy-900'">Monthly</span>
+            <button type="button" role="switch" :aria-checked="yearly ? 'true' : 'false'" @click="yearly = !yearly"
                     class="relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent-500 focus:ring-offset-2"
-                    :class="annual ? 'bg-accent-500' : 'bg-gray-300'">
-                <span class="sr-only">Bill annually</span>
-                <span class="my-1 h-4 w-4 rounded-full bg-white transition-transform" :class="annual ? 'translate-x-6' : 'translate-x-1'"></span>
+                    :class="yearly ? 'bg-accent-500' : 'bg-gray-300'">
+                <span class="sr-only">Bill yearly</span>
+                <span class="my-1 h-4 w-4 rounded-full bg-white transition-transform" :class="yearly ? 'translate-x-6' : 'translate-x-1'"></span>
             </button>
-            <span class="font-medium" :class="annual ? 'text-navy-900' : 'text-gray-400'">Annual</span>
-            <span class="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-bold text-green-700">Save [X]%</span>
+            <span class="font-medium" :class="yearly ? 'text-navy-900' : 'text-gray-400'">Yearly</span>
+            <span class="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-bold text-green-700">2 months free</span>
         </div>
     </div>
 
-    <div class="grid gap-6 sm:grid-cols-3 items-start">
-        <div class="card p-7">
-            <p class="text-lg font-extrabold text-navy-900">Starter</p>
-            <p class="mt-1 text-sm text-gray-500">For individuals and small teams getting started.</p>
-            <p class="mt-6 text-4xl font-extrabold tracking-tight text-navy-900">Free<span class="ml-1.5 text-sm font-medium text-gray-400">forever</span></p>
-            <a href="{% url 'register' %}" class="btn-outline mt-6 w-full">Get started</a>
-            <ul class="mt-7 space-y-3 text-sm text-gray-600">
-                <li class="flex items-start gap-2">
-                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
-                    <span x-text="buyer ? 'Up to 3 open RFQs' : 'Respond to up to 3 RFQs per month'"></span>
-                </li>
-                <li class="flex items-start gap-2">
-                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
-                    <span x-text="buyer ? 'Quotes from verified manufacturers' : 'A verified manufacturer profile'"></span>
-                </li>
-                <li class="flex items-start gap-2">
-                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
-                    <span>Side-by-side quote comparison</span>
-                </li>
-                <li class="flex items-start gap-2">
-                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
-                    <span>Order tracking</span>
-                </li>
-                <li class="flex items-start gap-2">
-                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
-                    <span>Email support</span>
-                </li>
-            </ul>
+    {% for side in sides %}
+    <div x-show="side === '{{ side.key }}'" {% if not forloop.first %}x-cloak{% endif %}>
+        <div class="grid gap-6 sm:grid-cols-3 items-start">
+            {% for card in side.cards %}
+            {% with featured=forloop.counter|divisibleby:2 %}
+            <div class="{% if featured %}relative rounded-xl bg-navy-900 p-7 text-white shadow-xl{% else %}card p-7{% endif %}">
+                {% if featured %}<span class="absolute -top-3 left-7 rounded-full bg-accent-500 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white">Most Popular</span>{% endif %}
+                <p class="text-lg font-extrabold {% if not featured %}text-navy-900{% endif %}">{{ card.label }}</p>
+                <p class="mt-6 text-4xl font-extrabold tracking-tight {% if not featured %}text-navy-900{% endif %}">
+                    {% if card.monthly %}
+                    <span x-show="!yearly">&#8377;{{ card.monthly }}<span class="ml-1.5 text-sm font-medium opacity-60">/ month</span></span>
+                    <span x-show="yearly" x-cloak>&#8377;{{ card.yearly }}<span class="ml-1.5 text-sm font-medium opacity-60">/ year</span></span>
+                    {% else %}&#8377;0<span class="ml-1.5 text-sm font-medium opacity-60">forever</span>{% endif %}
+                </p>
+                <a href="{% url 'register' %}" class="{% if featured %}btn-primary{% else %}btn-outline{% endif %} mt-6 w-full">{% if card.monthly %}Start {{ card.label }}{% else %}Get started{% endif %}</a>
+                <ul class="mt-7 space-y-3 text-sm {% if featured %}text-white/85{% else %}text-gray-600{% endif %}">
+                    {% for line in card.highlights %}
+                    <li class="flex items-start gap-2">
+                        <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                        <span>{{ line }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endwith %}
+            {% endfor %}
         </div>
 
-        <div class="relative rounded-xl bg-navy-900 p-7 text-white shadow-xl">
-            <span class="absolute -top-3 left-7 rounded-full bg-accent-500 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white">Most Popular</span>
-            <p class="text-lg font-extrabold">Growth</p>
-            <p class="mt-1 text-sm text-white/60">For teams sourcing parts every month.</p>
-            <p class="mt-6 text-4xl font-extrabold tracking-tight">&#8377;[price]<span class="ml-1.5 text-sm font-medium text-white/60" x-text="annual ? '/ year' : '/ month'"></span></p>
-            <a href="{% url 'register' %}" class="btn-primary mt-6 w-full">Start Growth</a>
-            <ul class="mt-7 space-y-3 text-sm text-white/85">
-                <li class="flex items-start gap-2">
-                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
-                    <span x-text="buyer ? 'Unlimited RFQs' : 'Respond to unlimited RFQs'"></span>
-                </li>
-                <li class="flex items-start gap-2">
-                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
-                    <span x-text="buyer ? 'Invite your own suppliers' : 'Priority placement on matching RFQs'"></span>
-                </li>
-                <li class="flex items-start gap-2">
-                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
-                    <span>NDA-protected file sharing</span>
-                </li>
-                <li class="flex items-start gap-2">
-                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
-                    <span>Team seats and approvals</span>
-                </li>
-                <li class="flex items-start gap-2">
-                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
-                    <span>Spend and supplier reports</span>
-                </li>
-                <li class="flex items-start gap-2">
-                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
-                    <span>Priority support</span>
-                </li>
-            </ul>
-        </div>
-
-        <div class="card p-7">
-            <p class="text-lg font-extrabold text-navy-900">Enterprise</p>
-            <p class="mt-1 text-sm text-gray-500">For procurement teams with complex needs.</p>
-            <p class="mt-6 text-4xl font-extrabold tracking-tight text-navy-900">Custom</p>
-            <a href="{% url 'contact' %}" class="btn-outline mt-6 w-full">Talk to sales</a>
-            <ul class="mt-7 space-y-3 text-sm text-gray-600">
-                <li class="flex items-start gap-2">
-                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
-                    <span>Everything in Growth</span>
-                </li>
-                <li class="flex items-start gap-2">
-                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
-                    <span x-text="buyer ? 'Dedicated sourcing specialist' : 'Dedicated account manager'"></span>
-                </li>
-                <li class="flex items-start gap-2">
-                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
-                    <span>ERP and SSO integration</span>
-                </li>
-                <li class="flex items-start gap-2">
-                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
-                    <span>Custom approval workflows</span>
-                </li>
-                <li class="flex items-start gap-2">
-                    <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
-                    <span>Volume pricing and SLAs</span>
-                </li>
-            </ul>
+        <h2 class="mt-16 mb-4 text-xl font-extrabold tracking-tight text-navy-900">Compare plans {{ side.title|lower }}</h2>
+        <div class="card overflow-x-auto p-0">
+            <table class="w-full text-left text-sm">
+                <thead>
+                    <tr class="border-b border-gray-100 text-xs uppercase tracking-wide text-gray-400">
+                        <th class="px-5 py-3 font-bold">Feature</th>
+                        {% for plan in plans %}<th class="px-5 py-3 text-center font-bold">{{ plan.label }}</th>{% endfor %}
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    <tr>
+                        <td class="px-5 py-3 text-navy-900">Price</td>
+                        {% for plan in plans %}
+                        <td class="px-5 py-3 text-center text-gray-700">
+                            <span x-show="!yearly">&#8377;{{ plan.monthly }} / month</span>
+                            <span x-show="yearly" x-cloak>&#8377;{{ plan.yearly }} / year</span>
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% for label, cells in side.rows %}
+                    <tr>
+                        <td class="px-5 py-3 text-navy-900">{{ label }}</td>
+                        {% for cell in cells %}<td class="px-5 py-3 text-center {% if cell == '—' %}text-gray-300{% elif cell == '✓' %}font-bold text-accent-500{% else %}text-gray-700{% endif %}">{{ cell }}</td>{% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
+    {% endfor %}
 
     <p class="mt-8 text-center text-xs text-gray-400">
         Prices exclude GST. Need something custom? <a href="{% url 'contact' %}" class="font-semibold text-accent-500 hover:underline">Talk to sales</a>.
     </p>
 
     <h2 class="mt-20 mb-6 text-2xl font-extrabold tracking-tight text-navy-900 sm:text-3xl">Pricing questions</h2>
-    <div class="grid gap-6 sm:grid-cols-3">
+    <div class="grid gap-6 sm:grid-cols-2">
+        <div class="card">
+            <p class="font-semibold text-navy-900">Who's on a team, and who can do what?</p>
+            <p class="mt-1 text-sm text-gray-500">The person who registers the company is its Owner, who alone handles the subscription and billing. Buyer companies add Admins, Procurement and Viewers; manufacturer companies add Admins, Sales, Operations and Viewers. Every active person counts toward the plan's users, Viewers included.</p>
+        </div>
         <div class="card">
             <p class="font-semibold text-navy-900">Can I change plans later?</p>
-            <p class="mt-1 text-sm text-gray-500">Yes. Upgrade or downgrade anytime — changes apply from your next billing cycle.</p>
+            <p class="mt-1 text-sm text-gray-500">Yes. Moving to a smaller plan applies straight away. An upgrade, or a switch to yearly billing, starts as soon as we've confirmed your payment.</p>
+        </div>
+        <div class="card">
+            <p class="font-semibold text-navy-900">What happens when I reach a limit?</p>
+            <p class="mt-1 text-sm text-gray-500">Nothing you've already done is affected. You can't post another RFQ, send another quote, add another person or upload past your storage until next month (for monthly limits) or an upgrade.</p>
         </div>
         <div class="card">
             <p class="font-semibold text-navy-900">Are there any transaction fees?</p>
             <p class="mt-1 text-sm text-gray-500">No transaction fees on awarded orders — your plan covers everything listed above.</p>
-        </div>
-        <div class="card">
-            <p class="font-semibold text-navy-900">Do you offer a free trial of paid plans?</p>
-            <p class="mt-1 text-sm text-gray-500">Yes — 14 days of Growth, no card required.</p>
         </div>
     </div>
 </div>

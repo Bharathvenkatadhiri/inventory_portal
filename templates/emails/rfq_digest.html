@@ -1,0 +1,19 @@
+{% extends "emails/_base_email.html" %}
+{% block title %}Your new RFQs — MakeSetu{% endblock %}
+{% block preheader %}{{ requirements|length }} new RFQ{{ requirements|length|pluralize }} reached your inbox{% endblock %}
+{% block body %}
+<p style="margin:0 0 16px;">Hi {{ company_name }},</p>
+<p style="margin:0 0 20px;">New RFQs reached your MakeSetu inbox in the last day:</p>
+<table role="presentation" width="100%" style="margin:0 0 20px;background-color:#F3F5F8;border-radius:8px;">
+{% for requirement in requirements %}
+<tr><td style="padding:12px 20px;{% if not forloop.last %}border-bottom:1px solid #E2E7EE;{% endif %}">
+<p style="margin:0;font-weight:700;color:#11355C;">{{ requirement.title }} <span style="color:#56657A;font-weight:400;">(RFQ-{{ requirement.pk }})</span></p>
+{% if requirement.end_date %}<p style="margin:4px 0 0;color:#56657A;font-size:13px;">Quotes due {{ requirement.end_date|date:"d M Y" }}</p>{% endif %}
+</td></tr>
+{% endfor %}
+</table>
+<p style="margin:0 0 24px;">
+<a href="{{ url }}" style="display:inline-block;padding:12px 24px;background-color:#F57921;color:#FFFFFF;font-weight:700;text-decoration:none;border-radius:8px;">Open your RFQ inbox</a>
+</p>
+<p style="margin:0;color:#56657A;font-size:13px;">Upgrade to Starter to get each matched RFQ by email the moment it's posted.</p>
+{% endblock %}

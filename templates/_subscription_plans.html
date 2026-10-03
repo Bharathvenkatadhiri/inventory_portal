@@ -1,39 +1,58 @@
-{# Expects: plan_catalog (from accounts.views.plan_catalog), can_change_plan (only the company's manager may), optional `next` (url to return to). #}
-<div class="grid gap-4 sm:grid-cols-3">
-    {% for plan in plan_catalog %}
-    <div class="flex flex-col rounded-xl border {% if plan.is_current %}border-accent-500 ring-1 ring-accent-500{% else %}border-gray-200{% endif %} bg-white p-5">
-        <div class="flex items-center justify-between">
-            <p class="text-xs font-bold uppercase tracking-wide text-gray-400">{{ plan.label }}</p>
-            {% if plan.is_current %}<span class="badge bg-accent-50 text-accent-700">Current</span>
-            {% elif plan.is_pending %}<span class="badge bg-yellow-50 text-yellow-700">Awaiting payment</span>{% endif %}
-        </div>
-        <p class="mt-2 text-3xl font-extrabold text-navy-900">
-            {% if plan.price %}&#8377;{{ plan.price|floatformat:0 }}<span class="text-sm font-normal text-gray-400"> /mo</span>{% else %}Free{% endif %}
-        </p>
-        <p class="mt-3 text-sm text-gray-500">
-            {% if plan.rfq_limit == 'unlimited' %}Unlimited RFQs{% else %}Up to {{ plan.rfq_limit }} RFQs / month{% endif %}
-        </p>
-        <p class="mt-1 text-sm text-gray-500">
-            {% if plan.team_seats %}Team of up to {{ plan.team_seats }} people{% else %}Unlimited team members{% endif %}
-        </p>
-        <div class="mt-5 pt-0">
-            {% if plan.is_current %}
-            <span class="btn-outline w-full cursor-default justify-center opacity-60">Current plan</span>
-            {% elif plan.is_pending %}
-            <span class="btn-outline w-full cursor-default justify-center text-center text-xs opacity-80">Requested — we'll send a payment link</span>
-            {% elif not can_change_plan %}
-            <span class="btn-outline w-full cursor-default justify-center text-center text-xs opacity-60">Only your manager can change the plan</span>
-            {% else %}
-            <form method="post" action="{% url 'subscription-upgrade' %}">
-                {% csrf_token %}
-                <input type="hidden" name="plan_type" value="{{ plan.key }}">
-                {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
-                <button type="submit" class="w-full {% if plan.is_upgrade %}btn-primary{% else %}btn-outline{% endif %}">
-                    {% if plan.is_upgrade %}Upgrade to {{ plan.label }}{% else %}Switch to {{ plan.label }}{% endif %}
-                </button>
-            </form>
-            {% endif %}
-        </div>
+{# Expects: plan_catalog (from accounts.views.plan_catalog), can_change_plan (only the company's owner may), optional `next` (url to return to). #}
+<div x-data="{ yearly: false }">
+    <div class="mb-4 flex items-center justify-end gap-3 text-sm">
+        <span class="font-medium" :class="yearly ? 'text-gray-400' : 'text-navy-900'">Monthly</span>
+        <button type="button" role="switch" :aria-checked="yearly ? 'true' : 'false'" @click="yearly = !yearly"
+                class="relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent-500 focus:ring-offset-2"
+                :class="yearly ? 'bg-accent-500' : 'bg-gray-300'">
+            <span class="sr-only">Bill yearly</span>
+            <span class="my-1 h-4 w-4 rounded-full bg-white transition-transform" :class="yearly ? 'translate-x-6' : 'translate-x-1'"></span>
+        </button>
+        <span class="font-medium" :class="yearly ? 'text-navy-900' : 'text-gray-400'">Yearly</span>
+        <span class="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-bold text-green-700">2 months free</span>
     </div>
-    {% endfor %}
+    <div class="grid gap-4 sm:grid-cols-3">
+        {% for plan in plan_catalog %}
+        <div class="flex flex-col rounded-xl border {% if plan.is_current %}border-accent-500 ring-1 ring-accent-500{% else %}border-gray-200{% endif %} bg-white p-5">
+            <div class="flex items-center justify-between">
+                <p class="text-xs font-bold uppercase tracking-wide text-gray-400">{{ plan.label }}</p>
+                {% if plan.is_current %}<span class="badge bg-accent-50 text-accent-700">Current{% if plan.current_cycle and plan.price_monthly %} &middot; {{ plan.current_cycle }}{% endif %}</span>
+                {% elif plan.is_pending %}<span class="badge bg-yellow-50 text-yellow-700">Awaiting payment</span>{% endif %}
+            </div>
+            <p class="mt-2 text-3xl font-extrabold text-navy-900">
+                {% if plan.price_monthly %}
+                <span x-show="!yearly">&#8377;{{ plan.price_monthly|floatformat:0 }}<span class="text-sm font-normal text-gray-400"> /month</span></span>
+                <span x-show="yearly" x-cloak>&#8377;{{ plan.price_yearly|floatformat:0 }}<span class="text-sm font-normal text-gray-400"> /year</span></span>
+                {% else %}Free{% endif %}
+            </p>
+            <ul class="mt-3 space-y-1 text-sm text-gray-500">
+                {% for line in plan.highlights %}<li>{{ line }}</li>{% endfor %}
+            </ul>
+            <a href="{% url 'pricing' %}" class="mt-2 text-xs font-bold text-accent-500 hover:text-accent-600">Everything in {{ plan.label }} &rarr;</a>
+            <div class="mt-5 pt-0">
+                {% if plan.is_pending %}
+                <span class="btn-outline w-full cursor-default justify-center text-center text-xs opacity-80">Requested — we'll send a payment link</span>
+                {% elif not can_change_plan %}
+                {% if plan.is_current %}<span class="btn-outline w-full cursor-default justify-center opacity-60">Current plan</span>
+                {% else %}<span class="btn-outline w-full cursor-default justify-center text-center text-xs opacity-60">Only your company's owner can change the plan</span>{% endif %}
+                {% else %}
+                <form method="post" action="{% url 'subscription-upgrade' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="plan_type" value="{{ plan.key }}">
+                    <input type="hidden" name="billing_cycle" :value="yearly ? 'yearly' : 'monthly'" value="monthly">
+                    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+                    {% if plan.is_current %}
+                    {% if plan.price_monthly %}<button type="submit" class="btn-outline w-full" x-text="yearly ? 'Switch to yearly billing' : 'Switch to monthly billing'">Current plan</button>
+                    {% else %}<span class="btn-outline w-full cursor-default justify-center opacity-60">Current plan</span>{% endif %}
+                    {% else %}
+                    <button type="submit" class="w-full {% if plan.is_upgrade %}btn-primary{% else %}btn-outline{% endif %}">
+                        {% if plan.is_upgrade %}Upgrade to {{ plan.label }}{% else %}Switch to {{ plan.label }}{% endif %}
+                    </button>
+                    {% endif %}
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
 </div>

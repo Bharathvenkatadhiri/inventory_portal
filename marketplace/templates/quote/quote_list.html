@@ -1,18 +1,44 @@
 {% extends "dashboard_base.html" %}
+{% load team_tags %}
 {% block title %}My Quotes — MakeSetu{% endblock %}
 {% block page_header %}
-<div class="mb-6">
-    <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">My quotes</h1>
-    <p class="mt-1 text-sm text-gray-500">Every quote you've submitted, across every RFQ.</p>
+<div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div>
+        <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">My quotes</h1>
+        <p class="mt-1 text-sm text-gray-500">Every quote you've submitted, across every RFQ.</p>
+    </div>
+    <div class="flex flex-wrap items-end gap-2">
+        {% if can_filter_quotes %}
+        <form method="get" class="flex flex-wrap items-end gap-2">
+            <select name="status" class="field-input" onchange="this.form.submit()">
+                <option value="">All quotes</option>
+                <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Drafts</option>
+                <option value="sent" {% if status_filter == 'sent' %}selected{% endif %}>Awaiting decision</option>
+                <option value="won" {% if status_filter == 'won' %}selected{% endif %}>Won</option>
+                <option value="lost" {% if status_filter == 'lost' %}selected{% endif %}>Lost</option>
+            </select>
+            <input type="search" name="q" value="{{ q }}" placeholder="Search RFQ titles" class="field-input">
+        </form>
+        {% endif %}
+        {% if can_export %}<a href="?export=csv&amp;status={{ status_filter }}&amp;q={{ q|urlencode }}" class="btn-outline">Export CSV</a>{% endif %}
+    </div>
 </div>
 {% endblock %}
 {% block content %}
+{% if can_bulk_quotes and request.user|can:'quotes.manage' %}
+<form id="bulk-form" method="post" action="{% url 'quotes-bulk' %}" class="mb-4 flex items-center gap-3 text-sm" onsubmit="return confirm('Withdraw the selected draft quotes?');">
+    {% csrf_token %}
+    <span class="text-gray-500">Select drafts below, then</span>
+    <button type="submit" class="btn-outline">Withdraw selected drafts</button>
+</form>
+{% endif %}
 {% if object_list %}
 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
     {% for quote in object_list %}
     <div class="card">
         <div class="flex items-start justify-between gap-2">
             <div>
+                {% if can_bulk_quotes and quote.is_draft %}<input type="checkbox" name="quote" value="{{ quote.pk }}" form="bulk-form" class="mr-1 rounded border-gray-300" aria-label="Select draft">{% endif %}
                 <a href="{% url 'quote' quote.pk %}" class="font-bold text-navy-900 hover:text-accent-500">{{ quote.requirement.title }}</a>
                 <p class="text-xs text-gray-400">Quote #{{ quote.pk }}</p>
             </div>
@@ -41,7 +67,7 @@
         </form>
         {% endif %}
         <div class="mt-4 flex items-center justify-between border-t border-gray-100 pt-3">
-            {% if not quote.is_selected and not quote.status %}
+            {% if not quote.is_selected and not quote.status and request.user|can:'quotes.manage' %}
             <a href="{% url 'edit-quote' quote.pk %}" class="text-sm font-bold text-accent-500 hover:text-accent-600">{% if quote.awaiting_revision %}Revise quote{% else %}Edit{% endif %}</a>
             <a href="{% url 'delete-quote' quote.pk %}" class="text-sm text-red-600 hover:underline">Delete</a>
             {% else %}
@@ -55,19 +81,19 @@
 {% if is_paginated %}
 <div class="mt-6 flex flex-wrap gap-2">
     {% if page_obj.has_previous %}
-    <a class="btn-outline" href="?page=1">First</a>
-    <a class="btn-outline" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+    <a class="btn-outline" href="?status={{ status_filter }}&amp;q={{ q|urlencode }}&amp;page=1">First</a>
+    <a class="btn-outline" href="?status={{ status_filter }}&amp;q={{ q|urlencode }}&amp;page={{ page_obj.previous_page_number }}">Previous</a>
     {% endif %}
     {% for num in page_obj.paginator.page_range %}
         {% if page_obj.number == num %}
         <span class="btn-primary">{{ num }}</span>
         {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-        <a class="btn-outline" href="?page={{ num }}">{{ num }}</a>
+        <a class="btn-outline" href="?status={{ status_filter }}&amp;q={{ q|urlencode }}&amp;page={{ num }}">{{ num }}</a>
         {% endif %}
     {% endfor %}
     {% if page_obj.has_next %}
-    <a class="btn-outline" href="?page={{ page_obj.next_page_number }}">Next</a>
-    <a class="btn-outline" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+    <a class="btn-outline" href="?status={{ status_filter }}&amp;q={{ q|urlencode }}&amp;page={{ page_obj.next_page_number }}">Next</a>
+    <a class="btn-outline" href="?status={{ status_filter }}&amp;q={{ q|urlencode }}&amp;page={{ page_obj.paginator.num_pages }}">Last</a>
     {% endif %}
 </div>
 {% endif %}

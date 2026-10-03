@@ -1,9 +1,23 @@
 {% extends "dashboard_base.html" %}
 {% block title %}Production — MakeSetu{% endblock %}
 {% block page_header %}
-<div class="mb-6">
-    <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">Production</h1>
-    <p class="mt-1 text-sm text-gray-500">Every order you're fulfilling, from confirmation to delivery.</p>
+<div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div>
+        <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">Production</h1>
+        <p class="mt-1 text-sm text-gray-500">Every order you're fulfilling, from confirmation to delivery.</p>
+    </div>
+    <div class="flex flex-wrap items-end gap-2">
+        {% if can_filter_orders %}
+        <form method="get" class="flex flex-wrap items-end gap-2">
+            <select name="status" class="field-input" onchange="this.form.submit()">
+                <option value="">All statuses</option>
+                {% for value, label in status_choices %}<option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+            <input type="search" name="q" value="{{ q }}" placeholder="Search title or ORD number" class="field-input">
+        </form>
+        {% endif %}
+        {% if can_export %}<a href="?export=csv&amp;status={{ status_filter }}&amp;q={{ q|urlencode }}" class="btn-outline">Export CSV</a>{% endif %}
+    </div>
 </div>
 {% endblock %}
 {% block content %}

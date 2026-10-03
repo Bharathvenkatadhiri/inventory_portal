@@ -16,6 +16,7 @@ from marketplace import services
 from marketplace.models import Requirement, Quote, Order
 from accounts import team
 from accounts.models import SubscriptionPlan
+from plans import access, catalog, rfq_inbox
 from accounts.views import plan_catalog, StaffRequiredMixin
 from .feedback import staff_summary
 from .forms import PortalFeedbackForm
@@ -30,12 +31,12 @@ def custom_404_view(request, exception):
 
 
 def _subscription_context(user):
-    # The plan belongs to the company: it's held on the manager's account.
-    subscription = SubscriptionPlan.objects.filter(user_profile=team.manager_user(user)).first()
+    # The plan belongs to the company: it's held on the owner's account.
+    subscription = SubscriptionPlan.objects.filter(user_profile=team.owner_user(user)).first()
     return {
         'subscription': subscription,
-        'plan_catalog': plan_catalog(subscription),
-        'can_change_plan': team.is_manager(user) or team.company(user) is None,
+        'plan_catalog': plan_catalog(subscription, team.company_kind(user) or 'buyer'),
+        'can_change_plan': team.can_manage_subscription(user),
     }
 
 
@@ -86,6 +87,8 @@ class HomeView(View):
         }
         context.update(_subscription_context(request.user))
         context["rfq_limit"], context["rfq_used"] = services.rfq_allowance(request.user)
+        buyer = team.buyer_profile(request.user)
+        context["usage"] = access.usage_rows(buyer) if buyer else []
         return render(request, "home_buyer.html", context)
 
     def _manufacturer_dashboard(self, request):
@@ -103,7 +106,8 @@ class HomeView(View):
         # looser `Requirement.objects.filter(is_deleted=False)` this
         # dashboard used to count — that discrepancy meant the dashboard
         # and the RFQ inbox could disagree on how many RFQs were "open".
-        new_rfqs = services.open_requirements_for(supplier).exclude(
+        rfq_inbox.deliver(supplier)
+        new_rfqs = rfq_inbox.received(services.open_requirements_for(supplier), supplier).exclude(
             quote__supplier=supplier
         ).exclude(declines__supplier=supplier)
 
@@ -139,6 +143,12 @@ class HomeView(View):
             "production_schedule": active_orders.order_by('ship_by_date')[:5],
             "profile_strength_percent": percent,
             "profile_strength_checklist": checklist,
+            "show_match": access.can(request.user, 'rfq.match_scores'),
+            "recommended_rfqs": services.recommended_rfqs(
+                supplier, advanced=access.has_feature(supplier, 'supplier_matching', catalog.ADVANCED),
+            ) if access.can(request.user, 'rfq.recommendations') else None,
+            "rfqs_waiting": rfq_inbox.waiting_count(supplier),
+            "usage": access.usage_rows(supplier),
         })
         return render(request, "home_manufacturer.html", context)
 
@@ -152,7 +162,23 @@ class HowItWorksView(TemplateView):
 
 
 class PricingView(TemplateView):
+    """The public pricing page: buyer and supplier plans, monthly or yearly,
+    straight from plans.catalog so it can't drift from what's enforced."""
     template_name = "pricing.html"
+
+    def get_context_data(self, **kwargs):
+        from plans import catalog
+        plans = [
+            {'key': key, 'label': catalog.PLAN_LABELS[key],
+             'monthly': catalog.price(key, catalog.MONTHLY), 'yearly': catalog.price(key, catalog.YEARLY)}
+            for key in catalog.PLAN_ORDER
+        ]
+        sides = [
+            {'key': side, 'title': title, 'rows': catalog.pricing_table(side),
+             'cards': [{**plan, 'highlights': catalog.plan_highlights(side, plan['key'])} for plan in plans]}
+            for side, title in ((catalog.BUYER, 'For Buyers'), (catalog.SUPPLIER, 'For Manufacturers'))
+        ]
+        return super().get_context_data(plans=plans, sides=sides, **kwargs)
 
 
 class ContactView(TemplateView):

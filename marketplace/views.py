@@ -30,10 +30,13 @@ from django_fsm import TransitionNotAllowed
 from accounts import team
 from accounts.models import ManufacturerProfile
 
+from plans import access, export, rfq_inbox
+from plans import catalog as plan_catalog
+
 from . import approvals, documents, emails, reports, search, services
 from .models import (
-    APPROVAL_APPROVED, APPROVAL_PENDING, ApprovalRequest,
-    Requirement, RequirementPart, Quote, Order,
+    APPROVAL_APPROVED, ApprovalRequest,
+    Requirement, RequirementPart, Quote, QuoteRevision, QuoteTemplate, RFQAlertPreference, Order,
     RFQDecline, RequirementNDAAcceptance,
     MessageThread, Message,
     RequirementAmendment, AmendmentResponse, SupplierReview, OrderDocument,
@@ -96,7 +99,31 @@ def _order_role(order, user):
     return None
 
 
-APPROVERS = "your supervisor or manager"
+APPROVERS = "your company's owner or an admin"
+VIEW_ONLY = "Your role on this company account can't do that."
+
+# The role permission (accounts.team.ROLE_PERMISSIONS) each order
+# transition needs, on whichever side may make it (ORDER_TRANSITION_ROLE).
+ORDER_TRANSITION_ACTION = {
+    'in_production': 'order.production',
+    'payment_pending': 'invoice.manage',
+    'paid': 'order.confirm_payment',
+    'completed': 'order.manage',
+    'cancelled': 'order.manage',
+}
+
+
+def _acceptance(user):
+    """How `user` may accept a quotation: ('direct', ''), ('approval', '')
+    — a request an owner or admin decides — or (None, why not)."""
+    if team.allows(user, 'quote.accept'):
+        return 'direct', ''
+    if access.can(user, 'quote.request_accept'):
+        return 'approval', ''
+    if team.allows(user, 'quote.request_accept'):
+        return None, ("Only your company's owner or an admin can accept a quotation on your plan. "
+                      "Asking them to approve it is part of the Business plan.")
+    return None, "Only your company's owner or an admin can accept a quotation."
 
 
 def _may_perform_transition(order, user, status):
@@ -105,7 +132,7 @@ def _may_perform_transition(order, user, status):
     side could press any next-step button: a supplier marking their own
     order paid and completed, or a buyer starting production themselves."""
     role = _order_role(order, user)
-    if role is None:
+    if role is None or not team.allows(user, ORDER_TRANSITION_ACTION.get(status, 'order.manage')):
         return False
     if status == 'cancelled':
         return order.status in CANCELLABLE_ORDER_STATUSES
@@ -147,6 +174,19 @@ class RequirementListView(LoginRequiredMixin, ListView):
             return ["requirement/rfq_inbox.html"]
         return ["requirement/requirement_list.html"]
 
+    def get(self, request, *args, **kwargs):
+        if request.GET.get('export') == 'csv':
+            refused = _export_refused(request)
+            if refused:
+                return refused
+            rows = self.get_queryset()
+            return export.csv_response('rfqs', ['RFQ', 'Title', 'Parts', 'Currency', 'Due', 'Status', 'Created'], (
+                [f"RFQ-{r.pk}", r.title, r.parts, r.quote_currency, r.end_date.strftime('%Y-%m-%d') if r.end_date else '',
+                 r.get_status_display() if r.status else 'Open', r.created_at.strftime('%Y-%m-%d')]
+                for r in rows
+            ))
+        return super().get(request, *args, **kwargs)
+
     def _manufacturer_supplier(self):
         return team.supplier_profile(self.request.user)
 
@@ -173,6 +213,8 @@ class RequirementListView(LoginRequiredMixin, ListView):
             else:
                 queryset = services.open_requirements_for(supplier)
                 if supplier:
+                    rfq_inbox.deliver(supplier)
+                    queryset = rfq_inbox.received(queryset, supplier)
                     queryset = queryset.exclude(quote__supplier=supplier).exclude(declines__supplier=supplier)
             process = self.request.GET.get('process', '')
             if process:
@@ -222,14 +264,18 @@ class RequirementListView(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context['sort'] = self.request.GET.get('sort', '')
         user = self.request.user
+        context['can_export'] = access.can(user, 'export')
         if user.role == 'manufacturer':
             supplier = self._manufacturer_supplier()
             context['tab'] = self.request.GET.get('tab', 'new')
             context['process'] = self.request.GET.get('process', '')
             context['tab_counts'] = {'new': 0, 'quoted': 0, 'won': 0, 'lost': 0}
             if supplier:
+                context['rfqs_waiting'] = rfq_inbox.waiting_count(supplier)
+                context['rfq_limit'] = access.limit(supplier, plan_catalog.RFQS_RECEIVED_PER_MONTH)
+                context['show_match'] = access.can(user, 'rfq.match_scores')
                 context['tab_counts'] = {
-                    'new': services.open_requirements_for(supplier).exclude(
+                    'new': rfq_inbox.received(services.open_requirements_for(supplier), supplier).exclude(
                         quote__supplier=supplier
                     ).exclude(declines__supplier=supplier).count(),
                     'quoted': Requirement.objects.filter(
@@ -273,12 +319,12 @@ def _gst_context(requirement, supplier):
 def _own_open_requirement(request, pk):
     """An RFQ of the logged-in buyer's company, still open for editing (not
     yet awarded). Anyone outside the company gets a 404, so RFQ ids can't be
-    probed; a team user may only change the RFQs they created themselves."""
+    probed; a Viewer can't change it."""
     requirement = get_object_or_404(Requirement, pk=pk, is_deleted=False)
     if not team.is_teammate(request.user, requirement.user_id):
         raise Http404
-    if team.needs_approval(request.user) and requirement.user_id != request.user.id:
-        raise PermissionDenied("Only the RFQ's creator, a supervisor or the manager can change it.")
+    if not team.allows(request.user, 'rfq.edit'):
+        raise PermissionDenied(VIEW_ONLY)
     if requirement.status:
         raise PermissionDenied("This RFQ has already been awarded and can no longer be changed.")
     return requirement
@@ -300,12 +346,11 @@ class RequirementCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView)
         if request.user.is_authenticated:
             if request.user.role == 'manufacturer':
                 raise PermissionDenied("Only buyers can post RFQs.")
-            limit, used = services.rfq_allowance(request.user)
-            if limit is not None and used >= limit:
-                messages.error(
-                    request,
-                    f"You've used all {limit} RFQs included in your plan this month. Upgrade your plan to post more.",
-                )
+            if not team.allows(request.user, 'rfq.create'):
+                raise PermissionDenied(VIEW_ONLY)
+            decision = access.check(request.user, 'rfq.create')
+            if not decision:
+                messages.error(request, decision.reason)
                 # ?upgrade=1 opens the plan modal in the dashboard's subscription widget.
                 return redirect(reverse('home') + '?upgrade=1')
         return super().dispatch(request, *args, **kwargs)
@@ -324,26 +369,16 @@ class RequirementCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView)
         if form.is_valid():
             requirement = form.save(commit=False)
             requirement.user = request.user
-            needs_approval = team.needs_approval(request.user)
-            if needs_approval:
-                requirement.approval_status = APPROVAL_PENDING
             requirement.save()
             formset = RequirementPartInlineFormSet(request.POST, request.FILES, instance=requirement)
             if formset.is_valid():
                 formset.save()
                 _sync_part_count(requirement)
                 logger.info("Requirement #%s created by %s", requirement.pk, request.user)
-                if needs_approval:
-                    approvals.submit(request.user, ApprovalRequest.RFQ, requirement=requirement)
-                    messages.success(request, (
-                        f"RFQ saved and sent to {APPROVERS} for approval. "
-                        "Suppliers will see it once it's approved."
-                    ))
-                else:
-                    team.log(request.user, 'rfq.created', f"Posted RFQ-{requirement.pk}: {requirement.title}",
-                             reverse('requirement', kwargs={'pk': requirement.pk}))
-                    emails.notify_new_rfq(requirement)
-                    messages.success(request, self.success_message)
+                team.log(request.user, 'rfq.created', f"Posted RFQ-{requirement.pk}: {requirement.title}",
+                         reverse('requirement', kwargs={'pk': requirement.pk}))
+                emails.notify_new_rfq(requirement)
+                messages.success(request, self.success_message)
                 return redirect(self.success_url)
             # Parts were invalid — undo the just-created requirement and re-show the form.
             logger.warning(
@@ -429,17 +464,12 @@ class RequirementUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView)
 
 
     def _settle_approval(self, request):
-        """An RFQ still waiting for (or refused) approval: a user's edit
-        sends it for approval again; a supervisor's/manager's edit releases
-        it to suppliers."""
+        """An RFQ still waiting for (or refused) approval from before RFQs
+        stopped needing it: saving it releases it to suppliers."""
         requirement = self.object
         if requirement.approval_status == APPROVAL_APPROVED:
             return None
         url = reverse('requirement', kwargs={'pk': requirement.pk})
-        if team.needs_approval(request.user):
-            Requirement.objects.filter(pk=requirement.pk).update(approval_status=APPROVAL_PENDING)
-            approvals.submit(request.user, ApprovalRequest.RFQ, requirement=requirement)
-            return f"Changes saved and sent to {APPROVERS} for approval."
         approvals.cancel_open(f"Sent to suppliers directly by {request.user.get_full_name() or request.user.email}.",
                               requirement=requirement, kind=ApprovalRequest.RFQ)
         Requirement.objects.filter(pk=requirement.pk).update(approval_status=APPROVAL_APPROVED)
@@ -510,10 +540,6 @@ class AmendmentRespondView(LoginRequiredMixin, View):
             messages.success(request, "You rejected the changes. The buyer has been notified and your current quote stands.")
             return redirect(back)
 
-        if team.needs_approval(request.user):
-            # New pricing is a quote revision; users can't send one without sign-off.
-            messages.error(request, "Only a supervisor or the manager can send new pricing to the buyer.")
-            return redirect(back)
         form = AmendmentAcceptForm(request.POST, instance=response)
         if not form.is_valid():
             for errors in form.errors.values():
@@ -549,7 +575,12 @@ class AmendmentDecisionView(LoginRequiredMixin, View):
             return redirect(back)
 
         supplier_name = response.quote.supplier.companyname or response.quote.supplier
-        if request.POST.get('decision') == 'accept' and team.needs_approval(request.user):
+        if not team.allows(request.user, 'quotes.manage'):
+            raise PermissionDenied(VIEW_ONLY)
+        how, why_not = _acceptance(request.user) if request.POST.get('decision') == 'accept' else (None, '')
+        if request.POST.get('decision') == 'accept' and how is None:
+            messages.error(request, why_not)
+        elif request.POST.get('decision') == 'accept' and how == 'approval':
             approvals.submit(
                 request.user, ApprovalRequest.AWARD, requirement=requirement, quote=response.quote,
                 payload={'amendment_response': response.pk},
@@ -610,12 +641,29 @@ class RequirementView(LoginRequiredMixin, View):
         supplier = None
         if not request.user.is_staff and not context['is_buyer']:
             supplier = team.supplier_profile(request.user)
+            locked = _rfq_quota_gate(request, supplier, requirement)
+            if locked is not None:
+                return locked
         nda_accepted = request.user.is_staff or context['is_buyer'] or requirement.nda_accepted_by(supplier)
         context['nda_accepted'] = nda_accepted
         context['demanddetails'] = RequirementPart.objects.filter(requirement=requirement).all() if nda_accepted else RequirementPart.objects.none()
         context.update(_rfq_conversation_context(request, requirement))
         context.update(_change_request_context(request, requirement, context.get('my_quote')))
         return render(request, 'requirement/requirement.html', context)
+
+
+def _rfq_quota_gate(request, supplier, requirement):
+    """None when `supplier` may open `requirement` (already received, quoted
+    on, or this month's plan has room to receive it — plans.rfq_inbox);
+    otherwise the upgrade page."""
+    if supplier is None or not requirement.is_open_for_quotes():
+        return None
+    if Quote.objects.filter(requirement=requirement, supplier=supplier).exists() or rfq_inbox.receive(supplier, requirement):
+        return None
+    limit = access.limit(supplier, plan_catalog.RFQS_RECEIVED_PER_MONTH)
+    return render(request, 'requirement/rfq_locked.html', {
+        'demand': requirement, 'limit': limit, 'plan_label': plan_catalog.PLAN_LABELS[access.plan_of(supplier)],
+    }, status=402)
 
 
 class RequirementNDAAcceptView(LoginRequiredMixin, View):
@@ -700,23 +748,91 @@ class QuoteListView(LoginRequiredMixin, ListView):
             return ["quote/quote_list.html"]
         return ["quote/quote_list_buyer.html"]
 
+    QUOTE_FILTERS = {
+        'draft': {'is_draft': True},
+        'sent': {'is_draft': False, 'is_selected': False, 'status__isnull': True},
+        'won': {'is_selected': True},
+        'lost': {'status': 'Rejected'},
+    }
+
+    def get(self, request, *args, **kwargs):
+        if request.GET.get('export') == 'csv':
+            refused = _export_refused(request)
+            if refused:
+                return refused
+            return export.csv_response('quotes', ['Quote', 'RFQ', 'RFQ title', 'Supplier', 'Unit price', 'Tooling', 'Lead time', 'Payment terms', 'Status', 'Submitted'], (
+                [q.pk, f"RFQ-{q.requirement_id}", q.requirement.title, q.supplier.companyname or q.supplier, q.quote_price,
+                 q.tooling_cost, f"{q.lead_time_value or ''} {q.lead_time_unit if q.lead_time_value else ''}".strip(),
+                 q.get_payment_terms_display(), 'Draft' if q.is_draft else ('Won' if q.is_selected else (q.status or 'Sent')),
+                 q.submitted_at.strftime('%Y-%m-%d') if q.submitted_at else '']
+                for q in self.get_queryset()
+            ))
+        return super().get(request, *args, **kwargs)
+
     def get_queryset(self):
         user = self.request.user
         if user.role == 'manufacturer':
             supplier = team.supplier_profile(user)
-            return Quote.objects.filter(is_deleted=False, supplier=supplier).select_related('requirement', 'supplier').order_by('-created_at')
+            queryset = Quote.objects.filter(is_deleted=False, supplier=supplier).select_related('requirement', 'supplier').order_by('-created_at')
+            status = self.request.GET.get('status', '')
+            search = self.request.GET.get('q', '').strip()
+            if access.can(user, 'quotes.filter'):
+                if status in self.QUOTE_FILTERS:
+                    queryset = queryset.filter(**self.QUOTE_FILTERS[status])
+                if search:
+                    queryset = queryset.filter(requirement__title__icontains=search)
+            return queryset
         return Quote.objects.filter(
             requirement__user_id__in=team.team_user_ids(user), requirement__is_deleted=False, is_deleted=False, is_draft=False,
         ).select_related('requirement', 'supplier').order_by('requirement_id', '-is_selected', 'quote_price')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        if self.request.user.role != 'manufacturer':
+        user = self.request.user
+        context['can_export'] = access.can(user, 'export')
+        if user.role == 'manufacturer':
+            context['can_filter_quotes'] = access.can(user, 'quotes.filter')
+            context['can_bulk_quotes'] = access.can(user, 'quotes.bulk')
+            context['status_filter'] = self.request.GET.get('status', '')
+            context['q'] = self.request.GET.get('q', '').strip()
+        if user.role != 'manufacturer':
             grouped = {}
             for quote in context['object_list']:
                 grouped.setdefault(quote.requirement, []).append(quote)
             context['quotes_by_requirement'] = grouped
         return context
+
+
+class QuoteBulkView(LoginRequiredMixin, View):
+    """Withdraws several of the company's draft quotes at once (supplier
+    plans with advanced quote management)."""
+    http_method_names = ['post']
+
+    def post(self, request):
+        decision = access.check(request.user, 'quotes.bulk')
+        supplier = team.supplier_profile(request.user)
+        if not decision or supplier is None:
+            messages.error(request, decision.reason or "Only manufacturers can do that.")
+            return redirect(reverse('quote-list'))
+        ids = [int(pk) for pk in request.POST.getlist('quote') if pk.isdigit()]
+        drafts = Quote.objects.filter(supplier=supplier, pk__in=ids, is_draft=True, is_deleted=False)
+        count = drafts.update(is_deleted=True)
+        team.log(request.user, 'quote.bulk_withdrawn', f"Withdrew {count} draft quote{'s' if count != 1 else ''}", reverse('quote-list'))
+        messages.success(request, f"Withdrew {count} draft quote{'s' if count != 1 else ''}.")
+        return redirect(reverse('quote-list'))
+
+
+class QuoteTemplateDeleteView(LoginRequiredMixin, View):
+    http_method_names = ['post']
+
+    def post(self, request, pk):
+        supplier = team.supplier_profile(request.user)
+        template = get_object_or_404(QuoteTemplate, pk=pk, supplier=supplier) if supplier else None
+        if template is None:
+            raise Http404
+        template.delete()
+        messages.success(request, f"Deleted the template \"{template.name}\".")
+        return redirect(_safe_next(request, 'quote-list'))
 
 
 class QuoteCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView):
@@ -730,6 +846,11 @@ class QuoteCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView):
             supplier = team.supplier_profile(request.user)
             if supplier is None:
                 raise PermissionDenied("Only manufacturers can submit quotes.")
+            if not team.allows(request.user, 'quotes.manage'):
+                raise PermissionDenied(VIEW_ONLY)
+            locked = _rfq_quota_gate(request, supplier, requirement)
+            if locked is not None:
+                return locked
             back = reverse('requirement', kwargs={'pk': requirement.pk})
             if not requirement.is_open_for_quotes():
                 messages.error(request, "This RFQ is closed to new quotes — it has been awarded or its deadline has passed.")
@@ -758,7 +879,18 @@ class QuoteCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView):
             context.update(_rfq_conversation_context(self.request, requirement))
             context.update(_gst_context(requirement, supplier))
         context["is_manufacturer"] = True
+        context.update(_quote_plan_context(self.request, supplier))
         return context
+
+    def get_initial(self):
+        initial = super().get_initial()
+        supplier = team.supplier_profile(self.request.user)
+        template_id = self.request.GET.get('template', '')
+        if supplier and template_id.isdigit() and access.can(self.request.user, 'quote.templates'):
+            template = QuoteTemplate.objects.filter(supplier=supplier, pk=int(template_id)).first()
+            if template:
+                initial.update(template.initial())
+        return initial
 
     def post(self, request, *args, **kwargs):
         # Fixed bug: this view used to bypass form validation entirely,
@@ -780,17 +912,14 @@ class QuoteCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView):
         quote.supplier = supplier_details
         quote.created_by = request.user
         submitting = request.POST.get('action') != 'draft'
-        needs_approval = submitting and team.needs_approval(request.user)
-        # A user's submission stays a draft (invisible to the buyer) until approved.
-        quote.is_draft = not submitting or needs_approval
-        if needs_approval:
-            quote.approval_status = APPROVAL_PENDING
+        submitting = _may_submit_quote(request, submitting)
+        quote.is_draft = not submitting
+        if submitting:
+            quote.submitted_at = timezone.now()
         quote.save()
+        _save_as_template(request, supplier_details, quote)
         logger.info("Quote #%s saved for requirement #%s by %s", quote.pk, requirement.pk, request.user)
-        if needs_approval:
-            approvals.submit(request.user, ApprovalRequest.QUOTE, quote=quote)
-            messages.success(request, f"Quote sent to {APPROVERS} for approval. The buyer will see it once it's approved.")
-        elif submitting:
+        if submitting:
             emails.notify_quote_submitted(quote)
             team.log(request.user, 'quote.submitted', f"Quoted on RFQ-{requirement.pk}: {requirement.title}",
                      reverse('requirement', kwargs={'pk': requirement.pk}))
@@ -813,14 +942,14 @@ class QuoteCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView):
 
 def _own_open_quote(request, pk):
     """A quote of the logged-in supplier's company, still undecided. Anyone
-    outside the company gets a 404; a team user may only change quotes they
-    created; a decided (selected/rejected) quote can't be changed."""
+    outside the company gets a 404; a Viewer can't change it; a decided
+    (selected/rejected) quote can't be changed."""
     quote = get_object_or_404(Quote.objects.select_related('supplier', 'requirement'), pk=pk, is_deleted=False)
     supplier = team.supplier_profile(request.user)
     if supplier is None or quote.supplier_id != supplier.pk:
         raise Http404
-    if team.needs_approval(request.user) and quote.created_by_id != request.user.id:
-        raise PermissionDenied("Only the quote's creator, a supervisor or the manager can change it.")
+    if not team.allows(request.user, 'quotes.manage'):
+        raise PermissionDenied(VIEW_ONLY)
     if quote.is_selected or quote.status:
         raise PermissionDenied("This quote has already been decided and can no longer be changed.")
     return quote
@@ -859,26 +988,16 @@ class QuoteUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
         if not form.is_valid():
             return self.render_to_response(self.get_context_data(form=form))
         submitting = request.POST.get('action') != 'draft'
+        if was_draft and submitting:
+            submitting = _may_submit_quote(request, submitting)
         back = reverse('requirement', kwargs={'pk': self.object.requirement_id})
-        if team.needs_approval(request.user) and not was_draft:
-            # The buyer already has this quote: stage the revision instead of
-            # changing what they see before it's approved.
-            approvals.submit(request.user, ApprovalRequest.QUOTE, quote=self.object,
-                             payload=approvals.revision_payload(form, self.object))
-            messages.success(request, (
-                f"Revision sent to {APPROVERS} for approval. "
-                "The buyer keeps seeing your current quote until it's approved."
-            ))
-            return redirect(back)
+        if not was_draft and form.has_changed():
+            # The buyer has seen the current version: keep it in the history.
+            QuoteRevision.snapshot(self.object, request.user)
         quote = form.save(commit=False)
-        if team.needs_approval(request.user) and submitting:
-            quote.is_draft = True
-            quote.approval_status = APPROVAL_PENDING
-            quote.save()
-            approvals.submit(request.user, ApprovalRequest.QUOTE, quote=quote)
-            messages.success(request, f"Quote sent to {APPROVERS} for approval. The buyer will see it once it's approved.")
-            return redirect(back)
         quote.is_draft = not submitting
+        if submitting and quote.submitted_at is None:
+            quote.submitted_at = timezone.now()
         if submitting:
             quote.approval_status = APPROVAL_APPROVED
             approvals.cancel_open(f"Sent directly by {request.user.get_full_name() or request.user.email}.",
@@ -900,6 +1019,60 @@ class QuoteUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
             emails.notify_quote_submitted(quote)
         messages.success(request, "Quote saved as draft." if quote.is_draft else self.success_message)
         return redirect(reverse('requirement', kwargs={'pk': quote.requirement.pk}))
+
+
+def _upgrade_page(request, decision, title):
+    """The page shown instead of a feature the plan doesn't include (or the
+    role can't use)."""
+    return render(request, 'plans/upgrade_required.html', {
+        'title': title, 'decision': decision, 'can_change_plan': team.can_manage_subscription(request.user),
+    }, status=403 if decision.upgrade_to == '' else 402)
+
+
+def _export_refused(request):
+    """None if this user may export (plans with Excel/CSV export), else a
+    redirect back with the reason."""
+    decision = access.check(request.user, 'export')
+    if decision:
+        return None
+    messages.error(request, "Excel / CSV export: " + decision.reason)
+    return redirect(request.path)
+
+
+def _may_submit_quote(request, submitting):
+    """Whether a quote being sent may go out under the plan's quotes-per-month
+    limit. If not, it's kept as a draft and the user is told why."""
+    if not submitting:
+        return False
+    decision = access.check(request.user, 'quote.submit')
+    if decision:
+        return True
+    messages.warning(request, decision.reason + " Your quote was saved as a draft.")
+    return False
+
+
+def _save_as_template(request, supplier, quote):
+    """"Save these terms as a template" on the quote form (Starter+)."""
+    name = request.POST.get('save_as_template', '').strip()[:100]
+    if not name or not access.can(request.user, 'quote.templates'):
+        return
+    QuoteTemplate.objects.update_or_create(supplier=supplier, name=name, defaults={
+        'tooling_cost': quote.tooling_cost, 'lead_time_value': quote.lead_time_value,
+        'lead_time_unit': quote.lead_time_unit, 'payment_terms': quote.payment_terms or '',
+        'valid_for_days': (quote.valid_until - timezone.localdate()).days if quote.valid_until and quote.valid_until > timezone.localdate() else None,
+        'note': quote.note or '', 'created_by': request.user,
+    })
+    messages.info(request, f"Saved the terms as the template \"{name}\".")
+
+
+def _quote_plan_context(request, supplier):
+    """What the quote form can offer on this plan."""
+    can_template = access.can(request.user, 'quote.templates')
+    return {
+        'can_use_templates': can_template,
+        'quote_templates': QuoteTemplate.objects.filter(supplier=supplier) if (supplier and can_template) else [],
+        'quotes_left': access.remaining(supplier, plan_catalog.QUOTES_PER_MONTH) if supplier else None,
+    }
 
 
 class QuoteDeleteView(LoginRequiredMixin, View):
@@ -945,7 +1118,13 @@ class QuoteStatusUpdateView(LoginRequiredMixin, View):
         requirement = quote.requirement
         if not team.is_teammate(request.user, requirement.user_id) or status not in ('Approved', 'Rejected'):
             raise Http404
-        award_needs_approval = status == 'Approved' and team.needs_approval(request.user)
+        if not team.allows(request.user, 'quotes.manage'):
+            raise PermissionDenied(VIEW_ONLY)
+        how, why_not = _acceptance(request.user) if status == 'Approved' else (None, '')
+        if status == 'Approved' and how is None:
+            messages.error(request, why_not)
+            return redirect(reverse('requirement', kwargs={'pk': requirement.pk}))
+        award_needs_approval = how == 'approval'
         if status == 'Approved' and not award_needs_approval:
             # Awarding creates the order and issues a purchase order: a
             # stolen or shared session shouldn't be enough on its own.
@@ -1087,14 +1266,38 @@ class OrderListView(ListView):
             supplier = team.supplier_profile(user)
             orders = Order.objects.filter(supplier=supplier)
             template_name = "order/order_list_manufacturer.html"
-            context = {'bills': orders.order_by('-created_at')}
         else:
             customer = team.buyer_profile(user)
             orders = Order.objects.filter(customer=customer)
             template_name = "order/order_list.html"
+        listed = orders.select_related('requirement', 'supplier', 'customer').order_by('-created_at')
+        can_filter = access.can(user, 'orders.filter')
+        status, search = request.GET.get('status', ''), request.GET.get('q', '').strip()
+        if can_filter and status in dict(Order.STATUS_CHOICES):
+            listed = listed.filter(status=status)
+        if can_filter and search:
+            listed = listed.filter(Q(requirement__title__icontains=search) | Q(billno__icontains=search.removeprefix('ORD-')))
+        if request.GET.get('export') == 'csv':
+            refused = _export_refused(request)
+            if refused:
+                return refused
+            return export.csv_response('orders', ['Order', 'RFQ', 'Title', 'Supplier', 'Buyer', 'Status', 'Stage', 'Ship by', 'Created'], (
+                [f"ORD-{o.billno}", f"RFQ-{o.requirement_id}", o.requirement.title, o.supplier.companyname or o.supplier,
+                 o.customer.Name, o.get_status_display(), o.get_production_stage_display(), o.ship_by_date or '',
+                 o.created_at.strftime('%Y-%m-%d')]
+                for o in listed
+            ))
+        common = {
+            'can_filter_orders': can_filter, 'can_export': access.can(user, 'export'),
+            'status_filter': status, 'q': search, 'status_choices': Order.STATUS_CHOICES,
+        }
+        if user.role == 'manufacturer':
+            context = {'bills': listed, **common}
+        else:
             month_start = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             context = {
-                'bills': orders.order_by('-created_at'),
+                **common,
+                'bills': listed,
                 'stat_in_production': orders.filter(status='in_production').count(),
                 'stat_needs_approval': orders.filter(status='payment_pending').count(),
                 'stat_in_transit': orders.filter(production_stage='dispatched').exclude(status__in=['completed', 'cancelled']).count(),
@@ -1149,7 +1352,7 @@ class OrderDetailView(View):
             'order_documents': order.documents.all(),
             'is_buyer': party == 'buyer',
             'payment_approval': order.approval_requests.filter(kind=ApprovalRequest.PAYMENT, status=ApprovalRequest.PENDING).first(),
-            'payment_needs_approval': team.needs_approval(request.user),
+            'payment_for_admins': next_status == 'paid' and party == 'buyer' and not team.allows(request.user, 'order.confirm_payment'),
         }
         return render(request, self.template_name, context)
 
@@ -1239,17 +1442,6 @@ class OrderStatusUpdateView(LoginRequiredMixin, View):
         order = get_object_or_404(Order.objects.select_related('supplier', 'customer', 'requirement'), billno=billno)
         if _order_role(order, request.user) is None:
             raise Http404
-        if status == 'paid' and _may_perform_transition(order, request.user, status) and team.needs_approval(request.user):
-            if order.status != 'payment_pending':
-                messages.error(request, "This order isn't waiting for payment.")
-            else:
-                approvals.submit(request.user, ApprovalRequest.PAYMENT, order=order, requirement=order.requirement)
-                messages.success(request, f"Payment confirmation sent to {APPROVERS} for approval.")
-            if getattr(request, 'htmx', False):
-                response = HttpResponse(status=204)
-                response['HX-Refresh'] = 'true'
-                return response
-            return redirect(reverse('order-detail', kwargs={'billno': order.billno}))
         if status == 'paid' and _may_perform_transition(order, request.user, status):
             # Confirming payment is the other step that moves money.
             reauth = session_security.require_recent_auth(request, reverse('order-detail', kwargs={'billno': order.billno}))
@@ -1264,7 +1456,11 @@ class OrderStatusUpdateView(LoginRequiredMixin, View):
                 "Rejected transition '%s' on order #%s (current status: %s): %s is not the party who may make it",
                 status, order.billno, order.status, request.user,
             )
-            if status == 'cancelled':
+            if status == 'paid' and _order_role(order, request.user) == 'buyer':
+                messages.error(request, "Only your company's owner or an admin can confirm a payment.")
+            elif ORDER_TRANSITION_ROLE.get(status, _order_role(order, request.user)) == _order_role(order, request.user) and status != 'cancelled':
+                messages.error(request, f"Your role ({team.role_label(request.user)}) can't make that change.")
+            elif status == 'cancelled':
                 messages.error(request, "This order can only be cancelled before production starts.")
             elif ORDER_TRANSITION_ROLE.get(status) == 'supplier':
                 messages.error(request, "Only the manufacturer on this order can make that change.")
@@ -1407,7 +1603,25 @@ class global_search_view(LoginRequiredMixin, ListView):
 
 
 class DocumentListView(LoginRequiredMixin, View):
+    """Every document on the company's account — POs, invoices, quote files,
+    certificates, attachments — on plans with full invoice management. On
+    Basic, each order's PO and invoice download from the order page."""
     def get(self, request):
+        decision = access.check(request.user, 'invoice.list')
+        if not decision:
+            return _upgrade_page(request, decision, "Documents")
+        if request.GET.get('export') == 'csv':
+            refused = _export_refused(request)
+            if refused:
+                return refused
+            if request.user.role == 'manufacturer':
+                found = OrderDocument.objects.filter(order__supplier=team.supplier_profile(request.user))
+            else:
+                found = OrderDocument.objects.filter(order__customer=team.buyer_profile(request.user))
+            return export.csv_response('invoices', ['Number', 'Type', 'Order', 'Issued', 'Currency', 'Total'], (
+                [doc.number, doc.get_kind_display(), f"ORD-{doc.order_id}", doc.issued_at.strftime('%Y-%m-%d'), doc.currency, doc.total]
+                for doc in found.order_by('-issued_at')
+            ))
         if request.user.role == 'manufacturer':
             # A manufacturer's own uploads (quote files) plus whatever the
             # buyer shared back through production updates on their orders.
@@ -1436,7 +1650,7 @@ class DocumentListView(LoginRequiredMixin, View):
         docs += services.message_attachment_documents(request.user)
         docs += services.order_document_entries(request.user)
         docs.sort(key=lambda doc: doc['date'], reverse=True)
-        return render(request, 'documents/document_list.html', {'docs': docs})
+        return render(request, 'documents/document_list.html', {'docs': docs, 'can_export': access.can(request.user, 'export')})
 
 
 def _safe_next(request, fallback_name='notification-list'):
@@ -1497,7 +1711,8 @@ class MessageThreadStartView(LoginRequiredMixin, View):
         if supplier_pk is None:
             supplier = team.supplier_profile(request.user)
             can_see = supplier is not None and (
-                services.open_requirements_for(supplier).filter(pk=requirement.pk).exists()
+                # Asking about an open RFQ receives it, like opening it does.
+                (services.open_requirements_for(supplier).filter(pk=requirement.pk).exists() and rfq_inbox.receive(supplier, requirement))
                 or Quote.objects.filter(requirement=requirement, supplier=supplier).exists()
                 or MessageThread.objects.filter(requirement=requirement, supplier=supplier).exists()
             )
@@ -1677,7 +1892,41 @@ def quotes_section_context(request, requirement):
         'my_declined': my_declined,
         'selected_quote': next((q for q in quotes if q.is_selected), None),
         'quotes_sig': services.quotes_signature(requirement),
+        **_quote_plan_features(request, requirement, quotes, my_quote),
     }
+
+
+def _quote_plan_features(request, requirement, quotes, my_quote):
+    """The parts of the RFQ page that depend on the company's plan."""
+    user = request.user
+    if user.role == 'manufacturer':
+        history = access.can(user, 'quotes.history') and my_quote is not None
+        return {'my_quote_revisions': list(my_quote.revisions.select_related('changed_by')) if history else None}
+    if not team.is_teammate(user, requirement.user_id):
+        return {}
+    accept_mode, accept_blocked = _acceptance(user)
+    features = {'accept_mode': accept_mode, 'accept_blocked': accept_blocked}
+    compare = access.check(user, 'quotes.compare')
+    submitted = [q for q in quotes if not q.is_draft]
+    if compare and len(submitted) > 1:
+        rows = []
+        for quote in submitted:
+            breakdown = quote.get_breakdown()
+            rows.append({
+                'quote': quote, 'unit_price': breakdown['unit_price'], 'subtotal': breakdown['subtotal'],
+                'tooling': breakdown['tooling_cost'], 'gst': breakdown['gst'],
+                'landed': breakdown['total'] + (breakdown['tooling_cost'] or 0),
+                'lead_time': f"{quote.lead_time_value} {quote.get_lead_time_unit_display().lower()}" if quote.lead_time_value else '',
+            })
+        cheapest = min(row['landed'] for row in rows)
+        for row in rows:
+            row['is_cheapest'] = row['landed'] == cheapest
+        features['comparison_rows'] = sorted(rows, key=lambda row: row['landed'])
+    elif not compare and len(submitted) > 1:
+        features['compare_upgrade'] = compare.upgrade_label
+    if requirement.status is None and access.can(user, 'suppliers.suggest'):
+        features['suggested_suppliers'] = services.suggested_suppliers(requirement, exclude=[q.supplier_id for q in quotes])
+    return features
 
 
 class LiveTopbarView(View):
@@ -1735,24 +1984,44 @@ class ReportsView(LoginRequiredMixin, View):
     ?period= picks the window; ?format=csv downloads the underlying rows."""
     def get(self, request):
         period = request.GET.get('period', reports.DEFAULT_PERIOD)
+        extra = {}
         if request.user.role == 'manufacturer':
             supplier = team.supplier_profile(request.user)
             if supplier is None:
                 messages.info(request, "Your manufacturer profile isn't set up yet.")
                 return redirect(reverse('home'))
-            report = reports.supplier_win_rate(supplier, period)
+            # Sales analytics (win rate, response) for owner/admin/sales on
+            # Starter+; performance insights for owner/admin/operations/
+            # viewers on Business.
+            sales = access.check(request.user, 'analytics.sales')
+            performance = access.check(request.user, 'performance.view')
+            if not (sales or performance):
+                return _upgrade_page(request, sales if team.allows(request.user, 'analytics.sales') else performance, "Reports")
+            report = reports.supplier_win_rate(supplier, period) if sales else {'period': period, 'periods': reports.PERIODS}
+            extra = {
+                'show_sales': bool(sales),
+                'show_price_comparison': access.can(request.user, 'quotes.compare'),
+                'performance': reports.supplier_performance(supplier, period) if performance else None,
+                'performance_upgrade': '' if performance or not team.allows(request.user, 'analytics.operations') else performance.upgrade_label,
+            }
             template, filename = 'reports/supplier_win_rate.html', 'quotes'
         else:
+            decision = access.check(request.user, 'analytics.view')
+            if not decision:
+                return _upgrade_page(request, decision, "Reports")
             report = reports.buyer_spend(request.user, period)
             template, filename = 'reports/buyer_spend.html', 'spend'
-        if request.GET.get('format') == 'csv':
+        if request.GET.get('format') == 'csv' and extra.get('show_sales', True):
+            refused = _export_refused(request)
+            if refused:
+                return refused
             response = HttpResponse(content_type='text/csv; charset=utf-8')
             response['Content-Disposition'] = f'attachment; filename="{filename}-{report["period"]}.csv"'
             writer = csv.writer(response)
             writer.writerow(report['csv_header'])
             writer.writerows(report['csv_rows'])
             return response
-        return render(request, template, {'report': report})
+        return render(request, template, {'report': report, 'can_export': access.can(request.user, 'export'), **extra})
 
 
 class OrderDocumentDownloadView(LoginRequiredMixin, View):
@@ -1766,14 +2035,14 @@ class OrderDocumentDownloadView(LoginRequiredMixin, View):
 
 
 class ApprovalListView(LoginRequiredMixin, View):
-    """The company's approval queue. Supervisors and the manager see every
-    pending request and decide them; a user sees the requests they made."""
+    """The company's approval queue. The owner and admins see every pending
+    request and decide them; anyone else sees the requests they made."""
     def get(self, request):
         profile = team.company(request.user)
         if profile is None:
             messages.info(request, "Your company profile isn't set up yet.")
             return redirect(reverse('home'))
-        can_approve = team.can_approve(request.user)
+        can_approve = team.can_manage_company(request.user) and team.company(request.user) is not None
         rows = ApprovalRequest.objects.filter(**team.company_filter(profile)).select_related(
             'requirement', 'quote__requirement', 'quote__supplier', 'order__requirement', 'requested_by', 'decided_by',
         )
@@ -1790,7 +2059,7 @@ class ApprovalListView(LoginRequiredMixin, View):
 
 
 class ApprovalDecisionView(LoginRequiredMixin, View):
-    """A supervisor or the manager approves or rejects a request. Awards and
+    """The owner or an admin approves or rejects a request. Awards and
     payment confirmations move money, so they need a recent password, the
     same as doing them directly."""
     http_method_names = ['post']
@@ -1825,3 +2094,80 @@ class ApprovalDecisionView(LoginRequiredMixin, View):
             except approvals.ApprovalError as exc:
                 messages.error(request, str(exc))
         return redirect(reverse('approvals'))
+
+
+class ContactsView(LoginRequiredMixin, View):
+    """A supplier's customer contacts: the buyers on its orders and
+    conversations. Basic plans list buyer company names; plans with full
+    contacts add the contact person, email, phone and conversation links.
+    Viewers always get the names only ('buyer_info.view')."""
+    def get(self, request):
+        supplier = team.supplier_profile(request.user)
+        if supplier is None or not team.allows(request.user, 'contacts.view'):
+            raise Http404
+        details = access.check(request.user, 'contacts.details')
+        buyers = {}
+        for order in Order.objects.filter(supplier=supplier).select_related('customer__user').order_by('-created_at'):
+            entry = buyers.setdefault(order.customer_id, {'buyer': order.customer, 'orders': 0, 'threads': [], 'last': order.created_at})
+            entry['orders'] += 1
+        for thread in MessageThread.objects.filter(supplier=supplier).select_related('requirement__user').order_by('-created_at'):
+            customer = team.buyer_profile(thread.requirement.user)
+            if customer is None:
+                continue
+            entry = buyers.setdefault(customer.pk, {'buyer': customer, 'orders': 0, 'threads': [], 'last': thread.created_at})
+            entry['threads'].append(thread)
+        if request.GET.get('export') == 'csv':
+            refused = _export_refused(request)
+            if refused:
+                return refused
+            return export.csv_response('contacts', ['Buyer', 'Contact email', 'Phone', 'City', 'Orders'], (
+                [e['buyer'].Name, e['buyer'].email if details else '', e['buyer'].phone if details else '', e['buyer'].city, e['orders']]
+                for e in buyers.values()
+            ))
+        return render(request, 'contacts/contact_list.html', {
+            'contacts': sorted(buyers.values(), key=lambda e: e['last'], reverse=True),
+            'show_details': bool(details),
+            'details_upgrade': '' if details or not team.allows(request.user, 'buyer_info.view') else details.upgrade_label,
+            'can_export': access.can(request.user, 'export'),
+        })
+
+
+class RFQAlertPreferenceView(LoginRequiredMixin, View):
+    """Which RFQs a supplier gets instant alerts about (Business plans:
+    advanced RFQ opportunity alerts)."""
+    template_name = 'requirement/alert_preferences.html'
+
+    def _context(self, request, supplier, preference):
+        return {
+            'preference': preference,
+            'process_choices': RequirementPart.TECHNOLOGY_TYPES,
+            'material_choices': RequirementPart.MATERIAL_TYPES,
+        }
+
+    def get(self, request):
+        supplier = team.supplier_profile(request.user)
+        decision = access.check(request.user, 'rfq.alert_preferences')
+        if supplier is None:
+            raise Http404
+        if not decision:
+            return _upgrade_page(request, decision, "RFQ alert preferences")
+        preference = RFQAlertPreference.objects.filter(supplier=supplier).first() or RFQAlertPreference(supplier=supplier)
+        return render(request, self.template_name, self._context(request, supplier, preference))
+
+    def post(self, request):
+        supplier = team.supplier_profile(request.user)
+        decision = access.check(request.user, 'rfq.alert_preferences')
+        if supplier is None:
+            raise Http404
+        if not decision:
+            messages.error(request, decision.reason)
+            return redirect(reverse('rfq-alert-preferences'))
+        min_quantity = request.POST.get('min_quantity', '').strip()
+        RFQAlertPreference.objects.update_or_create(supplier=supplier, defaults={
+            'processes': [p[:100] for p in request.POST.getlist('processes')][:50],
+            'materials': [m[:100] for m in request.POST.getlist('materials')][:50],
+            'min_quantity': int(min_quantity) if min_quantity.isdigit() else None,
+        })
+        team.log(request.user, 'rfq.alerts_updated', "Updated RFQ alert preferences", reverse('rfq-alert-preferences'))
+        messages.success(request, "RFQ alert preferences saved.")
+        return redirect(reverse('rfq-alert-preferences'))

@@ -1,0 +1,15 @@
+{% autoescape off %}Hi {{ company_name }},
+
+New RFQs reached your MakeSetu inbox in the last day:
+{% for requirement in requirements %}
+    {{ requirement.title }} (RFQ-{{ requirement.pk }}){% if requirement.end_date %} — quotes due {{ requirement.end_date|date:"d M Y" }}{% endif %}{% endfor %}
+
+See them all and quote:
+
+    {{ url }}
+
+Upgrade to Starter to get each matched RFQ by email the moment it's posted.
+
+Thanks,
+The MakeSetu Team
+{% endautoescape %}

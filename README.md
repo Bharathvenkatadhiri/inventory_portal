@@ -119,13 +119,22 @@ npm run build-css     # one-shot minified build — run before committing UI cha
 pytest
 ```
 
-## Company teams and approvals
+## Company teams, roles and plans
 
-Each buyer or manufacturer company has a Manager (whoever registered it) who can invite
-Supervisors and Users; Users' RFQs, quotes, awards and payment confirmations wait for a
-Supervisor's or the Manager's approval. What each role can do, on each side, is in
-[docs/roles-and-permissions.md](docs/roles-and-permissions.md). The rules live in
-`accounts/team.py` (roles) and `marketplace/approvals.py` (approvals).
+Each buyer or manufacturer company has an Owner (whoever registered it). The Owner and any
+Admins invite the team: Procurement and Viewers on a buyer company; Sales, Operations and
+Viewers on a supplier company. Only the Owner handles the subscription and billing.
+
+Each company is on a plan, Free, Starter or Business, which sets its features, users, monthly
+RFQ/quote limits and file storage. Every action is checked as role, then plan feature, then
+limit.
+
+- Roles, per side: [docs/roles-and-permissions.md](docs/roles-and-permissions.md), enforced in
+  `accounts/team.py` and `accounts/middleware.py`; approvals in `marketplace/approvals.py`.
+- Plans: [docs/plans.md](docs/plans.md), defined in `plans/catalog.py` and applied by
+  `plans/access.py`.
+- After deploying, run `python manage.py rebuild_storage_ledger` once, and schedule
+  `python manage.py send_rfq_digests` daily (Free suppliers' RFQ alerts).
 
 ## Project layout
 
@@ -183,11 +192,11 @@ rebuilt or thrown away freely. For an actual production deployment, see the sect
 
 ## Sample companies for GST verification
 
-Dev and the test site use the mock GST provider (`GST_VERIFICATION_PROVIDER=mock`), which
-recognises these fictional companies (defined in `SAMPLE_COMPANIES` in
-`accounts/services/gst_verification.py`). Enter the GSTIN and the company name on the
-supplier or buyer sign-up step — "Pvt Ltd" vs "Private Limited", case and small typos don't
-matter.
+Dev and the test site use the mock GST provider (`GST_PROVIDER=mock`), which recognises
+these fictional companies (defined in `SAMPLE_COMPANIES` in
+`gst/services/providers/mock.py`). Enter the GSTIN on the supplier or buyer sign-up step and
+click Verify GSTIN; the legal name, address and status come back from the provider, and you
+choose the name shown on MakeSetu.
 
 | Use as | Company name | GSTIN | City |
 |---|---|---|---|
@@ -203,8 +212,8 @@ matter.
 Each GSTIN can be registered once per role (one buyer and one supplier account), so a
 company can also be used for both roles. To try the failure paths, use any valid-format GSTIN
 not in the table: one ending in `0` is reported **cancelled**, ending in `1` **suspended**, and
-starting with `00` **not found**. A wrong company name for a valid GSTIN gives the "name
-doesn't match" message.
+starting with `00` **not found**; any other verifies as a generic "BUSINESS <PAN> PRIVATE
+LIMITED". Every lookup, including failed ones, is listed under GST verifications in the admin.
 
 ## Roadmap (not yet built)
 
@@ -216,8 +225,8 @@ doesn't match" message.
 
 ## Licensing and Commercial Terms
 
-MakeSetu is a commercial software product. Usage of this application is chargeable, and the source code is available under separate commercial terms. For licensing and purchasing details, please contact bharathvenkatadhiri@gmail.com.
+MakeSetu is a commercial software product. Usage of this application is chargeable, and the source code is available under separate commercial terms. For licensing and purchasing details, please contact makesetu@gmail.com.
 
 ## Contact
 
-For any questions or feedback, please contact us at [bharathvenkatadhiri@gmail.com](mailto:bharathvenkatadhiri@gmail.com).
+For any questions or feedback, please contact us at [makesetu@gmail.com](mailto:makesetu@gmail.com).

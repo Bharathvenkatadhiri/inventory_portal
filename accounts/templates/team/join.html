@@ -2,12 +2,12 @@
 {% block title %}Join your team — MakeSetu{% endblock %}
 {% block hero_eyebrow %}Team invitation{% endblock %}
 {% block hero_title %}{% if company_name %}Join {{ company_name }}<br><span class="text-accent-500">on MakeSetu.</span>{% else %}Join your team<br><span class="text-accent-500">on MakeSetu.</span>{% endif %}{% endblock %}
-{% block hero_subtitle %}Work on your company's RFQs, quotes and orders together, with sign-off from your supervisor or manager where it matters.{% endblock %}
+{% block hero_subtitle %}Work on your company's RFQs, quotes and orders together, with sign-off from your company's owner or an admin where it matters.{% endblock %}
 {% block panel %}
 {% if invalid %}
 <div class="mb-6">
     <h2 class="text-2xl font-extrabold tracking-tight text-navy-900">This invitation isn't valid</h2>
-    <p class="mt-2 text-sm text-gray-500">It may have expired, been revoked, or already been used. Ask your manager or supervisor to send a new one.</p>
+    <p class="mt-2 text-sm text-gray-500">It may have expired, been revoked, or already been used. Ask your company's owner or an admin to send a new one.</p>
 </div>
 <a href="{% url 'login' %}" class="btn-primary w-full justify-center">Go to sign in</a>
 {% elif signed_in_as %}

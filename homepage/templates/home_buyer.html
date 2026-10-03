@@ -121,7 +121,7 @@
             </table>
         </div>
         {% else %}
-        <p class="text-sm text-gray-500">No RFQs yet. <a href="{% url 'new-requirement' %}" class="font-bold text-accent-500 hover:text-accent-600">Create your first one &rarr;</a></p>
+        <p class="text-sm text-gray-500">No RFQs yet. <a data-hide-for-viewer href="{% url 'new-requirement' %}" class="font-bold text-accent-500 hover:text-accent-600">Create your first one &rarr;</a></p>
         {% endif %}
     </div>
 

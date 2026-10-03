@@ -32,7 +32,9 @@ INSTALLED_APPS = [
     "core",
     "homepage",
     "accounts",
+    "gst",
     "marketplace",
+    "plans",
 ]
 
 MIDDLEWARE = [
@@ -48,6 +50,8 @@ MIDDLEWARE = [
     "core.middleware.HtmxMessagesMiddleware",
     "core.middleware.GlobalSearchMiddleware",
     "core.session_security.SessionBindingMiddleware",
+    "accounts.middleware.RolePermissionMiddleware",
+    "plans.middleware.StorageLimitMiddleware",
     "django.contrib.auth.middleware.LoginRequiredMiddleware",
 ]
 
@@ -280,28 +284,16 @@ _default_site_url = "http://localhost:8000" if DEBUG else (f"https://{ALLOWED_HO
 SITE_URL = env("SITE_URL", default=_default_site_url).rstrip("/")
 
 # --- GST verification -------------------------------------------------------
-# "mock" (default) uses accounts.services.gst_verification.MockGSTProvider —
-# no external calls, deterministic results, safe for dev/test. Set to a
-# registered real-provider name (and add it to get_provider()) to go live;
-# real provider credentials belong in env vars only, never in code or
-# committed to the frontend.
-GST_VERIFICATION_PROVIDER = env("GST_VERIFICATION_PROVIDER", default="mock")
-GST_VERIFICATION_API_KEY = env("GST_VERIFICATION_API_KEY", default="")
-GST_VERIFICATION_API_BASE_URL = env("GST_VERIFICATION_API_BASE_URL", default="")
-GST_VERIFICATION_TIMEOUT_SECONDS = env.int("GST_VERIFICATION_TIMEOUT_SECONDS", default=10)
+# Which adapter in gst/services/providers/ looks GSTINs up: "mock" (default:
+# no external calls, deterministic results, for dev/test), "setu" or
+# "cleartax". Provider credentials belong in env vars only, never in code.
+GST_PROVIDER = env("GST_PROVIDER", default="mock")
+# How long a successful verification stays usable for finishing sign-up.
+GST_VERIFICATION_MAX_AGE_MINUTES = env.int("GST_VERIFICATION_MAX_AGE_MINUTES", default=60)
 
 # --- Buyer/supplier messaging ------------------------------------------------
 MESSAGE_ATTACHMENT_MAX_BYTES = env.int("MESSAGE_ATTACHMENT_MAX_BYTES", default=10 * 1024 * 1024)
 
 # --- Subscription plans ---------------------------------------------------
-# Referenced by accounts.forms/accounts.views when creating/updating a
-# SubscriptionPlan. Minimal defaults; adjust pricing/limits as the product
-# requires.
-# team_seats counts everyone on the company account — the manager, active
-# supervisors/users and pending invitations (accounts.team.seats_used);
-# None means unlimited.
-subscription_plan_details = {
-    "basic": {"price": 0, "rfq_limit": "5", "team_seats": 3},
-    "standard": {"price": 999, "rfq_limit": "50", "team_seats": 10},
-    "enterprise": {"price": 4999, "rfq_limit": "unlimited", "team_seats": None},
-}
+# Plans, prices, limits and features live in plans/catalog.py.
+

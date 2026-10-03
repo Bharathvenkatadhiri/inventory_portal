@@ -1,15 +1,13 @@
-import json
 import logging
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.contrib.auth.decorators import login_not_required
-from django.core.cache import cache
+from django.db import transaction
 from django.db.models import F
-from django.http import JsonResponse
+from django.http import Http404
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
-from django.views.decorators.http import require_POST
 from django.core.exceptions import PermissionDenied, ValidationError
 from .forms import (
     SupplierDetailsForm, updateSupplierDetailsForm, UserRegistrationForm, SelectCustomer, CustomerRegistrationForm,
@@ -17,18 +15,17 @@ from .forms import (
     MachineForm, CertificationForm, CapabilityAddForm, MaterialAddForm,
 )
 from .models import (
-    ManufacturerProfile, ConsumerProfile, SubscriptionPlan, Company,
+    ManufacturerProfile, ConsumerProfile, SubscriptionPlan,
     Machine, ManufacturerPhoto, Certification, ManufacturingTech, PendingRegistration,
 )
-from .services.gst_verification import verify_gstin
-from .services.company_matching import company_names_match
+from .services import company_registration
 from django.views.generic import (View, ListView, CreateView, UpdateView, DeleteView)
 from django.contrib.messages.views import SuccessMessageMixin
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib import messages
 from django.conf import settings
 from django.apps import apps
-from core.settings import subscription_plan_details
+from plans import access, catalog
 from core.validators import IMAGE_EXTENSIONS, validate_upload
 from core import audit, login_throttle, session_security
 from . import otp, team
@@ -39,13 +36,6 @@ User = apps.get_model(app_label, model_name)
 
 logger = logging.getLogger(__name__)
 
-GST_VERIFY_RATE_LIMIT = 5
-GST_VERIFY_RATE_WINDOW_SECONDS = 60
-
-# Same three tiers assigned at registration (see `register()` below) — the
-# one place that lists/prices them, so the settings pages and the
-# self-service upgrade view can't drift out of sync with each other.
-PLAN_ORDER = ['basic', 'standard', 'enterprise']
 
 
 class StaffRequiredMixin(UserPassesTestMixin):
@@ -76,151 +66,36 @@ def _staff_editing_someone_else(request, obj):
     return request.user.is_staff and obj.user_id != request.user.id
 
 
-def plan_catalog(subscription):
-    """Real plan tiers from settings.subscription_plan_details, annotated
-    with which one the user is on, which one (if any) is awaiting payment,
-    and whether each other tier is an upgrade or downgrade from the current
-    one — never fabricated pricing or features."""
-    plan_labels = dict(SubscriptionPlan.PLAN_CHOICES)
-    current_plan_type = subscription.plan_type if subscription else 'basic'
-    pending_plan_type = subscription.pending_plan_type if subscription else ''
-    current_rank = PLAN_ORDER.index(current_plan_type) if current_plan_type in PLAN_ORDER else 0
-    return [
-        {
+def plan_catalog(subscription, side=catalog.BUYER):
+    """The plans for this company's side (buyer or supplier) from
+    plans.catalog, annotated with which one it's on, which one (if any) is
+    awaiting payment, and whether each is an upgrade or a downgrade — never
+    fabricated pricing or features."""
+    current = subscription.plan_type if subscription and subscription.plan_type in catalog.PLAN_LABELS else catalog.DEFAULT_PLAN
+    current_cycle = subscription.billing_cycle if subscription else catalog.MONTHLY
+    pending = subscription.pending_plan_type if subscription else ''
+    current_rank = catalog.PLAN_ORDER.index(current)
+    plans = []
+    for rank, key in enumerate(catalog.PLAN_ORDER):
+        limits = catalog.plan_entry(side, key)['limits']
+        plans.append({
             'key': key,
-            'label': plan_labels.get(key, key.title()),
-            'price': subscription_plan_details[key]['price'],
-            'rfq_limit': subscription_plan_details[key]['rfq_limit'],
-            'team_seats': subscription_plan_details[key].get('team_seats'),
+            'label': catalog.PLAN_LABELS[key],
+            'price_monthly': catalog.price(key, catalog.MONTHLY),
+            'price_yearly': catalog.price(key, catalog.YEARLY),
+            'highlights': [
+                f"{catalog.describe_limit(catalog.USERS, limits.get(catalog.USERS))} users",
+                *([f"{catalog.describe_limit(k, limits[k])} RFQs / month"] if (k := catalog.RFQS_PER_MONTH) in limits else []),
+                *([f"{catalog.describe_limit(k, limits[k])} RFQs received / month"] if (k := catalog.RFQS_RECEIVED_PER_MONTH) in limits else []),
+                *([f"{catalog.describe_limit(k, limits[k])} quotes / month"] if (k := catalog.QUOTES_PER_MONTH) in limits else []),
+                f"{catalog.describe_limit(catalog.STORAGE_BYTES, limits.get(catalog.STORAGE_BYTES))} file storage",
+            ],
             'is_current': rank == current_rank,
-            'is_pending': key == pending_plan_type,
+            'current_cycle': current_cycle if rank == current_rank else '',
+            'is_pending': key == pending,
             'is_upgrade': rank > current_rank,
-        }
-        for rank, key in enumerate(PLAN_ORDER)
-    ]
-
-
-def _gst_verify_rate_limited(request):
-    """Simple fixed-window throttle keyed by client IP, backed by Django's cache."""
-    ident = request.META.get('REMOTE_ADDR', 'unknown')
-    key = f"gst-verify-throttle:{ident}"
-    count = cache.get(key, 0)
-    if count >= GST_VERIFY_RATE_LIMIT:
-        return True
-    cache.set(key, count + 1, timeout=GST_VERIFY_RATE_WINDOW_SECONDS)
-    return False
-
-
-@login_not_required
-@require_POST
-def verify_gstin_view(request):
-    """
-    POST /api/companies/verify-gstin/
-    Body: {"gstin": "...", "company_name": "..."}
-
-    Verifies the GSTIN through the GST verification service, persists (or
-    refreshes) the resulting Company row, and — only when the result is
-    ACTIVE — records it in the session as this browser's verified company
-    for the registration step to pick up. Nothing about "verified" is ever
-    trusted from the request body on the registration submit; this endpoint
-    is the only place that flips it on.
-    """
-    if _gst_verify_rate_limited(request):
-        return JsonResponse(
-            {"verified": False, "message": "Too many verification attempts. Please try again in a minute."},
-            status=429,
-        )
-
-    try:
-        payload = json.loads(request.body or "{}")
-    except json.JSONDecodeError:
-        return JsonResponse({"verified": False, "message": "Invalid request."}, status=400)
-
-    gstin = (payload.get('gstin') or '').strip()
-    company_name = (payload.get('company_name') or '').strip()
-
-    if not company_name:
-        return JsonResponse({"verified": False, "message": "Company name is required."}, status=400)
-
-    result = verify_gstin(gstin)
-    if not result['success']:
-        return JsonResponse(
-            {"verified": False, "message": result['message']},
-            status=result.get('http_status', 422),
-        )
-
-    normalized_gstin = result['gstin']
-    existing = Company.objects.filter(gstin=normalized_gstin).first()
-    # A company may hold one buyer and one supplier account, so only a
-    # profile of the role being registered counts as "already registered".
-    role = User.objects.filter(pk=request.session.get('session_user_id')).values_list('role', flat=True).first()
-    taken_by = 'consumer_profile' if role == 'consumer' else 'manufacturer_profile'
-    if existing is not None and hasattr(existing, taken_by):
-        return JsonResponse(
-            {"verified": False, "message": "This GSTIN is already registered with an existing account."},
-            status=409,
-        )
-
-    gst_active = result['status'] == 'ACTIVE'
-    name_match = company_names_match(company_name, result['legal_name'])
-
-    if gst_active:
-        verification_status = 'verified' if name_match else 'manual_review'
-    elif result['status'] in ('SUSPENDED', 'UNKNOWN'):
-        verification_status = 'manual_review'
-    else:
-        verification_status = 'failed'
-
-    company, _created = Company.objects.update_or_create(
-        gstin=normalized_gstin,
-        defaults=dict(
-            legal_name=result['legal_name'],
-            trade_name=result['trade_name'],
-            gst_status=result['status'],
-            gst_verified=gst_active,
-            gst_verified_at=timezone.now() if gst_active else None,
-            registered_address=result['registered_address'],
-            state=result['state'],
-            city=result['city'],
-            pincode=result['pincode'],
-            cin=result['cin'],
-            mca_status=result['mca_status'],
-            entity_type=result['entity_type'],
-            verification_status=verification_status,
-        ),
-    )
-
-    if verification_status == 'verified':
-        request.session['verified_company_id'] = company.id
-    else:
-        request.session.pop('verified_company_id', None)
-
-    if verification_status == 'verified':
-        message = "Company verified successfully."
-    elif verification_status == 'manual_review' and gst_active:
-        message = "GSTIN is active, but the company name doesn't closely match GST records. This will need manual review."
-    elif verification_status == 'manual_review':
-        message = "We couldn't confirm this GSTIN's status automatically. This will need manual review."
-    else:
-        message = "This GSTIN's registration is not currently active."
-
-    return JsonResponse({
-        "verified": verification_status == 'verified',
-        "verification_status": verification_status,
-        "name_match": name_match,
-        "message": message,
-        "company": {
-            "legal_name": company.legal_name,
-            "trade_name": company.trade_name,
-            "gstin": company.gstin,
-            "gst_status": company.gst_status,
-            "registered_address": company.registered_address,
-            "state": company.state,
-            "city": company.city,
-            "pincode": company.pincode,
-            "entity_type": company.entity_type,
-        },
-    }, status=200 if gst_active else 422)
+        })
+    return plans
 
 
 class CreateSupplier(SuccessMessageMixin, CreateView):
@@ -267,49 +142,44 @@ class CreateSupplier(SuccessMessageMixin, CreateView):
         context["session_first_name"] = self.request.session.get('session_first_name')
         context["session_last_name"] = self.request.session.get('session_last_name')
         context["session_email"] = self.request.session.get('session_email')
-        # Drives the pre-filled, read-only "verified company" panel if the
-        # user already verified a GSTIN earlier in this session.
-        context["verified_company"] = Company.objects.filter(
-            pk=self.request.session.get('verified_company_id'),
-            verification_status='verified',
-        ).first()
+        # Re-shows the verified-company panel if this session already
+        # verified a GSTIN (e.g. the form came back with an error).
+        context["gst_verification"] = company_registration.session_verification(self.request)
         return context
 
     def form_invalid(self, form):
         return super().form_invalid(form)
 
     def form_valid(self, form):
-        # The frontend never gets to assert "this company is GST verified" —
-        # the only source of truth is a Company row this session verified
-        # server-side (see verify_gstin_view). Legal name / address / GST
-        # status are copied from that row, never from posted form data.
-        company = Company.objects.filter(
-            pk=self.request.session.get('verified_company_id'),
-            verification_status='verified',
-            gst_verified=True,
-        ).first()
-        if company is None:
+        # The frontend never gets to assert "this company is GST verified":
+        # the only source of truth is the GST verification this session ran
+        # server-side (gst.views.verify_gstin). Legal name / address / GST
+        # status come from it, never from posted form data.
+        verification = company_registration.session_verification(self.request)
+        if verification is None:
             form.add_error(None, "Please verify your company's GSTIN before submitting.")
             return self.form_invalid(form)
-        if hasattr(company, 'manufacturer_profile'):
-            form.add_error(None, "This GSTIN is already registered with an existing account.")
+        conflict = company_registration.registration_conflict(self.request, verification.gstin, role='manufacturer')
+        if conflict:
+            form.add_error(None, conflict)
             return self.form_invalid(form)
+        display_name = company_registration.display_name_from(self.request.POST.get('company_display_name'), verification)
 
-        profile = form.save(commit=False)
-        # Never trust the posted hidden `user` field.
-        profile.user = self._pending_user()
-        profile.company = company
-        profile.companyname = (company.trade_name or company.legal_name)[:40]
-        profile.address = company.registered_address
-        profile.city = company.city
-        profile.state = company.state
-        profile.country = "India"
-        profile.save()
+        with transaction.atomic():
+            company = company_registration.register_company(verification, display_name)
+            profile = form.save(commit=False)
+            # Never trust the posted hidden `user` field.
+            profile.user = self._pending_user()
+            profile.company = company
+            profile.companyname = display_name[:40]
+            profile.address = company.principal_address
+            profile.city = company.city[:50]
+            profile.state = company.state[:25]
+            profile.country = "India"
+            profile.save()
         self.object = profile
 
-        # One verification -> one registration; drop the session marker so
-        # it can't be replayed for a second account.
-        self.request.session.pop('verified_company_id', None)
+        company_registration.forget_session_verification(self.request)
         _end_profile_step(self.request)
         messages.success(self.request, self.success_message)
         return redirect(self.get_success_url())
@@ -427,12 +297,7 @@ def verify_email(request):
         ok, reason = otp.verify(pending, code)
         if ok:
             user = otp.complete_registration(pending)
-            SubscriptionPlan.objects.create(
-                plan_type='basic',
-                price=subscription_plan_details['basic']['price'],
-                rfq_limit=subscription_plan_details['basic']['rfq_limit'],
-                user_profile=user,
-            )
+            SubscriptionPlan.objects.create(plan_type=catalog.DEFAULT_PLAN, price=0, user_profile=user)
             request.session.pop('pending_registration_id', None)
             _start_profile_step(request, user)
             messages.success(request, "Email verified.")
@@ -482,32 +347,32 @@ class CreateCustomer(SuccessMessageMixin, CreateView):
 
     def form_valid(self, form):
         # Same rule as CreateSupplier.form_valid: the only proof of a
-        # verified company is a Company row this session verified through
-        # verify_gstin_view, and the buyer's name/address come from it.
-        company = Company.objects.filter(
-            pk=self.request.session.get('verified_company_id'),
-            verification_status='verified',
-            gst_verified=True,
-        ).first()
-        if company is None:
+        # verified company is this session's server-side GST verification,
+        # and the buyer's legal identity and address come from it.
+        verification = company_registration.session_verification(self.request)
+        if verification is None:
             form.add_error(None, "Please verify your company's GSTIN before submitting.")
             return self.form_invalid(form)
-        if hasattr(company, 'consumer_profile'):
-            form.add_error(None, "This GSTIN is already registered with an existing buyer account.")
+        conflict = company_registration.registration_conflict(self.request, verification.gstin, role='consumer')
+        if conflict:
+            form.add_error(None, conflict)
             return self.form_invalid(form)
+        display_name = company_registration.display_name_from(self.request.POST.get('company_display_name'), verification)
 
-        profile = form.save(commit=False)
-        profile.user = self._pending_user()
-        profile.company = company
-        profile.Name = (company.trade_name or company.legal_name)[:75]
-        profile.Address = company.registered_address[:150]
-        profile.city = company.city[:50]
-        profile.state = company.state[:25]
-        profile.country = "India"
-        profile.save()
+        with transaction.atomic():
+            company = company_registration.register_company(verification, display_name)
+            profile = form.save(commit=False)
+            profile.user = self._pending_user()
+            profile.company = company
+            profile.Name = display_name[:75]
+            profile.Address = company.principal_address[:150]
+            profile.city = company.city[:50]
+            profile.state = company.state[:25]
+            profile.country = "India"
+            profile.save()
         self.object = profile
 
-        self.request.session.pop('verified_company_id', None)
+        company_registration.forget_session_verification(self.request)
         _end_profile_step(self.request)
         messages.success(self.request, self.success_message)
         return redirect(self.get_success_url())
@@ -519,10 +384,7 @@ class CreateCustomer(SuccessMessageMixin, CreateView):
         context["session_first_name"] = self.request.session.get('session_first_name')
         context["session_last_name"] = self.request.session.get('session_last_name')
         context["session_email"] = self.request.session.get('session_email')
-        context["verified_company"] = Company.objects.filter(
-            pk=self.request.session.get('verified_company_id'),
-            verification_status='verified',
-        ).first()
+        context["gst_verification"] = company_registration.session_verification(self.request)
         context["title"] = 'New Customer'
         context["savebtn"] = 'Add Customer'
         return context
@@ -546,11 +408,12 @@ def ViewProfileDetails(request):
         if customer:
             context['customer'] = customer
     context['team_role'] = team.role_label(request.user)
-    context['is_manager'] = team.is_manager(request.user)
-    context['can_change_plan'] = team.is_manager(request.user) or team.company(request.user) is None
-    subscription = SubscriptionPlan.objects.filter(user_profile=team.manager_user(request.user)).first()
+    context['can_manage_company'] = team.can_manage_company(request.user)
+    context['can_change_plan'] = team.can_manage_subscription(request.user)
+    subscription = SubscriptionPlan.objects.filter(user_profile=team.owner_user(request.user)).first()
     context['subscription'] = subscription
-    context['plan_catalog'] = plan_catalog(subscription)
+    context['plan_catalog'] = plan_catalog(subscription, team.company_kind(request.user) or catalog.BUYER)
+    context['usage'] = access.usage_rows(team.company(request.user))
     context['tab'] = request.GET.get('tab', 'profile')
     # Pre-fills the Contact us tab with the sender's own details.
     if supplier:
@@ -562,63 +425,54 @@ def ViewProfileDetails(request):
 
 
 class SubscriptionUpgradeView(LoginRequiredMixin, View):
-    """Self-service plan change for the logged-in user (buyer or
-    manufacturer). Price and RFQ limit are always looked up server-side
-    from settings.subscription_plan_details; the client only picks a plan
-    key. Moving to a cheaper plan applies immediately. Moving to a more
-    expensive one is recorded as a pending request: there is no payment
+    """Self-service plan change by the company's owner (buyer or
+    manufacturer). Prices come from plans.catalog; the client only picks a
+    plan and a billing cycle. Moving down applies immediately. Anything that
+    costs more is recorded as a pending request: there is no payment
     integration yet, so staff apply it once payment is confirmed."""
     def post(self, request):
         plan_type = request.POST.get('plan_type')
-        details = subscription_plan_details.get(plan_type)
+        cycle = request.POST.get('billing_cycle') or catalog.MONTHLY
         next_url = request.POST.get('next')
         if not (next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure())):
             next_url = reverse('profile') + '?tab=billing'
-        if team.company(request.user) is not None and not team.is_manager(request.user):
-            messages.error(request, "Only your company's manager can change the plan.")
+        if not team.can_manage_subscription(request.user):
+            messages.error(request, "Only your company's owner can change the plan.")
             return redirect(next_url)
-        if not details:
+        if plan_type not in catalog.PLAN_LABELS or cycle not in dict(catalog.BILLING_CYCLES):
             messages.error(request, "Unknown plan selected.")
             return redirect(next_url)
 
         subscription = SubscriptionPlan.objects.filter(user_profile=request.user).first()
         if subscription is None:
-            basic = subscription_plan_details['basic']
-            subscription = SubscriptionPlan(user_profile=request.user, plan_type='basic', price=basic['price'], rfq_limit=basic['rfq_limit'])
-        label = dict(SubscriptionPlan.PLAN_CHOICES)[plan_type]
+            subscription = SubscriptionPlan(user_profile=request.user, plan_type=catalog.DEFAULT_PLAN, price=0)
+        label = catalog.PLAN_LABELS[plan_type]
+        current = subscription.plan_type if subscription.plan_type in catalog.PLAN_LABELS else catalog.DEFAULT_PLAN
+        moving_down = catalog.PLAN_ORDER.index(plan_type) < catalog.PLAN_ORDER.index(current)
+        new_price = catalog.price(plan_type, cycle)
 
-        if details['price'] > (subscription.price or 0):
+        if new_price and not moving_down and (plan_type, cycle) != (current, subscription.billing_cycle):
             subscription.pending_plan_type = plan_type
+            subscription.pending_billing_cycle = cycle
             subscription.pending_requested_at = timezone.now()
             subscription.save()
-            logger.info("Subscription upgrade to '%s' requested by %s (awaiting payment)", plan_type, request.user)
+            logger.info("Subscription change to '%s' (%s) requested by %s (awaiting payment)", plan_type, cycle, request.user)
             messages.success(
                 request,
-                f"Upgrade to {label} requested. We'll send you a payment link — your plan changes as soon as payment is confirmed.",
+                f"{label} ({cycle}) requested. We'll send you a payment link — your plan changes as soon as payment is confirmed.",
             )
             return redirect(next_url)
 
         subscription.plan_type = plan_type
-        subscription.price = details['price']
-        subscription.rfq_limit = details['rfq_limit']
+        subscription.billing_cycle = cycle
+        subscription.price = new_price
         subscription.is_active = True
         subscription.pending_plan_type = ''
+        subscription.pending_billing_cycle = ''
         subscription.pending_requested_at = None
         subscription.save()
         logger.info("Subscription for %s changed to '%s'", request.user, plan_type)
         messages.success(request, f"You're now on the {label} plan.")
-        return redirect(next_url)
-
-        subscription = SubscriptionPlan.objects.filter(user_profile=request.user).first()
-        if subscription is None:
-            subscription = SubscriptionPlan(user_profile=request.user)
-        subscription.plan_type = plan_type
-        subscription.price = details['price']
-        subscription.rfq_limit = details['rfq_limit']
-        subscription.is_active = True
-        subscription.save()
-        logger.info("Subscription for %s changed to '%s'", request.user, plan_type)
-        messages.success(request, f"You're now on the {subscription.get_plan_type_display()} plan.")
         return redirect(next_url)
 
 
@@ -793,7 +647,14 @@ class SupplierListView(StaffRequiredMixin, ListView):
 
 class SupplierDirectoryView(LoginRequiredMixin, ListView):
     """Buyer-facing "Find manufacturers" browse screen. Real filters over
-    real fields only; ratings come from buyers' reviews of completed orders."""
+    real fields only; ratings come from buyers' reviews of completed orders.
+
+    Plans shape it from both sides (plans.catalog). The buyer's
+    'supplier_directory': Basic is browse and keyword search over the first
+    few pages; Full adds the filters and sorting. Each supplier's
+    'directory_listing'/'search_visibility': Basic suppliers are listed but
+    not in filtered results; Priority ones come first; 'featured_profile'
+    ones also fill the Featured row."""
     model = ManufacturerProfile
     template_name = "suppliers/supplier_directory.html"
     paginate_by = 12
@@ -803,6 +664,19 @@ class SupplierDirectoryView(LoginRequiredMixin, ListView):
         'rating': [F('rating_avg').desc(nulls_last=True), '-rating_count', 'companyname'],
         'lead_time': [F('typical_lead_time_days').asc(nulls_last=True), 'companyname'],
     }
+    FILTERS = ('process', 'certification', 'city', 'min_order')
+
+    def full_directory(self):
+        return access.can(self.request.user, 'directory.filter')
+
+    def paginate_queryset(self, queryset, page_size):
+        if not self.full_directory():
+            page = self.request.GET.get('page', '1')
+            if not page.isdigit() or int(page) > catalog.BASIC_DIRECTORY_PAGES:
+                self.request.GET = self.request.GET.copy()
+                self.request.GET['page'] = str(catalog.BASIC_DIRECTORY_PAGES)
+                self.kwargs.pop('page', None)
+        return super().paginate_queryset(queryset, page_size)
 
     def get_queryset(self):
         from marketplace.search import search_suppliers
@@ -810,11 +684,13 @@ class SupplierDirectoryView(LoginRequiredMixin, ListView):
         queryset = ManufacturerProfile.objects.filter(is_deleted=False).select_related('company').prefetch_related(
             'capabilities', 'materials', 'certifications',
         )
+        queryset = access.with_plan_levels(queryset, 'directory_listing', 'search_visibility')
         q = self.request.GET.get('q', '').strip()
-        process = self.request.GET.get('process', '')
-        certification = self.request.GET.get('certification', '')
-        city = self.request.GET.get('city', '')
-        min_order = self.request.GET.get('min_order', '')
+        full = self.full_directory()
+        process = self.request.GET.get('process', '') if full else ''
+        certification = self.request.GET.get('certification', '') if full else ''
+        city = self.request.GET.get('city', '') if full else ''
+        min_order = self.request.GET.get('min_order', '') if full else ''
         # pk__in subqueries rather than joins, so no DISTINCT is needed
         # alongside the search and rating annotations.
         if process:
@@ -828,28 +704,42 @@ class SupplierDirectoryView(LoginRequiredMixin, ListView):
                 queryset = queryset.filter(minimum_order_qty__lte=int(min_order))
             except ValueError:
                 pass
+        if process or certification or city or min_order:
+            # Filtered results list suppliers with a Full or Priority listing.
+            queryset = queryset.filter(directory_listing_level__gte=catalog.STANDARD)
         queryset = with_ratings(queryset)
-        sort = self.request.GET.get('sort') or ('relevance' if q else 'name')
+        sort = (self.request.GET.get('sort') if full else '') or ('relevance' if q else 'name')
+        # Priority visibility comes first, whatever the sort.
+        boost = F('search_visibility_level').desc()
         if q:
             queryset = search_suppliers(queryset, q)
             if sort == 'relevance':
-                return queryset.order_by('-rank', 'companyname')
-        return queryset.order_by(*self.SORTS.get(sort, self.SORTS['name']))
+                return queryset.order_by(boost, '-rank', 'companyname')
+        return queryset.order_by(boost, *self.SORTS.get(sort, self.SORTS['name']))
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        full = self.full_directory()
+        context['full_directory'] = full
+        context['basic_directory_pages'] = catalog.BASIC_DIRECTORY_PAGES
         context['q'] = self.request.GET.get('q', '').strip()
-        context['sort'] = self.request.GET.get('sort') or ('relevance' if context['q'] else 'name')
+        context['sort'] = (self.request.GET.get('sort') if full else '') or ('relevance' if context['q'] else 'name')
         params = self.request.GET.copy()
         params.pop('page', None)
         context['querystring'] = params.urlencode()
-        context['process'] = self.request.GET.get('process', '')
-        context['certification'] = self.request.GET.get('certification', '')
-        context['city'] = self.request.GET.get('city', '')
-        context['min_order'] = self.request.GET.get('min_order', '')
+        for name in self.FILTERS:
+            context[name] = self.request.GET.get(name, '') if full else ''
         context['process_choices'] = ManufacturingTech.TECH_CHOICES
         context['certification_choices'] = Certification.objects.exclude(name='').order_by('name').values_list('name', flat=True).distinct()
         context['city_choices'] = ManufacturerProfile.objects.filter(is_deleted=False).exclude(city='').order_by('city').values_list('city', flat=True).distinct()
+        for supplier in context['object_list']:
+            supplier.is_priority = supplier.search_visibility_level >= catalog.ADVANCED
+        if context.get('page_obj') is None or context['page_obj'].number == 1:
+            featured = access.with_plan_levels(
+                ManufacturerProfile.objects.filter(is_deleted=False), 'featured_profile',
+            ).filter(featured_profile_level__gte=catalog.STANDARD)
+            from marketplace.services import with_ratings
+            context['featured'] = list(with_ratings(featured).order_by(F('rating_avg').desc(nulls_last=True), 'companyname')[:3])
         return context
 
 
@@ -938,9 +828,21 @@ class SupplierView(View):
         # either. Staff still see it, to review before reactivating.
         profiles = ManufacturerProfile.objects.all() if request.user.is_staff else ManufacturerProfile.objects.filter(is_deleted=False)
         supplierobj = get_object_or_404(profiles, pk=pk)
+        # What buyers see depends on the supplier's plan ('supplier_profile'):
+        # Basic shows about, contact, capabilities and materials; Full adds
+        # photos, machines and certifications; Advanced the cover image,
+        # export (LUT) badge and reviews. Staff and the company itself see it all.
+        own = team.supplier_profile(request.user) == supplierobj
+        level = catalog.ADVANCED if (request.user.is_staff or own) else access.feature_level(supplierobj, 'supplier_profile')
         context = {
             'supplier': supplierobj,
             'rating': rating_breakdown(supplierobj),
+            'profile_full': level >= catalog.STANDARD,
+            'profile_advanced': level >= catalog.ADVANCED,
+            'is_featured': access.has_feature(supplierobj, 'featured_profile'),
+            'is_priority': access.has_feature(supplierobj, 'search_visibility', catalog.ADVANCED),
+            'profile_level_label': catalog.LEVEL_WORDING['supplier_profile'].get(access.feature_level(supplierobj, 'supplier_profile'), ''),
+            'is_own_profile': own,
             # Buyers reach this from Find manufacturers, so keep them in the
             # dashboard shell; staff come from the admin supplier list.
             'base_template': 'base.html' if request.user.is_staff else 'dashboard_base.html',
@@ -964,8 +866,8 @@ class CompanyProfileView(LoginRequiredMixin, View):
         if supplier is None:
             messages.info(request, "Your manufacturer profile isn't set up yet. Please contact support to finish setting up your account.")
             return redirect(reverse('home'))
-        if not team.is_manager(request.user):
-            messages.info(request, "Only your company's manager can edit the company profile. This is how buyers see it.")
+        if not (team.allows(request.user, 'company.edit') or team.allows(request.user, 'capabilities.manage')):
+            messages.info(request, "Only your company's owner or an admin can edit the company profile. This is how buyers see it.")
             return redirect(reverse('supplier', kwargs={'pk': supplier.pk}))
         from marketplace.services import rating_breakdown
         percent, checklist = supplier.profile_strength()
@@ -978,6 +880,9 @@ class CompanyProfileView(LoginRequiredMixin, View):
             'contact_form': CompanyContactForm(instance=supplier),
             'capacity_form': CompanyCapacityForm(instance=supplier),
             'lut_form': CompanyLUTForm(instance=supplier.company) if supplier.company else None,
+            # Sales and operations manage capabilities, materials, machines and
+            # certifications here; the rest of the profile is for owner/admins.
+            'can_edit_profile': team.allows(request.user, 'company.edit'),
             'machine_form': MachineForm(),
             'certification_form': CertificationForm(),
             'capability_form': CapabilityAddForm(),
@@ -988,11 +893,18 @@ class CompanyProfileView(LoginRequiredMixin, View):
 
 class _CompanyProfileSubActionView(LoginRequiredMixin, View):
     """Shared helper: every sub-action below only ever touches the
-    logged-in manufacturer's own profile (and that profile's own child
-    rows), never a pk taken from elsewhere in the URL."""
+    logged-in user's own company profile (and that profile's own child
+    rows), never a pk taken from elsewhere in the URL. `action` is the role
+    permission it needs (accounts.team.ROLE_PERMISSIONS): editing the
+    profile is for the owner and admins; capabilities, materials, machines
+    and certifications also for sales and operations."""
+    action = 'company.edit'
 
     def get_supplier(self):
-        return get_object_or_404(ManufacturerProfile, user=self.request.user)
+        supplier = team.supplier_profile(self.request.user)
+        if supplier is None or not team.allows(self.request.user, self.action):
+            raise Http404
+        return supplier
 
 
 class CompanyAboutUpdateView(_CompanyProfileSubActionView):
@@ -1042,6 +954,8 @@ class CompanyLUTUpdateView(_CompanyProfileSubActionView):
 
 
 class CompanyCapabilityAddView(_CompanyProfileSubActionView):
+    action = 'capabilities.manage'
+
     def post(self, request):
         supplier = self.get_supplier()
         form = CapabilityAddForm(request.POST)
@@ -1051,6 +965,8 @@ class CompanyCapabilityAddView(_CompanyProfileSubActionView):
 
 
 class CompanyCapabilityRemoveView(_CompanyProfileSubActionView):
+    action = 'capabilities.manage'
+
     def post(self, request, pk):
         supplier = self.get_supplier()
         supplier.capabilities.remove(pk)
@@ -1058,6 +974,8 @@ class CompanyCapabilityRemoveView(_CompanyProfileSubActionView):
 
 
 class CompanyMaterialAddView(_CompanyProfileSubActionView):
+    action = 'capabilities.manage'
+
     def post(self, request):
         supplier = self.get_supplier()
         form = MaterialAddForm(request.POST)
@@ -1067,6 +985,8 @@ class CompanyMaterialAddView(_CompanyProfileSubActionView):
 
 
 class CompanyMaterialRemoveView(_CompanyProfileSubActionView):
+    action = 'capabilities.manage'
+
     def post(self, request, pk):
         supplier = self.get_supplier()
         supplier.materials.remove(pk)
@@ -1074,6 +994,8 @@ class CompanyMaterialRemoveView(_CompanyProfileSubActionView):
 
 
 class CompanyMachineAddView(_CompanyProfileSubActionView):
+    action = 'capabilities.manage'
+
     def post(self, request):
         supplier = self.get_supplier()
         form = MachineForm(request.POST)
@@ -1085,6 +1007,8 @@ class CompanyMachineAddView(_CompanyProfileSubActionView):
 
 
 class CompanyMachineRemoveView(_CompanyProfileSubActionView):
+    action = 'capabilities.manage'
+
     def post(self, request, pk):
         supplier = self.get_supplier()
         get_object_or_404(Machine, pk=pk, manufacturer=supplier).delete()
@@ -1113,6 +1037,8 @@ class CompanyPhotoDeleteView(_CompanyProfileSubActionView):
 
 
 class CompanyCertificationUploadView(_CompanyProfileSubActionView):
+    action = 'capabilities.manage'
+
     def post(self, request):
         supplier = self.get_supplier()
         form = CertificationForm(request.POST, request.FILES)
@@ -1124,6 +1050,8 @@ class CompanyCertificationUploadView(_CompanyProfileSubActionView):
 
 
 class CompanyCertificationDeleteView(_CompanyProfileSubActionView):
+    action = 'capabilities.manage'
+
     def post(self, request, pk):
         supplier = self.get_supplier()
         get_object_or_404(Certification, pk=pk, manufacturer=supplier).delete()

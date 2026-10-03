@@ -5,5 +5,5 @@
         <a href="?period={{ key }}" class="rounded-md px-3 py-1.5 font-medium {% if report.period == key %}bg-navy-900 text-white{% else %}text-gray-600 hover:text-navy-900{% endif %}"{% if report.period == key %} aria-current="page"{% endif %}>{{ label }}</a>
         {% endfor %}
     </nav>
-    <a href="?period={{ report.period }}&format=csv" class="btn-outline text-sm">Download CSV</a>
+    {% if can_export and show_sales is not False %}<a href="?period={{ report.period }}&format=csv" class="btn-outline text-sm">Download CSV</a>{% endif %}
 </div>
