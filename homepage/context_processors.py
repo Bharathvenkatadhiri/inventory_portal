@@ -79,6 +79,28 @@ def _counts(request):
     return counts
 
 
+def renewal_alert(request):
+    """`renewal_alert`: the plan-expiry banner for everyone on the company
+    account (billing.services.renewal_alert), unless they closed it this
+    session. Closing lasts only for the session, so it shows again at every
+    login until the plan is renewed or the expiry date has passed. Lazy —
+    only queried on pages that show the banner."""
+    user = getattr(request, 'user', None)
+
+    def alert():
+        if not user or not user.is_authenticated or team.company(user) is None:
+            return None
+        from accounts.models import SubscriptionPlan
+        from billing import services as billing
+        from billing.views import RENEWAL_ALERT_DISMISSED
+        subscription = SubscriptionPlan.objects.filter(user_profile=team.owner_user(user)).first()
+        found = billing.renewal_alert(subscription)
+        if found is None or request.session.get(RENEWAL_ALERT_DISMISSED) == found['key']:
+            return None
+        return {**found, 'can_renew': team.can_manage_subscription(user)}
+    return {'renewal_alert': alert}
+
+
 def portal_feedback_prompt(request):
     """`needs_portal_feedback`: a signed-in buyer or manufacturer who hasn't
     rated MakeSetu yet, so logging out asks them first. Lazy — only

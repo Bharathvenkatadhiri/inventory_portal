@@ -4,6 +4,7 @@
         <div>
             <p class="text-sm text-gray-500">Current plan</p>
             <p class="text-lg font-bold text-navy-900">{{ billing.plan_label|default:"Free" }}{% if billing.is_paid %} <span class="text-xs font-normal text-gray-400">&middot; {% if billing.status == 'past_due' %}payment due{% elif billing.auto_renew %}renews {{ billing.expires_at|date:"d M" }}{% else %}ends {{ billing.expires_at|date:"d M" }}{% endif %}</span>{% endif %}</p>
+            {% if billing.days_left is not None %}<p class="mt-0.5 text-xs font-bold {% if billing.days_left <= 2 %}text-red-600{% else %}text-gray-500{% endif %}">{% include "_days_left.html" with days=billing.days_left %}</p>{% endif %}
             {% for row in usage %}
             <div class="mt-2">
                 <div class="flex justify-between gap-4 text-xs"><span class="text-gray-500">{{ row.label }}</span><span class="{% if row.full %}font-bold text-red-600{% else %}text-gray-600{% endif %}">{{ row.used }} of {{ row.limit }}</span></div>

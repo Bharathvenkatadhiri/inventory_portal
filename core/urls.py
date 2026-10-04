@@ -10,7 +10,10 @@ from django.http import Http404
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme, urlencode
-from homepage.views import CustomLoginView, CustomLogoutView, ReauthView, ThrottledPasswordResetView
+from homepage.views import (
+    CustomLoginView, CustomLogoutView, PasswordChangeVerifyView, ReauthView, ThrottledPasswordChangeView,
+    ThrottledPasswordResetView,
+)
 
 handler404 = 'homepage.views.custom_404_view'
 
@@ -37,6 +40,8 @@ urlpatterns = [
     path('login/', CustomLoginView.as_view(), name='login'),
     path('logout/', CustomLogoutView.as_view(), name='logout'),
     path('reauth/', ReauthView.as_view(), name='reauth'),
+    path('password-change/', ThrottledPasswordChangeView.as_view(), name='password_change'),
+    path('password-change/verify/', PasswordChangeVerifyView.as_view(), name='password_change_verify'),
 
     path('password-reset/', ThrottledPasswordResetView.as_view(), name='password_reset'),
     path('password-reset/done/', auth_views.PasswordResetDoneView.as_view(

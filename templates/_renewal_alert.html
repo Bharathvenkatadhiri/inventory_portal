@@ -1,0 +1,34 @@
+{# Plan-expiry banner on every dashboard page (homepage.context_processors.renewal_alert): from BILLING_REMINDER_DAYS_BEFORE days before expiry through the expiry date, until renewed. Closing it lasts for this session; it shows again at the next login. #}
+{% with alert=renewal_alert %}{% if alert %}
+<div x-data="{ shown: true }" x-show="shown" role="alert"
+     class="mb-6 flex items-start gap-3 rounded-lg border px-4 py-3 text-sm {% if alert.renews and not alert.past_due %}border-amber-200 bg-amber-50 text-amber-800{% else %}border-red-200 bg-red-50 text-red-700{% endif %}">
+    <svg viewBox="0 0 24 24" class="mt-0.5 h-5 w-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>
+    <div class="min-w-0 flex-1">
+        <p class="font-bold">
+            {% if alert.past_due %}Your {{ alert.plan_label }} renewal payment failed
+            {% elif alert.renews %}Your {{ alert.plan_label }} plan renews {% if alert.days_left == 0 %}today{% else %}in {{ alert.days_left }} day{{ alert.days_left|pluralize }}{% endif %}
+            {% elif alert.expired %}Your {{ alert.plan_label }} plan expired at {{ alert.expires_at|date:"H:i" }} today
+            {% else %}Your {{ alert.plan_label }} plan {% if alert.days_left == 0 %}ends today{% else %}ends in {{ alert.days_left }} day{{ alert.days_left|pluralize }}{% endif %}{% endif %}
+        </p>
+        <p class="mt-0.5">
+            {% if alert.past_due %}Pay the renewal to keep {{ alert.plan_label }}; otherwise your company moves to the Free plan.
+            {% elif alert.renews %}It renews automatically on {{ alert.expires_at|date:"d M Y, H:i" }} for &#8377;{{ alert.next_amount }}{% if alert.changes_plan %} ({{ alert.next_label }}, {{ alert.next_cycle }}, the change you scheduled){% endif %}. Nothing to do if that's right.
+            {% elif alert.expired %}Your company is now on the Free plan: your data is kept, and Free plan limits apply. Subscribe again to get {{ alert.plan_label }} back.
+            {% else %}Renewal is turned off. On {{ alert.expires_at|date:"d M Y, H:i" }} your company moves to the Free plan: your data is kept, and Free plan limits apply.{% endif %}
+            {% if not alert.can_renew and not alert.renews %}Ask your company's owner to renew it.{% endif %}
+        </p>
+        {% if alert.can_renew %}
+        <a href="{% url 'profile' %}?tab=billing" class="mt-2 inline-block font-bold underline hover:no-underline">{% if alert.renews and not alert.past_due %}Review plan &amp; billing{% else %}Renew now{% endif %} &rarr;</a>
+        {% endif %}
+    </div>
+    <form method="post" action="{% url 'billing-renewal-alert-dismiss' %}" data-viewer-ok
+          hx-post="{% url 'billing-renewal-alert-dismiss' %}" hx-swap="none" @submit="shown = false">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <button type="submit" class="rounded p-1 opacity-70 hover:bg-white/60 hover:opacity-100" title="Close until next login">
+            <span class="sr-only">Close this alert until your next login</span>
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+    </form>
+</div>
+{% endif %}{% endwith %}

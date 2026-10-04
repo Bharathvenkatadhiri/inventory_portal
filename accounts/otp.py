@@ -1,12 +1,13 @@
-"""Email-verification OTPs for the registration flow (accounts.views.register,
-verify_email). A PendingRegistration holds the signup data for an email that
+"""Email OTPs: verifying the email at registration (accounts.views.register,
+verify_email), and confirming a signed-in user's password change
+(homepage.views.ThrottledPasswordChangeView / PasswordChangeVerifyView). A PendingRegistration holds the signup data for an email that
 hasn't been confirmed yet — no User row is created until the code is
 verified, so an abandoned or failed signup never ends up in the users table.
 Codes are hashed at rest with Django's password hasher — the same reasoning
 as a password: short-lived, but no reason to keep it in the clear in the
 database either.
 """
-import random
+import secrets
 from datetime import timedelta
 
 from django.contrib.auth.hashers import check_password, make_password
@@ -24,7 +25,7 @@ RESEND_WINDOW_SECONDS = 10 * 60
 
 
 def _generate_code():
-    return f"{random.randint(0, 10 ** CODE_LENGTH - 1):0{CODE_LENGTH}d}"
+    return f"{secrets.randbelow(10 ** CODE_LENGTH):0{CODE_LENGTH}d}"
 
 
 def _resend_key(pending):
@@ -119,3 +120,74 @@ def complete_registration(pending):
     user.save()
     pending.delete()
     return user
+
+
+# --- Confirming a password change ------------------------------------------------
+# The new password (hashed) and the code (hashed) wait in the user's own
+# session, which is stored server-side; the account's password only changes
+# once the code from their inbox is entered, so a borrowed session or a
+# shoulder-surfed password isn't enough to take the account over.
+
+PASSWORD_CHANGE_SESSION_KEY = 'password_change_pending'
+
+
+def _password_resend_key(user):
+    return f"otp-resend:password:{user.pk}"
+
+
+def password_change_resend_allowed(user):
+    return cache.get(_password_resend_key(user), 0) < RESEND_LIMIT
+
+
+def pending_password_change(request):
+    pending = request.session.get(PASSWORD_CHANGE_SESSION_KEY)
+    if not pending or pending.get('user_id') != request.user.pk:
+        return None
+    return pending
+
+
+def start_password_change(request, new_password):
+    """Holds `new_password` (already validated) for this session and emails
+    the first code. Starting again replaces anything pending."""
+    request.session[PASSWORD_CHANGE_SESSION_KEY] = {'user_id': request.user.pk, 'password': make_password(new_password)}
+    send_password_change_code(request)
+
+
+def send_password_change_code(request):
+    """A fresh code for the pending change (the old one stops working).
+    Counts against the resend limit; callers check it first."""
+    pending = pending_password_change(request)
+    if pending is None:
+        return None
+    code = _generate_code()
+    pending.update(code_hash=make_password(code), attempts=0,
+                   expires_at=(timezone.now() + timedelta(minutes=TTL_MINUTES)).timestamp())
+    request.session[PASSWORD_CHANGE_SESSION_KEY] = pending
+    key = _password_resend_key(request.user)
+    cache.add(key, 0, timeout=RESEND_WINDOW_SECONDS)
+    cache.incr(key)
+    user = request.user
+    send_template_email(
+        user.email, 'emails/password_change_otp_subject.txt', 'emails/password_change_otp.txt',
+        {'name': user.first_name or user.email, 'code': code, 'ttl_minutes': TTL_MINUTES},
+    )
+    return code
+
+
+def verify_password_change(request, submitted_code):
+    """Checks the code for the pending change. Returns (new password hash
+    or None, reason); reason is None, 'no_pending', 'expired', 'locked' or
+    'mismatch'. A correct code ends the pending change."""
+    pending = pending_password_change(request)
+    if pending is None or 'code_hash' not in pending:
+        return None, 'no_pending'
+    if pending['attempts'] >= MAX_ATTEMPTS:
+        return None, 'locked'
+    if pending['expires_at'] <= timezone.now().timestamp():
+        return None, 'expired'
+    if check_password(submitted_code or '', pending['code_hash']):
+        del request.session[PASSWORD_CHANGE_SESSION_KEY]
+        return pending['password'], None
+    pending['attempts'] += 1
+    request.session[PASSWORD_CHANGE_SESSION_KEY] = pending
+    return None, 'mismatch'

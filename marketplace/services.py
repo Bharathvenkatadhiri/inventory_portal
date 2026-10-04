@@ -620,6 +620,8 @@ def notification_feed(user, limit=30):
 
     from . import approvals
     events += approvals.feed_events(user)
+    from billing import services as billing
+    events += billing.feed_events(user)
 
     events.sort(key=lambda event: event['timestamp'], reverse=True)
     events = events[:limit]

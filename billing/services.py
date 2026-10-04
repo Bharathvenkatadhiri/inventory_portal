@@ -186,6 +186,106 @@ def quote(subscription, plan, cycle, now=None):
     return Quote('schedule', plan, cycle, effective_at=subscription.expires_at)
 
 
+# --- Checkout review ----------------------------------------------------------------
+
+PAYING_ACTIONS = ('new', 'upgrade', 'renew')
+
+
+def _duration(seconds):
+    days, rest = divmod(int(seconds), 86400)
+    hours = rest // 3600
+    parts = [f"{days} day{'' if days == 1 else 's'}"] if days else []
+    if hours or not days:
+        parts.append(f"{hours} hour{'' if hours == 1 else 's'}")
+    return ' '.join(parts)
+
+
+def checkout_summary(subscription, plan, cycle, now=None):
+    """What the checkout review page shows for choosing `plan` on `cycle`
+    now: what happens, the price split, the dates and the next renewal.
+    Built from quote(), the same numbers change_plan charges; the charge is
+    worked out again to the second when the owner proceeds, so it can only
+    have gone down (an upgrade's time left shrinks). Raises BillingError."""
+    now = now or timezone.now()
+    result = quote(subscription, plan, cycle, now)
+    label = catalog.PLAN_LABELS[result.plan_type]
+    per = 'month' if result.billing_cycle == catalog.MONTHLY else 'year'
+    summary = {
+        'action': result.action, 'plan': result.plan_type, 'plan_label': label,
+        'cycle': result.billing_cycle, 'requested_cycle': cycle, 'per': per,
+        'amount': result.amount, 'pays': result.action in PAYING_ACTIONS and result.amount >= MIN_CHARGE,
+        'lines': [], 'notes': [], 'message': result.message,
+        'current_label': catalog.PLAN_LABELS[entitled_plan(subscription, now)],
+    }
+    if result.action == 'new':
+        expires = now + period_length(result.billing_cycle)
+        summary['lines'].append({
+            'label': f"{label} plan, billed {result.billing_cycle}",
+            'detail': f"₹{catalog.price(result.plan_type, result.billing_cycle):,}/{per} for {catalog.PERIOD_DAYS[result.billing_cycle]} days",
+            'amount': result.amount,
+        })
+        summary.update(starts_at=now, expires_at=expires, renews=True, renews_at=expires,
+                       renewal_label=label, renewal_cycle=result.billing_cycle, renewal_amount=result.amount)
+    elif result.action == 'upgrade':
+        detail = result.proration
+        left = _duration(detail['seconds_left'])
+        percent = (Decimal(detail['fraction']) * 100).quantize(Decimal('0.1'))
+        summary['lines'] += [
+            {'label': f"{label} for the time left in this period",
+             'detail': f"₹{Decimal(detail['new_full_price']):,.2f}/{per} × {percent}% ({left} of {_duration(detail['period_seconds'])})",
+             'amount': Decimal(detail['cost_for_time_left'])},
+            {'label': f"Less unused {catalog.PLAN_LABELS[subscription.plan_type]} time",
+             'detail': f"₹{Decimal(detail['current_price']):,.2f}/{per} × {percent}% ({left}) already paid",
+             'amount': -Decimal(detail['credit'])},
+        ]
+        summary['time_left'] = left
+        renew_plan = subscription.scheduled_plan_type or result.plan_type
+        renew_cycle = subscription.scheduled_billing_cycle or subscription.billing_cycle
+        renews = subscription.auto_renew and renew_plan != catalog.DEFAULT_PLAN
+        summary.update(starts_at=now, expires_at=subscription.expires_at, renews=renews, renews_at=subscription.expires_at,
+                       renewal_label=catalog.PLAN_LABELS[renew_plan], renewal_cycle=renew_cycle,
+                       renewal_amount=Decimal(catalog.price(renew_plan, renew_cycle)) if renews else Decimal('0'))
+        summary['notes'].append(f"Your billing date doesn't change: {label} applies as soon as you pay, until {timezone.localtime(subscription.expires_at):%d %b %Y, %H:%M}.")
+        if cycle != result.billing_cycle:
+            summary['notes'].append(f"Upgrades keep your current {result.billing_cycle} billing. To switch to {cycle} billing, choose it again after upgrading; it starts at your next renewal.")
+        if result.amount < MIN_CHARGE:
+            summary['notes'].append("There's nothing left to charge for this period, so the upgrade applies straight away.")
+    elif result.action == 'renew':
+        summary['lines'].append({
+            'label': f"Overdue renewal: {label}, billed {result.billing_cycle}",
+            'detail': f"₹{catalog.price(result.plan_type, result.billing_cycle):,}/{per}",
+            'amount': result.amount,
+        })
+        summary.update(starts_at=result.period_start, expires_at=result.period_end, renews=True, renews_at=result.period_end,
+                       renewal_label=label, renewal_cycle=result.billing_cycle, renewal_amount=result.amount)
+        summary['notes'].append("The new period continues from your last expiry date, so you don't lose any days.")
+    elif result.action == 'schedule':
+        summary.update(effective_at=result.effective_at)
+    elif result.action == 'reactivate':
+        summary.update(effective_at=result.effective_at, renewal_amount=Decimal(catalog.price(result.plan_type, result.billing_cycle)))
+    return summary
+
+
+def checkout_options(subscription, now=None):
+    """Every paid plan on each cycle, with what choosing it would do now,
+    for the review page's plan switcher."""
+    now = now or timezone.now()
+    options = []
+    for plan in catalog.PLAN_ORDER:
+        if not catalog.purchasable(plan):
+            continue
+        cycles = []
+        for cycle in (catalog.MONTHLY, catalog.YEARLY):
+            try:
+                result = quote(subscription, plan, cycle, now)
+                action = result.action
+            except BillingError:
+                action = 'unavailable'
+            cycles.append({'cycle': cycle, 'price': catalog.price(plan, cycle), 'action': action})
+        options.append({'plan': plan, 'label': catalog.PLAN_LABELS[plan], 'cycles': cycles})
+    return options
+
+
 # --- Starting a change ------------------------------------------------------------
 
 def _new_payment(subscription, kind, plan, cycle, amount, user, period_start=None, period_end=None, proration=None, attempt=1):
@@ -321,7 +421,10 @@ def _apply(payment, subscription, gateway_payment_id, mandate_id, now):
     team.log(payment.created_by or subscription.user_profile, f'billing.{payment.kind}',
              f"Paid ₹{payment.amount} — {payment.get_kind_display().lower()}, {label}", reverse('profile') + '?tab=billing',
              profile=team.company(subscription.user_profile))
-    _email(subscription, 'billing_payment_received', {'payment': payment, 'plan_label': label})
+    # The owner paying in the portal sees the result there (PaymentReturnView);
+    # only automatic renewals, charged with nobody on the page, are emailed.
+    if payment.created_by_id is None:
+        _email(subscription, 'billing_payment_received', {'payment': payment, 'plan_label': label})
     return 'applied'
 
 
@@ -487,6 +590,79 @@ def send_expiry_reminders(now=None):
         _email(subscription, template, _reminder_context(subscription))
         sent += 1
     return sent
+
+
+def days_left(subscription, now=None):
+    """Calendar days (local time) until a paid subscription's current
+    period ends: 0 on the expiry date itself. None for Free or no expiry."""
+    if subscription is None or not subscription.is_paid or subscription.expires_at is None:
+        return None
+    now = now or timezone.now()
+    return max((timezone.localdate(subscription.expires_at) - timezone.localdate(now)).days, 0)
+
+
+def renewal_alert(subscription, now=None):
+    """The in-portal renewal alert, shown from BILLING_REMINDER_DAYS_BEFORE
+    days before a paid plan's expiry through the end of the expiry date
+    (local time), the same window as the reminder emails. A renewal moves
+    expires_at on, which ends it. None when nothing is due.
+
+    `key` names this period and stage ('soon', then 'today'), so a
+    dismissal or a read notification for one doesn't hide the next."""
+    now = now or timezone.now()
+    if subscription is None or not subscription.is_active or not subscription.is_paid or subscription.expires_at is None:
+        return None
+    expires = subscription.expires_at
+    if now < expires - timedelta(days=settings.BILLING_REMINDER_DAYS_BEFORE):
+        return None
+    if timezone.localdate(now) > timezone.localdate(expires):
+        return None
+    left = days_left(subscription, now)
+    stage = 'today' if left == 0 else 'soon'
+    return {
+        **_reminder_context(subscription),
+        'key': f"plan-expiry:{int(expires.timestamp())}:{stage}",
+        'days_left': left,
+        'expired': now >= expires,
+        'past_due': subscription.status == SubscriptionPlan.PAST_DUE,
+        'starts_at': max(expires - timedelta(days=settings.BILLING_REMINDER_DAYS_BEFORE), subscription.current_period_start),
+    }
+
+
+def feed_events(user, now=None):
+    """The renewal alert as a notification-bell entry for everyone on the
+    company account (marketplace.services.notification_feed)."""
+    subscription = SubscriptionPlan.objects.filter(user_profile=team.owner_user(user)).first()
+    alert = renewal_alert(subscription, now)
+    if alert is None:
+        return []
+    if alert['past_due']:
+        title = f"{alert['plan_label']} renewal payment failed"
+    elif alert['renews']:
+        title = f"{alert['plan_label']} plan renews {'today' if alert['days_left'] == 0 else 'in ' + _days(alert['days_left'])}"
+    elif alert['expired']:
+        title = f"{alert['plan_label']} plan has ended"
+    else:
+        title = f"{alert['plan_label']} plan {'ends today' if alert['days_left'] == 0 else 'ends in ' + _days(alert['days_left'])}"
+    when = timezone.localtime(alert['expires_at']).strftime('%d %b %Y, %H:%M')
+    if alert['past_due']:
+        detail = f"Pay the renewal to keep {alert['plan_label']}; otherwise your company moves to Free."
+    elif alert['renews']:
+        detail = f"Renews automatically on {when}."
+    elif alert['expired']:
+        detail = f"It ended on {when} and your company moved to Free. Subscribe again to get it back."
+    else:
+        detail = f"Renewal is off. On {when} your company moves to Free unless it's renewed."
+    return [{
+        'key': alert['key'], 'kind': 'billing',
+        'title': title, 'detail': detail,
+        'url': reverse('profile') + '?tab=billing',
+        'timestamp': alert['starts_at'],
+    }]
+
+
+def _days(n):
+    return f"{n} day{'' if n == 1 else 's'}"
 
 
 def run_due(now=None):

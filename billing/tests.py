@@ -71,7 +71,15 @@ class NewSubscriptionTests(BillingTestCase):
         self.assertTrue(sub.auto_renew)
         self.assertTrue(sub.gateway_mandate_id)
         self.assertEqual((payment.status, payment.applied, payment.period_end), ('succeeded', True, paid_at + MONTH))
-        self.assertIn("Payment received", mail.outbox[-1].subject)
+        # Paid in the portal: the confirmation is on screen, not by email.
+        self.assertFalse(any("Payment received" in m.subject for m in mail.outbox))
+
+    def test_automatic_renewal_is_emailed_once(self):
+        sub = self.subscribe('starter')
+        mail.outbox.clear()
+        services.run_due(sub.expires_at)
+        services.run_due(sub.expires_at + timedelta(minutes=5))
+        self.assertEqual(sum("Payment received" in m.subject for m in mail.outbox), 1)
 
     def test_yearly_is_365_days(self):
         sub = self.subscribe('business', 'yearly')
@@ -138,7 +146,7 @@ class WebhookTests(BillingTestCase):
         self.assertEqual(services.reconcile(payment), 'already applied')
         self.assertEqual(self.sub().expires_at - self.sub().current_period_start, MONTH)
         self.assertEqual(WebhookEvent.objects.count(), 2)
-        self.assertEqual(sum("Payment received" in m.subject for m in mail.outbox), 1)
+        self.assertEqual(Payment.objects.get().applied, True)
 
     def test_failure_arriving_after_success_is_ignored(self):  # UC-29
         payment = self.start('starter')
@@ -505,3 +513,187 @@ class SignupPlanTests(TestCase):
     def test_free_or_unknown_plan_records_nothing(self):
         sub = self.register('?plan=platinum')
         self.assertEqual(sub.intended_plan_type, '')
+
+
+@TEST_STORAGES
+class RenewalAlertTests(BillingTestCase):
+    """Days left in the plan section, and the in-portal alert and
+    notification from BILLING_REMINDER_DAYS_BEFORE (2) days before expiry
+    through the expiry date, until renewed. Closing the alert lasts for the
+    session, so it shows again at the next login."""
+
+    def setUp(self):
+        super().setUp()
+        self.subscribe('starter')
+        self.expires = self.sub().expires_at
+
+    def login(self, user):
+        self.client.login(username=user.email, password=PASSWORD)
+
+    def expire_in(self, delta, auto_renew=False):
+        SubscriptionPlan.objects.filter(pk=self.sub().pk).update(expires_at=timezone.now() + delta, auto_renew=auto_renew)
+        cache.clear()
+
+    def test_days_left_counts_local_calendar_days(self):
+        sub = self.sub()
+        self.assertEqual(services.days_left(sub, self.expires - timedelta(days=12)), 12)
+        self.assertEqual(services.days_left(sub, self.expires), 0)
+        self.assertEqual(services.days_left(sub, self.expires + timedelta(days=3)), 0)
+        free = SubscriptionPlan(plan_type='free')
+        self.assertIsNone(services.days_left(free))
+
+    def test_plan_section_shows_days_left(self):
+        self.expire_in(timedelta(days=12), auto_renew=True)
+        self.login(self.owner)
+        self.assertContains(self.client.get(reverse('profile') + '?tab=billing'), "12 days left")
+        self.assertContains(self.client.get(reverse('home')), "12 days left")
+
+    def test_alert_window_is_two_days_before_through_the_expiry_date(self):
+        sub = self.sub()
+        self.assertIsNone(services.renewal_alert(sub, self.expires - timedelta(days=2, minutes=1)))
+        soon = services.renewal_alert(sub, self.expires - timedelta(days=2) + timedelta(minutes=1))
+        self.assertTrue(soon['key'].endswith(':soon'))
+        today = services.renewal_alert(sub, self.expires)
+        self.assertTrue(today['key'].endswith(':today'))
+        self.assertTrue(today['expired'])
+        self.assertNotEqual(soon['key'], today['key'])
+        next_day = timezone.localtime(self.expires).replace(hour=0, minute=0, second=1) + timedelta(days=1)
+        self.assertIsNone(services.renewal_alert(sub, next_day))
+
+    def test_renewing_ends_the_alert(self):
+        self.assertIsNotNone(services.renewal_alert(self.sub(), self.expires - timedelta(days=1)))
+        services.run_due(self.expires)  # auto-renews on the mock gateway
+        self.assertEqual(self.sub().expires_at, self.expires + MONTH)
+        self.assertIsNone(services.renewal_alert(self.sub(), self.expires + timedelta(minutes=1)))
+
+    def test_free_has_no_alert(self):
+        self.assertIsNone(services.renewal_alert(SubscriptionPlan(plan_type='free')))
+
+    def test_owner_sees_alert_with_renew_link_and_a_notification(self):
+        self.expire_in(timedelta(days=1))
+        self.login(self.owner)
+        page = self.client.get(reverse('home'))
+        self.assertContains(page, "Your Starter plan ends in 1 day")
+        self.assertContains(page, "Renew now")
+        self.assertContains(page, "Starter plan ends in 1 day")  # the bell
+        self.assertContains(self.client.get(reverse('notification-list')), "Renewal is off.")
+
+    def test_auto_renewing_plan_says_it_renews(self):
+        self.expire_in(timedelta(days=1), auto_renew=True)
+        self.login(self.owner)
+        page = self.client.get(reverse('home'))
+        self.assertContains(page, "Your Starter plan renews in 1 day")
+        self.assertContains(page, "renews automatically")
+
+    def test_team_members_see_it_and_are_asked_to_contact_the_owner(self):
+        member = add_member(self.profile, "billmem")
+        self.expire_in(timedelta(days=1))
+        self.login(member)
+        page = self.client.get(reverse('home'))
+        self.assertContains(page, "Your Starter plan ends in 1 day")
+        self.assertContains(page, "Ask your company's owner to renew it.")
+        self.assertNotContains(page, "Renew now")
+
+    def test_closing_hides_it_until_the_next_login(self):
+        self.expire_in(timedelta(days=1))
+        self.login(self.owner)
+        response = self.client.post(reverse('billing-renewal-alert-dismiss'), {'next': reverse('home')})
+        self.assertRedirects(response, reverse('home'), fetch_redirect_response=False)
+        self.assertNotContains(self.client.get(reverse('home')), "Your Starter plan ends in")
+        self.client.logout()
+        self.login(self.owner)
+        self.assertContains(self.client.get(reverse('home')), "Your Starter plan ends in 1 day")
+
+    def test_closing_with_htmx_returns_no_content(self):
+        self.expire_in(timedelta(days=1))
+        self.login(self.owner)
+        response = self.client.post(reverse('billing-renewal-alert-dismiss'), HTTP_HX_REQUEST='true')
+        self.assertEqual(response.status_code, 204)
+        self.assertNotContains(self.client.get(reverse('home')), "Your Starter plan ends in")
+
+    def test_a_viewer_may_close_it(self):
+        viewer = add_member(self.profile, "billview", TeamMember.VIEWER)
+        self.expire_in(timedelta(days=1))
+        self.login(viewer)
+        self.client.post(reverse('billing-renewal-alert-dismiss'), {'next': reverse('home')})
+        self.assertNotContains(self.client.get(reverse('home')), "Your Starter plan ends in")
+
+    def test_closing_cannot_redirect_off_site(self):
+        self.login(self.owner)
+        response = self.client.post(reverse('billing-renewal-alert-dismiss'), {'next': '//evil.example.com/'})
+        self.assertEqual(response['Location'], reverse('home'))
+
+
+@TEST_STORAGES
+class CheckoutReviewTests(BillingTestCase):
+    """Paid plan changes are reviewed first: the price split, dates and
+    next renewal, with every other plan and cycle one click away. Nothing
+    is created until the owner proceeds."""
+
+    def login(self, user):
+        self.client.login(username=user.email, password=PASSWORD)
+
+    def review(self, plan, cycle='monthly'):
+        return self.client.get(reverse('billing-checkout') + f'?plan={plan}&cycle={cycle}')
+
+    def test_plan_cards_open_the_review_instead_of_charging(self):
+        self.login(self.owner)
+        page = self.client.get(reverse('profile') + '?tab=billing')
+        self.assertContains(page, reverse('billing-checkout') + '?plan=starter&amp;cycle=monthly')
+        self.assertContains(page, reverse('billing-checkout') + '?plan=business&amp;cycle=yearly')
+
+    def test_new_subscription_shows_price_and_dates_without_creating_a_payment(self):
+        self.login(self.owner)
+        page = self.review('starter')
+        self.assertContains(page, "To pay now")
+        self.assertContains(page, "&#8377;999.00")
+        self.assertContains(page, (timezone.localtime() + MONTH).strftime('%d %b %Y'))
+        self.assertContains(page, "Proceed to payment")
+        self.assertEqual(Payment.objects.count(), 0)
+
+    def test_other_plans_and_cycles_can_be_chosen_on_the_review_page(self):
+        self.login(self.owner)
+        page = self.review('business', 'yearly')
+        self.assertContains(page, "&#8377;29,990.00")
+        for plan in ('starter', 'business'):
+            for cycle in ('monthly', 'yearly'):
+                self.assertContains(page, f'?plan={plan}&amp;cycle={cycle}')
+
+    def test_upgrade_shows_the_proration_split_and_unchanged_expiry(self):
+        self.subscribe('starter', now=self.t0 - timedelta(days=10))
+        self.login(self.owner)
+        page = self.review('business')
+        self.assertContains(page, "Business for the time left in this period")
+        self.assertContains(page, "Less unused Starter time")
+        self.assertContains(page, "Current period ends")
+        self.assertContains(page, timezone.localtime(self.sub().expires_at).strftime('%d %b %Y, %H:%M'))
+        summary = services.checkout_summary(self.sub(), 'business', 'monthly')
+        self.assertEqual(sum(line['amount'] for line in summary['lines']), summary['amount'])
+
+    def test_upgrade_on_another_cycle_explains_it_keeps_the_current_one(self):
+        self.subscribe('starter')
+        self.login(self.owner)
+        self.assertContains(self.review('business', 'yearly'), "Upgrades keep your current monthly billing")
+
+    def test_proceeding_goes_to_the_payment_page(self):
+        self.login(self.owner)
+        response = self.client.post(reverse('billing-change'), {'plan_type': 'starter', 'billing_cycle': 'monthly'})
+        payment = Payment.objects.get()
+        self.assertRedirects(response, reverse('billing-mock-checkout', kwargs={'order_id': payment.gateway_order_id}), fetch_redirect_response=False)
+
+    def test_confirmation_after_paying_gives_the_expiry(self):
+        self.login(self.owner)
+        self.client.post(reverse('billing-change'), {'plan_type': 'starter', 'billing_cycle': 'monthly'})
+        payment = Payment.objects.get()
+        page = self.client.post(reverse('billing-mock-checkout', kwargs={'order_id': payment.gateway_order_id}), {'outcome': 'pay'}, follow=True)
+        self.assertContains(page, "You&#x27;re on Starter until")
+        self.assertFalse(any("Payment received" in m.subject for m in mail.outbox))
+
+    def test_only_the_owner_reviews_a_plan_change(self):
+        self.login(add_member(self.profile, "chkadm", TeamMember.ADMIN))
+        self.assertRedirects(self.review('starter'), reverse('profile') + '?tab=billing', fetch_redirect_response=False)
+
+    def test_free_or_unknown_plan_goes_back_to_billing(self):
+        self.login(self.owner)
+        self.assertRedirects(self.review('free'), reverse('profile') + '?tab=billing', fetch_redirect_response=False)
+        self.assertRedirects(self.review('platinum'), reverse('profile') + '?tab=billing', fetch_redirect_response=False)

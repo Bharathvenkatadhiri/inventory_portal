@@ -9,7 +9,7 @@ from . import team
 # password, notification read-state and feedback about MakeSetu. Nothing
 # here touches the company's data.
 PERSONAL_URL_NAMES = {
-    'login', 'logout', 'reauth',
+    'login', 'logout', 'reauth', 'password_change', 'password_change_verify', 'billing-renewal-alert-dismiss',
     'password_reset', 'password_reset_done', 'password_reset_confirm', 'password_reset_complete',
     'notification-open', 'notification-mark-read', 'notification-mark-all-read',
     'portal-feedback', 'gst-verify', 'register', 'verify-email', 'register-supplier', 'register-customer', 'team-join',

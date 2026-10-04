@@ -12,6 +12,7 @@ from django.http import Http404, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.decorators import method_decorator
+from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
@@ -46,6 +47,44 @@ def _owner_payment(request, pk):
     return payment
 
 
+def _billed_to(user):
+    profile = team.company(user)
+    company = getattr(profile, 'company', None)
+    name = getattr(profile, 'Name', None) or getattr(profile, 'companyname', None) or ''
+    return {
+        'name': (company.legal_name if company and company.legal_name else name) or user.get_full_name(),
+        'gstin': company.gstin if company else '',
+        'email': user.email,
+    }
+
+
+class CheckoutView(LoginRequiredMixin, View):
+    """Review before paying: the plan and cycle chosen, the price split
+    (an upgrade's proration), the dates and the next renewal, with every
+    other plan and cycle one click away. Nothing is created until the owner
+    proceeds, which posts to ChangePlanView."""
+
+    def get(self, request):
+        subscription = _owner_subscription_or_403(request)
+        if subscription is None:
+            return redirect(billing_url())
+        plan = request.GET.get('plan', '')
+        cycle = request.GET.get('cycle') or subscription.billing_cycle or catalog.MONTHLY
+        if not catalog.purchasable(plan) or cycle not in dict(catalog.BILLING_CYCLES):
+            messages.error(request, "Choose a plan to continue.")
+            return redirect(billing_url())
+        context = {
+            'selected_plan': plan, 'selected_cycle': cycle,
+            'options': services.checkout_options(subscription),
+            'billed_to': _billed_to(request.user),
+        }
+        try:
+            context['summary'] = services.checkout_summary(subscription, plan, cycle)
+        except services.BillingError as exc:
+            context['error'] = str(exc)
+        return render(request, 'billing/checkout.html', context)
+
+
 class ChangePlanView(LoginRequiredMixin, View):
     """The owner picks a plan and cycle: pay (new subscription, upgrade or
     overdue renewal), or schedule it for the current expiry."""
@@ -78,7 +117,14 @@ class PaymentReturnView(LoginRequiredMixin, View):
         outcome = services.reconcile(payment)
         payment.refresh_from_db()
         if payment.status == Payment.SUCCEEDED and payment.applied:
-            messages.success(request, f"Payment of ₹{payment.amount} received. You're on {catalog.PLAN_LABELS[payment.plan_type]}.")
+            # This is the confirmation for a payment made here (no email is sent
+            # for it, services._apply), so it says what was bought and until when.
+            subscription = payment.subscription
+            subscription.refresh_from_db()
+            ends = timezone.localtime(subscription.expires_at).strftime('%d %b %Y, %H:%M') if subscription.expires_at else ''
+            messages.success(request, f"Payment of ₹{payment.amount} received. You're on {catalog.PLAN_LABELS[subscription.plan_type]}"
+                                      + (f" until {ends}, and it renews automatically." if ends and subscription.auto_renew
+                                         else f" until {ends}." if ends else "."))
         elif payment.status == Payment.SUCCEEDED:
             messages.warning(request, "Your payment went through, but your plan had changed in the meantime, so it wasn't applied. We'll refund it.")
         elif payment.status == Payment.FAILED:
@@ -141,6 +187,35 @@ class DismissIntendedPlanView(LoginRequiredMixin, View):
         next_url = request.POST.get('next', '')
         if not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
             next_url = billing_url()
+        return redirect(next_url)
+
+
+# Session key: the renewal alert (services.renewal_alert 'key') closed in
+# this session. Cleared at login, so a closed alert shows again next time.
+RENEWAL_ALERT_DISMISSED = 'renewal_alert_dismissed'
+
+
+def forget_dismissed_alerts(sender, request, user, **kwargs):
+    """user_logged_in receiver (BillingConfig.ready)."""
+    if request is not None and hasattr(request, 'session'):
+        request.session.pop(RENEWAL_ALERT_DISMISSED, None)
+
+
+class DismissRenewalAlertView(LoginRequiredMixin, View):
+    """Anyone on the company closes the renewal alert for this session. Only
+    the session changes, so it's a personal action (accounts.middleware)."""
+    http_method_names = ['post']
+
+    def post(self, request):
+        subscription = services.SubscriptionPlan.objects.filter(user_profile=team.owner_user(request.user)).first()
+        alert = services.renewal_alert(subscription)
+        if alert is not None:
+            request.session[RENEWAL_ALERT_DISMISSED] = alert['key']
+        if getattr(request, 'htmx', False):
+            return HttpResponse(status=204)
+        next_url = request.POST.get('next', '')
+        if not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+            next_url = reverse('home')
         return redirect(next_url)
 
 

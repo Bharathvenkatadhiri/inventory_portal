@@ -103,6 +103,9 @@ class RfqSearchTests(Fixtures, TestCase):
 class SupplierSearchTests(Fixtures, TestCase):
     def setUp(self):
         self.buyer = self.make_buyer("dirbuyer")
+        # Filters and sorting are the Full directory ('supplier_directory':
+        # Standard, Starter and up); Free buyers get Basic.
+        SubscriptionPlan.objects.create(user_profile=self.buyer, plan_type="starter", price=999)
         self.sheet = self.make_supplier("sheetco", about="Laser cutting and bending", typical_lead_time_days=20)
         self.sheet.capabilities.add(ManufacturingTech.objects.create(technology_type="sheet_metal"))
         self.cnc = self.make_supplier("cncworks", about="Five-axis machining", typical_lead_time_days=7, city="Chennai")
@@ -126,6 +129,11 @@ class SupplierSearchTests(Fixtures, TestCase):
         rfq = self.make_rfq(self.buyer, "Panel")
         SupplierReview.objects.create(order=self.make_order(rfq, self.sheet), rating=5)
         self.assertEqual(self.results(sort="rating"), [self.sheet, self.cnc])
+
+    def test_free_buyers_get_keyword_search_without_filters(self):
+        SubscriptionPlan.objects.filter(user_profile=self.buyer).delete()
+        self.assertEqual(self.results(q="machining", process="sheet_metal"), [self.cnc])  # filter ignored
+        self.assertEqual(self.results(q="aerospace"), [self.cnc])
 
 
 @DASHBOARD_TEST_STORAGES

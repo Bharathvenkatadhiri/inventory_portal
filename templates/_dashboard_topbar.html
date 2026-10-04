@@ -19,15 +19,43 @@
         </a>
         {% endif %}
         {% include "_notification_bell.html" %}
-        <div class="flex items-center gap-3">
-            <span class="flex h-9 w-9 items-center justify-center rounded-full bg-navy-900 text-sm font-bold text-white">
-                {{ request.user.first_name|slice:":1"|upper }}{{ request.user.last_name|slice:":1"|upper }}
-            </span>
-            <div class="hidden text-sm leading-tight sm:block">
-                <p class="font-bold text-navy-900">{{ request.user.first_name }} {{ request.user.last_name }}</p>
-                <p class="text-xs text-gray-500">{{ sidebar_company_name|default:"" }}</p>
+        {% with role_label=sidebar_team_role|default:request.user.get_role_display %}
+        <div class="relative" x-data="{ open: false }" @keydown.escape.window="open = false">
+            <button type="button" @click="open = !open" :aria-expanded="open.toString()" aria-haspopup="menu"
+                    class="flex items-center gap-3 rounded-lg py-1 pl-1 pr-2 text-left hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-accent-500">
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-navy-900 text-sm font-bold text-white">
+                    {{ request.user.first_name|slice:":1"|upper }}{{ request.user.last_name|slice:":1"|upper }}
+                </span>
+                <span class="hidden text-sm leading-tight sm:block">
+                    <span class="block font-bold text-navy-900">{{ request.user.first_name }} {{ request.user.last_name }}</span>
+                    <span class="block text-xs text-gray-500">{{ role_label }}</span>
+                </span>
+                <svg viewBox="0 0 20 20" class="hidden h-4 w-4 text-gray-400 transition-transform sm:block" :class="open && 'rotate-180'" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M5.3 7.3a1 1 0 011.4 0L10 10.6l3.3-3.3a1 1 0 111.4 1.4l-4 4a1 1 0 01-1.4 0l-4-4a1 1 0 010-1.4z" clip-rule="evenodd"/></svg>
+            </button>
+
+            <div x-show="open" x-cloak @click.outside="open = false" x-transition.opacity role="menu"
+                 class="absolute right-0 z-50 mt-2 w-64 rounded-xl border border-gray-200 bg-white py-1 shadow-xl">
+                <div class="border-b border-gray-100 px-4 py-3">
+                    <p class="truncate text-sm font-bold text-navy-900">{{ request.user.get_full_name|default:request.user.username }}</p>
+                    <p class="truncate text-xs text-gray-500">{{ request.user.email }}</p>
+                    <p class="mt-1 truncate text-xs text-gray-500"><span class="font-bold text-navy-900">{{ role_label }}</span>{% if sidebar_company_name %} &middot; {{ sidebar_company_name }}{% endif %}</p>
+                </div>
+                <div class="py-1 text-sm">
+                    <a href="{% url 'profile' %}?tab=profile" role="menuitem" class="block px-4 py-2 text-gray-700 hover:bg-gray-50">My profile</a>
+                    <a href="{% url 'profile' %}?tab=company" role="menuitem" class="block px-4 py-2 text-gray-700 hover:bg-gray-50">Company</a>
+                    <a href="{% url 'profile' %}?tab=billing" role="menuitem" class="block px-4 py-2 text-gray-700 hover:bg-gray-50">Plan &amp; billing</a>
+                    {% if sidebar_team_role %}<a href="{% url 'team' %}" role="menuitem" class="block px-4 py-2 text-gray-700 hover:bg-gray-50">Team</a>{% endif %}
+                    <a href="{% url 'password_change' %}" role="menuitem" class="block px-4 py-2 text-gray-700 hover:bg-gray-50">Change password</a>
+                </div>
+                <div class="border-t border-gray-100 py-1 text-sm">
+                    <a href="{% url 'profile' %}?tab=contact" role="menuitem" class="block px-4 py-2 text-gray-700 hover:bg-gray-50">Help &amp; contact us</a>
+                    {% if not request.user.is_staff %}<a href="{% url 'portal-feedback' %}" role="menuitem" class="block px-4 py-2 text-gray-700 hover:bg-gray-50">Rate MakeSetu</a>{% endif %}
+                </div>
+                <div class="border-t border-gray-100 py-1">
+                    {% include "_logout_button.html" with logout_class="block w-full px-4 py-2 text-left text-sm font-bold text-red-600 hover:bg-red-50" %}
+                </div>
             </div>
-            {% include "_logout_button.html" %}
         </div>
+        {% endwith %}
     </div>
 </header>

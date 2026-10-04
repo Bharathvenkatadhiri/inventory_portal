@@ -65,7 +65,7 @@
             <div class="mb-4 flex items-center justify-between">
                 <h2 class="text-lg font-bold text-navy-900">Plan &amp; billing</h2>
                 {% if billing %}
-                <span class="badge {% if billing.status == 'past_due' %}bg-red-50 text-red-700{% else %}bg-green-50 text-green-700{% endif %}">{{ billing.plan_label }}{% if billing.status == 'past_due' %} &middot; payment due{% endif %}</span>
+                <span class="badge {% if billing.status == 'past_due' %}bg-red-50 text-red-700{% else %}bg-green-50 text-green-700{% endif %}">{{ billing.plan_label }}{% if billing.status == 'past_due' %} &middot; payment due{% elif billing.days_left is not None %} &middot; {% include "_days_left.html" with days=billing.days_left %}{% endif %}</span>
                 {% endif %}
             </div>
             <div class="mb-6">{% include "_billing_status.html" %}</div>
@@ -122,6 +122,7 @@
                 <div><dt class="text-gray-500">Username</dt><dd class="text-navy-900">{{ request.user.username }}</dd></div>
                 <div><dt class="text-gray-500">Work email</dt><dd class="text-navy-900">{{ request.user.email }}</dd></div>
                 {% if customer %}<div><dt class="text-gray-500">Phone</dt><dd class="text-navy-900">{{ customer.phone }}</dd></div>{% elif supplier %}<div><dt class="text-gray-500">Phone</dt><dd class="text-navy-900">{{ supplier.phone }}</dd></div>{% endif %}
+                <div><dt class="text-gray-500">Password</dt><dd><a href="{% url 'password_change' %}" class="font-bold text-accent-500 hover:text-accent-600">Change password</a></dd></div>
             </dl>
         </div>
         {% endif %}

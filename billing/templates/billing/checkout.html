@@ -1,0 +1,119 @@
+{% extends "dashboard_base.html" %}
+{# Review before paying (billing.views.CheckoutView). Expects selected_plan, selected_cycle, options (services.checkout_options), summary (services.checkout_summary) or error, billed_to. #}
+{% block title %}Review and pay — MakeSetu{% endblock %}
+{% block page_header %}
+<div class="mb-6">
+    <a href="{% url 'profile' %}?tab=billing" class="text-sm font-bold text-accent-500 hover:text-accent-600">&larr; Plan &amp; billing</a>
+    <h1 class="mt-2 text-2xl font-extrabold tracking-tight text-navy-900">Review your plan change</h1>
+    <p class="mt-1 text-sm text-gray-500">Check the price and dates below. You can switch to another plan or billing cycle before you pay; nothing is charged until you confirm on the payment page.</p>
+</div>
+{% endblock %}
+{% block content %}
+<div class="grid gap-6 lg:grid-cols-[1fr_400px]">
+    <section class="card h-fit">
+        <div class="mb-4 flex items-center justify-between gap-3">
+            <h2 class="text-lg font-bold text-navy-900">Choose a plan</h2>
+            <a href="{% url 'pricing' %}" class="text-xs font-bold text-accent-500 hover:text-accent-600">Compare features &rarr;</a>
+        </div>
+        <div class="space-y-3">
+            {% for option in options %}
+            <div class="rounded-xl border {% if option.plan == selected_plan %}border-accent-500 ring-1 ring-accent-500{% else %}border-gray-200{% endif %} p-4">
+                <p class="text-sm font-bold text-navy-900">{{ option.label }}</p>
+                <div class="mt-3 grid gap-2 sm:grid-cols-2">
+                    {% for c in option.cycles %}
+                    <a href="?plan={{ option.plan }}&amp;cycle={{ c.cycle }}"
+                       class="block rounded-lg border px-3 py-2 text-sm {% if option.plan == selected_plan and c.cycle == selected_cycle %}border-accent-500 bg-accent-50{% else %}border-gray-200 hover:border-gray-300 hover:bg-gray-50{% endif %}"
+                       {% if option.plan == selected_plan and c.cycle == selected_cycle %}aria-current="true"{% endif %}>
+                        <span class="flex items-baseline justify-between gap-2">
+                            <span class="font-bold capitalize text-navy-900">{{ c.cycle }}</span>
+                            <span class="tabular-nums text-navy-900">&#8377;{{ c.price|floatformat:"0g" }}<span class="text-xs text-gray-400">/{% if c.cycle == 'yearly' %}yr{% else %}mo{% endif %}</span></span>
+                        </span>
+                        <span class="mt-0.5 block text-xs {% if c.action == 'upgrade' or c.action == 'new' or c.action == 'renew' %}text-accent-700{% else %}text-gray-500{% endif %}">
+                            {% if c.action == 'new' %}Subscribe now{% elif c.action == 'upgrade' %}Upgrade now, prorated{% elif c.action == 'renew' %}Pay overdue renewal{% elif c.action == 'schedule' %}From your next renewal{% elif c.action == 'reactivate' %}Your plan &middot; turn renewal on{% elif c.action == 'none' %}Your current plan{% else %}Not available now{% endif %}
+                        </span>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <p class="mt-4 text-xs text-gray-500">Yearly billing gives you 2 months free. To stop paying, choose Free from <a href="{% url 'profile' %}?tab=billing" class="font-bold text-accent-500 hover:text-accent-600">Plan &amp; billing</a>.</p>
+    </section>
+
+    <section class="card h-fit" aria-labelledby="order-summary">
+        <h2 id="order-summary" class="text-lg font-bold text-navy-900">Order summary</h2>
+        {% if error %}
+        <p class="mt-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">{{ error }}</p>
+        {% else %}
+        <p class="mt-1 text-sm text-gray-500">
+            {% if summary.action == 'upgrade' %}{{ summary.current_label }} &rarr; <span class="font-bold text-navy-900">{{ summary.plan_label }}</span>, billed {{ summary.cycle }}
+            {% else %}<span class="font-bold text-navy-900">{{ summary.plan_label }}</span>, billed {{ summary.cycle }}{% endif %}
+        </p>
+
+        {% if summary.lines %}
+        <dl class="mt-4 divide-y divide-gray-100 border-y border-gray-100 text-sm">
+            {% for line in summary.lines %}
+            <div class="flex items-start justify-between gap-4 py-3">
+                <dt>
+                    <span class="block text-navy-900">{{ line.label }}</span>
+                    <span class="block text-xs text-gray-500">{{ line.detail }}</span>
+                </dt>
+                <dd class="shrink-0 tabular-nums {% if line.amount < 0 %}text-green-700{% else %}text-navy-900{% endif %}">{% if line.amount < 0 %}&minus; &#8377;{{ line.amount|floatformat:"2g"|cut:"-" }}{% else %}&#8377;{{ line.amount|floatformat:"2g" }}{% endif %}</dd>
+            </div>
+            {% endfor %}
+            <div class="flex items-center justify-between gap-4 py-3">
+                <dt class="font-bold text-navy-900">To pay now</dt>
+                <dd class="text-xl font-extrabold tabular-nums text-navy-900" data-testid="checkout-total">&#8377;{{ summary.amount|floatformat:"2g" }}</dd>
+            </div>
+        </dl>
+        {% endif %}
+
+        {% if summary.starts_at %}
+        <dl class="mt-4 space-y-2 text-sm">
+            <div class="flex justify-between gap-4"><dt class="text-gray-500">{% if summary.action == 'upgrade' %}{{ summary.plan_label }} starts{% else %}Period starts{% endif %}</dt><dd class="tabular-nums text-navy-900">{% if summary.action == 'renew' %}{{ summary.starts_at|date:"d M Y, H:i" }}{% else %}As soon as you pay{% endif %}</dd></div>
+            {% if summary.time_left %}<div class="flex justify-between gap-4"><dt class="text-gray-500">Time left in this period</dt><dd class="tabular-nums text-navy-900">{{ summary.time_left }}</dd></div>{% endif %}
+            <div class="flex justify-between gap-4"><dt class="text-gray-500">{% if summary.action == 'upgrade' %}Current period ends{% else %}Plan expires{% endif %}</dt><dd class="tabular-nums text-navy-900">{% if summary.action == 'new' %}{{ summary.expires_at|date:"d M Y" }} (in {% if summary.cycle == 'yearly' %}365{% else %}30{% endif %} days){% else %}{{ summary.expires_at|date:"d M Y, H:i" }}{% endif %}</dd></div>
+            <div class="flex justify-between gap-4"><dt class="text-gray-500">Next renewal</dt><dd class="text-right text-navy-900">{% if summary.renews %}{{ summary.renews_at|date:"d M Y" }} &middot; &#8377;{{ summary.renewal_amount|floatformat:"0g" }} for {{ summary.renewal_label }} ({{ summary.renewal_cycle }}), charged automatically{% else %}Renewal is off: moves to Free on {{ summary.renews_at|date:"d M Y" }}{% endif %}</dd></div>
+        </dl>
+        {% endif %}
+
+        {% if summary.notes %}
+        <ul class="mt-4 space-y-1 rounded-md bg-navy-50 px-4 py-3 text-xs text-navy-700">
+            {% for note in summary.notes %}<li>{{ note }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+
+        {% if summary.action == 'schedule' %}
+        <p class="mt-4 text-sm text-gray-600">Nothing to pay now. You'll move to <span class="font-bold text-navy-900">{{ summary.plan_label }}</span> ({{ summary.cycle }}) on {{ summary.effective_at|date:"d M Y, H:i" }}, and keep {{ summary.current_label }} until then.</p>
+        {% elif summary.action == 'reactivate' %}
+        <p class="mt-4 text-sm text-gray-600">Nothing to pay now. Automatic renewal turns back on, so {{ summary.plan_label }} renews on {{ summary.effective_at|date:"d M Y, H:i" }} for &#8377;{{ summary.renewal_amount|floatformat:"0g" }}.</p>
+        {% elif summary.action == 'none' %}
+        <p class="mt-4 text-sm text-gray-600">{{ summary.message }}</p>
+        {% endif %}
+
+        <div class="mt-4 border-t border-gray-100 pt-4 text-sm">
+            <p class="text-xs font-bold uppercase tracking-wide text-gray-400">Billed to</p>
+            <p class="mt-1 text-navy-900">{{ billed_to.name }}</p>
+            {% if billed_to.gstin %}<p class="font-mono text-xs text-gray-500">GSTIN {{ billed_to.gstin }}</p>{% endif %}
+            <p class="text-xs text-gray-500">{{ billed_to.email }}</p>
+        </div>
+
+        {% if summary.action != 'none' %}
+        <form method="post" action="{% url 'billing-change' %}" class="mt-6">
+            {% csrf_token %}
+            <input type="hidden" name="plan_type" value="{{ selected_plan }}">
+            <input type="hidden" name="billing_cycle" value="{{ selected_cycle }}">
+            <button type="submit" class="btn-primary w-full justify-center">
+                {% if summary.pays %}Proceed to payment &middot; &#8377;{{ summary.amount|floatformat:"2g" }}
+                {% elif summary.action == 'upgrade' %}Upgrade now &middot; nothing to pay
+                {% elif summary.action == 'schedule' %}Schedule this change
+                {% else %}Keep this plan{% endif %}
+            </button>
+        </form>
+        {% if summary.pays %}<p class="mt-2 text-center text-xs text-gray-500">You'll pay on the secure payment page next. Your plan changes only once the payment is confirmed.</p>{% endif %}
+        {% endif %}
+        {% endif %}
+        <a href="{% url 'profile' %}?tab=billing" class="btn-outline mt-3 w-full justify-center">Cancel</a>
+    </section>
+</div>
+{% endblock %}

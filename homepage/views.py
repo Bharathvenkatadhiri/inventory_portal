@@ -8,13 +8,14 @@ from django.utils.http import urlencode
 from django.views.generic import View, TemplateView
 from django.contrib.auth.decorators import login_not_required
 from django.contrib.auth import get_user_model, logout as auth_logout
-from django.contrib.auth.views import LoginView, LogoutView, PasswordResetView
+from django.contrib.auth.views import LoginView, LogoutView, PasswordChangeView, PasswordResetView
 from django.contrib import messages
 from django.utils import timezone
 from core import audit, login_throttle, session_security
+from core.emails import send_template_email
 from marketplace import services
 from marketplace.models import Requirement, Quote, Order
-from accounts import team
+from accounts import otp, team
 from accounts.models import SubscriptionPlan
 from plans import access, catalog, rfq_inbox
 from accounts.views import billing_summary, plan_catalog, StaffRequiredMixin
@@ -301,6 +302,83 @@ class ThrottledPasswordResetView(PasswordResetView):
             logger.warning("Password reset throttled for IP %s", self.request.META.get('REMOTE_ADDR', 'unknown'))
             return HttpResponseRedirect(self.get_success_url())
         return super().form_valid(form)
+
+
+class ThrottledPasswordChangeView(PasswordChangeView):
+    """Change your own password (the account menu), step 1: the current
+    password and the new one. Wrong current passwords count toward the same
+    lockout as login and reauth. Nothing changes yet: the new password waits
+    in this session and a code is emailed (accounts.otp); step 2,
+    PasswordChangeVerifyView, applies it once the code is entered."""
+    template_name = 'registration/password_change.html'
+
+    def post(self, request, *args, **kwargs):
+        if login_throttle.is_locked_out(request, request.user.email):
+            minutes = settings.LOGIN_FAILURE_WINDOW_SECONDS // 60
+            messages.error(request, f"Too many failed attempts. Please try again in {minutes} minutes.")
+            return redirect('password_change')
+        return super().post(request, *args, **kwargs)
+
+    def form_invalid(self, form):
+        if form.has_error('old_password'):
+            login_throttle.record_failure(self.request, self.request.user.email)
+        return super().form_invalid(form)
+
+    def form_valid(self, form):
+        user = self.request.user
+        login_throttle.clear_failures(user.email)
+        if not otp.password_change_resend_allowed(user):
+            messages.error(self.request, "Too many codes requested. Please wait a few minutes and try again.")
+            return redirect('password_change')
+        otp.start_password_change(self.request, form.cleaned_data['new_password1'])
+        return redirect('password_change_verify')
+
+
+class PasswordChangeVerifyView(View):
+    """Step 2: the code emailed in step 1. Only a correct code changes the
+    password. Then every session on the account is signed out, this one
+    included, and the user logs in again with the new password."""
+    template_name = 'registration/password_change_verify.html'
+
+    def get(self, request):
+        if otp.pending_password_change(request) is None:
+            return redirect('password_change')
+        return render(request, self.template_name, {'ttl_minutes': otp.TTL_MINUTES})
+
+    def post(self, request):
+        if otp.pending_password_change(request) is None:
+            messages.error(request, "Start again: enter your current and new password.")
+            return redirect('password_change')
+        user = request.user
+        if request.POST.get('action') == 'resend':
+            if otp.password_change_resend_allowed(user):
+                otp.send_password_change_code(request)
+                messages.success(request, f"A new code was sent to {user.email}.")
+            else:
+                messages.error(request, "Too many codes requested. Please wait a few minutes and try again.")
+            return redirect('password_change_verify')
+
+        new_hash, reason = otp.verify_password_change(request, (request.POST.get('code') or '').strip())
+        if new_hash is None:
+            messages.error(request, {
+                'expired': "That code has expired. Send a new one below.",
+                'locked': "Too many incorrect attempts. Send a new code below.",
+            }.get(reason, "That code isn't right. Please try again."))
+            return redirect('password_change_verify')
+
+        user.password = new_hash
+        user.save(update_fields=['password'])
+        logger.info("User %s changed their password", user.email)
+        send_template_email(
+            user.email, 'emails/password_changed_subject.txt', 'emails/password_changed.txt',
+            {'name': user.first_name or user.email, 'email': user.email, 'changed_at': timezone.now(),
+             'reset_url': f"{settings.SITE_URL}{reverse('password_reset')}"},
+        )
+        # Other sessions are already invalid (their stored password hash no
+        # longer matches); end this one too.
+        auth_logout(request)
+        messages.success(request, "Your password has been changed. Please log in with your new password.")
+        return redirect('login')
 
 
 class CustomLogoutView(LogoutView):

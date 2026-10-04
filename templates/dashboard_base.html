@@ -36,6 +36,7 @@
 
         <main class="flex-1 px-6 py-8 lg:px-10">
             {% include "_flash_messages.html" %}
+            {% include "_renewal_alert.html" %}
             {% if read_only %}<p class="mb-4 rounded-md bg-navy-50 px-4 py-2 text-sm text-navy-700">You have view-only access to this company account.</p>{% endif %}
             {% if live_sig %}{% include "live/_topbar_poller.html" %}{% endif %}
             {% block page_header %}{% endblock %}

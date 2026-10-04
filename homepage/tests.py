@@ -450,3 +450,152 @@ class AuthSurfaceHardeningTests(TestCase):
         self.client.login(username="authsurf@example.com", password="correct-horse-battery")
         response = self.client.post(reverse("reauth"), {"password": "correct-horse-battery", "next": "https://evil.example/"})
         self.assertRedirects(response, reverse("home"), fetch_redirect_response=False)
+
+
+@DASHBOARD_TEST_STORAGES
+class PasswordChangeAndAccountMenuTests(TestCase):
+    """Changing your own password from the account menu: current and new
+    password, then a code emailed to you; only a correct code changes it,
+    and then you're signed out everywhere and log in again. Also the menu:
+    the user's role under their name rather than the company."""
+    NEW_PASSWORD = "N3w-strong-passw0rd!"
+
+    def setUp(self):
+        from django.core import mail
+        from marketplace.test_teams import PASSWORD, make_buyer
+        cache.clear()
+        mail.outbox.clear()
+        self.old_password = PASSWORD
+        self.owner, self.profile = make_buyer("pwchange", "9600000001")
+        self.client.login(username=self.owner.email, password=PASSWORD)
+
+    def request_change(self, old, new=None):
+        new = new or self.NEW_PASSWORD
+        return self.client.post(reverse("password_change"), {"old_password": old, "new_password1": new, "new_password2": new})
+
+    def last_code(self):
+        from django.core import mail
+        message = mail.outbox[-1]
+        self.assertIn("change your password", message.subject)
+        return next(l.strip() for l in message.body.splitlines() if l.strip().isdigit() and len(l.strip()) == 6)
+
+    def wrong_code(self, code):
+        return "000000" if code != "000000" else "111111"
+
+    def verify(self, code):
+        return self.client.post(reverse("password_change_verify"), {"code": code})
+
+    def password_is(self, user, raw):
+        user.refresh_from_db()
+        return user.check_password(raw)
+
+    def test_menu_shows_role_and_change_password(self):
+        page = self.client.get(reverse("home"))
+        self.assertContains(page, reverse("password_change"))
+        self.assertContains(page, '<span class="block text-xs text-gray-500">Owner</span>', html=True)
+        self.assertContains(self.client.get(reverse("password_change")), "Current password")
+
+    def test_menu_shows_a_team_members_role(self):
+        from marketplace.test_teams import PASSWORD, add_member
+        member = add_member(self.profile, "pwmember")
+        self.client.login(username=member.email, password=PASSWORD)
+        self.assertContains(self.client.get(reverse("home")), '<span class="block text-xs text-gray-500">Procurement</span>', html=True)
+
+    def test_right_passwords_send_a_code_and_change_nothing_yet(self):
+        response = self.request_change(self.old_password)
+        self.assertRedirects(response, reverse("password_change_verify"), fetch_redirect_response=False)
+        self.last_code()
+        self.assertTrue(self.password_is(self.owner, self.old_password))
+        self.assertContains(self.client.get(reverse("password_change_verify")), "Verify and change password")
+
+    def test_correct_code_changes_the_password_and_logs_out(self):
+        from django.core import mail
+        self.request_change(self.old_password)
+        response = self.verify(self.last_code())
+        self.assertRedirects(response, reverse("login"), fetch_redirect_response=False)
+        self.assertTrue(self.password_is(self.owner, self.NEW_PASSWORD))
+        self.assertIn("password was changed", mail.outbox[-1].subject)
+        # Signed out here: dashboard pages send you to log in again.
+        self.assertIn(reverse("login"), self.client.get(reverse("profile"))["Location"])
+        self.assertTrue(self.client.login(username=self.owner.email, password=self.NEW_PASSWORD))
+
+    def test_change_signs_out_other_sessions_too(self):
+        from django.test import Client
+        other = Client()
+        other.login(username=self.owner.email, password=self.old_password)
+        self.request_change(self.old_password)
+        self.verify(self.last_code())
+        self.assertIn(reverse("login"), other.get(reverse("profile"))["Location"])
+
+    def test_wrong_code_changes_nothing(self):
+        self.request_change(self.old_password)
+        wrong = self.wrong_code(self.last_code())
+        self.assertRedirects(self.verify(wrong), reverse("password_change_verify"), fetch_redirect_response=False)
+        self.assertTrue(self.password_is(self.owner, self.old_password))
+        self.assertEqual(self.client.get(reverse("home")).status_code, 200)  # still signed in
+
+    def test_too_many_wrong_codes_lock_the_code(self):
+        from accounts.otp import MAX_ATTEMPTS
+        self.request_change(self.old_password)
+        code = self.last_code()
+        for _ in range(MAX_ATTEMPTS):
+            self.verify(self.wrong_code(code))
+        self.verify(code)
+        self.assertTrue(self.password_is(self.owner, self.old_password))
+
+    def test_expired_code_changes_nothing(self):
+        from datetime import timedelta
+        from unittest import mock
+        from django.utils import timezone
+        self.request_change(self.old_password)
+        code = self.last_code()
+        later = timezone.now() + timedelta(minutes=11)
+        with mock.patch("django.utils.timezone.now", return_value=later):
+            self.verify(code)
+        self.assertTrue(self.password_is(self.owner, self.old_password))
+
+    def test_resend_replaces_the_code(self):
+        self.request_change(self.old_password)
+        first = self.last_code()
+        self.client.post(reverse("password_change_verify"), {"action": "resend"})
+        second = self.last_code()
+        if first != second:
+            self.verify(first)
+            self.assertTrue(self.password_is(self.owner, self.old_password))
+        self.verify(second)
+        self.assertTrue(self.password_is(self.owner, self.NEW_PASSWORD))
+
+    def test_verify_page_needs_a_pending_change(self):
+        self.assertRedirects(self.client.get(reverse("password_change_verify")), reverse("password_change"), fetch_redirect_response=False)
+        self.verify("123456")
+        self.assertTrue(self.password_is(self.owner, self.old_password))
+
+    def test_wrong_current_password_sends_no_code(self):
+        from django.core import mail
+        response = self.request_change("not-my-password")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Your old password was entered incorrectly")
+        self.assertEqual(mail.outbox, [])
+
+    def test_weak_new_password_is_refused(self):
+        from django.core import mail
+        self.assertEqual(self.request_change(self.old_password, "password").status_code, 200)
+        self.assertEqual(mail.outbox, [])
+
+    @override_settings(LOGIN_FAILURE_LIMIT_PER_EMAIL=2)
+    def test_wrong_current_passwords_count_toward_the_lockout(self):
+        from django.core import mail
+        self.request_change("wrong-1")
+        self.request_change("wrong-2")
+        response = self.request_change(self.old_password)
+        self.assertRedirects(response, reverse("password_change"), fetch_redirect_response=False)
+        self.assertEqual(mail.outbox, [])
+
+    def test_a_viewer_may_change_their_own_password(self):
+        from accounts.models import TeamMember
+        from marketplace.test_teams import PASSWORD, add_member
+        viewer = add_member(self.profile, "pwviewer", TeamMember.VIEWER)
+        self.client.login(username=viewer.email, password=PASSWORD)
+        self.request_change(PASSWORD)
+        self.verify(self.last_code())
+        self.assertTrue(self.password_is(viewer, self.NEW_PASSWORD))

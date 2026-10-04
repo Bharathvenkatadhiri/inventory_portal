@@ -136,6 +136,9 @@ def billing_summary(subscription):
         'started_at': subscription.started_at,
         'period_start': subscription.current_period_start,
         'expires_at': subscription.expires_at,
+        # Past due is past expiry already; its grace period is shown instead.
+        'days_left': (billing.days_left(subscription)
+                      if entitled != catalog.DEFAULT_PLAN and subscription.status != SubscriptionPlan.PAST_DUE else None),
         'auto_renew': subscription.auto_renew,
         'grace_until': subscription.grace_until,
         'next_retry_at': subscription.next_retry_at,

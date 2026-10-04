@@ -76,6 +76,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "homepage.context_processors.dashboard_sidebar_counts",
                 "homepage.context_processors.portal_feedback_prompt",
+                "homepage.context_processors.renewal_alert",
             ],
         },
     },

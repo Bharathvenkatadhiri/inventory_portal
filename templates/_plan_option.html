@@ -1,4 +1,4 @@
-{# One plan on one billing cycle: what choosing it does now. Expects option (from accounts.views.plan_catalog), plan, cycle, can_change_plan. #}
+{# One plan on one billing cycle: what choosing it does now. Paid options open the checkout review (billing-checkout). Expects option (from accounts.views.plan_catalog), plan, cycle, can_change_plan. #}
 {% if option.scheduled %}
 <span class="btn-outline w-full cursor-default justify-center text-center text-xs opacity-80">Scheduled</span>
 {% elif option.action == 'none' %}
@@ -7,6 +7,10 @@
 <p class="text-center text-xs text-gray-500">{{ option.note }}</p>
 {% elif not can_change_plan %}
 <span class="btn-outline w-full cursor-default justify-center text-center text-xs opacity-60">Only your company's owner can change the plan</span>
+{% elif option.action == 'new' or option.action == 'upgrade' or option.action == 'renew' %}
+{# Anything that's paid for is reviewed first: price split, dates, other plans. #}
+<a href="{% url 'billing-checkout' %}?plan={{ plan.key }}&amp;cycle={{ cycle }}" class="btn-primary w-full justify-center text-center">{{ option.label }}</a>
+{% if option.note %}<p class="mt-2 text-xs text-gray-500">{{ option.note }}</p>{% endif %}
 {% else %}
 <form method="post" action="{% url 'billing-change' %}">
     {% csrf_token %}

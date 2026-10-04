@@ -1,0 +1,1 @@
+{# "N days left" for a paid plan's current period. Expects days (billing.services.days_left). #}{% if days == 0 %}Ends today{% else %}{{ days }} day{{ days|pluralize }} left{% endif %}
