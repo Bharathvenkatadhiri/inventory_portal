@@ -5,45 +5,150 @@
 {% endblock %}
 {% block content %}
 <div class="card max-w-3xl mx-auto space-y-4">
+    <p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Last updated: [DATE]</p>
+
     <p class="text-gray-600">
-        At MakeSetu, we prioritize your privacy and are committed to protecting your personal data.
-        This Privacy Policy outlines the types of information we collect from our users, how we use and
-        safeguard this information, and your rights concerning your data. By using our platform, you agree
-        to the terms outlined in this policy.
+        This Privacy Policy explains how <strong>[COMPANY LEGAL NAME]</strong> ("MakeSetu", "we", "us"),
+        registered office at <strong>[REGISTERED ADDRESS]</strong>, collects, uses, shares and protects
+        personal information in connection with the MakeSetu platform (the "Platform"). It applies to
+        Buyers, Suppliers, team members invited to a company account, and anyone else who uses the Platform.
+        By using the Platform, you agree to the practices described here.
     </p>
 
     <div>
-        <h2 class="text-lg font-bold text-navy-900 mb-1.5">Information Collection and Use</h2>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">1. Information We Collect</h2>
+        <p class="text-gray-600 mb-2"><strong>Account and company information:</strong> name, email address,
+            phone number, and — for company accounts — company name, address, GSTIN and related GST
+            verification details (legal name, registration status, state and PIN code), business type, and
+            team member roles (for accounts with multiple invited users).</p>
+        <p class="text-gray-600 mb-2"><strong>RFQ, quote and order content:</strong> part drawings and CAD
+            files (e.g. STEP, IGES, STL, DXF, DWG), specifications, quotes, purchase orders, GST tax invoices,
+            production updates, quality/certification documents, and messages (including file attachments)
+            exchanged with counterparties through the Platform.</p>
+        <p class="text-gray-600 mb-2"><strong>Supplier profile information:</strong> manufacturing
+            capabilities, certifications, machine list, facility photos, and other information a Supplier
+            chooses to publish on their profile.</p>
+        <p class="text-gray-600"><strong>Usage and security information:</strong> IP address, browser
+            information, login timestamps, and a browser-session signal we use to detect when a session
+            cookie is being used from an unexpected browser, so we can log that session out as a security
+            precaution.</p>
+    </div>
+
+    <div>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">2. Cookies</h2>
         <p class="text-gray-600">
-            We collect personal information that you provide to us directly, such as your name, email
-            address, contact details, and company information when you register, place an RFQ, or interact
-            with our services. Additionally, we may collect data regarding your usage of our platform,
-            including IP addresses, browser types, and access times, to improve user experience and ensure
-            the security of our services. The information collected is used to facilitate communication
-            between buyers and sellers, process transactions, and enhance the functionality and performance
-            of our platform.
+            We use only the cookies strictly necessary to operate the Platform: a session cookie (to keep you
+            signed in) and a CSRF-protection cookie (to protect forms from cross-site request forgery). We do
+            not use analytics, advertising, or third-party tracking cookies. Your session cookie expires when
+            you close your browser or after a period of inactivity.
         </p>
     </div>
 
     <div>
-        <h2 class="text-lg font-bold text-navy-900 mb-1.5">Data Protection and Security</h2>
-        <p class="text-gray-600">
-            MakeSetu employs robust security measures to protect your personal data against
-            unauthorized access, alteration, disclosure, or destruction. We use encryption technologies and
-            secure servers to safeguard your information. Despite our efforts, we cannot guarantee absolute
-            security, and we encourage you to take precautions to protect your own information. We do not
-            sell or share your personal data with third parties without your consent, except as required by
-            law or necessary to provide our services.
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">3. How We Use Information</h2>
+        <p class="text-gray-600 mb-2">We use the information described above to:</p>
+        <ul class="list-disc list-inside text-gray-600 space-y-1">
+            <li>Operate core features — matching RFQs to Suppliers, enabling quotes, generating purchase orders and GST tax invoices, and tracking order production status.</li>
+            <li>Verify the identity and GST registration status of company accounts.</li>
+            <li>Send transactional communications, such as email verification codes, RFQ and quote notifications, order and payment-status updates, and billing notices for your subscription plan.</li>
+            <li>Maintain the security of the Platform, including detecting suspicious session activity and keeping an internal audit log of account-affecting actions taken by our staff (e.g. account verification or deactivation).</li>
+            <li>Comply with legal obligations, including tax and accounting record-keeping.</li>
+        </ul>
+        <p class="text-gray-600 mt-2">
+            We do not use your data to serve advertising, and we do not sell your personal information.
         </p>
     </div>
 
     <div>
-        <h2 class="text-lg font-bold text-navy-900 mb-1.5">Your Rights</h2>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">4. Who We Share Information With</h2>
+        <p class="text-gray-600 mb-2">We share information only as follows:</p>
+        <ul class="list-disc list-inside text-gray-600 space-y-1">
+            <li><strong>With your trading counterparty:</strong> when you post an RFQ, submit a quote, or transact on an order, relevant details (including drawings and contact information needed to fulfil the order) are shared with the specific Buyer(s) or Supplier(s) involved in that RFQ or order — never with the wider platform.</li>
+            <li><strong>Infrastructure providers:</strong> we use Amazon Web Services for file storage (uploaded drawings, certificates, order documents and message attachments) and for sending transactional email, under contracts that restrict their use of your data to providing these services to us.</li>
+            <li><strong>GST verification providers:</strong> if you provide a GSTIN, it (and associated company legal-name/address details) may be sent to a GST verification service to confirm registration status.</li>
+            <li><strong>Payment processor:</strong> subscription-plan payments are processed by our payment processor. We do not share order-level payment details with any processor, because order payments between Buyers and Suppliers are settled directly between those parties and are not processed by MakeSetu — see our <a href="{% url 'terms-of-service' %}" class="text-accent-500 hover:underline">Terms of Service</a>.</li>
+            <li><strong>Legal and compliance:</strong> where required to comply with applicable law, regulation, legal process, or a governmental request.</li>
+        </ul>
+    </div>
+
+    <div>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">5. Data Storage, Security and Transfers</h2>
         <p class="text-gray-600">
-            You have the right to access, modify, or delete your personal data at any time by logging into
-            your account or contacting our support team. We also provide options to manage your
-            communication preferences and opt-out of non-essential communications. If you have any concerns
-            or questions about your privacy or our data practices, please reach out to us.
+            Files you upload are stored using encrypted, access-controlled cloud storage and are served over
+            encrypted connections. Message attachments are only accessible to participants in that
+            conversation. We restrict staff access to personal data and log account-affecting staff actions
+            for accountability. No method of transmission or storage is completely secure, and we cannot
+            guarantee absolute security. Depending on the cloud region configured for our infrastructure
+            providers, data may be stored or processed outside the country in which you are located; where
+            that occurs, we take steps to ensure it is handled consistently with this Policy.
+        </p>
+    </div>
+
+    <div>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">6. Data Retention</h2>
+        <p class="text-gray-600">
+            We retain account, RFQ, quote, order and invoicing records for as long as your account is active
+            and thereafter for as long as needed to meet accounting, tax and legal record-keeping
+            obligations, resolve disputes, and maintain security audit trails. If you close your account or
+            request deletion, we delete or anonymise personal data that is no longer required for these
+            purposes within a reasonable time.
+        </p>
+    </div>
+
+    <div>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">7. Your Rights</h2>
+        <p class="text-gray-600 mb-2">
+            Subject to applicable data protection law (including, for users in India, the Digital Personal
+            Data Protection Act, 2023), you have the right to:
+        </p>
+        <ul class="list-disc list-inside text-gray-600 space-y-1">
+            <li>Access and correct your personal information — most profile fields can be updated directly from your account settings.</li>
+            <li>Request a copy of the personal data we hold about you.</li>
+            <li>Request erasure of your personal data, subject to our legitimate need to retain certain records (e.g. completed orders, invoices, audit logs) for legal, tax and security purposes.</li>
+            <li>Withdraw consent for non-essential communications at any time.</li>
+            <li>Lodge a complaint about how your data is handled.</li>
+        </ul>
+        <p class="text-gray-600 mt-2">
+            We do not currently offer fully automated self-service deletion or data-export; to exercise any
+            of these rights, contact us as described below and we will action your request manually within a
+            reasonable time.
+        </p>
+    </div>
+
+    <div>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">8. Children's Privacy</h2>
+        <p class="text-gray-600">
+            The Platform is a business-to-business service intended for use by individuals aged 18 and over
+            acting on behalf of a company. We do not knowingly collect personal information from children.
+        </p>
+    </div>
+
+    <div>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">9. Grievance Officer</h2>
+        <p class="text-gray-600">
+            In accordance with applicable law, the Grievance Officer / Data Protection contact for MakeSetu
+            is:<br>
+            <strong>[GRIEVANCE OFFICER NAME]</strong><br>
+            [DESIGNATION]<br>
+            Email: <a href="mailto:makesetu@gmail.com" class="text-accent-500 hover:underline">makesetu@gmail.com</a><br>
+            Address: [REGISTERED ADDRESS]
+        </p>
+    </div>
+
+    <div>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">10. Changes to This Policy</h2>
+        <p class="text-gray-600">
+            We may update this Privacy Policy from time to time. Material changes will be posted on this page
+            with an updated "Last updated" date, and, where required by law, notified to you directly.
+        </p>
+    </div>
+
+    <div>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">11. Contact Us</h2>
+        <p class="text-gray-600">
+            For any questions about this Privacy Policy or to exercise your data rights, contact us at
+            <a href="mailto:makesetu@gmail.com" class="text-accent-500 hover:underline">makesetu@gmail.com</a>
+            or via our <a href="{% url 'contact' %}" class="text-accent-500 hover:underline">contact page</a>.
         </p>
     </div>
 </div>

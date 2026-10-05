@@ -1,6 +1,7 @@
 import logging
 
 from django.conf import settings
+from django.templatetags.static import static
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import Http404, HttpResponseRedirect
 from django.urls import reverse
@@ -161,6 +162,42 @@ class AboutView(TemplateView):
 
 class HowItWorksView(TemplateView):
     template_name = "how_it_works.html"
+
+
+class BuyerDemoView(TemplateView):
+    """Public, no-login page that plays the buyer walkthrough video —
+    reached by clicking "Watch Buyer Demo" on the marketing pages."""
+    template_name = "demo_video.html"
+
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(
+            role="buyer",
+            page_title="Buyer Demo",
+            video_url=static("videos/buyer-walkthrough.mp4"),
+            heading="See the buyer workflow in action.",
+            sub="Post an RFQ, compare quotes and track an order to delivery — in under a minute.",
+            other_role_name="Supplier",
+            other_role_url_name="demo-supplier",
+            **kwargs,
+        )
+
+
+class SupplierDemoView(TemplateView):
+    """Public, no-login page that plays the supplier walkthrough video —
+    reached by clicking "Watch Supplier Demo" on the marketing pages."""
+    template_name = "demo_video.html"
+
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(
+            role="supplier",
+            page_title="Supplier Demo",
+            video_url=static("videos/supplier-walkthrough.mp4"),
+            heading="See the supplier workflow in action.",
+            sub="See matched RFQs, submit a quote and get awarded an order — in under a minute.",
+            other_role_name="Buyer",
+            other_role_url_name="demo-buyer",
+            **kwargs,
+        )
 
 
 class PricingView(TemplateView):

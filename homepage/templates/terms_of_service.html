@@ -5,101 +5,172 @@
 {% endblock %}
 {% block content %}
 <div class="card max-w-3xl mx-auto space-y-4">
+    <p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Last updated: [DATE]</p>
+
     <p class="text-gray-600">
-        Welcome to MakeSetu! These terms of service ("Terms") apply to your use of our website and
-        services ("Platform"). By accessing or using our Platform, you agree to comply with and be bound by
-        these Terms. Please read them carefully. If you do not agree with these Terms, you may not use our
-        Platform.
+        These Terms of Service ("Terms") govern your access to and use of the MakeSetu website and platform
+        (the "Platform"), operated by <strong>[COMPANY LEGAL NAME]</strong>, having its registered office at
+        <strong>[REGISTERED ADDRESS]</strong> ("MakeSetu", "we", "us"). MakeSetu connects buyers seeking
+        custom-manufactured parts ("Buyers") with manufacturers and fabricators ("Suppliers") who quote and
+        fulfil those requirements. By creating an account or otherwise using the Platform, you agree to be
+        bound by these Terms. If you do not agree, do not use the Platform.
     </p>
 
     <div>
-        <h2 class="text-lg font-bold text-navy-900 mb-1.5">1. Use of the Platform</h2>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">1. Eligibility and Accounts</h2>
         <p class="text-gray-600 mb-2">
-            You agree to use the Platform only for lawful purposes and in accordance with these Terms. You
-            are responsible for ensuring that your use of the Platform complies with all applicable laws and
-            regulations. You agree not to:
+            The Platform is intended for business use by individuals and organisations capable of entering
+            into binding contracts, and is not directed at or intended for use by anyone under 18 years of
+            age. You agree to:
         </p>
         <ul class="list-disc list-inside text-gray-600 space-y-1">
-            <li>Use the Platform in any manner that could disable, overburden, damage, or impair the Platform or interfere with any other party's use of the Platform.</li>
-            <li>Engage in any conduct that is fraudulent, misleading, or otherwise harmful to MakeSetu or other users.</li>
-            <li>Upload or transmit any viruses, malware, or other harmful code.</li>
-            <li>Attempt to gain unauthorized access to any portion of the Platform, other user accounts, or any systems or networks connected to the Platform.</li>
+            <li>Provide accurate, current and complete information when registering as a Buyer or Supplier, including company and GST details where applicable, and keep that information up to date.</li>
+            <li>Keep your account credentials confidential and notify us immediately of any unauthorized use of your account.</li>
+            <li>Take responsibility for all activity under your account, including activity by team members you invite to your company account.</li>
+        </ul>
+        <p class="text-gray-600 mt-2">
+            A company account may have a primary owner and additional invited team members with different
+            roles (e.g. Admin, Procurement, Sales, Operations, Viewer). The company owner is responsible for
+            managing team access and for all actions taken by members of their team on the Platform.
+        </p>
+    </div>
+
+    <div>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">2. How the Platform Works</h2>
+        <p class="text-gray-600">
+            Buyers may post requirements ("RFQs") describing the parts they need, including drawings and
+            specifications. Suppliers may submit quotes in response. A Buyer may award a quote, at which
+            point MakeSetu generates a purchase order and related documents reflecting the agreed terms.
+            <strong>MakeSetu is a platform that connects Buyers and Suppliers; it is not a party to, and does
+            not guarantee the performance of, any contract formed between a Buyer and a Supplier.</strong>
+            Quality, specification compliance, delivery timelines and all other aspects of order fulfilment
+            are the sole responsibility of the Buyer and Supplier involved.
+        </p>
+    </div>
+
+    <div>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">3. Payments</h2>
+        <p class="text-gray-600 mb-2">
+            There are two separate kinds of payment on the Platform, and it is important to understand the
+            difference:
+        </p>
+        <ul class="list-disc list-inside text-gray-600 space-y-1">
+            <li><strong>Subscription fees:</strong> MakeSetu charges Buyers and/or Suppliers a subscription fee for access to paid plans and features, as described on our <a href="{% url 'pricing' %}" class="text-accent-500 hover:underline">Pricing</a> page. These fees are billed and processed through our payment processor and are governed by the plan terms shown at checkout.</li>
+            <li><strong>Order payments between Buyer and Supplier:</strong> Payment for the goods or services covered by an RFQ, quote or purchase order is agreed and settled directly between the Buyer and the Supplier, outside the Platform. MakeSetu does not collect, hold, escrow, or disburse funds on behalf of either party for order payments, and does not guarantee that any payment will be made or received. Statuses such as "payment requested" or "paid" shown on the Platform are acknowledgements entered by the parties, not confirmation of an actual fund transfer by MakeSetu.</li>
+        </ul>
+        <p class="text-gray-600 mt-2">
+            Any reference elsewhere on our website (including marketing or demo pages) to funds being "secured"
+            or held during a transaction describes the intended commercial arrangement between the Buyer and
+            Supplier, not a payment-holding service provided by MakeSetu, unless and until we explicitly
+            introduce and describe such a feature in these Terms.
+        </p>
+    </div>
+
+    <div>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">4. Tax and GST Information</h2>
+        <p class="text-gray-600">
+            Where you provide a GSTIN or other tax identifier, we may verify it against publicly available
+            registries or third-party verification providers and display the result (such as legal name,
+            registration status and address) to you and, where relevant to a transaction, to the other party.
+            You are solely responsible for the accuracy of the tax information you provide and for your own
+            tax compliance, invoicing and filings. Purchase orders and tax invoices generated on the Platform
+            are based on the information the parties enter and do not constitute tax or legal advice.
+        </p>
+    </div>
+
+    <div>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">5. Your Content and Files</h2>
+        <p class="text-gray-600">
+            You may upload drawings, CAD files, specifications, certificates, quality reports and other
+            materials ("User Content") in connection with an RFQ, quote or order. You retain ownership of your
+            User Content. You grant MakeSetu a limited, non-exclusive licence to host, store, reproduce and
+            display your User Content solely as needed to operate the Platform and to share it with the
+            specific counterparties you choose to engage with on a given RFQ or order (for example, the
+            Suppliers you invite to quote). You represent that you own or have the necessary rights to the
+            User Content you upload and that it does not infringe any third party's rights.
+        </p>
+    </div>
+
+    <div>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">6. Acceptable Use</h2>
+        <p class="text-gray-600 mb-2">You agree not to:</p>
+        <ul class="list-disc list-inside text-gray-600 space-y-1">
+            <li>Use the Platform in any way that disables, overburdens, or impairs it, or interferes with another party's use of it.</li>
+            <li>Engage in fraudulent, misleading or deceptive conduct towards MakeSetu or other users, including misrepresenting your company's identity, capability or tax status.</li>
+            <li>Upload viruses, malware or other harmful code, or attempt to bypass file-type or content safeguards.</li>
+            <li>Attempt to gain unauthorized access to another user's account, company account, files or messages, or to any system or network connected to the Platform.</li>
+            <li>Use contact details, drawings or other information obtained through the Platform for purposes unrelated to the RFQ or order through which it was shared.</li>
         </ul>
     </div>
 
     <div>
-        <h2 class="text-lg font-bold text-navy-900 mb-1.5">2. Account Registration and Security</h2>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">7. Intellectual Property</h2>
         <p class="text-gray-600">
-            To use certain features of the Platform, you may be required to register for an account. You
-            agree to provide accurate, current, and complete information during the registration process and
-            to update such information to keep it accurate, current, and complete. You are responsible for
-            maintaining the confidentiality of your account password and for all activities that occur under
-            your account. You agree to notify us immediately of any unauthorized use of your account.
+            Other than User Content, all content and materials on the Platform — including text, graphics,
+            logos, icons, software and the MakeSetu name and marks — are the property of MakeSetu or its
+            licensors and are protected by applicable intellectual property laws. You may not copy, modify,
+            distribute or create derivative works from any such materials without our prior written consent.
         </p>
     </div>
 
     <div>
-        <h2 class="text-lg font-bold text-navy-900 mb-1.5">3. User Content</h2>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">8. Suspension and Termination</h2>
         <p class="text-gray-600">
-            By posting, uploading, or otherwise making available any content on the Platform ("User
-            Content"), you grant MakeSetu a non-exclusive, transferable, sub-licensable, royalty-free,
-            worldwide license to use, reproduce, modify, distribute, and display such User Content in
-            connection with the operation of the Platform. You represent and warrant that you own or have
-            the necessary rights to the User Content you provide and that your User Content does not
-            infringe the rights of any third party.
+            We may suspend or deactivate an account that violates these Terms, poses a security risk, or is
+            associated with fraudulent or abusive conduct. You may stop using the Platform at any time;
+            to close your account or request deletion of your personal data, contact us as described in the
+            <a href="{% url 'privacy-policy' %}" class="text-accent-500 hover:underline">Privacy Policy</a>.
+            Some records (such as orders, invoices and audit logs) may be retained after account closure as
+            described in that policy and as required by law.
         </p>
     </div>
 
     <div>
-        <h2 class="text-lg font-bold text-navy-900 mb-1.5">4. Intellectual Property</h2>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">9. Disclaimers and Limitation of Liability</h2>
         <p class="text-gray-600">
-            All content and materials on the Platform, including but not limited to text, graphics, logos,
-            icons, images, and software, are the property of MakeSetu or its licensors and are
-            protected by copyright, trademark, and other intellectual property laws. You agree not to copy,
-            modify, distribute, or create derivative works based on any content or materials from the
-            Platform without our prior written consent.
+            The Platform is provided on an "as is" and "as available" basis. MakeSetu makes no warranty that
+            the Platform will be uninterrupted, error-free, or secure, and does not warrant the accuracy,
+            completeness or reliability of any RFQ, quote, GST verification result, or other content submitted
+            by users. To the fullest extent permitted by law, MakeSetu disclaims all implied warranties and
+            will not be liable for any indirect, incidental, special or consequential damages, or for any loss
+            arising from a transaction between a Buyer and a Supplier, including non-payment, delayed
+            delivery, or quality disputes.
         </p>
     </div>
 
     <div>
-        <h2 class="text-lg font-bold text-navy-900 mb-1.5">5. Disclaimers and Limitation of Liability</h2>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">10. Indemnification</h2>
         <p class="text-gray-600">
-            The Platform is provided on an "as is" and "as available" basis. MakeSetu makes no
-            representations or warranties of any kind, express or implied, as to the operation of the
-            Platform or the information, content, or materials included on the Platform. To the fullest
-            extent permitted by law, we disclaim all warranties, express or implied, including but not
-            limited to implied warranties of merchantability and fitness for a particular purpose.
-            MakeSetu will not be liable for any damages of any kind arising from the use of the
-            Platform, including but not limited to direct, indirect, incidental, punitive, and consequential
-            damages.
+            You agree to indemnify and hold MakeSetu harmless from any claims, losses or damages arising from
+            your use of the Platform, your User Content, or your breach of these Terms, including claims
+            brought by another user in connection with a transaction you entered into through the Platform.
         </p>
     </div>
 
     <div>
-        <h2 class="text-lg font-bold text-navy-900 mb-1.5">6. Governing Law</h2>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">11. Governing Law</h2>
         <p class="text-gray-600">
-            These Terms shall be governed by and construed in accordance with the laws of the jurisdiction in
-            which MakeSetu is headquartered, without regard to its conflict of law principles. You
-            agree to submit to the personal jurisdiction of the courts located in that jurisdiction for the
-            purpose of litigating all such claims or disputes.
+            These Terms are governed by the laws of <strong>[JURISDICTION, e.g. India]</strong>, without
+            regard to conflict-of-law principles. Any dispute arising out of or relating to these Terms or the
+            Platform shall be subject to the exclusive jurisdiction of the courts at <strong>[CITY]</strong>.
         </p>
     </div>
 
     <div>
-        <h2 class="text-lg font-bold text-navy-900 mb-1.5">7. Changes to Terms</h2>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">12. Changes to These Terms</h2>
         <p class="text-gray-600">
-            We reserve the right to modify these Terms at any time. Any changes will be effective immediately
-            upon posting on the Platform. Your continued use of the Platform following the posting of changes
-            constitutes your acceptance of such changes. We encourage you to review these Terms periodically
-            to stay informed of any updates.
+            We may update these Terms from time to time. Material changes will be notified by posting an
+            updated version on the Platform with a new "Last updated" date, and, where required by law, by
+            additional notice. Your continued use of the Platform after a change takes effect constitutes
+            acceptance of the updated Terms.
         </p>
     </div>
 
     <div>
-        <h2 class="text-lg font-bold text-navy-900 mb-1.5">8. Contact Us</h2>
+        <h2 class="text-lg font-bold text-navy-900 mb-1.5">13. Contact Us</h2>
         <p class="text-gray-600">
-            If you have any questions or concerns about these Terms, please
-            <a href="{% url 'contact' %}" class="text-accent-500 hover:underline">contact us</a>.
+            Questions about these Terms can be sent to <a href="mailto:makesetu@gmail.com" class="text-accent-500 hover:underline">makesetu@gmail.com</a>
+            or via our <a href="{% url 'contact' %}" class="text-accent-500 hover:underline">contact page</a>.
         </p>
     </div>
 </div>

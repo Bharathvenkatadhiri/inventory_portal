@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}{{ page_title }} — MakeSetu{% endblock %}
+{% block meta_description %}{{ sub }}{% endblock %}
+{% block hero %}
+{% include "_page_hero.html" with eyebrow="Demo" heading=heading sub=sub %}
+{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="overflow-hidden rounded-xl bg-navy-900 shadow-lg">
+        <video class="w-full" controls autoplay muted playsinline preload="auto">
+            <source src="{{ video_url }}" type="video/mp4">
+            Your browser doesn't support embedded video.
+        </video>
+    </div>
+
+    <div class="mt-8 flex flex-col items-center gap-4 text-center sm:flex-row sm:justify-between sm:text-left">
+        <p class="text-sm text-gray-500">
+            Want to see the other side of the platform?
+        </p>
+        <a href="{% url other_role_url_name %}" class="btn-outline inline-flex items-center gap-2 shrink-0">
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3l14 9-14 9V3z"/></svg>
+            Watch {{ other_role_name }} Demo
+        </a>
+    </div>
+
+    <div class="mt-10 flex flex-wrap items-center justify-center gap-3">
+        <a href="{% url 'register' %}" class="btn-primary">Get Started Free</a>
+        <a href="{% url 'how-it-works' %}" class="btn-outline">See how it works</a>
+    </div>
+</div>
+{% endblock %}
