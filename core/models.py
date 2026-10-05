@@ -45,3 +45,23 @@ class AuditLogEntry(models.Model):
 
     def __str__(self):
         return f"{self.created_at:%Y-%m-%d %H:%M} {self.actor_email or 'unknown'} {self.action} {self.target_repr}"
+
+
+class PasswordHistory(models.Model):
+    """One previously-set password hash for a user, kept only so
+    core.validators.PasswordHistoryValidator can reject reusing any of the
+    last few — never read for anything else. Written by
+    core.password_history.record at every point a password is actually
+    saved (registration, change-password, team-join, reset); that module
+    also trims each user down to the most recent few rows, so this table
+    never grows without bound."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='password_history')
+    password_hash = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['user', '-created_at'])]
+
+    def __str__(self):
+        return f"password set for {self.user_id} at {self.created_at:%Y-%m-%d %H:%M}"

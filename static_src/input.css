@@ -4,6 +4,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Alpine.js hides [x-cloak] elements itself once it initializes (via
+   x-show), but alpinejs is loaded with `defer` in base.html/dashboard_base.html,
+   so there's a brief window after the HTML parses and before Alpine runs
+   where an x-cloak element would otherwise flash visible. This rule is
+   what x-cloak actually depends on — Alpine doesn't inject it. Used by
+   every dropdown, mobile menu and tabbed panel across the site that has
+   x-show paired with x-cloak. */
+[x-cloak] {
+  display: none !important;
+}
+
 @layer components {
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2;

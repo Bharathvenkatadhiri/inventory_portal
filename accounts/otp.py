@@ -119,6 +119,8 @@ def complete_registration(pending):
     user.password = pending.password  # already hashed by UserRegistrationForm
     user.save()
     pending.delete()
+    from core.password_history import record
+    record(user, user.password)
     return user
 
 

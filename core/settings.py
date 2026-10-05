@@ -111,7 +111,14 @@ AUTH_PASSWORD_VALIDATORS = [
     # Uppercase, lowercase, number and special character (registration,
     # team invitations and password resets alike).
     {"NAME": "core.validators.StrongPasswordValidator"},
+    # Can't reuse any of the user's last few passwords — see
+    # core.password_history for where each one gets recorded.
+    {"NAME": "core.validators.PasswordHistoryValidator"},
 ]
+
+# How many of a user's past passwords core.password_history keeps and
+# checks new ones against (see core.validators.PasswordHistoryValidator).
+PASSWORD_HISTORY_LIMIT = 5
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "Asia/Kolkata"

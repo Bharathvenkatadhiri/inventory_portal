@@ -112,3 +112,28 @@ class StrongPasswordValidator:
 
     def get_help_text(self):
         return "Your password must contain an uppercase letter, a lowercase letter, a number and a special character."
+
+
+class PasswordHistoryValidator:
+    """Rejects a password that matches one of the user's last few passwords
+    (core.password_history.KEEP_LAST, default 5). Runs wherever Django's
+    password_validation.validate_password(password, user) runs — so it
+    applies to registration, change-password, the forgot-password reset
+    confirm, and team-invite acceptance alike, the same as every other
+    entry in settings.AUTH_PASSWORD_VALIDATORS. A brand-new user (no pk
+    yet, as at registration or team-join) has no history to check, so this
+    is a no-op there."""
+
+    def validate(self, password, user=None):
+        if user is None or not getattr(user, 'pk', None):
+            return
+        from core.password_history import KEEP_LAST, was_recently_used
+        if was_recently_used(user, password):
+            raise ValidationError(
+                f"Choose a password you haven't used in your last {KEEP_LAST} passwords.",
+                code='password_recently_used',
+            )
+
+    def get_help_text(self):
+        from core.password_history import KEEP_LAST
+        return f"Your new password can't be the same as any of your last {KEEP_LAST} passwords."

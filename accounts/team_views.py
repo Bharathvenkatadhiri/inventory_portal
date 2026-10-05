@@ -316,6 +316,8 @@ def team_join(request, token):
                 )
                 user.set_password(form.cleaned_data['password1'])
                 user.save()
+                from core.password_history import record
+                record(user, user.password)
                 TeamMember.objects.create(
                     user=user, buyer=invitation.buyer, supplier=invitation.supplier,
                     role=invitation.role, invited_by=invitation.invited_by,

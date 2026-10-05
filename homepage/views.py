@@ -9,7 +9,9 @@ from django.utils.http import urlencode
 from django.views.generic import View, TemplateView
 from django.contrib.auth.decorators import login_not_required
 from django.contrib.auth import get_user_model, logout as auth_logout
-from django.contrib.auth.views import LoginView, LogoutView, PasswordChangeView, PasswordResetView
+from django.contrib.auth.views import (
+    LoginView, LogoutView, PasswordChangeView, PasswordResetConfirmView, PasswordResetView,
+)
 from django.contrib import messages
 from django.utils import timezone
 from core import audit, login_throttle, session_security
@@ -341,6 +343,20 @@ class ThrottledPasswordResetView(PasswordResetView):
         return super().form_valid(form)
 
 
+class ThrottledPasswordResetConfirmView(PasswordResetConfirmView):
+    """The "forgot password" link's reset-confirm step. Django's own
+    SetPasswordForm already runs every AUTH_PASSWORD_VALIDATORS entry
+    (including core.validators.PasswordHistoryValidator) before saving, so
+    this only needs to record the new hash afterwards — the same bookkeeping
+    every other place a password gets saved does."""
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        from core.password_history import record
+        record(form.user, form.user.password)
+        return response
+
+
 class ThrottledPasswordChangeView(PasswordChangeView):
     """Change your own password (the account menu), step 1: the current
     password and the new one. Wrong current passwords count toward the same
@@ -405,6 +421,8 @@ class PasswordChangeVerifyView(View):
 
         user.password = new_hash
         user.save(update_fields=['password'])
+        from core.password_history import record
+        record(user, new_hash)
         logger.info("User %s changed their password", user.email)
         send_template_email(
             user.email, 'emails/password_changed_subject.txt', 'emails/password_changed.txt',
