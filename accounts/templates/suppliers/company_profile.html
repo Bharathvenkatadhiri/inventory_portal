@@ -85,7 +85,7 @@
             </div>
             {% if supplier.machines.all %}
             <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
+                <table class="table-stack w-full text-left text-sm">
                     <thead>
                         <tr class="text-xs uppercase tracking-wide text-gray-400">
                             <th class="pb-2 font-semibold">Machine</th>
@@ -98,10 +98,10 @@
                     <tbody class="divide-y divide-gray-100">
                         {% for machine in supplier.machines.all %}
                         <tr>
-                            <td class="py-2 font-bold text-navy-900">{{ machine.machine_type }}</td>
-                            <td class="py-2 text-gray-600">{{ machine.make_model|default:"—" }}</td>
-                            <td class="py-2 text-gray-600">{{ machine.quantity }}</td>
-                            <td class="py-2 text-gray-600">{{ machine.work_envelope|default:"—" }}</td>
+                            <td class="py-2 font-bold text-navy-900" data-stack="title">{{ machine.machine_type }}</td>
+                            <td class="py-2 text-gray-600" data-label="Make / Model">{{ machine.make_model|default:"—" }}</td>
+                            <td class="py-2 text-gray-600" data-label="Qty">{{ machine.quantity }}</td>
+                            <td class="py-2 text-gray-600" data-label="Work envelope">{{ machine.work_envelope|default:"—" }}</td>
                             <td class="py-2 text-right">
                                 <form method="post" action="{% url 'company-machine-remove' machine.pk %}">
                                     {% csrf_token %}

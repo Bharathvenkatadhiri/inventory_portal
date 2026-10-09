@@ -21,7 +21,7 @@
 
     {% if docs %}
     <div class="overflow-x-auto">
-        <table class="w-full text-left text-sm">
+        <table class="table-stack table-stack-inset w-full text-left text-sm">
             <thead>
                 <tr class="text-xs uppercase tracking-wide text-gray-400">
                     <th class="px-6 pt-4 pb-2 font-semibold">Name</th>
@@ -35,11 +35,11 @@
             <tbody class="divide-y divide-gray-100">
                 {% for doc in docs %}
                 <tr x-show="tab === 'all' || tab === '{{ doc.type }}'">
-                    <td class="px-6 py-3 font-medium text-navy-900">{{ doc.name }}</td>
-                    <td class="px-6 py-3"><a href="{{ doc.linked_url }}" class="text-accent-500 hover:underline">{{ doc.linked_label }}</a></td>
-                    <td class="px-6 py-3 text-gray-600">{{ doc.type }}</td>
-                    <td class="px-6 py-3 text-gray-600">{{ doc.uploaded_by }}</td>
-                    <td class="px-6 py-3 text-gray-600">{{ doc.date|date:"d M Y" }}</td>
+                    <td class="px-6 py-3 font-medium text-navy-900" data-stack="title">{{ doc.name }}</td>
+                    <td class="px-6 py-3" data-label="Linked to"><a href="{{ doc.linked_url }}" class="text-accent-500 hover:underline">{{ doc.linked_label }}</a></td>
+                    <td class="px-6 py-3 text-gray-600" data-label="Type">{{ doc.type }}</td>
+                    <td class="px-6 py-3 text-gray-600" data-label="Uploaded by">{{ doc.uploaded_by }}</td>
+                    <td class="px-6 py-3 text-gray-600" data-label="Date">{{ doc.date|date:"d M Y" }}</td>
                     <td class="px-6 py-3 text-right"><a href="{{ doc.url }}" target="_blank" class="text-sm font-bold text-accent-500 hover:text-accent-600">Download</a></td>
                 </tr>
                 {% endfor %}

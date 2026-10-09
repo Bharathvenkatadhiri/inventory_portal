@@ -1,0 +1,9 @@
+{% load static %}{# Installable-app tags (homepage.pwa). Every full-page layout includes this. #}
+    <link rel="manifest" href="{% url 'pwa-manifest' %}">
+    <meta name="theme-color" content="#11355c">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="MakeSetu">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="apple-touch-icon" href="{% static 'pwa/apple-touch-icon.png' %}">
+    <script src="{% static 'js/pwa.js' %}" data-sw="{% url 'pwa-service-worker' %}" defer></script>

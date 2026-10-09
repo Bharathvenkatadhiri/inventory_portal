@@ -17,11 +17,11 @@
 </div>
 {% endif %}
 
-<div class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-    <div class="card"><p class="text-sm text-gray-500">Total spend</p><p class="mt-1 text-2xl font-extrabold text-navy-900">{{ report.total_inr|inr }}</p><p class="text-xs text-gray-400">{{ report.period_label }}</p></div>
-    <div class="card"><p class="text-sm text-gray-500">Completed orders</p><p class="mt-1 text-2xl font-extrabold text-navy-900">{{ report.order_count }}</p></div>
-    <div class="card"><p class="text-sm text-gray-500">Average order</p><p class="mt-1 text-2xl font-extrabold text-navy-900">{{ report.average_inr|inr }}</p></div>
-    <div class="card"><p class="text-sm text-gray-500">Manufacturers used</p><p class="mt-1 text-2xl font-extrabold text-navy-900">{{ report.supplier_count }}</p></div>
+<div class="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+    <div class="card"><p class="text-sm text-gray-500">Total spend</p><p class="mt-1 break-words text-xl font-extrabold text-navy-900 sm:text-2xl">{{ report.total_inr|inr }}</p><p class="text-xs text-gray-400">{{ report.period_label }}</p></div>
+    <div class="card"><p class="text-sm text-gray-500">Completed orders</p><p class="mt-1 break-words text-xl font-extrabold text-navy-900 sm:text-2xl">{{ report.order_count }}</p></div>
+    <div class="card"><p class="text-sm text-gray-500">Average order</p><p class="mt-1 break-words text-xl font-extrabold text-navy-900 sm:text-2xl">{{ report.average_inr|inr }}</p></div>
+    <div class="card"><p class="text-sm text-gray-500">Manufacturers used</p><p class="mt-1 break-words text-xl font-extrabold text-navy-900 sm:text-2xl">{{ report.supplier_count }}</p></div>
 </div>
 
 <div class="card mb-6">

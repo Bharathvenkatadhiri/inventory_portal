@@ -6,10 +6,10 @@
         <h1 class="text-2xl font-extrabold tracking-tight text-navy-900">RFQs</h1>
         <p class="mt-1 text-sm text-gray-500">All your requests for quote in one place.</p>
     </div>
-    <div class="flex items-center gap-3">
-        <form method="get" class="flex items-center">
+    <div class="flex flex-wrap items-center gap-3">
+        <form method="get" class="flex w-full items-center sm:w-auto">
             <input type="hidden" name="tab" value="{{ tab }}">
-            <input type="text" name="q" value="{{ q }}" placeholder="Search by part or RFQ number" class="field-input w-64">
+            <input type="text" name="q" value="{{ q }}" placeholder="Search by part or RFQ number" class="field-input w-full sm:w-64">
         </form>
         {% if can_export %}<a href="?export=csv&amp;tab={{ tab }}&amp;q={{ q|urlencode }}" class="btn-outline">Export CSV</a>{% endif %}
         <a data-hide-for-viewer href="{% url 'new-requirement' %}" class="btn-primary shrink-0">
@@ -21,7 +21,7 @@
 {% endblock %}
 {% block content %}
 <div class="card p-0">
-    <div class="flex flex-wrap gap-1 border-b border-gray-100 px-4">
+    <div class="flex gap-1 overflow-x-auto whitespace-nowrap border-b border-gray-100 px-4">
         <a href="?tab=all{% if q %}&q={{ q }}{% endif %}"
            class="border-b-2 px-4 py-3 text-sm font-bold transition-colors {% if tab == 'all' %}border-accent-500 text-navy-900{% else %}border-transparent text-gray-500 hover:text-navy-900{% endif %}">
             All
@@ -62,7 +62,7 @@
 
     {% if object_list %}
     <div class="overflow-x-auto">
-        <table class="w-full text-left text-sm">
+        <table class="table-stack table-stack-inset w-full text-left text-sm">
             <thead>
                 <tr class="text-xs uppercase tracking-wide text-gray-400">
                     <th class="px-6 pt-4 pb-2 font-semibold">RFQ</th>
@@ -77,15 +77,15 @@
             <tbody class="divide-y divide-gray-100">
                 {% for demand in object_list %}
                 <tr class="hover:bg-gray-50">
-                    <td class="px-6 py-3">
+                    <td class="px-6 py-3" data-stack="title stretch">
                         <a href="{% url 'requirement' demand.pk %}" class="font-bold text-navy-900 hover:text-accent-500">{{ demand.title }}</a>
                         <p class="text-xs text-gray-500">RFQ-{{ demand.pk }}{% if demand.industry %} &middot; {{ demand.industry }}{% endif %}</p>
                     </td>
-                    <td class="px-6 py-3 text-gray-600">{{ demand.requirement_parts.first.technology|default:"—" }}</td>
-                    <td class="px-6 py-3 text-gray-600">{{ demand.total_parts_quantity }}</td>
-                    <td class="px-6 py-3 text-gray-600">{{ demand.quote.count }}</td>
-                    <td class="px-6 py-3 text-gray-600">{{ demand.end_date|date:"d M"|default:"—" }}</td>
-                    <td class="px-6 py-3">
+                    <td class="px-6 py-3 text-gray-600" data-label="Process">{{ demand.requirement_parts.first.technology|default:"—" }}</td>
+                    <td class="px-6 py-3 text-gray-600" data-label="Qty">{{ demand.total_parts_quantity }}</td>
+                    <td class="px-6 py-3 text-gray-600" data-label="Quotes">{{ demand.quote.count }}</td>
+                    <td class="px-6 py-3 text-gray-600" data-label="Quotes due">{{ demand.end_date|date:"d M"|default:"—" }}</td>
+                    <td class="px-6 py-3" data-stack="badge">
                         {% if demand.approval_status == 'pending' %}
                         <span class="badge bg-yellow-50 text-yellow-700">Awaiting internal approval</span>
                         {% elif demand.approval_status == 'rejected' %}
@@ -106,11 +106,7 @@
                         <span class="badge bg-gray-100 text-gray-700">Collecting quotes</span>
                         {% endif %}
                     </td>
-                    <td class="px-6 py-3 text-right">
-                        {% if not demand.status %}
-                        <a data-hide-for-viewer href="{% url 'edit-requirement' demand.pk %}" class="text-xs text-gray-500 hover:text-gray-700">Edit</a>
-                        {% endif %}
-                    </td>
+                    <td class="px-6 py-3 text-right">{% if not demand.status %}<a data-hide-for-viewer href="{% url 'edit-requirement' demand.pk %}" class="text-xs text-gray-500 hover:text-gray-700">Edit</a>{% endif %}</td>
                 </tr>
                 {% endfor %}
             </tbody>

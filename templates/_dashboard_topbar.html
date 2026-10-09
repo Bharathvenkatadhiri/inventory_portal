@@ -1,12 +1,25 @@
 {% load static %}
-<header class="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-gray-200 bg-white px-6">
+{# Sticky on phones and tablets, like an app header; pt-safe-area keeps it clear of a notch in the installed app. #}
+<header class="sticky top-0 z-30 shrink-0 border-b border-gray-200 bg-white pt-[env(safe-area-inset-top)] lg:static">
+<div class="flex h-14 items-center justify-between gap-2 px-2 sm:h-16 sm:gap-4 sm:px-6">
+    <div class="flex items-center gap-1 lg:hidden">
+        <button type="button" @click="sidebarOpen = true" class="flex h-10 w-10 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-accent-500">
+            <span class="sr-only">Open menu</span>
+            <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <a href="{% url 'home' %}" class="sm:hidden">{% include "_wordmark.html" with size="text-lg" %}</a>
+    </div>
     <div class="hidden max-w-md flex-1 items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 sm:flex">
         <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
         <form method="get" action="{% url 'global_search_view' %}" class="w-full">
             <input type="text" name="search" placeholder="Search RFQs, orders, {% if request.user.role == 'manufacturer' %}buyers{% else %}suppliers{% endif %}..." class="w-full border-0 p-0 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-0">
         </form>
     </div>
-    <div class="flex flex-1 items-center justify-end gap-4">
+    <div class="flex flex-1 items-center justify-end gap-1 sm:gap-4">
+        <a href="{% url 'global_search_view' %}" class="flex h-10 w-10 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 sm:hidden">
+            <span class="sr-only">Search</span>
+            <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        </a>
         {% if request.user.role == 'manufacturer' %}
         <a href="{% url 'requirement-list' %}" class="btn-primary hidden sm:inline-flex">
             <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v12H7l-3 3z"/></svg>
@@ -17,12 +30,16 @@
             <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
             New RFQ
         </a>
+        <a href="{% url 'new-requirement' %}" class="flex h-10 w-10 items-center justify-center rounded-full bg-accent-500 text-white shadow-sm hover:bg-accent-600 sm:hidden">
+            <span class="sr-only">New RFQ</span>
+            <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        </a>
         {% endif %}
         {% include "_notification_bell.html" %}
         {% with role_label=sidebar_team_role|default:request.user.get_role_display %}
         <div class="relative" x-data="{ open: false }" @keydown.escape.window="open = false">
             <button type="button" @click="open = !open" :aria-expanded="open.toString()" aria-haspopup="menu"
-                    class="flex items-center gap-3 rounded-lg py-1 pl-1 pr-2 text-left hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-accent-500">
+                    class="flex items-center gap-3 rounded-lg p-0.5 text-left sm:py-1 sm:pl-1 sm:pr-2 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-accent-500">
                 <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-navy-900 text-sm font-bold text-white">
                     {{ request.user.first_name|slice:":1"|upper }}{{ request.user.last_name|slice:":1"|upper }}
                 </span>
@@ -58,4 +75,5 @@
         </div>
         {% endwith %}
     </div>
+</div>
 </header>

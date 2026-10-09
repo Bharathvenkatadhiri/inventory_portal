@@ -5,10 +5,15 @@ A session cookie used to be a bearer token good for up to two weeks
 that move money. Two protections:
 
 * Binding: at login the session records a hash of the browser's
-  User-Agent. A request carrying that session from a different browser is
-  logged out — what a copied cookie (XSS, a shared machine, a synced
-  profile) looks like in practice. IP isn't used: it legitimately changes
-  for mobile users all the time.
+  User-Agent with its version numbers removed: browser, OS and device
+  model, but not their versions. A request carrying that session from a
+  different browser, OS or device is logged out — what a copied cookie
+  (XSS, a shared machine, a synced profile) looks like in practice. The
+  versions are left out because browsers, and the installed app's
+  webview, update every few weeks, and an update isn't a new device. IP
+  isn't used: it legitimately changes for mobile users all the time. The
+  User-Agent can be spoofed, so this only raises the bar; logout,
+  password changes and session expiry remain what end a session.
 * Recent authentication: awarding a quote, confirming an order was paid,
   and staff changes to other accounts need the password to have been
   entered within REAUTH_WINDOW_SECONDS. Otherwise the user confirms it
@@ -16,6 +21,7 @@ that move money. Two protections:
 """
 import hashlib
 import logging
+import re
 import time
 
 from django.conf import settings
@@ -31,11 +37,22 @@ from django.utils.http import url_has_allowed_host_and_scheme, urlencode
 logger = logging.getLogger(__name__)
 
 AUTH_AT = '_auth_at'
-UA_HASH = '_ua_hash'
+UA_FAMILY_HASH = '_ua_family_hash'
+# Sessions from before version numbers were ignored hold a hash of the
+# full User-Agent instead (see SessionBindingMiddleware).
+LEGACY_UA_HASH = '_ua_hash'
+
+# "Chrome/126.0.6478.122", "Android 14", "iPhone OS 17_5", "NT 10.0".
+_VERSION = re.compile(r'\d+(?:[._]\d+)*')
 
 
 def _ua_hash(request):
     return hashlib.sha256(request.META.get('HTTP_USER_AGENT', '').encode()).hexdigest()
+
+
+def _ua_family_hash(request):
+    family = _VERSION.sub('', request.META.get('HTTP_USER_AGENT', ''))
+    return hashlib.sha256(family.encode()).hexdigest()
 
 
 @receiver(user_logged_in)
@@ -43,7 +60,8 @@ def _stamp_session(sender, request, user, **kwargs):
     if request is None or not hasattr(request, 'session'):
         return
     request.session[AUTH_AT] = time.time()
-    request.session[UA_HASH] = _ua_hash(request)
+    request.session[UA_FAMILY_HASH] = _ua_family_hash(request)
+    request.session.pop(LEGACY_UA_HASH, None)
 
 
 def mark_recently_authenticated(request):
@@ -77,9 +95,12 @@ def require_recent_auth(request, next_url):
 
 
 class SessionBindingMiddleware:
-    """Logs out a session presented by a different browser than the one it
-    was created in. Sessions from before this was added have no stamp and
-    are given one, rather than all being logged out at deploy."""
+    """Logs out a session presented by a different browser, OS or device
+    than the one it was created in. A session holding only the older
+    full-User-Agent hash is checked against that once, then moved to the
+    version-free hash, so the change logs no one out and lets no copied
+    cookie through. Sessions with neither are given a stamp, rather than
+    all being logged out at deploy."""
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -87,11 +108,18 @@ class SessionBindingMiddleware:
     def __call__(self, request):
         user = getattr(request, 'user', None)
         if user is not None and user.is_authenticated:
-            expected = request.session.get(UA_HASH)
-            current = _ua_hash(request)
-            if expected is None:
-                request.session[UA_HASH] = current
-            elif expected != current:
+            session = request.session
+            if UA_FAMILY_HASH in session:
+                bound = session[UA_FAMILY_HASH] == _ua_family_hash(request)
+            elif LEGACY_UA_HASH in session:
+                bound = session[LEGACY_UA_HASH] == _ua_hash(request)
+            else:
+                bound = True
+            if bound:
+                if UA_FAMILY_HASH not in session:
+                    session[UA_FAMILY_HASH] = _ua_family_hash(request)
+                    session.pop(LEGACY_UA_HASH, None)
+            else:
                 logger.warning("Session for %s presented from a different browser; logged out", user)
                 logout(request)
                 messages.info(request, "For your security you've been signed out. Please sign in again.")

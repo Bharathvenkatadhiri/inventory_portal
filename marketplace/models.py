@@ -557,7 +557,7 @@ class MessageThread(models.Model):
         return team.is_teammate(user, self.requirement.user_id)
 
     def last_message(self):
-        return self.messages.order_by('-created_at').first()
+        return self.messages.order_by('-created_at', '-pk').first()
 
     def unread_count_for(self, user):
         """Messages from the other side newer than this side's last read.

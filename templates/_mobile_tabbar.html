@@ -1,0 +1,46 @@
+{# Phone/tablet bottom tab bar: the five most-used sections, as in a native app. Everything else is in the ☰ drawer (_dashboard_sidebar.html). Badges carry the sidebar's live-badge-* classes, so the live-update poll (live/_topbar_update.html) refreshes them too. #}
+{% with url_name=request.resolver_match.url_name tab="relative flex flex-col items-center justify-center gap-1 text-[11px] font-semibold" on="text-accent-600" off="text-gray-500 hover:text-navy-900" badge="pointer-events-none absolute left-1/2 top-1.5 ml-1 text-white [&>span]:px-1.5 [&>span]:py-0 [&>span]:text-[10px] [&>span]:leading-4" %}
+<nav class="fixed inset-x-0 bottom-0 z-20 border-t border-gray-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden" aria-label="Main">
+    <div class="mx-auto grid h-16 max-w-xl grid-cols-5">
+        <a href="{% url 'home' %}" class="{{ tab }} {% if url_name == 'home' %}{{ on }}{% else %}{{ off }}{% endif %}"{% if url_name == 'home' %} aria-current="page"{% endif %}>
+            <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            Home
+        </a>
+
+        {% if request.user.role == 'manufacturer' %}
+        <a href="{% url 'requirement-list' %}" class="{{ tab }} {% if url_name == 'requirement-list' or url_name == 'requirement' %}{{ on }}{% else %}{{ off }}{% endif %}"{% if url_name == 'requirement-list' %} aria-current="page"{% endif %}>
+            <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 4h16v12H7l-3 3z"/></svg>
+            <span class="live-badge-new-rfqs {{ badge }}">{% include "_live_badge.html" with count=sidebar_new_rfq_count %}</span>
+            RFQ inbox
+        </a>
+        {% else %}
+        <a href="{% url 'requirement-list' %}" class="{{ tab }} {% if url_name == 'requirement-list' or url_name == 'requirement' or url_name == 'new-requirement' or url_name == 'edit-requirement' %}{{ on }}{% else %}{{ off }}{% endif %}"{% if url_name == 'requirement-list' %} aria-current="page"{% endif %}>
+            <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 4h16v12H7l-3 3z"/></svg>
+            RFQs
+        </a>
+        {% endif %}
+
+        <a href="{% url 'quote-list' %}" class="{{ tab }} {% if url_name == 'quote-list' %}{{ on }}{% else %}{{ off }}{% endif %}"{% if url_name == 'quote-list' %} aria-current="page"{% endif %}>
+            <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20.6 11.1L12.9 3.4a2 2 0 00-1.4-.6H4.9a1 1 0 00-1 1v6.6c0 .5.2 1 .6 1.4l7.7 7.7a2 2 0 002.8 0l5.6-5.6a2 2 0 000-2.8z"/><circle cx="8" cy="8" r="1.4"/></svg>
+            {% if request.user.role != 'manufacturer' %}<span class="live-badge-quotes {{ badge }}">{% include "_live_badge.html" with count=sidebar_quotes_to_review_count %}</span>{% endif %}
+            Quotes
+        </a>
+
+        <a href="{% url 'orders-list' %}" class="{{ tab }} {% if url_name == 'orders-list' or url_name == 'order-detail' %}{{ on }}{% else %}{{ off }}{% endif %}"{% if url_name == 'orders-list' %} aria-current="page"{% endif %}>
+            {% if request.user.role == 'manufacturer' %}
+            <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg>
+            Production
+            {% else %}
+            <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 7l1-3h16l1 3"/><path d="M4 7h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1z"/><path d="M9 11a3 3 0 006 0"/></svg>
+            Orders
+            {% endif %}
+        </a>
+
+        <a href="{% url 'message-thread-list' %}" class="{{ tab }} {% if url_name == 'message-thread-list' or url_name == 'message-thread' %}{{ on }}{% else %}{{ off }}{% endif %}"{% if url_name == 'message-thread-list' %} aria-current="page"{% endif %}>
+            <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            <span class="live-badge-messages {{ badge }}">{% include "_live_badge.html" with count=sidebar_unread_message_threads %}</span>
+            Messages
+        </a>
+    </div>
+</nav>
+{% endwith %}

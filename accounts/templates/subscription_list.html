@@ -8,7 +8,7 @@
 <div class="card">
     {% if object_list %}
     <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200 text-sm">
+        <table class="table-stack min-w-full divide-y divide-gray-200 text-sm">
             <thead>
                 <tr class="text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                     <th class="py-2 pr-4">User</th>
@@ -22,11 +22,11 @@
             <tbody class="divide-y divide-gray-100">
                 {% for subscription in object_list %}
                 <tr>
-                    <td class="py-2 pr-4">{{ subscription.user_profile }}</td>
-                    <td class="py-2 pr-4">{{ subscription.get_plan_type_display }} ({{ subscription.billing_cycle }}){% if subscription.status == 'past_due' %}<br><span class="badge bg-red-50 text-red-700">Past due until {{ subscription.grace_until|date:"d M H:i" }}</span>{% endif %}{% if subscription.scheduled_plan_type %}<br><span class="badge bg-yellow-50 text-yellow-700">→ {{ subscription.get_scheduled_plan_type_display }} at expiry</span>{% endif %}</td>
-                    <td class="py-2 pr-4">{{ subscription.current_period_start|date:"d M Y H:i" }} – {{ subscription.expires_at|date:"d M Y H:i"|default:"no expiry" }}</td>
-                    <td class="py-2 pr-4">{% if subscription.auto_renew %}Auto-renews{% elif subscription.expires_at %}Cancelled{% else %}—{% endif %}</td>
-                    <td class="py-2 pr-4">
+                    <td class="py-2 pr-4 max-md:font-bold" data-stack="title">{{ subscription.user_profile }}</td>
+                    <td class="py-2 pr-4" data-label="Plan" data-stack="full">{{ subscription.get_plan_type_display }} ({{ subscription.billing_cycle }}){% if subscription.status == 'past_due' %}<br><span class="badge bg-red-50 text-red-700">Past due until {{ subscription.grace_until|date:"d M H:i" }}</span>{% endif %}{% if subscription.scheduled_plan_type %}<br><span class="badge bg-yellow-50 text-yellow-700">→ {{ subscription.get_scheduled_plan_type_display }} at expiry</span>{% endif %}</td>
+                    <td class="py-2 pr-4" data-label="Current period" data-stack="full">{{ subscription.current_period_start|date:"d M Y H:i" }} – {{ subscription.expires_at|date:"d M Y H:i"|default:"no expiry" }}</td>
+                    <td class="py-2 pr-4" data-label="Renewal">{% if subscription.auto_renew %}Auto-renews{% elif subscription.expires_at %}Cancelled{% else %}—{% endif %}</td>
+                    <td class="py-2 pr-4" data-stack="badge">
                         {% if subscription.is_active %}
                         <span class="badge bg-green-50 text-green-700">Active</span>
                         {% else %}

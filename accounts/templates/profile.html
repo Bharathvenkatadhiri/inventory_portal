@@ -83,16 +83,16 @@
             {% if billing.payments %}
             <h3 class="mb-2 mt-8 text-sm font-bold text-navy-900">Payments</h3>
             <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
+                <table class="table-stack w-full text-left text-sm">
                     <thead><tr class="border-b border-gray-100 text-xs uppercase tracking-wide text-gray-400"><th class="py-2 pr-4">Date</th><th class="py-2 pr-4">What</th><th class="py-2 pr-4">Period</th><th class="py-2 pr-4">Amount</th><th class="py-2">Status</th></tr></thead>
                     <tbody class="divide-y divide-gray-100">
                         {% for payment in billing.payments %}
                         <tr>
-                            <td class="py-2 pr-4 tabular-nums">{{ payment.created_at|date:"d M Y, H:i" }}</td>
-                            <td class="py-2 pr-4">{{ payment.get_kind_display }} &middot; {{ payment.get_plan_type_display }} ({{ payment.billing_cycle }})</td>
-                            <td class="py-2 pr-4 tabular-nums text-gray-500">{% if payment.period_start %}{{ payment.period_start|date:"d M Y" }} – {{ payment.period_end|date:"d M Y" }}{% else %}—{% endif %}</td>
-                            <td class="py-2 pr-4 tabular-nums">&#8377;{{ payment.amount }}</td>
-                            <td class="py-2">{% if payment.status == 'succeeded' and payment.needs_refund %}<span class="badge bg-yellow-50 text-yellow-700">Paid, to be refunded</span>{% elif payment.status == 'succeeded' %}<span class="badge bg-green-50 text-green-700">Paid</span>{% elif payment.status == 'failed' %}<span class="badge bg-red-50 text-red-700">Failed</span>{% else %}<span class="badge bg-gray-100 text-gray-600">Pending</span>{% endif %}</td>
+                            <td class="py-2 pr-4 tabular-nums" data-label="Date">{{ payment.created_at|date:"d M Y, H:i" }}</td>
+                            <td class="py-2 pr-4 max-md:font-bold max-md:text-navy-900" data-stack="title">{{ payment.get_kind_display }} &middot; {{ payment.get_plan_type_display }} ({{ payment.billing_cycle }})</td>
+                            <td class="py-2 pr-4 tabular-nums text-gray-500" data-label="Period">{% if payment.period_start %}{{ payment.period_start|date:"d M Y" }} – {{ payment.period_end|date:"d M Y" }}{% else %}—{% endif %}</td>
+                            <td class="py-2 pr-4 tabular-nums" data-label="Amount">&#8377;{{ payment.amount }}</td>
+                            <td class="py-2" data-stack="badge">{% if payment.status == 'succeeded' and payment.needs_refund %}<span class="badge bg-yellow-50 text-yellow-700">Paid, to be refunded</span>{% elif payment.status == 'succeeded' %}<span class="badge bg-green-50 text-green-700">Paid</span>{% elif payment.status == 'failed' %}<span class="badge bg-red-50 text-red-700">Failed</span>{% else %}<span class="badge bg-gray-100 text-gray-600">Pending</span>{% endif %}</td>
                         </tr>
                         {% endfor %}
                     </tbody>

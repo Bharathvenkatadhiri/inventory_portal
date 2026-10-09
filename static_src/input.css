@@ -15,6 +15,25 @@
   display: none !important;
 }
 
+@layer base {
+  /* Taps shouldn't flash a grey box over links and buttons, as they don't
+     in a native app; focus rings still show for keyboard users. */
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* iOS Safari zooms the page in on any focused field under 16px and
+     doesn't zoom back out. Many fields here are text-sm/text-xs, so on
+     phones every field gets 16px whatever its utility classes say. */
+  @media (max-width: 639px) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
+}
+
 @layer components {
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2;
@@ -35,7 +54,7 @@
     @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
   }
   .card {
-    @apply rounded-xl border border-gray-200 bg-white p-6 shadow-sm;
+    @apply rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6;
   }
   .eyebrow {
     @apply text-xs font-bold uppercase tracking-[0.18em] text-accent-500;
@@ -50,12 +69,118 @@
     @apply block text-sm font-medium text-gray-700 mb-1.5;
   }
   .field-input {
-    @apply block w-full rounded-lg border-gray-200 py-2.5 text-sm shadow-sm placeholder:text-gray-400 focus:border-accent-500 focus:ring-accent-500;
+    @apply block w-full rounded-lg border-gray-200 py-2.5 text-base shadow-sm sm:text-sm placeholder:text-gray-400 focus:border-accent-500 focus:ring-accent-500;
   }
   .field-input-icon {
     @apply field-input pl-11;
   }
   .badge {
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  /* Tables that become a stack of cards on phones (below md), one card per
+     row, so nothing scrolls sideways. The markup stays a plain table; mark
+     its cells:
+       data-label="Supplier"  a labelled field, two to a line
+       data-stack="title"     the card's heading: first, full width, no label
+       data-stack="full"      with data-label: a labelled field on a line of its own
+       data-stack="badge"     pinned top-right (a status); give it no label
+       data-stack="stretch"   on the title: its link opens from anywhere on the card
+       data-stack="hide"      not shown on phones (e.g. a "View" link the card repeats)
+       no data-label          full width, no label (actions, notes)
+     Use table-stack-inset when the table runs edge to edge in its card
+     (card p-0), so rows get their own side padding. Nothing here sets
+     display with !important, so rows hidden by x-show stay hidden. */
+  @media (max-width: 767px) {
+    .table-stack {
+      --stack-pad-x: 0px;
+    }
+    .table-stack-inset {
+      --stack-pad-x: 1rem;
+    }
+    .table-stack,
+    .table-stack > tbody,
+    .table-stack > tfoot {
+      display: block;
+      width: 100%;
+      min-width: 0;
+    }
+    .table-stack > thead {
+      display: none;
+    }
+    .table-stack > tbody > tr {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.5rem 1rem;
+      padding: 0.875rem var(--stack-pad-x);
+    }
+    .table-stack > tbody > tr > td {
+      display: block;
+      min-width: 0;
+      padding: 0;
+      text-align: left;
+      overflow-wrap: anywhere;
+    }
+    .table-stack > tbody > tr > td:not([data-label]),
+    .table-stack td[data-stack~="full"] {
+      grid-column: 1 / -1;
+    }
+    .table-stack > tbody > tr > td[data-label]::before {
+      content: attr(data-label);
+      display: block;
+      margin-bottom: 0.125rem;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: theme("colors.gray.400");
+    }
+    .table-stack > tbody > tr > td:empty,
+    .table-stack td[data-stack~="hide"] {
+      display: none;
+    }
+    .table-stack td[data-stack~="title"] {
+      order: -1;
+      font-size: 1rem;
+    }
+    .table-stack td[data-stack~="badge"] {
+      position: absolute;
+      top: 0.875rem;
+      right: var(--stack-pad-x);
+      max-width: 8rem;
+      text-align: right;
+    }
+    .table-stack > tbody > tr:has(> td[data-stack~="badge"]) > td[data-stack~="title"] {
+      padding-right: 8.5rem;
+    }
+    @supports not selector(:has(*)) {
+      .table-stack td[data-stack~="badge"] {
+        position: static;
+        grid-column: 1 / -1;
+      }
+    }
+    /* The title's link covers the card; other controls stay on top of it. */
+    .table-stack > tbody > tr:has(td[data-stack~="stretch"]) :is(a, button, input, select, textarea, label) {
+      position: relative;
+      z-index: 1;
+    }
+    .table-stack > tbody > tr:has(td[data-stack~="stretch"]) > td[data-stack~="stretch"] a {
+      position: static;
+    }
+    .table-stack > tbody > tr > td[data-stack~="stretch"] a::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+    }
+    .table-stack > tfoot > tr {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.375rem var(--stack-pad-x);
+    }
+    .table-stack > tfoot > tr > td {
+      padding: 0;
+    }
   }
 }

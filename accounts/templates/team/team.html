@@ -63,7 +63,7 @@
     <div class="space-y-6">
         <div class="card overflow-x-auto">
             <h2 class="mb-4 text-lg font-bold text-navy-900">Members</h2>
-            <table class="w-full text-left text-sm">
+            <table class="table-stack w-full text-left text-sm">
                 <thead>
                     <tr class="border-b border-gray-100 text-xs uppercase tracking-wide text-gray-400">
                         <th class="py-2 pr-4 font-bold">Name</th>
@@ -74,15 +74,15 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     <tr>
-                        <td class="py-3 pr-4"><p class="font-bold text-navy-900">{{ owner.get_full_name|default:owner.email }}{% if owner == request.user %} <span class="text-xs font-normal text-gray-400">(you)</span>{% endif %}</p><p class="text-xs text-gray-500">{{ owner.email }}</p></td>
-                        <td class="py-3 pr-4"><span class="badge bg-navy-50 text-navy-700">Owner</span></td>
-                        <td class="py-3 pr-4 text-green-700">Active</td>
+                        <td class="py-3 pr-4" data-stack="title"><p class="font-bold text-navy-900">{{ owner.get_full_name|default:owner.email }}{% if owner == request.user %} <span class="text-xs font-normal text-gray-400">(you)</span>{% endif %}</p><p class="text-xs text-gray-500">{{ owner.email }}</p></td>
+                        <td class="py-3 pr-4" data-label="Role"><span class="badge bg-navy-50 text-navy-700">Owner</span></td>
+                        <td class="py-3 pr-4 text-green-700" data-label="Status">Active</td>
                         <td class="py-3"></td>
                     </tr>
                     {% for member in members %}
                     <tr>
-                        <td class="py-3 pr-4"><p class="font-bold text-navy-900">{{ member.user.get_full_name|default:member.user.email }}{% if member.user == request.user %} <span class="text-xs font-normal text-gray-400">(you)</span>{% endif %}</p><p class="text-xs text-gray-500">{{ member.user.email }}</p></td>
-                        <td class="py-3 pr-4">
+                        <td class="py-3 pr-4" data-stack="title"><p class="font-bold text-navy-900">{{ member.user.get_full_name|default:member.user.email }}{% if member.user == request.user %} <span class="text-xs font-normal text-gray-400">(you)</span>{% endif %}</p><p class="text-xs text-gray-500">{{ member.user.email }}</p></td>
+                        <td class="py-3 pr-4" data-label="Role">
                             {% if member.can_manage %}
                             <form method="post" action="{% url 'team-member-role' member.pk %}" class="flex items-center gap-2">
                                 {% csrf_token %}
@@ -97,7 +97,7 @@
                             <span class="badge {% if member.role == 'admin' %}bg-accent-50 text-accent-700{% else %}bg-gray-100 text-gray-600{% endif %}">{{ member.get_role_display }}</span>
                             {% endif %}
                         </td>
-                        <td class="py-3 pr-4">{% if member.user.is_active %}<span class="text-green-700">Active</span>{% else %}<span class="text-gray-400">Deactivated</span>{% endif %}</td>
+                        <td class="py-3 pr-4" data-label="Status">{% if member.user.is_active %}<span class="text-green-700">Active</span>{% else %}<span class="text-gray-400">Deactivated</span>{% endif %}</td>
                         <td class="py-3">
                             <div class="flex flex-wrap justify-end gap-2">
                                 {% if is_owner and member.role == 'admin' and member.user.is_active %}

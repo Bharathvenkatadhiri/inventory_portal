@@ -441,7 +441,7 @@ def buyer_action_items(user):
         if len(items) >= 6:
             break
         if thread.unread_count_for(user):
-            latest = thread.messages.exclude(sender_id__in=team.team_user_ids(user)).filter(is_deleted=False).order_by('-created_at').first()
+            latest = thread.messages.exclude(sender_id__in=team.team_user_ids(user)).filter(is_deleted=False).order_by('-created_at', '-pk').first()
             items.append({
                 'title': f"{thread.supplier.companyname or thread.supplier} sent you a message · RFQ-{thread.requirement_id}",
                 'detail': (latest.body or f"Shared {latest.attachment_name}") if latest else '',

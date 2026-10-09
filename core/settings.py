@@ -331,3 +331,9 @@ BILLING_PENDING_MINUTES = env.int("BILLING_PENDING_MINUTES", default=30)
 # Mock gateway only: "fail" makes automatic renewals fail, to try past-due.
 BILLING_MOCK_RENEWAL_RESULT = env("BILLING_MOCK_RENEWAL_RESULT", default="succeed")
 
+# --- Store app (homepage.pwa) -------------------------------------------------
+# For the Play Store app (a Trusted Web Activity wrapping this site): its
+# package name and the SHA-256 fingerprint(s) of its signing certificate,
+# published at /.well-known/assetlinks.json. Leave unset until the app exists.
+ANDROID_APP_PACKAGE = env("ANDROID_APP_PACKAGE", default="")
+ANDROID_APP_CERT_FINGERPRINTS = env.list("ANDROID_APP_CERT_FINGERPRINTS", default=[])

@@ -231,15 +231,20 @@ class CrossCompanyAccessTests(TestCase):
     def _attack(self, attacker, urls, secrets):
         self.client.logout()
         self.assertTrue(self.client.login(username=attacker.email, password=PASSWORD))
+        # One snapshot per request: each request's "after" is the next one's
+        # "before", so every request is still compared with the state just
+        # before it, at half the cost.
+        before = snapshot()
         for url in urls:
             for method in ('get', 'post'):
                 with self.subTest(attacker=attacker.email, method=method, url=url):
-                    before = snapshot()
                     response = getattr(self.client, method)(url, self.POST_DATA if method == 'post' else None)
+                    after = snapshot()
+                    changed, before = before != after, after
                     body = b''.join(response.streaming_content) if response.streaming else response.content
                     for secret in secrets:
                         self.assertNotIn(secret.encode(), body, f"{secret} leaked")
-                    self.assertEqual(before, snapshot(), "request changed data it shouldn't be able to")
+                    self.assertFalse(changed, "request changed data it shouldn't be able to")
 
     def test_another_buyer_company_reaches_nothing(self):
         urls = [url for url, _ in self._urls()]

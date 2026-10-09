@@ -2,11 +2,12 @@
 <html lang="en" class="bg-navy-50">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Manufacturer Details — MakeSetu</title>
     <link rel="stylesheet" href="{% load static %}{% static 'css/tailwind-built.css' %}">
     <link rel="icon" type="image/svg+xml" href="{% static 'images/logo.svg' %}">
-    <script src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
+    {% include "_pwa_head.html" %}
+    <script src="{% static 'js/vendor/alpine-3.14.1.min.js' %}" defer></script>
 </head>
 <body class="min-h-screen flex flex-col">
     {% include "_nav.html" %}
