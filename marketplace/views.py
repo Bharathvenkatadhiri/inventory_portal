@@ -1228,7 +1228,7 @@ class RequirementStatusUpdateView(LoginRequiredMixin, View):
         if selected is None or supplier is None or selected.supplier_id != supplier.pk:
             raise Http404
 
-        order = requirement.orders.order_by('-created_at').first()
+        order = requirement.orders.order_by('-created_at', '-pk').first()
         if order is None:
             # RFQs awarded before orders were created at award time.
             order = services.create_award_order(requirement, selected)

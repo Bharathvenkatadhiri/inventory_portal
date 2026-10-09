@@ -604,10 +604,14 @@ class OwnershipAndAwardTests(TestCase):
         # A manufacturer with no quote and no decline on self.requirement —
         # never in scope for it once it's no longer open.
         user = User.objects.create_user(username="latemaker", email="latemaker@example.com", password="pass12345", role="manufacturer")
-        ManufacturerProfile.objects.create(
+        profile = ManufacturerProfile.objects.create(
             user=user, companyname="Latecomer", phone="8500000099", address="1 Rd", city="Pune", state="MH",
             country="India", amount_of_employees="10-20", turnover_per_year="<1", email="latemaker@example.com",
         )
+        # Joined strictly after the RFQ was posted. Created in the same clock
+        # tick (Windows' clock is coarse), the two timestamps can be equal,
+        # and an RFQ posted the instant a supplier joined counts as theirs.
+        ManufacturerProfile.objects.filter(pk=profile.pk).update(created_at=self.requirement.created_at + timedelta(seconds=1))
         return user
 
     def test_awarded_rfq_is_hidden_by_direct_url_from_manufacturers_who_never_quoted(self):

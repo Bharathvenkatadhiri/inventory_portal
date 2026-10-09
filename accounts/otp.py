@@ -89,7 +89,7 @@ def verify(pending, submitted_code):
     None, 'no_pending', 'expired', 'locked', 'mismatch'."""
     otp = EmailVerification.objects.filter(
         pending_registration=pending, consumed_at__isnull=True,
-    ).order_by('-created_at').first()
+    ).order_by('-created_at', '-pk').first()  # pk: codes issued in the same instant
     if otp is None:
         return False, 'no_pending'
     if otp.attempts >= MAX_ATTEMPTS:
