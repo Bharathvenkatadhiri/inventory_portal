@@ -12,24 +12,24 @@
 {% endblock %}
 {% block content %}
 {% if show_sales %}
-<div class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+<div class="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
     <div class="card">
         <p class="text-sm text-gray-500">Win rate</p>
-        <p class="mt-1 text-2xl font-extrabold text-navy-900">{% if report.win_rate is not None %}{{ report.win_rate|floatformat:0 }}%{% else %}—{% endif %}</p>
+        <p class="mt-1 break-words text-xl font-extrabold text-navy-900 sm:text-2xl">{% if report.win_rate is not None %}{{ report.win_rate|floatformat:0 }}%{% else %}—{% endif %}</p>
         <p class="text-xs text-gray-400">{{ report.won }} won of {{ report.won|add:report.lost }} decided</p>
     </div>
     <div class="card">
         <p class="text-sm text-gray-500">Quotes submitted</p>
-        <p class="mt-1 text-2xl font-extrabold text-navy-900">{{ report.submitted }}</p>
+        <p class="mt-1 break-words text-xl font-extrabold text-navy-900 sm:text-2xl">{{ report.submitted }}</p>
         <p class="text-xs text-gray-400">{{ report.pending }} still open &middot; {{ report.declined }} RFQ{{ report.declined|pluralize }} declined</p>
     </div>
     <div class="card">
         <p class="text-sm text-gray-500">Won / lost</p>
-        <p class="mt-1 text-2xl font-extrabold text-navy-900">{{ report.won }} <span class="text-base font-normal text-gray-400">/</span> {{ report.lost }}</p>
+        <p class="mt-1 break-words text-xl font-extrabold text-navy-900 sm:text-2xl">{{ report.won }} <span class="text-base font-normal text-gray-400">/</span> {{ report.lost }}</p>
     </div>
     <div class="card">
         <p class="text-sm text-gray-500">Revenue</p>
-        <p class="mt-1 text-2xl font-extrabold text-navy-900">{{ report.revenue_inr|inr }}</p>
+        <p class="mt-1 break-words text-xl font-extrabold text-navy-900 sm:text-2xl">{{ report.revenue_inr|inr }}</p>
         <p class="text-xs text-gray-400">{{ report.revenue_orders }} completed order{{ report.revenue_orders|pluralize }}, incl. GST</p>
     </div>
 </div>

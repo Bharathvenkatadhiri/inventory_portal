@@ -22,9 +22,9 @@
     {% endif %}
 
     {% if comparison_rows %}
-    <div class="card mb-6 overflow-x-auto">
-        <h3 class="mb-3 font-bold text-navy-900">Side-by-side comparison</h3>
-        <table class="w-full text-left text-sm">
+    <div class="card mb-6 overflow-x-auto max-md:px-0">
+        <h3 class="mb-3 font-bold text-navy-900 max-md:px-4">Side-by-side comparison</h3>
+        <table class="table-stack table-stack-inset w-full text-left text-sm">
             <thead>
                 <tr class="border-b border-gray-100 text-xs uppercase tracking-wide text-gray-400">
                     <th class="py-2 pr-4 font-bold">Supplier</th><th class="py-2 pr-4 font-bold">Unit price</th>
@@ -36,14 +36,14 @@
             <tbody class="divide-y divide-gray-100">
                 {% for row in comparison_rows %}
                 <tr class="{% if row.is_cheapest %}bg-green-50{% endif %}">
-                    <td class="py-2 pr-4 font-bold text-navy-900">{{ row.quote.supplier.companyname|default:row.quote.supplier }}</td>
-                    <td class="py-2 pr-4">{{ demand.quote_currency }} {{ row.unit_price }}</td>
-                    <td class="py-2 pr-4">{{ row.subtotal }}</td>
-                    <td class="py-2 pr-4">{{ row.tooling }}</td>
-                    <td class="py-2 pr-4">{{ row.gst }}</td>
-                    <td class="py-2 pr-4 font-bold text-navy-900">{{ demand.quote_currency }} {{ row.landed }}{% if row.is_cheapest %} <span class="badge bg-green-100 text-green-700">Lowest</span>{% endif %}</td>
-                    <td class="py-2 pr-4">{{ row.lead_time|default:"—" }}</td>
-                    <td class="py-2">{{ row.quote.get_payment_terms_display|default:"—" }}</td>
+                    <td class="py-2 pr-4 font-bold text-navy-900" data-stack="title">{{ row.quote.supplier.companyname|default:row.quote.supplier }}</td>
+                    <td class="py-2 pr-4" data-label="Unit price">{{ demand.quote_currency }} {{ row.unit_price }}</td>
+                    <td class="py-2 pr-4" data-label="Parts subtotal">{{ row.subtotal }}</td>
+                    <td class="py-2 pr-4" data-label="Tooling">{{ row.tooling }}</td>
+                    <td class="py-2 pr-4" data-label="GST">{{ row.gst }}</td>
+                    <td class="py-2 pr-4 font-bold text-navy-900" data-label="Landed cost">{{ demand.quote_currency }} {{ row.landed }}{% if row.is_cheapest %} <span class="badge bg-green-100 text-green-700">Lowest</span>{% endif %}</td>
+                    <td class="py-2 pr-4" data-label="Lead time">{{ row.lead_time|default:"—" }}</td>
+                    <td class="py-2" data-label="Payment terms">{{ row.quote.get_payment_terms_display|default:"—" }}</td>
                 </tr>
                 {% endfor %}
             </tbody>

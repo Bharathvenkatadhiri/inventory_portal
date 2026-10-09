@@ -2,12 +2,13 @@
 <html lang="en" class="bg-white">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>{% block title %}MakeSetu — B2B Manufacturing Marketplace{% endblock %}</title>
     <meta name="description" content="{% block meta_description %}MakeSetu is the bridge between buyers and manufacturers: post RFQs, compare quotes from verified manufacturers and track orders to delivery.{% endblock %}">
     <link rel="stylesheet" href="{% static 'css/tailwind-built.css' %}">
     <link rel="icon" type="image/svg+xml" href="{% static 'images/logo.svg' %}">
-    <script src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
+    {% include "_pwa_head.html" %}
+    <script src="{% static 'js/vendor/alpine-3.14.1.min.js' %}" defer></script>
 </head>
 <body class="min-h-screen flex flex-col antialiased text-navy-900">
     {% include "_nav.html" %}

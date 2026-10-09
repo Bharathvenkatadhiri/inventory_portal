@@ -2,14 +2,15 @@
 <html lang="en" class="bg-white">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>MakeSetu — Connect with Verified Manufacturers in India | Custom Parts &amp; RFQs</title>
     <meta name="description" content="MakeSetu is the bridge between buyers and manufacturers. Post an RFQ with your drawings, compare quotes from verified Indian manufacturers and track every order to delivery.">
     <meta property="og:site_name" content="MakeSetu">
     <meta property="og:title" content="MakeSetu — Bridging buyers &amp; manufacturers">
     <meta property="og:description" content="Post an RFQ, compare quotes from verified manufacturers and track your order from drawing to delivered part.">    <link rel="stylesheet" href="{% static 'css/tailwind-built.css' %}">
     <link rel="icon" type="image/svg+xml" href="{% static 'images/logo.svg' %}">
-    <script src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
+    {% include "_pwa_head.html" %}
+    <script src="{% static 'js/vendor/alpine-3.14.1.min.js' %}" defer></script>
 </head>
 <body class="min-h-screen flex flex-col antialiased text-navy-900">
     {% include "_nav.html" %}

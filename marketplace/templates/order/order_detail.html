@@ -46,7 +46,7 @@
         </dl>
 
         <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200 text-sm">
+            <table class="table-stack min-w-full divide-y divide-gray-200 text-sm">
                 <thead>
                     <tr class="text-left text-gray-500">
                         <th class="py-2 pr-4">Part</th>
@@ -59,11 +59,11 @@
                 <tbody class="divide-y divide-gray-100">
                     {% for item in items %}
                     <tr>
-                        <td class="py-2 pr-4 text-navy-900">{{ item.part_name }}</td>
-                        <td class="py-2 pr-4 text-gray-600">{{ item.technology|slice:":3"|upper }}-{{ item.Material|slice:":3"|upper }}-{{ item.id }}</td>
-                        <td class="py-2 pr-4 text-gray-600">{{ item.quantity }}</td>
-                        <td class="py-2 pr-4 text-gray-600">{{ quote.quote_price }}</td>
-                        <td class="py-2 pr-4 text-gray-600">{{ item.quantity|multiply:quote.quote_price }}</td>
+                        <td class="py-2 pr-4 text-navy-900 max-md:font-bold" data-stack="title">{{ item.part_name }}</td>
+                        <td class="py-2 pr-4 text-gray-600" data-label="Code">{{ item.technology|slice:":3"|upper }}-{{ item.Material|slice:":3"|upper }}-{{ item.id }}</td>
+                        <td class="py-2 pr-4 text-gray-600" data-label="Qty">{{ item.quantity }}</td>
+                        <td class="py-2 pr-4 text-gray-600" data-label="Rate">{{ quote.quote_price }}</td>
+                        <td class="py-2 pr-4 text-gray-600" data-label="Amount">{{ item.quantity|multiply:quote.quote_price }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>

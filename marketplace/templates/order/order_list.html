@@ -22,28 +22,28 @@
 {% endblock %}
 {% block content %}
 
-<div class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+<div class="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
     <div class="card">
         <p class="text-sm text-gray-500">In production</p>
-        <p class="mt-2 text-3xl font-extrabold text-navy-900">{{ stat_in_production }}</p>
+        <p class="mt-2 break-words text-2xl font-extrabold text-navy-900 sm:text-3xl">{{ stat_in_production }}</p>
     </div>
     <div class="card">
         <p class="text-sm text-gray-500">Awaiting your approval</p>
-        <p class="mt-2 text-3xl font-extrabold text-navy-900">{{ stat_needs_approval }}</p>
+        <p class="mt-2 break-words text-2xl font-extrabold text-navy-900 sm:text-3xl">{{ stat_needs_approval }}</p>
     </div>
     <div class="card">
         <p class="text-sm text-gray-500">In transit</p>
-        <p class="mt-2 text-3xl font-extrabold text-navy-900">{{ stat_in_transit }}</p>
+        <p class="mt-2 break-words text-2xl font-extrabold text-navy-900 sm:text-3xl">{{ stat_in_transit }}</p>
     </div>
     <div class="card">
         <p class="text-sm text-gray-500">Delivered this month</p>
-        <p class="mt-2 text-3xl font-extrabold text-navy-900">{{ stat_delivered_this_month }}</p>
+        <p class="mt-2 break-words text-2xl font-extrabold text-navy-900 sm:text-3xl">{{ stat_delivered_this_month }}</p>
     </div>
 </div>
 
 {% if bills %}
 <div class="card overflow-x-auto p-0">
-    <table class="min-w-full divide-y divide-gray-200 text-sm">
+    <table class="table-stack table-stack-inset min-w-full divide-y divide-gray-200 text-sm">
         <thead>
             <tr class="text-left text-xs font-semibold uppercase tracking-wide text-gray-400">
                 <th class="px-6 py-3">Order</th>
@@ -58,17 +58,17 @@
         <tbody class="divide-y divide-gray-100">
             {% for order in bills %}
             <tr class="hover:bg-gray-50">
-                <td class="px-6 py-3 font-medium text-navy-900">ORD-{{ order.billno }}</td>
-                <td class="px-6 py-3 text-gray-600">{{ order.requirement.title }}</td>
-                <td class="px-6 py-3 text-gray-600">{{ order.supplier.companyname|default:order.supplier }}</td>
-                <td class="px-6 py-3">
+                <td class="whitespace-nowrap px-6 py-3 font-medium text-navy-900" data-stack="title stretch"><a href="{% url 'order-detail' order.billno %}" class="hover:text-accent-500">ORD-{{ order.billno }}</a></td>
+                <td class="px-6 py-3 text-gray-600" data-label="Part">{{ order.requirement.title }}</td>
+                <td class="px-6 py-3 text-gray-600" data-label="Supplier">{{ order.supplier.companyname|default:order.supplier }}</td>
+                <td class="px-6 py-3" data-label="Progress">
                     <p class="text-xs text-gray-500">{{ order.get_production_stage_display }}</p>
                     <div class="mt-1 h-1.5 w-32 overflow-hidden rounded-full bg-gray-100">
                         <div class="h-full rounded-full bg-accent-500" style="width: {{ order.production_progress_percent }}%"></div>
                     </div>
                 </td>
-                <td class="px-6 py-3 text-gray-600">{{ order.ship_by_date|date:"d M"|default:"—" }}</td>
-                <td class="px-6 py-3">
+                <td class="whitespace-nowrap px-6 py-3 text-gray-600" data-label="Due">{{ order.ship_by_date|date:"d M"|default:"—" }}</td>
+                <td class="px-6 py-3" data-stack="badge">
                     {% if order.status == 'cancelled' %}
                     <span class="badge bg-red-50 text-red-700">{{ order.get_status_display }}</span>
                     {% elif order.status == 'paid' or order.status == 'completed' %}
@@ -79,7 +79,7 @@
                     <span class="badge bg-yellow-50 text-yellow-700">{{ order.get_status_display }}</span>
                     {% endif %}
                 </td>
-                <td class="px-6 py-3 text-right"><a href="{% url 'order-detail' order.billno %}" class="text-sm font-bold text-accent-500 hover:text-accent-600">View &rarr;</a></td>
+                <td class="whitespace-nowrap px-6 py-3 text-right" data-stack="hide"><a href="{% url 'order-detail' order.billno %}" class="text-sm font-bold text-accent-500 hover:text-accent-600">View &rarr;</a></td>
             </tr>
             {% endfor %}
         </tbody>

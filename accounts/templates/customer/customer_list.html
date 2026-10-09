@@ -13,7 +13,7 @@
 
     {% if object_list %}
     <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200 text-sm">
+        <table class="table-stack min-w-full divide-y divide-gray-200 text-sm">
             <thead>
                 <tr class="text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                     <th class="py-2 pr-4">Name</th>
@@ -28,14 +28,14 @@
             <tbody class="divide-y divide-gray-100">
                 {% for customer in object_list %}
                 <tr>
-                    <td class="py-2 pr-4">
+                    <td class="py-2 pr-4" data-stack="title stretch">
                         <a href="{% url 'customer' customer.pk %}" class="font-medium text-brand-600 hover:underline">{{ customer.Name }}</a>
                     </td>
-                    <td class="py-2 pr-4">{{ customer.get_type_of_business_display }}</td>
-                    <td class="py-2 pr-4">{{ customer.phone }}</td>
-                    <td class="py-2 pr-4">{{ customer.email }}</td>
-                    <td class="py-2 pr-4">{{ customer.EORI_number }}</td>
-                    <td class="py-2 pr-4">{{ customer.VAT_number }}</td>
+                    <td class="py-2 pr-4" data-label="Sector">{{ customer.get_type_of_business_display }}</td>
+                    <td class="py-2 pr-4" data-label="Phone">{{ customer.phone }}</td>
+                    <td class="py-2 pr-4" data-label="Email" data-stack="full">{{ customer.email }}</td>
+                    <td class="py-2 pr-4" data-label="EORI number">{{ customer.EORI_number }}</td>
+                    <td class="py-2 pr-4" data-label="VAT number">{{ customer.VAT_number }}</td>
                     <td class="py-2 pr-4 space-x-2">
                         {% if customer.is_deleted %}
                         <a href="{% url 'activate-customer' customer.pk %}" class="badge bg-green-50 text-green-700">Activate</a>

@@ -1,0 +1,19 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en" class="bg-white">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>You're offline — MakeSetu</title>
+    <meta name="theme-color" content="#11355c">
+    <link rel="stylesheet" href="{% static 'css/tailwind-built.css' %}">
+    <link rel="icon" type="image/svg+xml" href="{% static 'images/logo.svg' %}">
+</head>
+<body class="flex min-h-screen items-center justify-center bg-navy-50 px-6 antialiased text-navy-900">
+    <main class="card max-w-sm text-center">
+        <img src="{% static 'images/logo.svg' %}" alt="" class="mx-auto h-14 w-14">
+        <h1 class="mt-5 text-xl font-extrabold tracking-tight">You're offline</h1>
+        <p class="mt-2 text-sm text-gray-500">MakeSetu needs an internet connection to load your RFQs, quotes and orders. Check your connection and try again.</p>
+        <button type="button" onclick="location.reload()" class="btn-primary mt-6 w-full">Try again</button>
+    </main>
+</body>
+</html>

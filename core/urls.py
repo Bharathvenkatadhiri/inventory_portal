@@ -10,6 +10,7 @@ from django.http import Http404
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme, urlencode
+from homepage import pwa
 from homepage.views import (
     CustomLoginView, CustomLogoutView, PasswordChangeVerifyView, ReauthView, ThrottledPasswordChangeView,
     ThrottledPasswordResetConfirmView, ThrottledPasswordResetView,
@@ -55,6 +56,13 @@ urlpatterns = [
     ), name='password_reset_complete'),
 
     path('api/gst/', include('gst.urls')),
+
+    # Installable app (homepage.pwa). The service worker and assetlinks.json
+    # must sit at these exact root paths.
+    path('manifest.webmanifest', pwa.manifest, name='pwa-manifest'),
+    path('sw.js', pwa.service_worker, name='pwa-service-worker'),
+    path('offline/', pwa.offline, name='pwa-offline'),
+    path('.well-known/assetlinks.json', pwa.assetlinks, name='pwa-assetlinks'),
 
     path('', include('homepage.urls')),
     path('accounts/', include('accounts.urls')),

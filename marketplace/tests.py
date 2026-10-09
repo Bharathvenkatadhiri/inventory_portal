@@ -435,6 +435,15 @@ class MessagingTests(TestCase):
         self.assertEqual(self.client.get(self.thread_url).status_code, 404)
         self.assertEqual(self._send(body="hi").status_code, 404)
 
+    def test_conversation_is_a_full_screen_chat_on_phones(self):
+        # The phone tab bar gives way to the conversation, with a way back
+        # to the list; the list itself keeps the tab bar.
+        self.client.login(username="msgbuyer@example.com", password="pass12345")
+        response = self.client.get(self.thread_url)
+        self.assertNotContains(response, 'aria-label="Main"')
+        self.assertContains(response, "All conversations")
+        self.assertContains(self.client.get(reverse("message-thread-list")), 'aria-label="Main"')
+
 
 @DASHBOARD_TEST_STORAGES
 class AskBuyerAndNotificationTests(TestCase):

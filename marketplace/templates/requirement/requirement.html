@@ -145,7 +145,7 @@
     <p class="text-sm text-gray-500">Part descriptions and drawings are hidden until you accept this RFQ's NDA, above.</p>
     {% elif demanddetails %}
     <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200 text-sm">
+        <table class="table-stack min-w-full divide-y divide-gray-200 text-sm">
             <thead>
                 <tr class="text-left text-gray-500">
                     <th class="py-2 pr-4">Name</th>
@@ -159,12 +159,12 @@
             <tbody class="divide-y divide-gray-100">
                 {% for part in demanddetails %}
                 <tr>
-                    <td class="py-2 pr-4 text-navy-900">{{ part.part_name }}</td>
-                    <td class="py-2 pr-4 text-gray-600">{{ part.Part_desc|default:"—" }}</td>
-                    <td class="py-2 pr-4 text-gray-600">{{ part.technology }}</td>
-                    <td class="py-2 pr-4 text-gray-600">{{ part.Material }}</td>
-                    <td class="py-2 pr-4 text-gray-600">{{ part.quantity }}</td>
-                    <td class="py-2 pr-4">
+                    <td class="py-2 pr-4 text-navy-900 max-md:font-bold" data-stack="title">{{ part.part_name }}</td>
+                    <td class="py-2 pr-4 text-gray-600" data-label="Description" data-stack="full">{{ part.Part_desc|default:"—" }}</td>
+                    <td class="py-2 pr-4 text-gray-600" data-label="Technology">{{ part.technology }}</td>
+                    <td class="py-2 pr-4 text-gray-600" data-label="Material">{{ part.Material }}</td>
+                    <td class="py-2 pr-4 text-gray-600" data-label="Quantity">{{ part.quantity }}</td>
+                    <td class="py-2 pr-4" data-label="File">
                         {% if part.file %}
                         <a href="{{ part.file.url }}" target="_blank" class="text-accent-500 hover:underline">Download</a>
                         {% else %}

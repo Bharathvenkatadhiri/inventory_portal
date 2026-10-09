@@ -15,7 +15,7 @@
 <div class="mb-4 rounded-md bg-accent-50 px-4 py-3 text-sm text-accent-700">Contact details and conversation history are part of the {{ details_upgrade }} plan.</div>
 {% endif %}
 <div class="card overflow-x-auto">
-    <table class="w-full text-left text-sm">
+    <table class="table-stack w-full text-left text-sm">
         <thead>
             <tr class="border-b border-gray-100 text-xs uppercase tracking-wide text-gray-400">
                 <th class="py-2 pr-4 font-bold">Buyer</th>
@@ -27,11 +27,11 @@
         <tbody class="divide-y divide-gray-100">
             {% for entry in contacts %}
             <tr>
-                <td class="py-3 pr-4"><p class="font-bold text-navy-900">{{ entry.buyer.Name }}</p><p class="text-xs text-gray-500">{{ entry.buyer.city }}</p></td>
-                {% if show_details %}<td class="py-3 pr-4"><p class="text-navy-900">{{ entry.buyer.email }}</p><p class="text-xs text-gray-500">{{ entry.buyer.phone }}</p></td>{% endif %}
-                <td class="py-3 pr-4">{{ entry.orders }}</td>
+                <td class="py-3 pr-4" data-stack="title"><p class="font-bold text-navy-900">{{ entry.buyer.Name }}</p><p class="text-xs text-gray-500">{{ entry.buyer.city }}</p></td>
+                {% if show_details %}<td class="py-3 pr-4" data-label="Contact"><p class="text-navy-900">{{ entry.buyer.email }}</p><p class="text-xs text-gray-500">{{ entry.buyer.phone }}</p></td>{% endif %}
+                <td class="py-3 pr-4" data-label="Orders">{{ entry.orders }}</td>
                 {% if show_details %}
-                <td class="py-3">
+                <td class="py-3" data-label="Conversations" data-stack="full">
                     {% for thread in entry.threads|slice:":3" %}<a href="{% url 'message-thread' thread.pk %}" class="block text-xs text-accent-500 hover:underline">RFQ-{{ thread.requirement_id }}: {{ thread.requirement.title|truncatechars:40 }}</a>{% empty %}<span class="text-xs text-gray-400">—</span>{% endfor %}
                 </td>
                 {% endif %}

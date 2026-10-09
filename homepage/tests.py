@@ -1,3 +1,5 @@
+import hashlib
+
 from django.contrib.messages import get_messages
 from django.core.cache import cache
 from django.test import TestCase, override_settings
@@ -446,6 +448,53 @@ class AuthSurfaceHardeningTests(TestCase):
         self.assertRedirects(response, reverse("login"), fetch_redirect_response=False)
         self.assertNotIn("_auth_user_id", self.client.session)
 
+    ANDROID_CHROME = "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{} Mobile Safari/537.36"
+
+    def sign_in_through_login_page(self):
+        # client.login() stamps the session from a bare request with no
+        # User-Agent; the real login view sees the browser's.
+        response = self.client.post(reverse("login"), {"username": "authsurf@example.com", "password": "correct-horse-battery"})
+        self.assertIn("_auth_user_id", self.client.session, response)
+
+    def test_session_survives_a_browser_update(self):
+        # Browsers and the installed app's webview update every few weeks;
+        # that mustn't sign people out.
+        self.client.defaults["HTTP_USER_AGENT"] = self.ANDROID_CHROME.format("126.0.6478.122")
+        self.sign_in_through_login_page()
+        self.client.defaults["HTTP_USER_AGENT"] = self.ANDROID_CHROME.format("127.0.6533.64")
+        self.assertEqual(self.client.get(reverse("profile")).status_code, 200)
+
+    def test_session_is_logged_out_on_another_os(self):
+        self.client.defaults["HTTP_USER_AGENT"] = self.ANDROID_CHROME.format("126.0.6478.122")
+        self.sign_in_through_login_page()
+        windows_chrome = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+        response = self.client.get(reverse("profile"), HTTP_USER_AGENT=windows_chrome)
+        self.assertRedirects(response, reverse("login"), fetch_redirect_response=False)
+
+    def test_session_bound_before_the_change_is_checked_then_migrated(self):
+        from core import session_security
+        ua = self.ANDROID_CHROME.format("126.0.6478.122")
+        self.client.defaults["HTTP_USER_AGENT"] = ua
+        self.sign_in_through_login_page()
+        session = self.client.session
+        del session[session_security.UA_FAMILY_HASH]
+        session[session_security.LEGACY_UA_HASH] = hashlib.sha256(ua.encode()).hexdigest()
+        session.save()
+        # Same browser: kept signed in, and moved to the version-free hash.
+        self.assertEqual(self.client.get(reverse("profile")).status_code, 200)
+        self.assertIn(session_security.UA_FAMILY_HASH, self.client.session)
+        self.assertNotIn(session_security.LEGACY_UA_HASH, self.client.session)
+
+    def test_session_bound_before_the_change_still_rejects_another_browser(self):
+        from core import session_security
+        self.client.login(username="authsurf@example.com", password="correct-horse-battery")
+        session = self.client.session
+        del session[session_security.UA_FAMILY_HASH]
+        session[session_security.LEGACY_UA_HASH] = hashlib.sha256(b"Original-Browser/1.0").hexdigest()
+        session.save()
+        response = self.client.get(reverse("profile"), HTTP_USER_AGENT="Stolen-Cookie-Browser/1.0")
+        self.assertRedirects(response, reverse("login"), fetch_redirect_response=False)
+
     def test_reauth_rejects_an_off_site_next(self):
         self.client.login(username="authsurf@example.com", password="correct-horse-battery")
         response = self.client.post(reverse("reauth"), {"password": "correct-horse-battery", "next": "https://evil.example/"})
@@ -599,3 +648,70 @@ class PasswordChangeAndAccountMenuTests(TestCase):
         self.request_change(PASSWORD)
         self.verify(self.last_code())
         self.assertTrue(self.password_is(viewer, self.NEW_PASSWORD))
+
+
+@DASHBOARD_TEST_STORAGES
+class InstallableAppTests(TestCase):
+    """The site is an installable app (homepage.pwa) so it can later be
+    wrapped for the Play Store / App Store without a rewrite: a manifest,
+    a root-scoped service worker, an offline page and Digital Asset Links,
+    all reachable signed out. Signed in, phones get a bottom tab bar."""
+
+    def test_manifest(self):
+        from django.contrib.staticfiles import finders
+        response = self.client.get(reverse("pwa-manifest"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/manifest+json")
+        manifest = response.json()
+        self.assertEqual(manifest["display"], "standalone")
+        self.assertEqual(manifest["scope"], "/")
+        self.assertIn("maskable", {icon["purpose"] for icon in manifest["icons"]})
+        for icon in manifest["icons"]:
+            self.assertTrue(finders.find(icon["src"].removeprefix("/static/")), icon["src"])
+
+    def test_service_worker_is_root_scoped_and_precaches_offline_page(self):
+        response = self.client.get("/sw.js")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/javascript")
+        self.assertEqual(response["Service-Worker-Allowed"], "/")
+        self.assertContains(response, reverse("pwa-offline"))
+        self.assertNotContains(response, "{{")
+
+    def test_offline_page(self):
+        response = self.client.get(reverse("pwa-offline"))
+        self.assertContains(response, "You're offline")
+
+    def test_assetlinks_empty_until_android_app_configured(self):
+        response = self.client.get("/.well-known/assetlinks.json")
+        self.assertEqual(response.json(), [])
+
+    @override_settings(ANDROID_APP_PACKAGE="in.makesetu.app", ANDROID_APP_CERT_FINGERPRINTS=["AA:BB"])
+    def test_assetlinks_for_android_app(self):
+        [statement] = self.client.get("/.well-known/assetlinks.json").json()
+        self.assertEqual(statement["target"]["package_name"], "in.makesetu.app")
+        self.assertEqual(statement["target"]["sha256_cert_fingerprints"], ["AA:BB"])
+
+    def test_public_pages_link_manifest_and_serve_scripts_locally(self):
+        for name in ("home", "login"):
+            response = self.client.get(reverse(name))
+            self.assertContains(response, reverse("pwa-manifest"))
+            self.assertNotContains(response, "unpkg.com")
+
+    def test_buyer_tab_bar(self):
+        from marketplace.test_teams import PASSWORD, make_buyer
+        owner, _ = make_buyer("tabbuyer", "9600000101")
+        self.client.login(username=owner.email, password=PASSWORD)
+        response = self.client.get(reverse("orders-list"))
+        self.assertContains(response, 'aria-label="Main"')
+        self.assertContains(response, reverse("pwa-manifest"))
+        self.assertContains(response, "live-badge-quotes")
+        self.assertNotContains(response, "unpkg.com")
+
+    def test_supplier_tab_bar(self):
+        from marketplace.test_teams import PASSWORD, make_supplier
+        owner, _ = make_supplier("tabsupplier", "9600000102")
+        self.client.login(username=owner.email, password=PASSWORD)
+        response = self.client.get(reverse("home"))
+        self.assertContains(response, 'aria-label="Main"')
+        self.assertContains(response, "RFQ inbox")
+        self.assertContains(response, "Production")
