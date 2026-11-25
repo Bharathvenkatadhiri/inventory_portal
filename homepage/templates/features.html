@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% load portal_feedback %}
+{% block title %}Features — MakeSetu ERP{% endblock %}
+{% block meta_description %}What the MakeSetu ERP does: purchase, sales, inventory, production, QC, GST invoicing, roles and connected customers and suppliers.{% endblock %}
+{% block hero %}
+{% include "_page_hero.html" with eyebrow="Features" heading="One system from <span class='text-accent-500'>purchase order to GST invoice.</span>" sub="Each module does one job, and they share one set of records. Every plan covers buying, selling, stock, GST and simple production. Add work orders, QC, job work and MRP when you need them." show_rating=True %}
+{% endblock %}
+{% block content %}
+{# Which plan includes what comes from plans/erp.py (homepage.views.FeaturesView). #}
+<div class="grid gap-6 lg:grid-cols-2">
+    <section class="card" aria-labelledby="f-purchase">
+        <p class="eyebrow">Buying &middot; every plan</p>
+        <h2 id="f-purchase" class="mt-2 text-xl font-extrabold text-navy-900">Purchase</h2>
+        <p class="mt-2 text-sm leading-relaxed text-gray-600">Raise purchase orders to approved suppliers, post goods receipts (GRN) as material arrives, and enter the supplier's bill against what was ordered and received.</p>
+        <ul class="mt-4 space-y-2 text-sm text-gray-600">
+            <li>Purchase orders with GST worked out from the place of supply</li>
+            <li>Goods receipts against each order line</li>
+            <li>Purchase bills matched to the order and the receipt</li>
+        </ul>
+    </section>
+    <section class="card" aria-labelledby="f-sales">
+        <p class="eyebrow">Selling &middot; every plan</p>
+        <h2 id="f-sales" class="mt-2 text-xl font-extrabold text-navy-900">Sales</h2>
+        <p class="mt-2 text-sm leading-relaxed text-gray-600">Quote your customers, turn accepted quotations into sales orders, and dispatch against them. Orders from customers on MakeSetu arrive already filled in.</p>
+        <ul class="mt-4 space-y-2 text-sm text-gray-600">
+            <li>Quotations and sales orders</li>
+            <li>Dispatch against each order line</li>
+            <li>Incoming orders from connected customers</li>
+        </ul>
+    </section>
+    <section class="card" aria-labelledby="f-inventory">
+        <p class="eyebrow">Store &middot; every plan</p>
+        <h2 id="f-inventory" class="mt-2 text-xl font-extrabold text-navy-900">Inventory and documents</h2>
+        <p class="mt-2 text-sm leading-relaxed text-gray-600">Stock by item and warehouse, updated by every receipt, issue and dispatch. Delivery challans, returns, and debit and credit notes are included. Starter covers 1 warehouse, Growth 3 and Pro 10. Growth adds batch and serial tracking with barcodes.</p>
+    </section>
+    <section class="card" aria-labelledby="f-gst">
+        <p class="eyebrow">Accounts &middot; every plan</p>
+        <h2 id="f-gst" class="mt-2 text-xl font-extrabold text-navy-900">GST invoicing, e-way bill and Tally</h2>
+        <p class="mt-2 text-sm leading-relaxed text-gray-600">GST invoices from dispatches, e-way bills, payments and ledgers, GSTR reports and Tally export. E-invoice (IRN) is included from Growth and available as an add-on on Starter.</p>
+    </section>
+    <section class="card" aria-labelledby="f-production">
+        <p class="eyebrow">Production</p>
+        <h2 id="f-production" class="mt-2 text-xl font-extrabold text-navy-900">BOM, work orders and costing</h2>
+        <p class="mt-2 text-sm leading-relaxed text-gray-600">Every plan has single-level bills of materials and production entry. Growth adds multi-level BOMs, work orders, production costing and scrap.</p>
+    </section>
+    <section class="card" aria-labelledby="f-qc">
+        <p class="eyebrow">Quality and job work &middot; Growth</p>
+        <h2 id="f-qc" class="mt-2 text-xl font-extrabold text-navy-900">QC, inspection and job work</h2>
+        <p class="mt-2 text-sm leading-relaxed text-gray-600">Inspect incoming material and finished parts, and hold back what fails. Send material out for job work on a challan, track it back, and file ITC-04.</p>
+    </section>
+    <section class="card" aria-labelledby="f-approvals">
+        <p class="eyebrow">Approvals &middot; Growth and Pro</p>
+        <h2 id="f-approvals" class="mt-2 text-xl font-extrabold text-navy-900">Approvals</h2>
+        <p class="mt-2 text-sm leading-relaxed text-gray-600">Growth requires one approval before orders, bills or payments go out. Pro adds multi-level approvals, so larger amounts can need more than one person.</p>
+    </section>
+    <section class="card" aria-labelledby="f-pro">
+        <p class="eyebrow">Planning &middot; Pro</p>
+        <h2 id="f-pro" class="mt-2 text-xl font-extrabold text-navy-900">MRP, scheduling and maintenance</h2>
+        <p class="mt-2 text-sm leading-relaxed text-gray-600">Plan material and production from open orders, schedule the work, keep machines maintained, and see a full audit log of who changed what.</p>
+    </section>
+    <section class="card" aria-labelledby="f-roles">
+        <p class="eyebrow">People</p>
+        <h2 id="f-roles" class="mt-2 text-xl font-extrabold text-navy-900">Roles for every desk</h2>
+        <p class="mt-2 text-sm leading-relaxed text-gray-600">A role is a set of permissions, such as "create a purchase order" or "approve a sales order". Every company starts with Org Admin, Purchase, Sales, Store, Production Planner, Accounts and QC roles, and can change them. One person can work in more than one company, with a different role in each.</p>
+        <p class="mt-2 text-sm leading-relaxed text-gray-600"><span class="font-semibold text-navy-900">Light users</span> are for the shop floor: Store Keeper, Machine Operator, QC Inspector, Security / Gate and Field Sales. They record one or two things, such as goods received, production done or a pass or fail, cost much less than full users, and can never approve or see finance.</p>
+        <p class="mt-2 text-sm leading-relaxed text-gray-600"><span class="font-semibold text-navy-900">Teams</span> group people into departments such as Purchase, Store or QC, each with a head. A Purchase team's POs go to its head for approval, QC alerts go to the QC team, and reports show activity by department. Anyone can be in several teams and still counts once.</p>
+    </section>
+</div>
+
+<h2 class="mt-16 mb-4 text-xl font-extrabold tracking-tight text-navy-900">What each plan includes</h2>
+<div class="card overflow-x-auto p-0">
+    <table class="w-full text-left text-sm">
+        <thead>
+            <tr class="border-b border-gray-100 text-xs uppercase tracking-wide text-gray-500">
+                <th scope="col" class="px-5 py-3 font-bold">Plan</th>
+                <th scope="col" class="px-5 py-3 font-bold">Price</th>
+                <th scope="col" class="px-5 py-3 font-bold">People, teams and warehouses</th>
+                <th scope="col" class="px-5 py-3 font-bold">Adds</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+            {% for plan in plans %}
+            <tr>
+                <th scope="row" class="px-5 py-4 font-bold text-navy-900">{{ plan.label }}</th>
+                <td class="px-5 py-4 whitespace-nowrap text-gray-700">&#8377;{{ plan.monthly }} / month</td>
+                <td class="px-5 py-4 text-gray-700">{{ plan.users_label }} + {{ plan.light_users_label }}, {{ plan.teams_label|lower }}, {{ plan.warehouses_label|lower }}</td>
+                <td class="px-5 py-4 text-gray-700">{% if plan.includes_previous %}Everything in {{ plan.includes_previous }}, plus: {% endif %}{{ plan.added_features|join:"; " }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<p class="mt-4 text-sm text-gray-500">Prices exclude GST. <a href="{% url 'pricing' %}" class="font-semibold text-accent-500 hover:underline">See full pricing</a></p>
+{% portal_feedback_section embedded=True %}
+{% endblock %}

@@ -4,6 +4,10 @@
 # node / tailwind
 node_modules/
 
+# The signed-in app (frontend/): its build output is made by `pnpm build`
+# (and in the Docker image), never committed.
+frontend/apps/web/dist/
+
 
 # Created by https://www.gitignore.io/api/django
 # Edit at https://www.gitignore.io/?templates=django
@@ -150,3 +154,7 @@ major project.code-workspace
 
 # Cloudflare Origin SSL certificates
 nginx/ssl/
+
+# The frontend's source has lib/ folders, which the Python "lib/" rule above
+# would ignore. Keep this last so it wins.
+!frontend/**/src/lib/

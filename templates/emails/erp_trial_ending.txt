@@ -1,0 +1,11 @@
+{% autoescape off %}Hello,
+
+The free trial of {{ plan_label }} for {{ company_name }} ends on {{ trial_ends_at }}.
+
+Choose a plan and pay before then to keep making changes. After the trial, you can still see everything, but nothing can be changed until someone pays:
+
+    {{ billing_url }}
+
+Thanks,
+The MakeSetu Team
+{% endautoescape %}

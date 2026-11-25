@@ -1,0 +1,13 @@
+{% autoescape off %}Hello,
+
+{{ company_name }} has added {{ partner_name }} as a {{ as_what }} on MakeSetu, the ERP for Indian manufacturers.
+
+Register your company with the same GSTIN and you'll see each other's orders and documents in one place, without retyping them:
+
+    {{ url }}
+
+Registration starts with a free trial. If this isn't your company, you can ignore this email.
+
+Thanks,
+The MakeSetu Team
+{% endautoescape %}

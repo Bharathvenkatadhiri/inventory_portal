@@ -1,0 +1,11 @@
+{% autoescape off %}Hello,
+
+We've received ₹{{ amount }} for {{ company_name }}'s {{ plan_label }} subscription. It's paid until {{ expires_at }}.
+
+See your payments here:
+
+    {{ billing_url }}
+
+Thanks,
+The MakeSetu Team
+{% endautoescape %}

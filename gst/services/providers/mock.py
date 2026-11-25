@@ -30,6 +30,24 @@ SAMPLE_COMPANIES = {
                         'Private Limited Company', 'KINFRA Hi-Tech Park, Kalamassery', 'Kochi', '683503'),
     '06AALCH2718T1Z5': ('HARYANA AGRO MACHINES PRIVATE LIMITED', 'Haryana Agro Machines',
                         'Private Limited Company', 'Sector 37, IMT Manesar', 'Gurugram', '122051'),
+    # Manufacturers that both buy and sell, for trying the ERP sign-up.
+    # Unlike the ones above, these carry a correct GSTIN check digit.
+    '27AAGCN2468V1ZG': ('NASHIK GEARTECH PRIVATE LIMITED', 'Nashik Geartech',
+                        'Private Limited Company', 'F-12, MIDC Ambad', 'Nashik', '422010'),
+    '09AAHCB2468V1ZP': ('BLUEWAVE CONTROLS PRIVATE LIMITED', 'Bluewave Controls',
+                        'Private Limited Company', 'C-58, Sector 63', 'Noida', '201301'),
+    '19AAFCH2468V1ZK': ('HOOGHLY FORGINGS PRIVATE LIMITED', 'Hooghly Forgings',
+                        'Private Limited Company', '7, Taratala Industrial Estate', 'Kolkata', '700088'),
+    '03AAJFP2468V1ZF': ('PANCHNAD FASTENERS', 'Panchnad Fasteners',
+                        'Partnership', 'Plot 210, Focal Point Phase VIII', 'Ludhiana', '141010'),
+    '08AAKCA2468V1ZP': ('ARAVALI PACKAGING PRIVATE LIMITED', 'Aravali Packaging',
+                        'Private Limited Company', 'G1-44, RIICO Sitapura', 'Jaipur', '302022'),
+    '33AALCK2468V1ZL': ('KONGU PUMPS AND MOTORS PRIVATE LIMITED', 'Kongu Pumps',
+                        'Private Limited Company', '88, SIDCO Industrial Estate, Kurichi', 'Coimbatore', '641021'),
+    '29AAMCM2468V1Z7': ('MYSORE AERO COMPONENTS PRIVATE LIMITED', 'Mysore Aero Components',
+                        'Private Limited Company', '301, KIADB Hebbal Industrial Area', 'Mysuru', '570016'),
+    '37AANCV3579U1ZW': ('VIZAG MARINE FABRICATORS PRIVATE LIMITED', 'Vizag Marine Fabricators',
+                        'Private Limited Company', 'Plot 14, Autonagar', 'Visakhapatnam', '530012'),
 }
 
 # The last character picks the status, so every UI state is reachable:

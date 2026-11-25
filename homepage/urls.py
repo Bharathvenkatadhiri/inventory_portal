@@ -9,6 +9,7 @@ urlpatterns = [
     # class itself — View.as_view() doesn't propagate class-level
     # attributes to the callable that LoginRequiredMiddleware inspects.
     path('', login_not_required(views.HomeView.as_view()), name='home'),
+    path('features/', login_not_required(views.FeaturesView.as_view()), name='features'),
     path('about/', login_not_required(views.AboutView.as_view()), name='about'),
     path('how-it-works/', login_not_required(views.HowItWorksView.as_view()), name='how-it-works'),
     path('demo/buyer/', login_not_required(views.BuyerDemoView.as_view()), name='demo-buyer'),

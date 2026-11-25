@@ -12,3 +12,7 @@ services:
       - .:/app        # live code reload — edits on the host show up immediately
     ports:
       - "8000:8000"
+
+  worker:
+    volumes:
+      - .:/app        # same code as web; restart the worker to pick up task changes

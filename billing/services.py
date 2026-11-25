@@ -467,7 +467,13 @@ def process_event(gateway_name, event, now=None):
     if not created and record.processed_at:
         return 'duplicate'
     payment = Payment.objects.filter(gateway=gateway_name, gateway_order_id=event.order_id).first()
-    result = apply_result(payment, event.result, now) if payment else 'unknown order'
+    if payment is not None:
+        result = apply_result(payment, event.result, now)
+    else:  # an ERP organization's payment (billing.erp)
+        from . import erp
+        from .models import OrganizationPayment
+        erp_payment = OrganizationPayment.objects.filter(gateway=gateway_name, gateway_order_id=event.order_id).first()
+        result = erp.apply_result(erp_payment, event.result, now) if erp_payment else 'unknown order'
     record.processed_at = timezone.now()
     record.result = result[:200]
     record.save(update_fields=['processed_at', 'result'])

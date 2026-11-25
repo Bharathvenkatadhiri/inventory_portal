@@ -1,0 +1,15 @@
+{
+  "name": "makesetu-frontend",
+  "private": true,
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "pnpm --filter web dev",
+    "build": "pnpm --filter web build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "generate-api": "pnpm --filter @makesetu/api generate"
+  }
+}

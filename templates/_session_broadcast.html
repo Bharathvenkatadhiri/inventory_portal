@@ -1,0 +1,19 @@
+{% comment %}
+Tells the web app's other open tabs who this page was rendered for. All tabs
+share one session cookie, so a page rendered signed out (after logging out,
+or the session expiring) means every tab is signed out, and a page rendered
+for someone else means another person signed in. The app's tabs listen on
+the same channel (watchSessionInOtherTabs in frontend/packages/api) and go
+to the sign-in page or reload at once, instead of on their next request.
+Carries only the user's numeric id, never anything else.
+{% endcomment %}
+<script>
+(function () {
+    if (typeof BroadcastChannel === 'undefined') return;
+    try {
+        var channel = new BroadcastChannel('makesetu-session');
+        channel.postMessage({user: {% if request.user.is_authenticated %}{{ request.user.pk }}{% else %}null{% endif %}});
+        channel.close();
+    } catch (e) { /* not worth breaking the page over */ }
+})();
+</script>

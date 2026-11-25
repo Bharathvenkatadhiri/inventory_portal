@@ -6,6 +6,7 @@ urlpatterns = [
     path('checkout/', views.CheckoutView.as_view(), name='billing-checkout'),
     path('change/', views.ChangePlanView.as_view(), name='billing-change'),
     path('payments/<int:pk>/return/', views.PaymentReturnView.as_view(), name='billing-return'),
+    path('erp/payments/<int:pk>/return/', views.ERPPaymentReturnView.as_view(), name='billing-erp-return'),
     path('cancel/', views.CancelView.as_view(), name='billing-cancel'),
     path('reactivate/', views.ReactivateView.as_view(), name='billing-reactivate'),
     path('scheduled-change/cancel/', views.CancelScheduledChangeView.as_view(), name='billing-cancel-change'),

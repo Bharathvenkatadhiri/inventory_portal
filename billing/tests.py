@@ -488,8 +488,9 @@ class BillingViewTests(BillingTestCase):
 
 @TEST_STORAGES
 class SignupPlanTests(TestCase):
-    """UC-02/03: a plan picked on the pricing page is remembered through
-    sign-up and offered for payment; the company starts on Free."""
+    """An ERP plan picked on the pricing page (register?plan=) is remembered
+    through sign-up and preselected at the organization step. Sign-up no
+    longer creates a marketplace subscription."""
 
     def setUp(self):
         cache.clear()
@@ -498,21 +499,22 @@ class SignupPlanTests(TestCase):
     def register(self, query):
         self.client.get(reverse('register') + query)
         self.client.post(reverse('register') + query, {
-            "username": "planpick", "first_name": "Plan", "last_name": "Picker",
+            "first_name": "Plan", "last_name": "Picker",
             "password1": "A-strong-passw0rd", "password2": "A-strong-passw0rd",
-            "email": "planpick@example.com", "account_type": "buyer",
+            "email": "planpick@example.com",
         })
         code = next(l.strip() for l in mail.outbox[-1].body.splitlines() if l.strip().isdigit() and len(l.strip()) == 6)
         self.client.post(reverse('verify-email'), {"code": code})
-        return SubscriptionPlan.objects.get(user_profile__email="planpick@example.com")
+        return self.client.get(reverse('register-organization'))
 
-    def test_chosen_plan_is_recorded_as_intended_not_granted(self):
-        sub = self.register('?plan=business&cycle=yearly')
-        self.assertEqual((sub.plan_type, sub.intended_plan_type, sub.intended_billing_cycle), ('free', 'business', 'yearly'))
+    def test_chosen_plan_is_preselected_at_the_organization_step(self):
+        page = self.register('?plan=growth')
+        self.assertContains(page, 'value="growth" class="border-gray-300 text-accent-500 focus:ring-accent-500" checked')
+        self.assertFalse(SubscriptionPlan.objects.filter(user_profile__email="planpick@example.com").exists())
 
-    def test_free_or_unknown_plan_records_nothing(self):
-        sub = self.register('?plan=platinum')
-        self.assertEqual(sub.intended_plan_type, '')
+    def test_unknown_plan_falls_back_to_the_default(self):
+        page = self.register('?plan=platinum')
+        self.assertContains(page, 'value="starter" class="border-gray-300 text-accent-500 focus:ring-accent-500" checked')
 
 
 @TEST_STORAGES

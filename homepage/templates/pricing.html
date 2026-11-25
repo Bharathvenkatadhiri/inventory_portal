@@ -1,119 +1,101 @@
 {% extends "base.html" %}
 {% load portal_feedback %}
-{% block title %}Pricing — MakeSetu{% endblock %}
+{% block title %}Pricing — MakeSetu ERP{% endblock %}
+{% block meta_description %}MakeSetu ERP plans: Starter, Growth and Pro, priced per company per month.{% endblock %}
 {% block hero %}
-{% include "_page_hero.html" with eyebrow="Pricing" heading="Simple, <span class='text-accent-500'>transparent</span> pricing." sub="Start free and upgrade as your sourcing grows. Pay monthly, or yearly and get two months free." show_rating=True %}
+{% include "_page_hero.html" with eyebrow="Pricing" heading="One price per company, <span class='text-accent-500'>not per module.</span>" sub="Every plan includes purchase, sales, inventory, GST invoicing, e-way bills and simple production. Move up for work orders, QC, job work and MRP." show_rating=True %}
 {% endblock %}
 {% block content %}
-{# Every price, limit and tick here comes from plans/catalog.py (homepage.views.PricingView). #}
-<div x-data="{ side: 'buyer', yearly: false }">
-    <div class="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div class="inline-flex self-start rounded-lg bg-gray-100 p-1 text-sm">
-            {% for side in sides %}
-            <button type="button" @click="side = '{{ side.key }}'" class="rounded-md px-5 py-2 font-semibold transition-colors" :class="side === '{{ side.key }}' ? 'bg-navy-900 text-white shadow' : 'text-gray-500'">{{ side.title }}</button>
+{# Every price, limit and tick here comes from plans/erp.py (homepage.views.PricingView). #}
+<div class="grid items-start gap-6 lg:grid-cols-3">
+    {% for card in plans %}
+    {% with featured=forloop.counter|divisibleby:2 %}
+    <div class="{% if featured %}relative rounded-xl bg-navy-900 p-7 text-white shadow-xl{% else %}card p-7{% endif %}">
+        {% if featured %}<span class="absolute -top-3 left-7 rounded-full bg-accent-500 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white">Most popular</span>{% endif %}
+        <h2 class="text-lg font-extrabold {% if not featured %}text-navy-900{% endif %}">{{ card.label }}</h2>
+        <p class="mt-1 text-sm {% if featured %}text-white/70{% else %}text-gray-500{% endif %}">{{ card.summary }}</p>
+        <p class="mt-6 text-4xl font-extrabold tracking-tight {% if not featured %}text-navy-900{% endif %}">
+            &#8377;{{ card.monthly }}<span class="ml-1.5 text-sm font-medium opacity-60">/ month</span>
+        </p>
+        <p class="mt-2 text-sm {% if featured %}text-white/70{% else %}text-gray-500{% endif %}">{{ card.users_label }} + {{ card.light_users_label }} &middot; {{ card.teams_label }} &middot; {{ card.warehouses_label }}</p>
+        <a href="{% url 'register' %}?plan={{ card.key }}" class="{% if featured %}btn-primary{% else %}btn-outline{% endif %} mt-6 w-full">Start with {{ card.label }}</a>
+        <ul class="mt-7 space-y-3 text-sm {% if featured %}text-white/85{% else %}text-gray-600{% endif %}">
+            {% if card.includes_previous %}<li class="font-semibold">Everything in {{ card.includes_previous }}, plus:</li>{% endif %}
+            {% for line in card.added_features %}
+            <li class="flex items-start gap-2">
+                <svg viewBox="0 0 20 20" class="mt-0.5 h-4 w-4 shrink-0 text-accent-500" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                <span>{{ line }}</span>
+            </li>
             {% endfor %}
-        </div>
-        <div class="flex items-center gap-3 text-sm">
-            <span class="font-medium" :class="yearly ? 'text-gray-400' : 'text-navy-900'">Monthly</span>
-            <button type="button" role="switch" :aria-checked="yearly ? 'true' : 'false'" @click="yearly = !yearly"
-                    class="relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent-500 focus:ring-offset-2"
-                    :class="yearly ? 'bg-accent-500' : 'bg-gray-300'">
-                <span class="sr-only">Bill yearly</span>
-                <span class="my-1 h-4 w-4 rounded-full bg-white transition-transform" :class="yearly ? 'translate-x-6' : 'translate-x-1'"></span>
-            </button>
-            <span class="font-medium" :class="yearly ? 'text-navy-900' : 'text-gray-400'">Yearly</span>
-            <span class="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-bold text-green-700">2 months free</span>
-        </div>
-    </div>
-
-    <div class="mb-8">
-        <a :href="side === 'buyer' ? '{% url 'demo-buyer' %}' : '{% url 'demo-supplier' %}'" class="btn-outline inline-flex items-center gap-2">
-            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 3l14 9-14 9V3z"/></svg>
-            <span x-text="side === 'buyer' ? 'Watch Buyer Demo' : 'Watch Supplier Demo'"></span>
-        </a>
-    </div>
-
-    {% for side in sides %}
-    <div x-show="side === '{{ side.key }}'" {% if not forloop.first %}x-cloak{% endif %}>
-        <div class="grid gap-6 sm:grid-cols-3 items-start">
-            {% for card in side.cards %}
-            {% with featured=forloop.counter|divisibleby:2 %}
-            <div class="{% if featured %}relative rounded-xl bg-navy-900 p-7 text-white shadow-xl{% else %}card p-7{% endif %}">
-                {% if featured %}<span class="absolute -top-3 left-7 rounded-full bg-accent-500 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white">Most Popular</span>{% endif %}
-                <p class="text-lg font-extrabold {% if not featured %}text-navy-900{% endif %}">{{ card.label }}</p>
-                <p class="mt-6 text-4xl font-extrabold tracking-tight {% if not featured %}text-navy-900{% endif %}">
-                    {% if card.monthly %}
-                    <span x-show="!yearly">&#8377;{{ card.monthly }}<span class="ml-1.5 text-sm font-medium opacity-60">/ month</span></span>
-                    <span x-show="yearly" x-cloak>&#8377;{{ card.yearly }}<span class="ml-1.5 text-sm font-medium opacity-60">/ year</span></span>
-                    {% else %}&#8377;0<span class="ml-1.5 text-sm font-medium opacity-60">forever</span>{% endif %}
-                </p>
-                <a href="{% url 'register' %}{% if card.monthly %}?plan={{ card.key }}{% endif %}"{% if card.monthly %} :href="'{% url 'register' %}?plan={{ card.key }}&cycle=' + (yearly ? 'yearly' : 'monthly')"{% endif %} class="{% if featured %}btn-primary{% else %}btn-outline{% endif %} mt-6 w-full">{% if card.monthly %}Start {{ card.label }}{% else %}Get started{% endif %}</a>
-                <ul class="mt-7 space-y-3 text-sm {% if featured %}text-white/85{% else %}text-gray-600{% endif %}">
-                    {% for line in card.highlights %}
-                    <li class="flex items-start gap-2">
-                        <svg viewBox="0 0 20 20" class="h-4 w-4 shrink-0 mt-0.5 text-accent-500" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7 7a1 1 0 01-1.4 0l-3-3a1 1 0 111.4-1.4L8 11.6l6.3-6.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
-                        <span>{{ line }}</span>
-                    </li>
-                    {% endfor %}
-                </ul>
-            </div>
-            {% endwith %}
+            {% for line in card.addons %}
+            <li class="flex items-start gap-2 {% if featured %}text-white/60{% else %}text-gray-500{% endif %}">
+                <span class="mt-0.5 inline-block w-4 shrink-0 text-center font-bold" aria-hidden="true">+</span>
+                <span>{{ line }} available as an add-on</span>
+            </li>
             {% endfor %}
-        </div>
-
-        <h2 class="mt-16 mb-4 text-xl font-extrabold tracking-tight text-navy-900">Compare plans {{ side.title|lower }}</h2>
-        <div class="card overflow-x-auto p-0">
-            <table class="w-full text-left text-sm">
-                <thead>
-                    <tr class="border-b border-gray-100 text-xs uppercase tracking-wide text-gray-400">
-                        <th class="px-5 py-3 font-bold">Feature</th>
-                        {% for plan in plans %}<th class="px-5 py-3 text-center font-bold">{{ plan.label }}</th>{% endfor %}
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100">
-                    <tr>
-                        <td class="px-5 py-3 text-navy-900">Price</td>
-                        {% for plan in plans %}
-                        <td class="px-5 py-3 text-center text-gray-700">
-                            <span x-show="!yearly">&#8377;{{ plan.monthly }} / month</span>
-                            <span x-show="yearly" x-cloak>&#8377;{{ plan.yearly }} / year</span>
-                        </td>
-                        {% endfor %}
-                    </tr>
-                    {% for label, cells in side.rows %}
-                    <tr>
-                        <td class="px-5 py-3 text-navy-900">{{ label }}</td>
-                        {% for cell in cells %}<td class="px-5 py-3 text-center {% if cell == '—' %}text-gray-300{% elif cell == '✓' %}font-bold text-accent-500{% else %}text-gray-700{% endif %}">{{ cell }}</td>{% endfor %}
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+            <li class="flex items-start gap-2 pt-2 font-semibold">
+                <span class="mt-0.5 inline-block w-4 shrink-0" aria-hidden="true"></span>
+                <span>Support: {{ card.support }}</span>
+            </li>
+        </ul>
     </div>
+    {% endwith %}
     {% endfor %}
+</div>
 
-    <p class="mt-8 text-center text-xs text-gray-400">
-        Prices exclude GST. Need something custom? <a href="{% url 'contact' %}" class="font-semibold text-accent-500 hover:underline">Talk to sales</a>.
-    </p>
+<h2 class="mt-16 mb-4 text-xl font-extrabold tracking-tight text-navy-900">Compare plans</h2>
+<div class="card overflow-x-auto p-0">
+    <table class="w-full text-left text-sm">
+        <thead>
+            <tr class="border-b border-gray-100 text-xs uppercase tracking-wide text-gray-500">
+                <th scope="col" class="px-5 py-3 font-bold">Feature</th>
+                {% for plan in plans %}<th scope="col" class="px-5 py-3 text-center font-bold">{{ plan.label }}</th>{% endfor %}
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+            <tr>
+                <th scope="row" class="px-5 py-3 font-normal text-navy-900">Price</th>
+                {% for plan in plans %}<td class="px-5 py-3 text-center text-gray-700">&#8377;{{ plan.monthly }} / month</td>{% endfor %}
+            </tr>
+            {% for label, cells in rows %}
+            <tr>
+                <th scope="row" class="px-5 py-3 font-normal text-navy-900">{{ label }}</th>
+                {% for cell in cells %}<td class="px-5 py-3 text-center {% if cell == '—' %}text-gray-300{% elif cell == '✓' %}font-bold text-accent-500{% elif cell == 'Add-on' %}font-semibold text-navy-600{% else %}text-gray-700{% endif %}">{% if cell == '✓' %}<span aria-hidden="true">✓</span><span class="sr-only">Included</span>{% elif cell == '—' %}<span aria-hidden="true">—</span><span class="sr-only">Not included</span>{% else %}{{ cell }}{% endif %}</td>{% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 
-    <h2 class="mt-20 mb-6 text-2xl font-extrabold tracking-tight text-navy-900 sm:text-3xl">Pricing questions</h2>
-    <div class="grid gap-6 sm:grid-cols-2">
-        <div class="card">
-            <p class="font-semibold text-navy-900">Who's on a team, and who can do what?</p>
-            <p class="mt-1 text-sm text-gray-500">The person who registers the company is its Owner, who alone handles the subscription and billing. Buyer companies add Admins, Procurement and Viewers; manufacturer companies add Admins, Sales, Operations and Viewers. Every active person counts toward the plan's users, Viewers included.</p>
-        </div>
-        <div class="card">
-            <p class="font-semibold text-navy-900">Can I change plans later?</p>
-            <p class="mt-1 text-sm text-gray-500">Yes. Moving to a smaller plan applies straight away. An upgrade, or a switch to yearly billing, starts as soon as we've confirmed your payment.</p>
-        </div>
-        <div class="card">
-            <p class="font-semibold text-navy-900">What happens when I reach a limit?</p>
-            <p class="mt-1 text-sm text-gray-500">Nothing you've already done is affected. You can't post another RFQ, send another quote, add another person or upload past your storage until next month (for monthly limits) or an upgrade.</p>
-        </div>
-        <div class="card">
-            <p class="font-semibold text-navy-900">Are there any transaction fees?</p>
-            <p class="mt-1 text-sm text-gray-500">No transaction fees on awarded orders — your plan covers everything listed above.</p>
-        </div>
+<p class="mt-8 text-center text-xs text-gray-500">
+    Prices are per company per month and exclude GST. Need more users or something custom? <a href="{% url 'contact' %}" class="font-semibold text-accent-500 hover:underline">Talk to us</a>.
+</p>
+
+<h2 class="mt-20 mb-6 text-2xl font-extrabold tracking-tight text-navy-900 sm:text-3xl">Pricing questions</h2>
+<div class="grid gap-6 sm:grid-cols-2">
+    <div class="card">
+        <p class="font-semibold text-navy-900">Do I pay separately to buy and to sell?</p>
+        <p class="mt-1 text-sm text-gray-500">No. Your company registers once and switches on buying, selling or both on any plan. Buyer and supplier are relationships with other companies, not separate accounts.</p>
+    </div>
+    <div class="card">
+        <p class="font-semibold text-navy-900">What's the difference between full and light users?</p>
+        <p class="mt-1 text-sm text-gray-500">Full users are office staff: purchase, sales, accounts, the owner. Light users do one or two simple tasks on the shop floor: a store keeper recording goods received, a machine operator entering what was made, a QC inspector marking pass or fail, security at the gate, a salesperson booking orders on the phone. Light users can't approve anything or see finance reports. Each plan includes some free; extra ones are &#8377;{{ plans.0.extra_light_user_monthly }} a month each.</p>
+    </div>
+    <div class="card">
+        <p class="font-semibold text-navy-900">How do users and teams work?</p>
+        <p class="mt-1 text-sm text-gray-500">Users are one pool for your whole company. Create teams such as Purchase, Sales, Store, Production and Accounts, and put anyone in as many teams as you like: each person counts once. Teams route approvals to the team head, send alerts to the right people and group reports by department. Need more teams? Growth has 5 and Pro has no limit.</p>
+    </div>
+    <div class="card">
+        <p class="font-semibold text-navy-900">Why give shop-floor staff their own login?</p>
+        <p class="mt-1 text-sm text-gray-500">So nobody shares a login like "store@company". You see who entered what, and stock stays accurate because work is recorded when it happens. People from your customers and suppliers never count as your users: they use their own company's account.</p>
+    </div>
+    <div class="card">
+        <p class="font-semibold text-navy-900">Can I change plans later?</p>
+        <p class="mt-1 text-sm text-gray-500">Yes. Move up when you need work orders, QC, job work or MRP, and everything you've already entered stays where it is.</p>
+    </div>
+    <div class="card">
+        <p class="font-semibold text-navy-900">Is there a fee per order or invoice?</p>
+        <p class="mt-1 text-sm text-gray-500">No. The plan covers everything listed above, however many documents you raise.</p>
     </div>
 </div>
 {% portal_feedback_section embedded=True %}

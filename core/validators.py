@@ -93,6 +93,12 @@ class StrongPasswordValidator:
 
     def validate(self, password, user=None):
         errors = [ValidationError(message, code=code) for check, code, message in self.RULES if not check(password)]
+        if self._has_easy_pattern(password):
+            errors.append(ValidationError(
+                "Avoid easy patterns such as three of the same character in a row (aaa, 111) "
+                "or a run like abcd, 1234 or 4321.",
+                code='password_easy_pattern',
+            ))
         if self._is_decorated_common_password(password):
             errors.append(ValidationError(
                 "This is a common password with numbers or symbols added, which is easy to guess.",
@@ -100,6 +106,24 @@ class StrongPasswordValidator:
             ))
         if errors:
             raise ValidationError(errors)
+
+    @staticmethod
+    def _has_easy_pattern(password):
+        """Three identical characters in a row ("aaa", "111"), or four
+        consecutive letters or digits going up or down ("abcd", "1234",
+        "DCBA"). _password_rules.html runs the same check in the browser."""
+        lowered = password.lower()
+        for i in range(len(lowered) - 2):
+            if lowered[i] == lowered[i + 1] == lowered[i + 2]:
+                return True
+        for i in range(len(lowered) - 3):
+            run = lowered[i:i + 4]
+            if not (run.isdigit() or (run.isascii() and run.isalpha())):
+                continue
+            steps = {ord(b) - ord(a) for a, b in zip(run, run[1:])}
+            if steps in ({1}, {-1}):
+                return True
+        return False
 
     @staticmethod
     def _is_decorated_common_password(password):
@@ -111,7 +135,8 @@ class StrongPasswordValidator:
         return len(letters) >= 4 and letters in CommonPasswordValidator().passwords
 
     def get_help_text(self):
-        return "Your password must contain an uppercase letter, a lowercase letter, a number and a special character."
+        return ("Your password must contain an uppercase letter, a lowercase letter, a number and a special "
+                "character, with no easy patterns such as aaa or 1234.")
 
 
 class PasswordHistoryValidator:

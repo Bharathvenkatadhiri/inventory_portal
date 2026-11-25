@@ -8,7 +8,7 @@ from django.db.models import F
 from django.http import Http404
 from django.core.exceptions import PermissionDenied, ValidationError
 from .forms import (
-    SupplierDetailsForm, updateSupplierDetailsForm, UserRegistrationForm, SelectCustomer, CustomerRegistrationForm,
+    updateSupplierDetailsForm, UserRegistrationForm, OrganizationSetupForm, SelectCustomer,
     UpdateSubscription, updateCustomer, CompanyAboutForm, CompanyContactForm, CompanyCapacityForm, CompanyLUTForm,
     MachineForm, CertificationForm, CapabilityAddForm, MaterialAddForm,
 )
@@ -17,13 +17,14 @@ from .models import (
     Machine, ManufacturerPhoto, Certification, ManufacturingTech, PendingRegistration,
 )
 from .services import company_registration
+from organizations import services as organization_services
 from django.views.generic import (View, ListView, CreateView, UpdateView, DeleteView)
 from django.contrib.messages.views import SuccessMessageMixin
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib import messages
 from django.conf import settings
 from django.apps import apps
-from plans import access, catalog
+from plans import access, catalog, erp
 from core.validators import IMAGE_EXTENSIONS, validate_upload
 from core import audit, login_throttle, session_security
 from . import otp, team
@@ -151,91 +152,63 @@ def billing_summary(subscription):
     }
 
 
-class CreateSupplier(SuccessMessageMixin, CreateView):
-    model = ManufacturerProfile
-    form_class = SupplierDetailsForm
-    template_name = "register_supplier.html"
-    success_url = '/'  # Redirects to home (the login page for anonymous users)
-    success_message = "Your manufacturer account is all set. Log in to get started."
-
-    def _pending_user(self):
-        # request.user is still anonymous at this point in the registration
-        # flow (the account created in `register` isn't logged in yet), so
-        # look the user up from the session instead of using request.user.
-        # Every persisted User is already email-verified (verify_email is
-        # the only thing that creates one), so there's no unverified case
-        # to filter out here.
-        return User.objects.filter(
-            pk=self.request.session.get('session_user_id'), role='manufacturer', manufacturerprofile__isnull=True,
-            team_membership__isnull=True,
-        ).first()
+class CreateOrganization(View):
+    """Sign-up step three: the person sets up their organization. Its GST
+    identity comes only from this session's server-side GSTIN check; the
+    form adds the sides it uses (buying, selling) and its plan. The person
+    becomes its Org Admin. Inviting the team and connecting customers and
+    suppliers happen after signing in."""
+    template_name = 'register_organization.html'
+    success_message = "Your organization is set up. Log in to get started."
 
     def dispatch(self, request, *args, **kwargs):
-        if self._pending_user() is None:
+        self.signup_user = company_registration.signing_up_user(request)
+        if self.signup_user is None:
             if request.session.get('pending_registration_id'):
                 return redirect('verify-email')
             messages.error(request, "Start by creating your account.")
             return redirect('register')
         return super().dispatch(request, *args, **kwargs)
 
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
-        kwargs['user'] = self._pending_user()
-        return kwargs
+    def _render(self, form):
+        return render(self.request, self.template_name, {
+            'form': form,
+            'first_name': self.signup_user.first_name,
+            'plans': erp.cards(),
+            'gst_verification': company_registration.session_verification(self.request),
+        })
 
-    def get_initial(self):
-        # The address the OTP step just verified; still editable, since the
-        # company's contact email may differ from the login email.
-        return {**super().get_initial(), 'email': self._pending_user().email}
+    def get(self, request):
+        plan = request.session.get(SIGNUP_PLAN_SESSION_KEY)
+        return self._render(OrganizationSetupForm(initial={'plan': plan if plan in erp.PLANS else erp.DEFAULT_PLAN}))
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["session_user_id"] = self.request.session.get('session_user_id')
-        context["session_username"] = self.request.session.get('session_username')
-        context["session_first_name"] = self.request.session.get('session_first_name')
-        context["session_last_name"] = self.request.session.get('session_last_name')
-        context["session_email"] = self.request.session.get('session_email')
-        # Re-shows the verified-company panel if this session already
-        # verified a GSTIN (e.g. the form came back with an error).
-        context["gst_verification"] = company_registration.session_verification(self.request)
-        return context
-
-    def form_invalid(self, form):
-        return super().form_invalid(form)
-
-    def form_valid(self, form):
-        # The frontend never gets to assert "this company is GST verified":
-        # the only source of truth is the GST verification this session ran
-        # server-side (gst.views.verify_gstin). Legal name / address / GST
-        # status come from it, never from posted form data.
-        verification = company_registration.session_verification(self.request)
+    def post(self, request):
+        form = OrganizationSetupForm(request.POST)
+        if not form.is_valid():
+            return self._render(form)
+        verification = company_registration.session_verification(request)
         if verification is None:
             form.add_error(None, "Please verify your company's GSTIN before submitting.")
-            return self.form_invalid(form)
-        conflict = company_registration.registration_conflict(self.request, verification.gstin, role='manufacturer')
+            return self._render(form)
+        conflict = company_registration.registration_conflict(request, verification.gstin)
         if conflict:
             form.add_error(None, conflict)
-            return self.form_invalid(form)
-        display_name = company_registration.display_name_from(self.request.POST.get('company_display_name'), verification)
+            return self._render(form)
+        display_name = company_registration.display_name_from(request.POST.get('company_display_name'), verification)
 
         with transaction.atomic():
             company = company_registration.register_company(verification, display_name)
-            profile = form.save(commit=False)
-            # Never trust the posted hidden `user` field.
-            profile.user = self._pending_user()
-            profile.company = company
-            profile.companyname = display_name[:40]
-            profile.address = company.principal_address
-            profile.city = company.city[:50]
-            profile.state = company.state[:25]
-            profile.country = "India"
-            profile.save()
-        self.object = profile
+            company.save()
+            organization_services.set_up_organization(
+                company, self.signup_user, buying=form.cleaned_data['buying_enabled'],
+                selling=form.cleaned_data['selling_enabled'], plan=form.cleaned_data['plan'],
+            )
 
-        company_registration.forget_session_verification(self.request)
-        _end_profile_step(self.request)
-        messages.success(self.request, self.success_message)
-        return redirect(self.get_success_url())
+        company_registration.forget_session_verification(request)
+        request.session.pop(SIGNUP_PLAN_SESSION_KEY, None)
+        _end_profile_step(request)
+        messages.success(request, self.success_message)
+        return redirect('/')
 
 
 def _start_profile_step(request, user):
@@ -256,16 +229,13 @@ SIGNUP_PLAN_SESSION_KEY = 'signup_plan'
 
 
 def _remember_signup_plan(request):
-    """UC-02/03: a paid plan picked on the pricing page (register?plan=&cycle=)
-    is remembered through sign-up and recorded as the plan the company
-    intends to buy. It isn't granted until its first payment succeeds; the
-    company starts on Free either way."""
+    """A plan picked on the pricing page (register?plan=growth) is remembered
+    through sign-up and preselected at the organization step."""
     plan = request.GET.get('plan')
     if plan is None:
         return
-    cycle = request.GET.get('cycle') if request.GET.get('cycle') in (catalog.MONTHLY, catalog.YEARLY) else catalog.MONTHLY
-    if plan in catalog.PLAN_ORDER and plan != catalog.DEFAULT_PLAN and catalog.purchasable(plan):
-        request.session[SIGNUP_PLAN_SESSION_KEY] = [plan, cycle]
+    if plan in erp.PLANS:
+        request.session[SIGNUP_PLAN_SESSION_KEY] = plan
     else:
         request.session.pop(SIGNUP_PLAN_SESSION_KEY, None)
 
@@ -308,14 +278,14 @@ def register(request):
                 else:
                     form.add_error('email', "We couldn't register with these details. If you already have an account, sign in instead.")
                 return render(request, 'register_first.html', {'form': form})
-            if team.company(existing_user) is not None:
+            if team.company(existing_user) is not None or existing_user.memberships.exists():
                 # Already on a company account (e.g. joined through an
-                # invitation): there's no profile step left to resume.
+                # invitation): there's no company step left to resume.
                 form = UserRegistrationForm(request.POST)
                 form.add_error('email', 'An account with this email already exists. Please log in instead.')
                 return render(request, 'register_first.html', {'form': form})
             _start_profile_step(request, existing_user)
-            return redirect('register-supplier' if existing_user.role == 'manufacturer' else 'register-customer')
+            return redirect('register-organization')
 
         pending = PendingRegistration.objects.filter(email=email).first()
         if pending is not None:
@@ -369,13 +339,10 @@ def verify_email(request):
         ok, reason = otp.verify(pending, code)
         if ok:
             user = otp.complete_registration(pending)
-            intended_plan, intended_cycle = request.session.pop(SIGNUP_PLAN_SESSION_KEY, None) or ('', '')
-            SubscriptionPlan.objects.create(plan_type=catalog.DEFAULT_PLAN, price=0, user_profile=user,
-                                            intended_plan_type=intended_plan, intended_billing_cycle=intended_cycle)
             request.session.pop('pending_registration_id', None)
             _start_profile_step(request, user)
             messages.success(request, "Email verified.")
-            return redirect('register-supplier' if user.role == 'manufacturer' else 'register-customer')
+            return redirect('register-organization')
         errors = {
             'no_pending': "That code has expired. Request a new one below.",
             'expired': "That code has expired. Request a new one below.",
@@ -389,80 +356,6 @@ def verify_email(request):
         otp.issue_and_send(pending)
 
     return render(request, 'registration/verify_email.html', {'email': pending.email})
-
-
-class CreateCustomer(SuccessMessageMixin, CreateView):
-    model = ConsumerProfile
-    form_class = CustomerRegistrationForm
-    success_url = '/'
-    success_message = "Your buyer account is all set. Log in to get started."
-    template_name = "register_customer.html"
-
-    def _pending_user(self):
-        # Every persisted User is already email-verified (verify_email is
-        # the only thing that creates one), so there's no unverified case
-        # to filter out here.
-        return User.objects.filter(
-            pk=self.request.session.get('session_user_id'), role='consumer', consumerprofile__isnull=True,
-            team_membership__isnull=True,
-        ).first()
-
-    def dispatch(self, request, *args, **kwargs):
-        if self._pending_user() is None:
-            if request.session.get('pending_registration_id'):
-                return redirect('verify-email')
-            messages.error(request, "Start by creating your account.")
-            return redirect('register')
-        return super().dispatch(request, *args, **kwargs)
-
-    def get_initial(self):
-        # See CreateSupplier.get_initial.
-        return {**super().get_initial(), 'email': self._pending_user().email}
-
-    def form_valid(self, form):
-        # Same rule as CreateSupplier.form_valid: the only proof of a
-        # verified company is this session's server-side GST verification,
-        # and the buyer's legal identity and address come from it.
-        verification = company_registration.session_verification(self.request)
-        if verification is None:
-            form.add_error(None, "Please verify your company's GSTIN before submitting.")
-            return self.form_invalid(form)
-        conflict = company_registration.registration_conflict(self.request, verification.gstin, role='consumer')
-        if conflict:
-            form.add_error(None, conflict)
-            return self.form_invalid(form)
-        display_name = company_registration.display_name_from(self.request.POST.get('company_display_name'), verification)
-
-        with transaction.atomic():
-            company = company_registration.register_company(verification, display_name)
-            profile = form.save(commit=False)
-            profile.user = self._pending_user()
-            profile.company = company
-            profile.Name = display_name[:75]
-            profile.Address = company.principal_address[:150]
-            profile.city = company.city[:50]
-            profile.state = company.state[:25]
-            profile.country = "India"
-            profile.save()
-        self.object = profile
-
-        company_registration.forget_session_verification(self.request)
-        _end_profile_step(self.request)
-        messages.success(self.request, self.success_message)
-        return redirect(self.get_success_url())
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["session_user_id"] = self.request.session.get('session_user_id')
-        context["session_username"] = self.request.session.get('session_username')
-        context["session_first_name"] = self.request.session.get('session_first_name')
-        context["session_last_name"] = self.request.session.get('session_last_name')
-        context["session_email"] = self.request.session.get('session_email')
-        context["gst_verification"] = company_registration.session_verification(self.request)
-        context["title"] = 'New Customer'
-        context["savebtn"] = 'Add Customer'
-        return context
-
 
 
 def ViewProfileDetails(request):

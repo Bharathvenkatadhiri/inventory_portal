@@ -15,8 +15,7 @@ urlpatterns = [
     # login_not_required must wrap the as_view() result, not decorate the
     # class itself — View.as_view() doesn't propagate class-level
     # attributes to the callable that LoginRequiredMiddleware inspects.
-    path('register-supplier', login_not_required(views.CreateSupplier.as_view()), name='register-supplier'),
-    path('register-customer', login_not_required(views.CreateCustomer.as_view()), name='register-customer'),
+    path('register-organization', login_not_required(views.CreateOrganization.as_view()), name='register-organization'),
     path('profile', views.ViewProfileDetails, name='profile'),
 
     path('company/', views.CompanyProfileView.as_view(), name='company-profile'),

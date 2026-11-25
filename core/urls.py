@@ -1,3 +1,4 @@
+import functools
 
 from django.contrib import admin
 from django.contrib.auth import views as auth_views
@@ -10,12 +11,32 @@ from django.http import Http404
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme, urlencode
+from core.api import api
+from homepage import retired_pwa
 from homepage.views import (
     CustomLoginView, CustomLogoutView, PasswordChangeVerifyView, ReauthView, ThrottledPasswordChangeView,
     ThrottledPasswordResetConfirmView, ThrottledPasswordResetView,
 )
 
 handler404 = 'homepage.views.custom_404_view'
+
+
+def _api_urls():
+    # The API answers 401 itself (core/api.py), so LoginRequiredMiddleware
+    # mustn't turn its requests into redirects to the login page.
+    # Some of Ninja's views are bound methods, which can't carry the
+    # attribute, so each is wrapped (functools.wraps keeps csrf_exempt).
+    patterns, app_name, namespace = api.urls
+    for pattern in patterns:
+        view = pattern.callback
+
+        @functools.wraps(view)
+        def exempt(request, *args, _view=view, **kwargs):
+            return _view(request, *args, **kwargs)
+
+        exempt.login_required = False
+        pattern.callback = exempt
+    return patterns, app_name, namespace
 
 
 def _not_public(request, path):
@@ -35,6 +56,8 @@ def _admin_login(request):
 
 
 urlpatterns = [
+    # Removes the service worker of the reverted installable-app release (see homepage/retired_pwa.py).
+    path('sw.js', retired_pwa.service_worker, name='retired-service-worker'),
     path('admin/login/', _admin_login),
     path('admin/', admin.site.urls, name='admin'),
     path('login/', CustomLoginView.as_view(), name='login'),
@@ -55,7 +78,9 @@ urlpatterns = [
     ), name='password_reset_complete'),
 
     path('api/gst/', include('gst.urls')),
+    path('api/v1/', _api_urls()),
 
+    path('', include('organizations.urls')),
     path('', include('homepage.urls')),
     path('accounts/', include('accounts.urls')),
     path('billing/', include('billing.urls')),
