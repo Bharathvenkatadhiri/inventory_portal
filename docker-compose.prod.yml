@@ -23,3 +23,13 @@ services:
     ports:
       - "8000:8000"
     restart: unless-stopped
+
+  # Background jobs. CELERY_BROKER_URL in .env points at the managed Redis
+  # (ElastiCache); without it, jobs run inline in web requests instead and
+  # this service isn't needed (leave it stopped: it can't start without one).
+  worker:
+    build: .
+    command: celery -A core worker -l info --concurrency 2
+    env_file:
+      - .env
+    restart: unless-stopped

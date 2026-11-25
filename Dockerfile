@@ -1,3 +1,15 @@
+# --- The signed-in app (frontend/), built once into static files -----------------
+FROM node:20-alpine AS frontend
+WORKDIR /frontend
+RUN corepack enable
+COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./
+COPY frontend/apps/web/package.json apps/web/
+COPY frontend/packages/api/package.json packages/api/
+RUN pnpm install --frozen-lockfile
+COPY frontend/ ./
+RUN pnpm build
+
+# --- Django ------------------------------------------------------------------------
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -13,6 +25,8 @@ COPY requirements.txt requirements-dev.txt ./
 RUN pip install --no-cache-dir -r requirements-dev.txt
 
 COPY . .
+# Served at /app/ (organizations.views.app_shell) and /static/app/.
+COPY --from=frontend /frontend/apps/web/dist /app/frontend/apps/web/dist
 
 EXPOSE 8000
 

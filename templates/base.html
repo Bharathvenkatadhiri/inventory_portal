@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}MakeSetu — B2B Manufacturing Marketplace{% endblock %}</title>
-    <meta name="description" content="{% block meta_description %}MakeSetu is the bridge between buyers and manufacturers: post RFQs, compare quotes from verified manufacturers and track orders to delivery.{% endblock %}">
+    <title>{% block title %}MakeSetu — ERP for Indian Manufacturers{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}MakeSetu is an ERP for Indian manufacturers: purchase, sales, inventory, production, QC and GST invoicing, with customers and suppliers connected on one network.{% endblock %}">
     <link rel="stylesheet" href="{% load static %}{% static 'css/tailwind-built.css' %}">
     <link rel="icon" type="image/svg+xml" href="{% static 'images/logo.svg' %}">
     <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
@@ -30,7 +30,7 @@
                     {{ request.user.email }}
                     <span class="badge bg-brand-50 text-brand-700 ml-1">{{ request.user.get_role_display|default:request.user.role }}</span>
                 </span>
-                <a href="{% url 'profile' %}" class="text-sm text-gray-500 hover:text-gray-700">Profile</a>
+                {% if request.user.role != 'member' %}<a href="{% url 'profile' %}" class="text-sm text-gray-500 hover:text-gray-700">Profile</a>{% endif %}
                 {% include "_logout_button.html" %}
             </div>
         </div>
@@ -48,7 +48,9 @@
         <nav class="card space-y-1">
             <a href="{% url 'home' %}" class="block rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100">Dashboard</a>
 
-            {% if request.user.role == 'manufacturer' %}
+            {% if request.user.role == 'member' %}
+                {# ERP members: the ERP's screens are added here as they're built. #}
+            {% elif request.user.role == 'manufacturer' %}
                 <a href="{% url 'requirement-list' %}" class="block rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100">Open Requirements</a>
                 <a href="{% url 'quote-list' %}" class="block rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100">My Quotes</a>
                 <a href="{% url 'orders-list' %}" class="block rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100">Orders</a>
@@ -87,5 +89,6 @@
 {% if not request.user.is_authenticated %}
 {% include "_footer.html" %}
 {% endif %}
+{% include "_session_broadcast.html" %}
 </body>
 </html>

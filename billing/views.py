@@ -19,11 +19,12 @@ from django.views.decorators.csrf import csrf_exempt
 
 from accounts import team
 from plans import catalog
+from plans import erp as erp_plans
 
-from . import services
+from . import erp, services
 from .gateways import get_gateway
 from .gateways.base import FAILED, PENDING, SUCCEEDED, InvalidWebhook
-from .models import Payment
+from .models import OrganizationPayment, Payment
 
 logger = logging.getLogger(__name__)
 
@@ -250,17 +251,30 @@ class MockCheckoutView(LoginRequiredMixin, View):
     def _payment(self, request, order_id):
         if get_gateway().name != 'mock':
             raise Http404
-        payment = get_object_or_404(Payment, gateway='mock', gateway_order_id=order_id)
+        payment = Payment.objects.filter(gateway='mock', gateway_order_id=order_id).first()
+        if payment is None:
+            return _erp_payment(request, get_object_or_404(OrganizationPayment, gateway='mock', gateway_order_id=order_id).pk)
         return _owner_payment(request, payment.pk)
 
     def get(self, request, order_id):
         payment = self._payment(request, order_id)
+        if isinstance(payment, OrganizationPayment):
+            return render(request, 'billing/mock_checkout_erp.html', {'payment': payment, 'plan_label': erp_plans.PLANS[payment.plan]['label']})
         return render(request, 'billing/mock_checkout.html', {'payment': payment, 'plan_label': catalog.PLAN_LABELS[payment.plan_type]})
 
     def post(self, request, order_id):
         payment = self._payment(request, order_id)
         status, deliver_webhook = self.OUTCOMES.get(request.POST.get('outcome'), (PENDING, False))
         gateway = get_gateway()
+        if isinstance(payment, OrganizationPayment):
+            if status != PENDING and payment.status == OrganizationPayment.PENDING:
+                gateway.record(order_id, status, "Card declined (mock)." if status == FAILED else '')
+                if deliver_webhook:
+                    body, signature = gateway.webhook_body(order_id)
+                    services.process_event(gateway.name, gateway.parse_webhook(_SignedRequest(body, signature)))
+            if request.POST.get('outcome') == 'close':
+                return redirect('/app/settings/billing?checkout=closed')
+            return redirect(reverse('billing-erp-return', kwargs={'pk': payment.pk}))
         if status != PENDING and payment.status == Payment.PENDING:
             gateway.record(order_id, status, "Card declined (mock)." if status == FAILED else '')
             if deliver_webhook:
@@ -272,6 +286,32 @@ class MockCheckoutView(LoginRequiredMixin, View):
             messages.info(request, "Checkout closed. Nothing was charged.")
             return redirect(billing_url())
         return redirect(reverse('billing-return', kwargs={'pk': payment.pk}))
+
+
+def _erp_payment(request, pk):
+    """An ERP payment of an organization the user manages billing for, else 404."""
+    from organizations import access
+    from organizations.models import Membership
+
+    payment = get_object_or_404(OrganizationPayment.objects.select_related('subscription__company'), pk=pk)
+    membership = Membership.objects.filter(user=request.user, company=payment.subscription.company,
+                                           is_active=True).select_related('role', 'company', 'user').first()
+    if not access.check(membership, 'billing.manage'):
+        raise Http404
+    return payment
+
+
+class ERPPaymentReturnView(LoginRequiredMixin, View):
+    """Back from the gateway: find out where the payment stands, then show
+    the billing page in the app."""
+
+    def get(self, request, pk):
+        payment = _erp_payment(request, pk)
+        outcome = erp.reconcile(payment)
+        status = {'applied': 'paid', 'already applied': 'paid', 'failed': 'failed'}.get(outcome, 'pending')
+        if outcome.startswith('stale'):
+            status = 'stale'
+        return redirect(f'/app/settings/billing?payment={payment.pk}&status={status}')
 
 
 class _SignedRequest:

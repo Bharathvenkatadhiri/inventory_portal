@@ -5,15 +5,16 @@
             <a href="{% url 'home' %}" class="flex items-center gap-2.5">
                 {% include "_wordmark.html" with size="text-lg" dark=True %}
             </a>
-            <p class="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-white/45">Bridging buyers &amp; manufacturers</p>
-            <p class="mt-4 max-w-xs text-sm leading-relaxed text-white/60"><em>Setu</em> means bridge. MakeSetu links buyers who need custom parts with manufacturers who can make them, from RFQ to delivery.</p>
+            <p class="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-white/45">ERP for Indian manufacturers</p>
+            <p class="mt-4 max-w-xs text-sm leading-relaxed text-white/60"><em>Setu</em> means bridge. MakeSetu runs purchase, sales, stock, production and GST invoicing, and connects you with your customers and suppliers.</p>
         </div>
         <div>
             <p class="text-xs font-bold uppercase tracking-[0.18em] text-white/45">Platform</p>
             <ul class="mt-4 space-y-3 text-sm text-white/70">
+                <li><a href="{% url 'features' %}" class="hover:text-white">Features</a></li>
                 <li><a href="{% url 'how-it-works' %}" class="hover:text-white">How it works</a></li>
                 <li><a href="{% url 'pricing' %}" class="hover:text-white">Pricing</a></li>
-                <li><a href="{% url 'register' %}" class="hover:text-white">Register</a></li>              
+                <li><a href="{% url 'register' %}" class="hover:text-white">Register your company</a></li>
             </ul>
         </div>
         <div>

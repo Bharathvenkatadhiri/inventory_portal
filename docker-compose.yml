@@ -23,6 +23,15 @@ services:
       timeout: 5s
       retries: 5
 
+  # Broker for background jobs (core/celery.py).
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   web:
     build: .
     env_file:
@@ -32,8 +41,25 @@ services:
       # directly on the host) with the in-network service name Compose
       # gives this container.
       DATABASE_URL: postgres://makesetu_app:makesetu_app@db:5432/makesetu
+      CELERY_BROKER_URL: redis://redis:6379/0
     depends_on:
       db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build: .
+    command: celery -A core worker -l info
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://makesetu_app:makesetu_app@db:5432/makesetu
+      CELERY_BROKER_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
 volumes:

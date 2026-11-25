@@ -1,0 +1,11 @@
+{% autoescape off %}Hello,
+
+We couldn't charge ₹{{ amount }} to renew {{ plan_label }} for {{ company_name }}.
+
+You can keep using MakeSetu until {{ grace_until }} while we try again. To pay now, or to use a different payment method:
+
+    {{ billing_url }}
+
+Thanks,
+The MakeSetu Team
+{% endautoescape %}

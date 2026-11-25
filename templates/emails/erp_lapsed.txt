@@ -1,0 +1,11 @@
+{% autoescape off %}Hello,
+
+{{ company_name }}'s MakeSetu subscription ({{ plan_label }}) has ended{% if reason == 'trial_ended' %} with the free trial{% elif reason == 'renewal_failed' %} because the renewal couldn't be charged{% endif %}.
+
+Your data is safe and everyone can still see it, but nothing can be changed until someone chooses a plan and pays:
+
+    {{ billing_url }}
+
+Thanks,
+The MakeSetu Team
+{% endautoescape %}

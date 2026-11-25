@@ -7,9 +7,15 @@ class User(AbstractUser):
         ("consumer", "Consumer"),
         ("manufacturer", "Manufacturer"),
         ("admin", "Admin"),
+        # Signed up as a person in an ERP organization: what they can do is
+        # their role in each organization (organizations.Membership), not
+        # this field. consumer/manufacturer are marketplace accounts.
+        ("member", "Member"),
     ]
 
     email = models.EmailField(unique=True)
+    # db_default for the same reason as email_verified below.
+    phone = models.CharField(max_length=15, blank=True, default='', db_default='')
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="consumer")
     # Set once the OTP sent at registration (accounts.otp) is confirmed.
     # Defaults False for every existing row too, but that's harmless: it's

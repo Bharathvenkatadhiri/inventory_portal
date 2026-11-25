@@ -15,6 +15,7 @@ from django.core.cache import cache
 from django.utils import timezone
 
 from core.emails import send_template_email
+from core.tasks import queue_template_email
 from .models import EmailVerification, PendingRegistration
 
 CODE_LENGTH = 6
@@ -43,7 +44,7 @@ def start_registration(form):
     instance = form.save(commit=False)
     pending = PendingRegistration.objects.create(
         email=instance.email, username=instance.username,
-        first_name=instance.first_name, last_name=instance.last_name,
+        first_name=instance.first_name, last_name=instance.last_name, phone=getattr(instance, 'phone', ''),
         password=instance.password, role=instance.role,
     )
     issue_and_send(pending)
@@ -68,7 +69,8 @@ def issue_and_send(pending):
     cache.add(key, 0, timeout=RESEND_WINDOW_SECONDS)
     cache.incr(key)
     name = pending.first_name or pending.username
-    send_template_email(
+    # From a worker (core.tasks), so the sign-up page doesn't wait on SMTP.
+    queue_template_email(
         pending.email,
         'emails/otp_verification_subject.txt', 'emails/otp_verification.txt',
         {'name': name, 'code': code, 'ttl_minutes': TTL_MINUTES},
@@ -105,6 +107,20 @@ def verify(pending, submitted_code):
     return False, 'mismatch'
 
 
+def _unique_username(base):
+    """People sign in by email, but Django's User still needs a unique
+    username: the email, or the email with a short suffix if an older
+    account happens to have taken it as its username."""
+    from core.models import User
+
+    base = base[:150]
+    candidate = base
+    while User.objects.filter(username__iexact=candidate).exists():
+        suffix = '-' + secrets.token_hex(3)
+        candidate = base[:150 - len(suffix)] + suffix
+    return candidate
+
+
 def complete_registration(pending):
     """Creates the real User now that the OTP is confirmed — the one place
     a PendingRegistration turns into a users-table row. The pending row (and
@@ -112,8 +128,8 @@ def complete_registration(pending):
     from core.models import User
 
     user = User(
-        username=pending.username, email=pending.email,
-        first_name=pending.first_name, last_name=pending.last_name,
+        username=_unique_username(pending.username or pending.email), email=pending.email,
+        first_name=pending.first_name, last_name=pending.last_name, phone=pending.phone,
         role=pending.role, email_verified=True,
     )
     user.password = pending.password  # already hashed by UserRegistrationForm

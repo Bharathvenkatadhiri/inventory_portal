@@ -1,0 +1,96 @@
+{% load static widget_tweaks portal_feedback %}<!DOCTYPE html>
+<html lang="en" class="bg-navy-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Set up your company — MakeSetu</title>
+    <link rel="stylesheet" href="{% static 'css/tailwind-built.css' %}">
+    <link rel="icon" type="image/svg+xml" href="{% static 'images/logo.svg' %}">
+    <script src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
+</head>
+<body class="flex min-h-screen flex-col">
+    {% include "_nav.html" %}
+    <main class="flex flex-1 items-start justify-center px-4 py-10">
+    <div class="w-full max-w-3xl">
+        <div class="mb-8 text-center">
+            <p class="eyebrow">Step 3 of 3</p>
+            <h1 class="mt-2 text-3xl font-extrabold tracking-tight text-navy-900">Set up your company</h1>
+            <p class="mt-2 text-sm text-gray-500">Welcome, {{ first_name }}. Your company registers once on MakeSetu, and you'll be its Org Admin.</p>
+        </div>
+
+        {% if messages %}
+        <div class="mb-4 space-y-2">
+            {% for message in messages %}
+            <div class="rounded-md px-4 py-3 text-sm {% if message.tags == 'error' %}bg-red-50 text-red-700{% else %}bg-green-50 text-green-700{% endif %}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+            <div class="rounded-md bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+                {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+            </div>
+            {% endif %}
+
+            <section class="card" aria-labelledby="org-identity">
+                <h2 id="org-identity" class="text-lg font-bold text-navy-900">1. Your company's GSTIN</h2>
+                <p class="mt-1 mb-4 text-sm text-gray-500">We fill in your legal name, address and PAN from the GST records.</p>
+                {% include "_company_verification.html" %}
+            </section>
+
+            <section class="card" aria-labelledby="org-modules">
+                <h2 id="org-modules" class="text-lg font-bold text-navy-900">2. What does your company do on MakeSetu?</h2>
+                <p class="mt-1 text-sm text-gray-500">Most manufacturers use both. You can change this later.</p>
+                <fieldset class="mt-4 grid gap-3 sm:grid-cols-2">
+                    <legend class="sr-only">Sides your company uses</legend>
+                    <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-4 has-[:checked]:border-accent-500 has-[:checked]:bg-accent-50">
+                        {{ form.buying_enabled|add_class:"mt-1 rounded border-gray-300 text-accent-500 focus:ring-accent-500" }}
+                        <span>
+                            <span class="block text-sm font-bold text-navy-900">Buying</span>
+                            <span class="block text-sm text-gray-500">Purchase orders, goods receipts (GRN) and purchase bills</span>
+                        </span>
+                    </label>
+                    <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-4 has-[:checked]:border-accent-500 has-[:checked]:bg-accent-50">
+                        {{ form.selling_enabled|add_class:"mt-1 rounded border-gray-300 text-accent-500 focus:ring-accent-500" }}
+                        <span>
+                            <span class="block text-sm font-bold text-navy-900">Selling</span>
+                            <span class="block text-sm text-gray-500">Quotations, sales orders, GST invoices and dispatch</span>
+                        </span>
+                    </label>
+                </fieldset>
+            </section>
+
+            <section class="card" aria-labelledby="org-plan">
+                <h2 id="org-plan" class="text-lg font-bold text-navy-900">3. Choose a plan</h2>
+                <p class="mt-1 text-sm text-gray-500">Prices are per company per month, excluding GST. You won't be charged during sign-up.</p>
+                {% for error in form.plan.errors %}<p class="mt-2 text-sm text-red-600">{{ error }}</p>{% endfor %}
+                <fieldset class="mt-4 grid gap-3 sm:grid-cols-3">
+                    <legend class="sr-only">Plan</legend>
+                    {% for plan in plans %}
+                    <label class="flex cursor-pointer flex-col rounded-lg border border-gray-200 p-4 has-[:checked]:border-accent-500 has-[:checked]:bg-accent-50">
+                        <span class="flex items-center gap-2">
+                            <input type="radio" name="plan" value="{{ plan.key }}" class="border-gray-300 text-accent-500 focus:ring-accent-500" {% if form.plan.value == plan.key %}checked{% endif %}>
+                            <span class="text-sm font-bold text-navy-900">{{ plan.label }}</span>
+                        </span>
+                        <span class="mt-2 text-lg font-extrabold text-navy-900">&#8377;{{ plan.monthly }}<span class="text-xs font-medium text-gray-500"> / month</span></span>
+                        <span class="mt-1 text-xs text-gray-500">{{ plan.users_label }} + {{ plan.light_users_label }} &middot; {{ plan.teams_label }} &middot; {{ plan.warehouses_label }}</span>
+                        <span class="mt-2 text-xs text-gray-600">{{ plan.summary }}</span>
+                    </label>
+                    {% endfor %}
+                </fieldset>
+                <p class="mt-3 text-xs text-gray-500"><a href="{% url 'pricing' %}" target="_blank" rel="noopener" class="font-semibold text-accent-500 hover:underline">Compare plans</a> (opens in a new tab)</p>
+            </section>
+
+            <div class="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p class="text-xs text-gray-500">After this you can invite your team and connect your customers and suppliers.</p>
+                <button type="submit" id="registration-submit-btn" class="btn-primary" {% if not gst_verification %}disabled{% endif %}>Create my company</button>
+            </div>
+        </form>
+    </div>
+    </main>
+    <div class="bg-white">{% portal_feedback_section heading="What manufacturers say about MakeSetu" %}</div>
+    {% include "_footer.html" %}
+</body>
+</html>

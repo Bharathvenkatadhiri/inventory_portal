@@ -1,0 +1,1 @@
+{% autoescape off %}Payment received: ₹{{ amount }} for MakeSetu {{ plan_label }}{% endautoescape %}

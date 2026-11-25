@@ -5,12 +5,12 @@ abandoned checkouts (billing.services.run_due). Run hourly from cron:
 """
 from django.core.management.base import BaseCommand
 
-from billing import services
+from billing import erp, services
 
 
 class Command(BaseCommand):
     help = "Send expiry reminders and process subscription renewals, retries, expiries and stale checkouts."
 
     def handle(self, *args, **options):
-        counts = services.run_due()
+        counts = {**services.run_due(), **erp.run_due()}
         self.stdout.write(", ".join(f"{key.replace('_', ' ')}: {value}" for key, value in counts.items()))

@@ -5,6 +5,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from plans.catalog import BILLING_CYCLES, DEFAULT_PLAN, MONTHLY, PLAN_LABELS
+from plans.erp import PLAN_CHOICES as ERP_PLAN_CHOICES
 
 
 class ManufacturingTech(models.Model):
@@ -90,6 +91,23 @@ class Company(models.Model):
     # export invoices. Leave blank if the company exports on payment of IGST.
     lut_reference = models.CharField('LUT ARN', max_length=30, blank=True)
     lut_valid_until = models.DateField('LUT valid until', blank=True, null=True)
+
+    # --- ERP organization (organizations app) ---------------------------
+    # Characters 3-12 of the GSTIN. Decides TDS rates on the other side.
+    pan = models.CharField('PAN', max_length=10, blank=True)
+    # The sides this organization uses: buying = the Purchase module (PO,
+    # GRN, purchase bills); selling = the Sales module (quotation, sales
+    # order, invoice, dispatch). A manufacturer normally has both.
+    buying_enabled = models.BooleanField(default=False)
+    selling_enabled = models.BooleanField(default=False)
+    # The ERP plan chosen at sign-up (plans.erp). Blank for companies that
+    # only have marketplace buyer/supplier accounts.
+    erp_plan = models.CharField('ERP plan', max_length=20, choices=ERP_PLAN_CHOICES, blank=True)
+    # Whether other organizations can find this one by name in partner
+    # search (organizations.partners). Off: only someone who already knows
+    # the GSTIN can send it a request.
+    findable = models.BooleanField(default=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -103,6 +121,12 @@ class Company(models.Model):
         from django.utils import timezone
         on = on or timezone.localdate()
         return bool(self.lut_reference.strip()) and (self.lut_valid_until is None or self.lut_valid_until >= on)
+
+    @property
+    def is_organization(self):
+        """Set up as an ERP organization (has an ERP plan), as opposed to a
+        company that only has marketplace accounts."""
+        return bool(self.erp_plan)
 
 
 class ManufacturerProfile(models.Model):
@@ -499,6 +523,7 @@ class PendingRegistration(models.Model):
     username = models.CharField(max_length=150)
     first_name = models.CharField(max_length=150)
     last_name = models.CharField(max_length=150)
+    phone = models.CharField(max_length=15, blank=True, default='', db_default='')
     password = models.CharField(max_length=128)  # already hashed by UserRegistrationForm
     role = models.CharField(max_length=20)
     created_at = models.DateTimeField(auto_now_add=True)

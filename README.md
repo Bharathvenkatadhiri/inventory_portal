@@ -1,8 +1,10 @@
 # MakeSetu
 
-MakeSetu is a B2B manufacturing marketplace: a consumer submits a requirement (with a diagram/spec file), manufacturers respond with quotes, the consumer selects one, and the order proceeds through production to payment.
+MakeSetu is becoming an ERP for Indian manufacturers: purchase, sales, inventory, production, QC and GST invoicing, with customers and suppliers connected on one network. A company registers once as an organization; people work in it through roles, and buying and selling are relationships between organizations ([docs/organizations.md](docs/organizations.md)).
 
-Stack: Django 5.1 + PostgreSQL, server-rendered templates (htmx/Alpine, no separate SPA), S3-compatible storage for uploaded files.
+The original B2B marketplace (buyers post requirements, manufacturers quote, orders run to payment) still works for existing buyer and supplier accounts.
+
+Stack: Django 5.1 + PostgreSQL, a typed API at `/api/v1` (Django Ninja) for the web and mobile apps to come, Celery + Redis for background jobs, server-rendered public pages (htmx/Alpine, Tailwind), S3-compatible storage for uploaded files.
 
 ## Environments
 
@@ -35,6 +37,7 @@ This same setup applies to both the Docker and non-Docker workflows below. For p
 
 - Python 3.12
 - Docker + Docker Compose (recommended — runs Postgres for you)
+- Node.js 20+ and pnpm, for the signed-in app ([frontend/README.md](frontend/README.md))
 
 ### Installation (Docker — recommended)
 
@@ -113,10 +116,25 @@ npm run watch-css     # rebuilds on save, during development
 npm run build-css     # one-shot minified build — run before committing UI changes
 ```
 
+### The signed-in app (React)
+
+Signed-in companies use a React app at `/app/` (`frontend/`). Run it next to Django while you
+work on it, or build it once so Django serves it:
+
+```bash
+cd frontend
+pnpm install
+pnpm dev      # http://localhost:5173/app/ — passes everything else to Django on :8000
+pnpm build    # or build it, and Django serves it at http://localhost:8000/app/
+```
+
+Details, tests and regenerating the API types: [frontend/README.md](frontend/README.md).
+
 ### Running tests
 
 ```bash
-pytest
+pytest                       # Django
+cd frontend && pnpm test     # the app (and pnpm typecheck)
 ```
 
 ## Company teams, roles and plans
@@ -141,8 +159,12 @@ limit.
 
 ## Project layout
 
-- `core` — custom user model (email-based auth, `role`: consumer/manufacturer/admin), settings
-- `accounts` — `ConsumerProfile`, `ManufacturerProfile`, subscription plans
+- `core` — custom user model (email-based auth, `role`: consumer/manufacturer/admin/member), settings, the `/api/v1` API (`core/api.py`), Celery (`core/celery.py`, `core/tasks.py`)
+- `organizations` — ERP organizations' memberships, roles and permissions, teams, invitations, addresses, bank accounts, partners (buyer/supplier relationships), the permission check (`organizations/access.py`) and the app's API (`organizations/app_api.py`)
+- `billing` — marketplace subscriptions (`services.py`) and ERP subscriptions (`erp.py`, `api.py`) on one payment gateway
+- `frontend/` — the signed-in React app (`apps/web`) and its typed API client (`packages/api`)
+- `accounts` — `Company` (the organization), sign-up, `ConsumerProfile`, `ManufacturerProfile`, subscription plans
+- `plans` — marketplace plans (`catalog.py`) and ERP plans (`erp.py`)
 - `marketplace` — `Requirement`, `RequirementPart`, `Quote`, `Order` (state machine), `OrderStatusHistory`
 - `homepage` — public landing pages, dashboard
 
@@ -197,8 +219,8 @@ rebuilt or thrown away freely. For an actual production deployment, see the sect
 
 Dev and the test site use the mock GST provider (`GST_PROVIDER=mock`), which recognises
 these fictional companies (defined in `SAMPLE_COMPANIES` in
-`gst/services/providers/mock.py`). Enter the GSTIN on the supplier or buyer sign-up step and
-click Verify GSTIN; the legal name, address and status come back from the provider, and you
+`gst/services/providers/mock.py`). Enter the GSTIN on the company step of sign-up (or when adding a
+partner by GSTIN) and click Verify GSTIN; the legal name, address and status come back from the provider, and you
 choose the name shown on MakeSetu.
 
 | Use as | Company name | GSTIN | City |
@@ -211,9 +233,23 @@ choose the name shown on MakeSetu.
 | Buyer | Northline Infrastructure Ltd | `07AAJCN8642R1Z6` | New Delhi |
 | Buyer | Malabar Automation Pvt Ltd | `32AAKCM3141S1Z8` | Kochi |
 | Buyer | Haryana Agro Machines Pvt Ltd | `06AALCH2718T1Z5` | Gurugram |
+| Buys + sells | Nashik Geartech Pvt Ltd | `27AAGCN2468V1ZG` | Nashik |
+| Buys + sells | Bluewave Controls Pvt Ltd | `09AAHCB2468V1ZP` | Noida |
+| Buys + sells | Hooghly Forgings Pvt Ltd | `19AAFCH2468V1ZK` | Kolkata |
+| Buys + sells | Panchnad Fasteners (partnership) | `03AAJFP2468V1ZF` | Ludhiana |
+| Buys + sells | Aravali Packaging Pvt Ltd | `08AAKCA2468V1ZP` | Jaipur |
+| Buys + sells | Kongu Pumps and Motors Pvt Ltd | `33AALCK2468V1ZL` | Coimbatore |
+| Buys + sells | Mysore Aero Components Pvt Ltd | `29AAMCM2468V1Z7` | Mysuru |
+| Buys + sells | Vizag Marine Fabricators Pvt Ltd | `37AANCV3579U1ZW` | Visakhapatnam |
 
-Each GSTIN can be registered once per role (one buyer and one supplier account), so a
-company can also be used for both roles. To try the failure paths, use any valid-format GSTIN
+The last eight carry a correct GSTIN check digit; the first eight don't (the mock only checks the format).
+
+`python manage.py seed_erp_demo` (DEBUG only; `--flush` to reset) seeds ERP demo organizations from
+Sri Lakshmi, Kaveri, Tejas and Malabar, with Rudra Polymers as an off-network supplier you can claim by
+registering its GSTIN. It prints every login (password `Setu#Demo-2026`) and the samples still free.
+
+A company registers once, so each GSTIN can be used for one organization; use another
+sample (or a made-up GSTIN, below) for a second company. To try the failure paths, use any valid-format GSTIN
 not in the table: one ending in `0` is reported **cancelled**, ending in `1` **suspended**, and
 starting with `00` **not found**; any other verifies as a generic "BUSINESS <PAN> PRIVATE
 LIMITED". Every lookup, including failed ones, is listed under GST verifications in the admin.
@@ -223,8 +259,11 @@ LIMITED". Every lookup, including failed ones, is listed under GST verifications
 - A real payment gateway (billing works end to end on the mock gateway; adding one means a new
   adapter in `billing/gateways/`)
 - AI-assisted diagram/spec extraction
-- Background/async work (notifications, quote-expiry timers) — no task queue is wired up
-  yet; add Celery + Redis back in when there's an actual task to run
+- Moving the remaining inline work (marketplace notifications, quote-expiry timers) onto the
+  Celery queue; so far only sign-up emails use it
+- The ERP modules: purchase, sales and inventory first
+- A real payment gateway for ERP plans too, and buying add-ons (e-invoice on Starter)
+- The mobile app (React Native + Expo) on the same API
 - Production deployment (hosting, CI/CD, monitoring)
 
 ## Licensing and Commercial Terms

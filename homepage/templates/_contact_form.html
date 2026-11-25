@@ -4,7 +4,7 @@ the Contact us tab in Settings. Settings pre-fills the sender's details via
 contact_name / contact_email / contact_company / contact_phone / contact_role.
 {% endcomment %}
 <div class="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] items-start"
-     x-data="{ name: '{{ contact_name|escapejs }}', email: '{{ contact_email|escapejs }}', company: '{{ contact_company|escapejs }}', phone: '{{ contact_phone|escapejs }}', role: '{{ contact_role|default:'Buyer looking for parts'|escapejs }}', topic: 'Sales & pricing', message: '', agreed: false }">
+     x-data="{ name: '{{ contact_name|escapejs }}', email: '{{ contact_email|escapejs }}', company: '{{ contact_company|escapejs }}', phone: '{{ contact_phone|escapejs }}', role: '{{ contact_role|default:'Manufacturer interested in the ERP'|escapejs }}', topic: 'Sales & pricing', message: '', agreed: false }">
     <div class="card p-8">
         <h2 class="text-2xl font-extrabold tracking-tight text-navy-900">Send us a message</h2>
         <p class="mt-1 text-sm text-gray-500 mb-6">Tell us a little about what you need.</p>
@@ -29,6 +29,8 @@ contact_name / contact_email / contact_company / contact_phone / contact_role.
             <div>
                 <label class="field-label" for="contact-role">I am a</label>
                 <select id="contact-role" x-model="role" class="field-input">
+                    <option>Manufacturer interested in the ERP</option>
+                    <option>Existing MakeSetu company</option>
                     <option>Buyer looking for parts</option>
                     <option>Manufacturer looking for RFQs</option>
                     <option>Other</option>
@@ -38,8 +40,9 @@ contact_name / contact_email / contact_company / contact_phone / contact_role.
                 <label class="field-label" for="contact-topic">Topic</label>
                 <select id="contact-topic" x-model="topic" class="field-input">
                     <option>Sales &amp; pricing</option>
+                    <option>A demo of the ERP</option>
+                    <option>Moving my data to MakeSetu</option>
                     <option>Support</option>
-                    <option>Manufacturer partnerships</option>
                     <option>Other</option>
                 </select>
             </div>
@@ -47,7 +50,7 @@ contact_name / contact_email / contact_company / contact_phone / contact_role.
 
         <div class="mt-4">
             <label class="field-label" for="contact-message">Message</label>
-            <textarea id="contact-message" x-model="message" rows="4" class="field-input" placeholder="Parts, processes, quantities, timelines — anything that helps us help you."></textarea>
+            <textarea id="contact-message" x-model="message" rows="4" class="field-input" placeholder="What you make, how many people would use it, what you use today — anything that helps us help you."></textarea>
         </div>
 
         <label class="mt-4 flex items-start gap-2 text-sm text-gray-600">

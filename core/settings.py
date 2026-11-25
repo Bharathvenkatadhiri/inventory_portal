@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     "widget_tweaks",
     "storages",
     "django_fsm",
+    "ninja",
     # project apps
     "core",
     "homepage",
@@ -36,6 +37,7 @@ INSTALLED_APPS = [
     "marketplace",
     "plans",
     "billing",
+    "organizations",
 ]
 
 MIDDLEWARE = [
@@ -53,6 +55,7 @@ MIDDLEWARE = [
     "core.session_security.SessionBindingMiddleware",
     "accounts.middleware.RolePermissionMiddleware",
     "plans.middleware.StorageLimitMiddleware",
+    "organizations.middleware.WorkspaceScopeMiddleware",
     "django.contrib.auth.middleware.LoginRequiredMiddleware",
 ]
 
@@ -127,6 +130,12 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+# The signed-in ERP app (frontend/apps/web), built by `pnpm build`. Its
+# assets are served under /static/app/ and its page at /app/
+# (organizations.views.app_shell). Not built yet (tests, a fresh clone):
+# /app/ says how to build or run it.
+FRONTEND_DIST = BASE_DIR / "frontend" / "apps" / "web" / "dist"
+STATICFILES_DIRS = [("app", FRONTEND_DIST)] if FRONTEND_DIST.exists() else []
 STORAGES = {
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
@@ -328,6 +337,25 @@ BILLING_REMINDER_DAYS_BEFORE = env.int("BILLING_REMINDER_DAYS_BEFORE", default=2
 # A checkout not completed within this long is closed (after checking the
 # gateway one last time).
 BILLING_PENDING_MINUTES = env.int("BILLING_PENDING_MINUTES", default=30)
+# ERP organizations: free trial length on the plan chosen at sign-up
+# (billing.erp). Prices and limits are in plans/erp.py.
+ERP_TRIAL_DAYS = env.int("ERP_TRIAL_DAYS", default=14)
 # Mock gateway only: "fail" makes automatic renewals fail, to try past-due.
 BILLING_MOCK_RENEWAL_RESULT = env("BILLING_MOCK_RENEWAL_RESULT", default="succeed")
 
+# --- Background jobs (Celery + Redis) ------------------------------------------
+# core/celery.py. Jobs: email sent during sign-up (core.tasks), and later
+# e-invoice calls, PDF generation, imports and reminders. With no broker
+# configured (tests, CI, a laptop without Redis), jobs run inline in the
+# request instead, so nothing needs Redis to work.
+CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="")
+CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=not CELERY_BROKER_URL)
+CELERY_TASK_EAGER_PROPAGATES = True
+CELERY_TASK_IGNORE_RESULT = True
+CELERY_TASK_SERIALIZER = "json"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+# Don't let a request hang on a broker that's down: give up quickly and
+# send inline (core.tasks.queue_template_email).
+CELERY_BROKER_TRANSPORT_OPTIONS = {"max_retries": 1, "interval_start": 0, "interval_step": 0.2, "interval_max": 0.5}

@@ -1,0 +1,1 @@
+{% autoescape off %}{{ company_name }} added {{ partner_name }} as a {{ as_what }} on MakeSetu{% endautoescape %}

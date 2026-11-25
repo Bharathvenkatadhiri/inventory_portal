@@ -20,7 +20,8 @@ from marketplace import services
 from marketplace.models import Requirement, Quote, Order
 from accounts import otp, team
 from accounts.models import SubscriptionPlan
-from plans import access, catalog, rfq_inbox
+from plans import access, catalog, erp, rfq_inbox
+from organizations import workspace
 from accounts.views import billing_summary, plan_catalog, StaffRequiredMixin
 from .feedback import staff_summary
 from .forms import PortalFeedbackForm
@@ -49,6 +50,11 @@ class HomeView(View):
     def get(self, request):
         if not request.user.is_authenticated:
             return render(request, "landing.html")
+
+        if workspace.is_member(request.user):
+            return redirect('erp-app')
+        if request.user.role == 'member':
+            return render(request, 'organizations/no_access.html', status=403)
 
         if request.user.role == "manufacturer":
             return self._manufacturer_dashboard(request)
@@ -202,24 +208,22 @@ class SupplierDemoView(TemplateView):
         )
 
 
+class FeaturesView(TemplateView):
+    """The ERP's modules, and which plan includes each (plans.erp)."""
+    template_name = "features.html"
+
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(plans=erp.cards(), **kwargs)
+
+
 class PricingView(TemplateView):
-    """The public pricing page: buyer and supplier plans, monthly or yearly,
-    straight from plans.catalog so it can't drift from what's enforced."""
+    """The public pricing page: the ERP plans, straight from plans.erp so
+    it can't drift from what's enforced."""
     template_name = "pricing.html"
 
     def get_context_data(self, **kwargs):
-        from plans import catalog
-        plans = [
-            {'key': key, 'label': catalog.PLAN_LABELS[key],
-             'monthly': catalog.price(key, catalog.MONTHLY), 'yearly': catalog.price(key, catalog.YEARLY)}
-            for key in catalog.PLAN_ORDER
-        ]
-        sides = [
-            {'key': side, 'title': title, 'rows': catalog.pricing_table(side),
-             'cards': [{**plan, 'highlights': catalog.plan_highlights(side, plan['key'])} for plan in plans]}
-            for side, title in ((catalog.BUYER, 'For Buyers'), (catalog.SUPPLIER, 'For Manufacturers'))
-        ]
-        return super().get_context_data(plans=plans, sides=sides, **kwargs)
+        cards = erp.cards()
+        return super().get_context_data(plans=cards, rows=erp.comparison_rows(), **kwargs)
 
 
 class ContactView(TemplateView):

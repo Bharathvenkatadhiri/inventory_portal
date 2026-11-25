@@ -9,6 +9,7 @@ from .models import (
     Machine, Certification, ManufacturingTech, MaterialCapability, Company,
 )
 from django.apps import apps
+from plans import erp
 from core.validators import DOCUMENT_EXTENSIONS, IMAGE_EXTENSIONS, is_new_upload, validate_upload
 
 model_str = settings.AUTH_USER_MODEL
@@ -16,14 +17,16 @@ app_label, model_name = model_str.split('.')
 User = apps.get_model(app_label, model_name)
 
 class UserRegistrationForm(UserCreationForm):
-    # Deliberately not a model field: this used to be called `is_staff` and
-    # was listed in Meta.fields, so choosing "Supplier" also made the new
-    # user a Django staff member.
-    account_type = forms.ChoiceField(choices=[('supplier', 'Supplier'), ('buyer', 'Buyer')], widget=forms.RadioSelect, initial='buyer')
+    """Sign-up step one: the person, not the company. There's no buyer or
+    supplier choice: an organization is set up once (OrganizationSetupForm)
+    and buying or selling are sides it switches on. No username either;
+    people sign in with their email (accounts.otp.complete_registration
+    picks a unique username behind the scenes)."""
+    phone = forms.CharField(max_length=15, required=False)
 
     class Meta:
         model = User
-        fields = ['username', 'first_name', 'last_name', 'password1', 'password2', 'email']
+        fields = ['first_name', 'last_name', 'email', 'phone', 'password1', 'password2']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -33,6 +36,13 @@ class UserRegistrationForm(UserCreationForm):
         # The page lists the rules itself (_password_rules.html).
         self.fields['password1'].help_text = ''
         self.fields['password2'].help_text = ''
+
+    def clean_phone(self):
+        phone = ''.join(ch for ch in self.cleaned_data.get('phone', '') if ch.isdigit() or ch == '+')
+        digits = phone.lstrip('+')
+        if phone and not (10 <= len(digits) <= 13):
+            raise forms.ValidationError("Enter a valid mobile number, e.g. 98765 43210.")
+        return phone
 
     def _post_clean(self):
         # Django checks strength against the confirmation field; report it
@@ -45,44 +55,26 @@ class UserRegistrationForm(UserCreationForm):
 
     def save(self, commit=True):
         user = super().save(commit=False)
-        user.role = 'manufacturer' if self.cleaned_data.get('account_type') == 'supplier' else 'consumer'
+        user.role = 'member'
+        user.username = (user.email or '')[:150]
         if commit:
             user.save()
         return user
 
-class SupplierDetailsForm(forms.ModelForm):
-    """
-    Legal/company name, address, city, state and country are intentionally
-    NOT form fields here: they are populated server-side from the verified
-    Company record (see accounts.views.CreateSupplier.form_valid), not from
-    posted data, so a client can't submit an unverified company identity.
-    """
-    def __init__(self, *args, **kwargs):
-        self.user = kwargs.pop('user', None)
-        super().__init__(*args, **kwargs)
-        if 'company_street' in self.fields:
-            self.fields['company_street'].widget = forms.HiddenInput()
-        if self.user:
-            self.fields['user'].initial = self.user  # Assign user to the field
 
-    class Meta:
-        model = ManufacturerProfile
-        fields = [
-            'user', 'email', 'phone',
-            'activity_type', 'company_street', 'company_postalcode', 'company_city',
-            'production_area', 'manufacturing_competency1', 'manufacturing_competency2',
-            'info_source', 'amount_of_employees', 'turnover_per_year', 'certificates'
-        ]
-        widgets = {
-            'user': forms.HiddenInput(),  # Hide the user field if you set it programmatically
-            'activity_type': forms.Select(choices=ManufacturerProfile.ACTIVITY_TYPE_CHOICES),
-            'manufacturing_competency1': forms.Select(choices=ManufacturerProfile.MANUFACTURING_COMPETENCY_CHOICES),
-            'manufacturing_competency2': forms.Select(choices=ManufacturerProfile.MANUFACTURING_COMPETENCY_CHOICES),
-            'info_source': forms.Select(choices=ManufacturerProfile.INFO_SOURCE_CHOICES),
-            'amount_of_employees': forms.Select(choices=ManufacturerProfile.EMPLOYEES_CHOICES),
-            'turnover_per_year': forms.Select(choices=ManufacturerProfile.TURNOVER_CHOICES),
-            'certificates': forms.Select(choices=ManufacturerProfile.CERTIFICATES_CHOICES),
-        }
+class OrganizationSetupForm(forms.Form):
+    """Sign-up step three, beside the GSTIN check: which sides the
+    organization uses and the plan it starts on (plans.erp)."""
+    buying_enabled = forms.BooleanField(required=False, initial=True)
+    selling_enabled = forms.BooleanField(required=False, initial=True)
+    plan = forms.ChoiceField(choices=erp.PLAN_CHOICES, initial=erp.DEFAULT_PLAN, widget=forms.RadioSelect)
+
+    def clean(self):
+        cleaned = super().clean()
+        if not cleaned.get('buying_enabled') and not cleaned.get('selling_enabled'):
+            raise forms.ValidationError("Switch on buying, selling or both.")
+        return cleaned
+
 
 class updateSupplierDetailsForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
@@ -223,26 +215,10 @@ class SelectCustomer(forms.ModelForm):
     class Meta:
         model = ConsumerProfile
         # is_deleted intentionally excluded: this form is used for creating a
-        # customer (self-registration and admin "New Customer"), where a new
+        # customer (staff "New Customer"), where a new
         # record should always start active. Deactivating/reactivating an
         # existing one goes through the dedicated activate/deactivate views.
         fields = ['Name','type_of_business','Address','phone','email','EORI_number','VAT_number','user']
-
-class CustomerRegistrationForm(SelectCustomer):
-    """Public buyer sign-up step. Unlike the staff-only SelectCustomer, there
-    is no `user` field: the view attaches the account created in step one
-    (from the session), so visitors can neither see other users nor attach
-    a profile to someone else's account. Name and address aren't fields
-    either — like SupplierDetailsForm, they're copied server-side from the
-    GST-verified Company (accounts.views.CreateCustomer.form_valid)."""
-    class Meta(SelectCustomer.Meta):
-        fields = ['type_of_business', 'phone', 'email', 'EORI_number', 'VAT_number']
-
-    def __init__(self, *args, **kwargs):
-        forms.ModelForm.__init__(self, *args, **kwargs)
-        for field in self.fields.values():
-            field.widget.attrs.update({'class': 'form-control', 'required': 'true'})
-
 
 class updateCustomer(forms.ModelForm):
     def __init__(self, *args, **kwargs):

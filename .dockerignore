@@ -1,0 +1,13 @@
+# Kept out of the image: secrets, local environments, build output that the
+# image makes itself, and things only a developer's machine has.
+.env
+.git
+venv/
+**/__pycache__/
+node_modules/
+frontend/node_modules/
+frontend/**/node_modules/
+frontend/apps/web/dist/
+staticfiles/
+media/
+.pytest_cache/

@@ -52,5 +52,49 @@ jobs:
       - name: Check for missing migrations
         run: python manage.py makemigrations --check --dry-run
 
+      # The frontend's API types are generated from this schema; it must
+      # match the API the code defines.
+      - name: Check the API schema is up to date
+        run: |
+          python manage.py export_openapi_schema --api core.api.api --output frontend/packages/api/openapi.json --indent 2 --sorted
+          git diff --exit-code frontend/packages/api/openapi.json || (echo "Run: python manage.py export_openapi_schema --api core.api.api --output frontend/packages/api/openapi.json --indent 2 --sorted" && exit 1)
+
       - name: Run tests
         run: pytest
+
+  # The signed-in app (frontend/): types, tests and a production build.
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+        with:
+          # The pnpm version comes from frontend/package.json's packageManager.
+          package_json_file: frontend/package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check the generated API types match the schema
+        run: |
+          pnpm generate-api
+          git diff --exit-code packages/api/src/schema.ts || (echo "Run: pnpm generate-api" && exit 1)
+
+      - name: Type-check
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build

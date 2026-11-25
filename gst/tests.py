@@ -251,15 +251,17 @@ class VerifyGSTINViewTests(TestCase):
         self.assertEqual(response.json()["code"], "GSTIN_ALREADY_REGISTERED")
         self.assertFalse(GSTVerification.objects.exists())
 
-    def test_a_buyer_can_use_a_gstin_a_supplier_already_has(self):
-        # One company may both buy and sell; only the same role is a duplicate.
+    def test_a_company_with_a_marketplace_account_cant_register_again(self):
+        # A company registers once; a second person needs an invitation.
         supplier_user = User.objects.create_user(username="sellerco", email="sellerco@example.com", password="pass12345", role="manufacturer")
         company = Company.objects.create(legal_name="Acme Engineering Private Limited", gstin=ACTIVE_GSTIN, gst_verified=True)
         ManufacturerProfile.objects.create(
             user=supplier_user, company=company, phone="9400000023", address="x", city="Chennai", state="TN",
             country="India", amount_of_employees="10-20", turnover_per_year="<1", email="sellerco@example.com",
         )
-        self.assertEqual(self.post(ACTIVE_GSTIN).status_code, 200)
+        response = self.post(ACTIVE_GSTIN)
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["code"], "GSTIN_ALREADY_REGISTERED")
 
 
 class CompanyMigrationTests(TransactionTestCase):

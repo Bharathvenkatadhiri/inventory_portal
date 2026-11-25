@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}MakeSetu — B2B Manufacturing Marketplace{% endblock %}</title>
-    <meta name="description" content="{% block meta_description %}MakeSetu is the bridge between buyers and manufacturers: post RFQs, compare quotes from verified manufacturers and track orders to delivery.{% endblock %}">
+    <title>{% block title %}MakeSetu — ERP for Indian Manufacturers{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}MakeSetu is an ERP for Indian manufacturers: purchase, sales, inventory, production, QC and GST invoicing, with customers and suppliers connected on one network.{% endblock %}">
     <link rel="stylesheet" href="{% static 'css/tailwind-built.css' %}">
     <link rel="icon" type="image/svg+xml" href="{% static 'images/logo.svg' %}">
     <script src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
@@ -74,5 +74,6 @@
     {% block after_hero %}{% endblock %}
 
     {% include "_footer.html" %}
+{% include "_session_broadcast.html" %}
 </body>
 </html>

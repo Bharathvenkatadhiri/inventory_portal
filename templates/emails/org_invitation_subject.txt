@@ -1,0 +1,1 @@
+{% autoescape off %}{{ inviter_name }} invited you to {{ company_name }} on MakeSetu{% endautoescape %}

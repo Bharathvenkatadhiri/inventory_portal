@@ -84,52 +84,63 @@ class ProfileModelTests(TestCase):
         self.assertIn("m1", str(profile.user))
 
 
-class UserRegistrationRoleTests(TestCase):
-    """
-    The Supplier/Buyer choice sets `role` — and must never touch `is_staff`
-    (it used to, making every supplier a Django staff user).
-    """
+@DASHBOARD_TEST_STORAGES
+class SignUpAccountTests(TestCase):
+    """Sign-up step one creates a person, not a buyer or supplier: they're
+    an ERP member whose abilities come from their organization role. It
+    must never make them a Django staff user (an old account-type field
+    once did)."""
 
     def setUp(self):
         cache.clear()
         mail.outbox.clear()
-        self.client = Client()
         self.url = reverse("register")
 
-    def _payload(self, username, email, account_type):
-        return {
-            "username": username,
-            "first_name": "Test",
-            "last_name": "User",
-            "password1": "A-strong-passw0rd",
-            "password2": "A-strong-passw0rd",
-            "email": email,
-            "account_type": account_type,
+    def _payload(self, email, **extra):
+        data = {
+            "first_name": "Test", "last_name": "User", "email": email, "phone": "+91 98765 43210",
+            "password1": "A-strong-passw0rd", "password2": "A-strong-passw0rd",
         }
+        data.update(extra)
+        return data
 
-    def _verify(self, email):
+    def _verify(self):
         for line in mail.outbox[-1].body.splitlines():
             line = line.strip()
             if line.isdigit() and len(line) == 6:
                 return self.client.post(reverse("verify-email"), {"code": line})
         raise AssertionError(f"No 6-digit code found in email body: {mail.outbox[-1].body!r}")
 
-    def test_supplier_signup_gets_manufacturer_role(self):
-        response = self.client.post(self.url, data=self._payload("supplier1", "supplier1@example.com", "supplier"))
+    def test_sign_up_creates_a_member_with_the_email_as_username(self):
+        response = self.client.post(self.url, data=self._payload("person1@example.com"))
         self.assertEqual(response.status_code, 302)
         # No User row until the email is verified.
-        self.assertFalse(User.objects.filter(email="supplier1@example.com").exists())
-        self._verify("supplier1@example.com")
-        user = User.objects.get(email="supplier1@example.com")
-        self.assertEqual(user.role, "manufacturer")
+        self.assertFalse(User.objects.filter(email="person1@example.com").exists())
+        self._verify()
+        user = User.objects.get(email="person1@example.com")
+        self.assertEqual((user.role, user.username, user.phone), ("member", "person1@example.com", "+919876543210"))
         self.assertFalse(user.is_staff)
 
-    def test_buyer_signup_gets_consumer_role(self):
-        response = self.client.post(self.url, data=self._payload("buyer1", "buyer1@example.com", "buyer"))
-        self.assertEqual(response.status_code, 302)
-        self._verify("buyer1@example.com")
-        user = User.objects.get(email="buyer1@example.com")
-        self.assertEqual(user.role, "consumer")
+    def test_posted_account_type_or_staff_flags_are_ignored(self):
+        self.client.post(self.url, data=self._payload("person2@example.com", account_type="supplier", is_staff="on",
+                                                      role="admin", username="chosen"))
+        self._verify()
+        user = User.objects.get(email="person2@example.com")
+        self.assertEqual((user.role, user.username, user.is_staff), ("member", "person2@example.com", False))
+
+    def test_username_taken_by_an_older_account_gets_a_suffix(self):
+        User.objects.create_user(username="person3@example.com", email="someone-else@example.com", password="x")
+        self.client.post(self.url, data=self._payload("person3@example.com"))
+        self._verify()
+        user = User.objects.get(email="person3@example.com")
+        self.assertTrue(user.username.startswith("person3@example.com-"))
+
+    def test_phone_is_optional_but_checked(self):
+        response = self.client.post(self.url, data=self._payload("person4@example.com", phone="12"))
+        self.assertContains(response, "valid mobile number")
+        self.client.post(self.url, data=self._payload("person5@example.com", phone=""))
+        self._verify()
+        self.assertEqual(User.objects.get(email="person5@example.com").phone, "")
 
 
 @DASHBOARD_TEST_STORAGES
@@ -173,6 +184,14 @@ class StrongPasswordTests(TestCase):
         password1, _ = self.password_errors(self.register("Pwuser@example1"))
         self.assertTrue(any("too similar" in error for error in password1), password1)
 
+    def test_easy_patterns_are_refused(self):
+        for password in ("Kaaa-river7", "Abcd-river7!", "River-1234!", "River-4321!", "River-ZYXW-7!"):
+            password1, _ = self.password_errors(self.register(password))
+            self.assertTrue(any("easy patterns" in error for error in password1), (password, password1))
+        from core.validators import StrongPasswordValidator
+        for password in ("Str0ng!Passphrase", "A-strong-passw0rd", "Abd-river-1357!", "Mill-77-Gear#"):
+            self.assertFalse(StrongPasswordValidator._has_easy_pattern(password), password)
+
     def test_mismatched_confirmation_is_refused(self):
         response = self.register("Str0ng!Passphrase", confirm="Str0ng!Passphrasf")
         _, password2 = self.password_errors(response)
@@ -188,13 +207,24 @@ class StrongPasswordTests(TestCase):
     def test_page_lists_the_rules_and_the_match_check(self):
         page = self.client.get(reverse("register"))
         for text in ("At least 8 characters", "An uppercase letter", "A lowercase letter", "A number", "A special character",
-                     'id="password-match"', "Passwords match"):
+                     "No easy patterns", 'id="password-match"', "Passwords match", 'id="password-strength"',
+                     "Only strong passwords are accepted", "Very strong"):
+            self.assertContains(page, text)
+
+    def test_reset_confirm_page_shows_the_live_checks(self):
+        from django.contrib.auth.tokens import default_token_generator
+        from django.utils.encoding import force_bytes
+        from django.utils.http import urlsafe_base64_encode
+        user = User.objects.create_user(username="reset@example.com", email="reset@example.com", password="A-strong-passw0rd")
+        url = reverse("password_reset_confirm", args=[urlsafe_base64_encode(force_bytes(user.pk)),
+                                                      default_token_generator.make_token(user)])
+        page = self.client.get(url, follow=True)
+        for text in ('id="password-strength"', 'id="password-rules"', 'id="password-match"', 'id="password-reset-submit"'):
             self.assertContains(page, text)
 
 
 @override_settings(
-    # register_first.html/register_supplier.html use {% static %}; see the
-    # identical note on CreateSupplierSecurityTests above.
+    # register_first.html uses {% static %}; see DASHBOARD_TEST_STORAGES.
     STORAGES={
         "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
         "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
@@ -234,7 +264,7 @@ class RegisterViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "already exists")
         # No duplicate/orphan User should be created for the rejected attempt.
-        self.assertFalse(User.objects.filter(username="newsupplier").exists())
+        self.assertFalse(User.objects.filter(email="taken@example.com").exists())
 
     def test_email_already_used_by_consumer_profile_shows_error(self):
         owner = User.objects.create_user(username="owner2", email="owner2@example.com", password="pass12345")
@@ -245,7 +275,7 @@ class RegisterViewTests(TestCase):
         response = self.client.post(self.url, data=self._payload("newbuyer", "takenbuyer@example.com", "buyer"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "already exists")
-        self.assertFalse(User.objects.filter(username="newbuyer").exists())
+        self.assertFalse(User.objects.filter(email="takenbuyer@example.com").exists())
 
     def test_existing_user_without_profile_resumes_registration(self):
         # Simulates step 1 having completed in an earlier visit and its
@@ -256,7 +286,7 @@ class RegisterViewTests(TestCase):
             email_verified=True,
         )
         response = self.client.post(self.url, data=self._payload("abandoned", "abandoned@example.com", "supplier"))
-        self.assertRedirects(response, reverse("register-supplier"))
+        self.assertRedirects(response, reverse("register-organization"))
         self.assertEqual(self.client.session["session_email"], "abandoned@example.com")
 
     def test_resuming_an_unverified_account_is_sent_back_to_verify_its_email(self):
@@ -348,8 +378,8 @@ class RegisterViewTests(TestCase):
     }
 )
 class EmailVerificationTests(TestCase):
-    """Registration now pauses at an OTP step between account creation and
-    the profile step (accounts.otp, accounts.views.verify_email)."""
+    """Registration pauses at an OTP step between account creation and the
+    organization step (accounts.otp, accounts.views.verify_email)."""
 
     def setUp(self):
         cache.clear()
@@ -385,23 +415,23 @@ class EmailVerificationTests(TestCase):
         from accounts.models import PendingRegistration
         self.assertTrue(PendingRegistration.objects.filter(email="otpuser@example.com").exists())
 
-    def test_cannot_reach_the_profile_step_before_verifying(self):
+    def test_cannot_reach_the_organization_step_before_verifying(self):
         self._register()
-        response = self.client.get(reverse("register-customer"))
+        response = self.client.get(reverse("register-organization"))
         self.assertRedirects(response, reverse("verify-email"))
 
-    def test_correct_code_verifies_creates_the_user_and_moves_on_to_the_profile_step(self):
+    def test_correct_code_verifies_creates_the_user_and_moves_on_to_the_organization_step(self):
         self._register()
         code = self._sent_code()
         response = self.client.post(reverse("verify-email"), {"code": code})
-        self.assertRedirects(response, reverse("register-customer"))
+        self.assertRedirects(response, reverse("register-organization"))
         user = User.objects.get(email="otpuser@example.com")
         self.assertTrue(user.email_verified)
         # The pending signup is consumed, not left behind.
         from accounts.models import PendingRegistration
         self.assertFalse(PendingRegistration.objects.filter(email="otpuser@example.com").exists())
-        # And the profile step is reachable now.
-        self.assertEqual(self.client.get(reverse("register-customer")).status_code, 200)
+        # And the organization step is reachable now.
+        self.assertEqual(self.client.get(reverse("register-organization")).status_code, 200)
 
     def test_wrong_code_is_rejected_and_does_not_create_a_user(self):
         self._register()
@@ -444,117 +474,6 @@ class EmailVerificationTests(TestCase):
         self._register()
         self.client.post(reverse("verify-email"), {"code": self._sent_code()})
         self.assertRedirects(self.client.get(reverse("verify-email")), reverse("register"))
-
-
-@override_settings(
-    # register_supplier.html re-renders on validation failure and uses
-    # {% static %}; the manifest storage used in prod requires a
-    # `collectstatic` run this dev environment hasn't done (unrelated
-    # pre-existing gap — a bootstrap asset's source map is missing). Plain
-    # StaticFilesStorage needs no manifest, so tests aren't coupled to that.
-    STORAGES={
-        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
-        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-    }
-)
-class CreateSupplierSecurityTests(TestCase):
-    """
-    The registration endpoint must never trust the client for gst_verified /
-    legal_name / address — only a Company this session verified server-side
-    (via verify-gstin) can be attached to a new ManufacturerProfile.
-    """
-
-    def setUp(self):
-        cache.clear()
-        self.client = Client()
-        self.user = User.objects.create_user(
-            username="unverified", email="unverified@example.com", password="pass12345", role="manufacturer",
-            email_verified=True,  # this class tests the GSTIN check, not email verification
-        )
-        session = self.client.session
-        session["session_user_id"] = self.user.id
-        session["session_username"] = self.user.username
-        session["session_first_name"] = "Test"
-        session["session_last_name"] = "Supplier"
-        session["session_email"] = self.user.email
-        session.save()
-        self.url = reverse("register-supplier")
-
-    def _base_payload(self):
-        return {
-            "user": self.user.id,
-            "email": self.user.email,
-            "phone": "9000000000",
-            "amount_of_employees": "10-20",
-            "turnover_per_year": "<1",
-            "certificates": "",
-        }
-
-    def test_registration_without_prior_verification_is_rejected(self):
-        response = self.client.post(self.url, data=self._base_payload())
-        self.assertEqual(response.status_code, 200)  # re-renders the form with an error
-        self.assertFalse(ManufacturerProfile.objects.exists())
-
-    def test_posted_gst_identity_is_ignored(self):
-        payload = self._base_payload()
-        payload.update({
-            "gstin": ACTIVE_GSTIN,
-            "gst_verified": "true",
-            "status": "SUCCESS",
-            "legal_name": "Fake Legal Name Pvt Ltd",
-            "principal_address": "Fake address the client made up",
-        })
-        response = self.client.post(self.url, data=payload)
-        self.assertEqual(response.status_code, 200)
-        self.assertFalse(ManufacturerProfile.objects.exists())
-        self.assertFalse(Company.objects.exists())
-
-    def test_registration_builds_the_company_from_the_session_verification(self):
-        verification = verify_gstin_for_session(self.client)
-        payload = self._base_payload()
-        # Even if a malicious client sends a different legal name/address,
-        # the backend must take them from the verification, not the POST.
-        payload.update({"legal_name": "Something Else Entirely", "principal_address": "Elsewhere"})
-        self.client.post(self.url, data=payload)
-
-        profile = ManufacturerProfile.objects.get(user=self.user)
-        company = profile.company
-        self.assertEqual(company.gstin, ACTIVE_GSTIN)
-        self.assertEqual(company.legal_name, "Verified Legal Name Private Limited")
-        self.assertTrue(company.gst_verified)
-        self.assertEqual(company.principal_address, "1 Verified Street, Chennai - 600001")
-        self.assertEqual(company.name, "Verified Trade Name")  # display name defaults to the trade name
-        self.assertEqual(profile.companyname, "Verified Trade Name")
-        self.assertEqual(profile.address, "1 Verified Street, Chennai - 600001")
-        self.assertEqual((profile.city, profile.state), ("Chennai", "Tamil Nadu"))
-        verification.refresh_from_db()
-        self.assertEqual(verification.company, company)
-        # The verification is consumed so it can't be replayed.
-        self.assertNotIn(GST_SESSION_KEY, self.client.session)
-
-    def test_page_reshows_this_sessions_verification(self):
-        self.assertContains(self.client.get(self.url), 'id="registration-submit-btn" class="btn-primary flex-1" disabled')
-        verify_gstin_for_session(self.client)
-        page = self.client.get(self.url)
-        self.assertContains(page, 'id="gst-verification-initial"')
-        self.assertContains(page, "Verified Legal Name Private Limited")
-        self.assertNotContains(page, 'id="registration-submit-btn" class="btn-primary flex-1" disabled')
-
-    def test_display_name_is_the_users_but_the_legal_name_is_gsts(self):
-        verify_gstin_for_session(self.client)
-        self.client.post(self.url, data={**self._base_payload(), "company_display_name": "  Lakshmi   Precision "})
-        profile = ManufacturerProfile.objects.get(user=self.user)
-        self.assertEqual(profile.companyname, "Lakshmi Precision")
-        self.assertEqual(profile.company.name, "Lakshmi Precision")
-        self.assertEqual(profile.company.legal_name, "Verified Legal Name Private Limited")
-
-    def test_stale_or_unsuccessful_verifications_are_not_accepted(self):
-        stale = verify_gstin_for_session(self.client)
-        GSTVerification.objects.filter(pk=stale.pk).update(created_at=timezone.now() - timedelta(hours=2))
-        self.assertContains(self.client.post(self.url, data=self._base_payload()), "verify your company")
-        verify_gstin_for_session(self.client, status=GSTVerification.Status.INACTIVE, gst_status="Cancelled")
-        self.assertContains(self.client.post(self.url, data=self._base_payload()), "verify your company")
-        self.assertFalse(ManufacturerProfile.objects.exists())
 
 
 import itertools
@@ -786,118 +705,6 @@ class StaffActionSecurityTests(TestCase):
 
 
 @DASHBOARD_TEST_STORAGES
-class BuyerRegistrationBindingTests(TestCase):
-    """The public buyer-profile step used to expose a `user` dropdown listing
-    every account without a profile, and trusted whichever one was posted."""
-
-    def setUp(self):
-        self.new_user = User.objects.create_user(username="fresh", email="fresh@example.com", password="pass12345", email_verified=True)
-        self.victim = User.objects.create_user(username="victim2", email="victim2@example.com", password="pass12345")
-        session = self.client.session
-        session["session_user_id"] = self.new_user.id
-        session.save()
-        verify_gstin_for_session(self.client, legal_name="Fresh Legal Pvt Ltd", trade_name="Fresh Co")
-
-    def _payload(self, **extra):
-        data = {
-            "type_of_business": "electronics", "phone": "9400000009",
-            "email": "fresh@example.com", "EORI_number": "EF", "VAT_number": "VF",
-        }
-        data.update(extra)
-        return data
-
-    def test_page_does_not_list_other_users(self):
-        response = self.client.get(reverse("register-customer"))
-        self.assertEqual(response.status_code, 200)
-        self.assertNotContains(response, "victim2")
-
-    def test_profile_is_attached_to_the_session_user_even_if_another_is_posted(self):
-        self.client.post(reverse("register-customer"), self._payload(user=self.victim.pk))
-        profile = ConsumerProfile.objects.get(email="fresh@example.com")
-        self.assertEqual(profile.user, self.new_user)
-        self.assertFalse(ConsumerProfile.objects.filter(user=self.victim).exists())
-        self.assertNotIn("session_user_id", self.client.session)
-
-    def test_without_a_pending_account_the_step_redirects_to_register(self):
-        self.client.session.flush()
-        client = Client()
-        self.assertRedirects(client.get(reverse("register-customer")), reverse("register"), fetch_redirect_response=False)
-
-
-@DASHBOARD_TEST_STORAGES
-class BuyerCompanyVerificationTests(TestCase):
-    """Buyers must verify their company's GSTIN before the profile step, the
-    same way suppliers do (accounts.views.CreateCustomer.form_valid)."""
-
-    def setUp(self):
-        cache.clear()
-        self.user = User.objects.create_user(
-            username="gstbuyer", email="gstbuyer@example.com", password="pass12345", role="consumer", email_verified=True,
-        )
-        session = self.client.session
-        session["session_user_id"] = self.user.id
-        session.save()
-        self.url = reverse("register-customer")
-
-    def _payload(self, **extra):
-        data = {
-            "type_of_business": "electronics", "phone": "9400000021",
-            "email": "gstbuyer@example.com", "EORI_number": "EB1", "VAT_number": "VB1",
-        }
-        data.update(extra)
-        return data
-
-    def _verify(self, gstin=ACTIVE_GSTIN):
-        return verify_gstin_for_session(
-            self.client, gstin, legal_name="Buyer Legal Pvt Ltd", trade_name="Buyer Trade", state="Karnataka",
-            principal_address={"address": "7 Buyer Street", "city": "Bengaluru"},
-        )
-
-    def test_registration_without_verification_is_rejected(self):
-        response = self.client.post(self.url, self._payload())
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "verify your company")
-        self.assertFalse(ConsumerProfile.objects.exists())
-
-    def test_name_and_address_come_from_the_verification_not_the_post(self):
-        self._verify()
-        self.client.post(self.url, self._payload(Name="Made Up Name", Address="Made up address"))
-        profile = ConsumerProfile.objects.get(user=self.user)
-        self.assertEqual(profile.company.legal_name, "Buyer Legal Pvt Ltd")
-        self.assertEqual(profile.Name, "Buyer Trade")
-        self.assertEqual(profile.Address, "7 Buyer Street")
-        self.assertEqual(profile.city, "Bengaluru")
-        self.assertEqual(profile.state, "Karnataka")
-        self.assertNotIn(GST_SESSION_KEY, self.client.session)
-
-    def test_a_supplier_company_signing_up_as_a_buyer_reuses_its_company(self):
-        supplier_user = User.objects.create_user(username="sellerco", email="sellerco@example.com", password="pass12345", role="manufacturer")
-        company = Company.objects.create(name="Acme", legal_name="Old Legal Name", gstin=ACTIVE_GSTIN, gst_verified=True)
-        ManufacturerProfile.objects.create(
-            user=supplier_user, company=company, phone="9400000023", address="x", city="Chennai", state="TN",
-            country="India", amount_of_employees="10-20", turnover_per_year="<1", email="sellerco@example.com",
-        )
-        self._verify()
-        self.client.post(self.url, self._payload())
-        profile = ConsumerProfile.objects.get(user=self.user)
-        self.assertEqual(profile.company, company)
-        company.refresh_from_db()
-        self.assertEqual(company.legal_name, "Buyer Legal Pvt Ltd")  # refreshed from the new verification
-        self.assertEqual(company.name, "Acme")  # the existing display name stays
-
-    def test_gstin_already_used_by_another_buyer_is_rejected(self):
-        self._verify()
-        company = Company.objects.create(legal_name="Buyer Legal Pvt Ltd", gstin=ACTIVE_GSTIN, gst_verified=True)
-        other = User.objects.create_user(username="firstbuyer", email="firstbuyer@example.com", password="pass12345")
-        ConsumerProfile.objects.create(
-            user=other, company=company, Name="First", type_of_business="electronics", city="X", state="Y",
-            country="India", phone="9400000022", email="firstbuyer@example.com", EORI_number="E0", VAT_number="V0",
-        )
-        response = self.client.post(self.url, self._payload())
-        self.assertContains(response, "already registered")
-        self.assertFalse(ConsumerProfile.objects.filter(user=self.user).exists())
-
-@DASHBOARD_TEST_STORAGES
 class StaffSubscriptionEditTests(TestCase):
     """Staff can set a plan directly (billing.tests covers paying for one)."""
     def setUp(self):
@@ -919,30 +726,6 @@ class StaffSubscriptionEditTests(TestCase):
                          {"plan_type": "free", "billing_cycle": "monthly", "status": "active", "is_active": "on"})
         self.plan.refresh_from_db()
         self.assertEqual((self.plan.plan_type, self.plan.price, self.plan.expires_at), ("free", 0, None))
-
-
-@override_settings(STORAGES={
-    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
-    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-})
-class SupplierRegistrationBindingTests(TestCase):
-    """SupplierDetailsForm carries a hidden `user` field; the view must
-    ignore it and use the account from the session."""
-
-    def test_posted_user_is_ignored(self):
-        cache.clear()
-        me = User.objects.create_user(username="mfgme", email="mfgme@example.com", password="pass12345", role="manufacturer", email_verified=True)
-        someone = User.objects.create_user(username="mfgother", email="mfgother@example.com", password="pass12345", role="manufacturer")
-        session = self.client.session
-        session["session_user_id"] = me.id
-        session.save()
-        verify_gstin_for_session(self.client)
-        self.client.post(reverse("register-supplier"), {
-            "user": someone.id, "email": "mfgme-co@example.com", "phone": "7000000001",
-            "amount_of_employees": "10-20", "turnover_per_year": "<1",
-        })
-        self.assertTrue(ManufacturerProfile.objects.filter(user=me).exists())
-        self.assertFalse(ManufacturerProfile.objects.filter(user=someone).exists())
 
 
 @DASHBOARD_TEST_STORAGES
@@ -1046,30 +829,3 @@ class ProfileCompanyTabTests(TestCase):
         response = self.client.get(reverse("profile") + "?tab=company")
         self.assertContains(response, "buyer profile isn't set up yet")
         self.assertNotContains(response, "manufacturer profile")
-
-
-@DASHBOARD_TEST_STORAGES
-class ProfileStepEmailPrefillTests(TestCase):
-    """After the OTP step, the profile step's email field starts with the
-    address that was just verified, for both roles."""
-
-    def setUp(self):
-        cache.clear()
-        mail.outbox.clear()
-
-    def _register_and_verify(self, email, account_type):
-        self.client.post(reverse("register"), {
-            "username": email.split("@")[0], "first_name": "Test", "last_name": "User",
-            "password1": "A-strong-passw0rd", "password2": "A-strong-passw0rd",
-            "email": email, "account_type": account_type,
-        })
-        code = next(l.strip() for l in mail.outbox[-1].body.splitlines() if l.strip().isdigit() and len(l.strip()) == 6)
-        return self.client.post(reverse("verify-email"), {"code": code}, follow=True)
-
-    def test_buyer_profile_step_prefills_the_verified_email(self):
-        response = self._register_and_verify("prefillbuyer@example.com", "buyer")
-        self.assertContains(response, 'value="prefillbuyer@example.com"')
-
-    def test_supplier_profile_step_prefills_the_verified_email(self):
-        response = self._register_and_verify("prefillmaker@example.com", "supplier")
-        self.assertContains(response, 'value="prefillmaker@example.com"')

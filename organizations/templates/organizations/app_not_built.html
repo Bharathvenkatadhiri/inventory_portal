@@ -1,0 +1,19 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en" class="bg-navy-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MakeSetu app not built</title>
+    <link rel="stylesheet" href="{% static 'css/tailwind-built.css' %}">
+</head>
+<body class="flex min-h-screen items-center justify-center px-4 text-navy-900">
+<main class="card max-w-lg">
+    <h1 class="text-xl font-bold">The MakeSetu app hasn't been built here</h1>
+    <p class="mt-2 text-sm text-gray-600">You're signed in, but this server has no build of the signed-in app (<code>frontend/apps/web</code>).</p>
+    <ul class="mt-4 list-disc space-y-1 pl-5 text-sm text-gray-600">
+        <li>While developing: run <code>pnpm dev</code> in <code>frontend/</code> and open <a class="font-semibold text-accent-500" href="http://localhost:5173/app/">localhost:5173/app/</a>.</li>
+        <li>To serve it from Django: run <code>pnpm build</code> in <code>frontend/</code>, then reload this page.</li>
+    </ul>
+</main>
+</body>
+</html>

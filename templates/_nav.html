@@ -5,12 +5,13 @@
             {% include "_wordmark.html" with size="text-2xl" %}
         </a>
 
-        <nav class="hidden items-center gap-8 self-stretch lg:flex">
-            <a href="{% url 'home' %}" class="nav-link {% if request.resolver_match.url_name == 'home' %}nav-link-active{% endif %}">Home</a>
-            <a href="{% url 'about' %}" class="nav-link {% if request.resolver_match.url_name == 'about' %}nav-link-active{% endif %}">About Us</a>
-            <a href="{% url 'how-it-works' %}" class="nav-link {% if request.resolver_match.url_name == 'how-it-works' %}nav-link-active{% endif %}">How It Works</a>
-            <a href="{% url 'pricing' %}" class="nav-link {% if request.resolver_match.url_name == 'pricing' %}nav-link-active{% endif %}">Pricing</a>
-            <a href="{% url 'contact' %}" class="nav-link {% if request.resolver_match.url_name == 'contact' %}nav-link-active{% endif %}">Contact</a>
+        <nav class="hidden items-center gap-8 self-stretch lg:flex" aria-label="Main">
+            <a href="{% url 'home' %}" class="nav-link {% if request.resolver_match.url_name == 'home' %}nav-link-active{% endif %}"{% if request.resolver_match.url_name == 'home' %} aria-current="page"{% endif %}>Home</a>
+            <a href="{% url 'features' %}" class="nav-link {% if request.resolver_match.url_name == 'features' %}nav-link-active{% endif %}"{% if request.resolver_match.url_name == 'features' %} aria-current="page"{% endif %}>Features</a>
+            <a href="{% url 'how-it-works' %}" class="nav-link {% if request.resolver_match.url_name == 'how-it-works' %}nav-link-active{% endif %}"{% if request.resolver_match.url_name == 'how-it-works' %} aria-current="page"{% endif %}>How It Works</a>
+            <a href="{% url 'pricing' %}" class="nav-link {% if request.resolver_match.url_name == 'pricing' %}nav-link-active{% endif %}"{% if request.resolver_match.url_name == 'pricing' %} aria-current="page"{% endif %}>Pricing</a>
+            <a href="{% url 'about' %}" class="nav-link {% if request.resolver_match.url_name == 'about' %}nav-link-active{% endif %}"{% if request.resolver_match.url_name == 'about' %} aria-current="page"{% endif %}>About Us</a>
+            <a href="{% url 'contact' %}" class="nav-link {% if request.resolver_match.url_name == 'contact' %}nav-link-active{% endif %}"{% if request.resolver_match.url_name == 'contact' %} aria-current="page"{% endif %}>Contact</a>
         </nav>
 
         <div class="hidden shrink-0 items-center gap-3 lg:flex">
@@ -29,9 +30,10 @@
 
     <nav x-show="mobileOpen" x-cloak x-transition.opacity @click.outside="mobileOpen = false" class="border-t border-gray-200 bg-white px-6 pb-4 pt-2 lg:hidden">
         <a href="{% url 'home' %}" class="block rounded-md px-3 py-2.5 text-sm font-semibold {% if request.resolver_match.url_name == 'home' %}bg-gray-100 text-navy-900{% else %}text-gray-700{% endif %}">Home</a>
-        <a href="{% url 'about' %}" class="block rounded-md px-3 py-2.5 text-sm font-semibold {% if request.resolver_match.url_name == 'about' %}bg-gray-100 text-navy-900{% else %}text-gray-700{% endif %}">About Us</a>
+        <a href="{% url 'features' %}" class="block rounded-md px-3 py-2.5 text-sm font-semibold {% if request.resolver_match.url_name == 'features' %}bg-gray-100 text-navy-900{% else %}text-gray-700{% endif %}">Features</a>
         <a href="{% url 'how-it-works' %}" class="block rounded-md px-3 py-2.5 text-sm font-semibold {% if request.resolver_match.url_name == 'how-it-works' %}bg-gray-100 text-navy-900{% else %}text-gray-700{% endif %}">How It Works</a>
         <a href="{% url 'pricing' %}" class="block rounded-md px-3 py-2.5 text-sm font-semibold {% if request.resolver_match.url_name == 'pricing' %}bg-gray-100 text-navy-900{% else %}text-gray-700{% endif %}">Pricing</a>
+        <a href="{% url 'about' %}" class="block rounded-md px-3 py-2.5 text-sm font-semibold {% if request.resolver_match.url_name == 'about' %}bg-gray-100 text-navy-900{% else %}text-gray-700{% endif %}">About Us</a>
         <a href="{% url 'contact' %}" class="block rounded-md px-3 py-2.5 text-sm font-semibold {% if request.resolver_match.url_name == 'contact' %}bg-gray-100 text-navy-900{% else %}text-gray-700{% endif %}">Contact</a>
         <a href="{% url 'login' %}" class="mt-2 block rounded-md border border-gray-300 px-3 py-2.5 text-center text-sm font-semibold text-navy-900">Log In</a>
     </nav>

@@ -361,16 +361,15 @@ class PortalRatingBadgeTests(TestCase):
             page = self.client.get(reverse(name)).content.decode()
             self.assertIn('href="#reviews"', page, name)
             self.assertIn("Quotes came in fast.", page, name)
-        # The detailed sign-up forms need the half-registered account from step one.
-        for name, role in (("register-customer", "consumer"), ("register-supplier", "manufacturer")):
-            pending = User.objects.create_user(
-                username=f"pending-{role}", email=f"pending-{role}@example.com", password="pass12345", role=role,
-                email_verified=True,  # this test is about the review widget, not email verification
-            )
-            session = self.client.session
-            session["session_user_id"] = pending.pk
-            session.save()
-            self.assertContains(self.client.get(reverse(name)), "Quotes came in fast.", msg_prefix=name)
+        # The organization step needs the half-registered account from step one.
+        pending = User.objects.create_user(
+            username="pending-member", email="pending-member@example.com", password="pass12345", role="member",
+            email_verified=True,  # this test is about the review widget, not email verification
+        )
+        session = self.client.session
+        session["session_user_id"] = pending.pk
+        session.save()
+        self.assertContains(self.client.get(reverse("register-organization")), "Quotes came in fast.")
 
 
 @override_settings(
@@ -648,3 +647,18 @@ class PasswordChangeAndAccountMenuTests(TestCase):
         self.request_change(PASSWORD)
         self.verify(self.last_code())
         self.assertTrue(self.password_is(viewer, self.NEW_PASSWORD))
+
+
+class RetiredServiceWorkerTests(TestCase):
+    """The reverted installable-app release left a service worker at /sw.js
+    in visitors' browsers; /sw.js now serves one that removes it."""
+
+    def test_sw_js_unregisters_itself_and_is_never_cached(self):
+        response = self.client.get("/sw.js")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/javascript")
+        self.assertIn("no-cache", response["Cache-Control"])
+        body = response.content.decode()
+        self.assertIn("registration.unregister()", body)
+        self.assertIn("caches.delete", body)
+        self.assertNotIn("addEventListener(\"fetch\"", body)  # never intercepts pages again

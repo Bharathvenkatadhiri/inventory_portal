@@ -1,0 +1,11 @@
+{% autoescape off %}Hello,
+
+{{ company_name }} wants to add your company as a {{ asked_as }} on MakeSetu.
+
+Review the request (accept or decline) under Partners:
+
+    {{ url }}
+
+Thanks,
+The MakeSetu Team
+{% endautoescape %}

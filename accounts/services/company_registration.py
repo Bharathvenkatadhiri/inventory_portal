@@ -22,30 +22,35 @@ from ..models import Company
 
 User = get_user_model()
 
-# The profile relation a company may only have one of, per role. A company
-# may hold one buyer and one supplier account.
-_PROFILE_FOR_ROLE = {'consumer': 'consumer_profile', 'manufacturer': 'manufacturer_profile'}
+ORGANIZATION = 'organization'
+
+
+def signing_up_user(request):
+    """The person this session is signing up (email verified, not yet in any
+    organization or marketplace account), or None."""
+    return User.objects.filter(
+        pk=request.session.get('session_user_id'), team_membership__isnull=True,
+        manufacturerprofile__isnull=True, consumerprofile__isnull=True, memberships__isnull=True,
+    ).first()
 
 
 def signing_up_role(request):
-    """'consumer' or 'manufacturer' when this session is at the company step
-    of sign-up (email verified, no profile or team yet), else None."""
-    user = User.objects.filter(
-        pk=request.session.get('session_user_id'), team_membership__isnull=True,
-        manufacturerprofile__isnull=True, consumerprofile__isnull=True,
-    ).only('role').first()
-    if user is None:
-        return None
-    return 'manufacturer' if user.role == 'manufacturer' else 'consumer'
+    """'organization' when this session is at the company step of sign-up,
+    else None. (Kept as a role name for gst.views.verify_gstin.)"""
+    return ORGANIZATION if signing_up_user(request) is not None else None
 
 
 def registration_conflict(request, gstin, role=None):
-    """Why this GSTIN can't be used for the account being created, or None."""
-    role = role or signing_up_role(request)
+    """Why this GSTIN can't be used for a new organization, or None. A
+    company registers once: if it's already on MakeSetu, as an organization
+    or with a marketplace account, the person needs an invitation from it
+    instead of a second registration."""
     company = Company.objects.filter(gstin=gstin).first()
-    if company is not None and hasattr(company, _PROFILE_FOR_ROLE.get(role, 'consumer_profile')):
-        kind = 'manufacturer' if role == 'manufacturer' else 'buyer'
-        return f"This GSTIN is already registered with an existing {kind} account."
+    if company is None:
+        return None
+    if company.memberships.exists() or hasattr(company, 'consumer_profile') or hasattr(company, 'manufacturer_profile'):
+        return ("This company is already registered on MakeSetu. Ask its Org Admin to invite you, "
+                "or contact us if you think this is a mistake.")
     return None
 
 
@@ -70,8 +75,9 @@ def display_name_from(posted, verification):
 
 def register_company(verification, display_name):
     """The Company for a successful verification: created, or refreshed if
-    the GSTIN is already on MakeSetu (e.g. a supplier now signing up as a
-    buyer too). Call inside the transaction that creates the profile."""
+    a row for the GSTIN exists without any account on it (see
+    registration_conflict). Call inside the transaction that sets up the
+    organization."""
     company = Company.objects.select_for_update().filter(gstin=verification.gstin).first()
     if company is None:
         company = Company(name=display_name[:255])

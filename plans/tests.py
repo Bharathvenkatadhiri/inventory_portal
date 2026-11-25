@@ -88,11 +88,17 @@ class CatalogTests(TestCase):
         self.assertEqual(supplier['Supplier matching'], ['—', '✓', 'Advanced'])
         self.assertEqual(supplier['File storage'], ['1 GB', '5 GB', '25 GB'])
 
-    def test_pricing_page_shows_both_catalogues(self):
+    def test_pricing_page_shows_the_erp_plans(self):
         page = self.client.get(reverse("pricing"))
-        for text in ("Free", "Starter", "Business", "&#8377;999", "&#8377;29990", "For Manufacturers",
-                     "Relevant RFQs received / month", "Approval workflows", "Performance insights"):
+        for text in ("Starter", "Growth", "Pro", "&#8377;1500", "&#8377;4000", "&#8377;10000",
+                     "3 users + 5 light users", "10 users + 20 light users", "Light users included", "Users (shared pool)",
+                     "Teams / departments", "2 teams", "5 teams", "Unlimited teams", "How do users and teams work?",
+                     "₹150 / month each", "light users", "1 warehouse", "3 warehouses", "10 warehouses",
+                     "Delivery challan, returns, debit/credit notes", "Job work (challan + ITC-04)",
+                     "Multi-level approvals", "MRP planning, scheduling", "E-invoice available as an add-on",
+                     "Support: Email/chat", "Support: Priority", "?plan=growth"):
             self.assertContains(page, text)
+        self.assertNotContains(page, "&#8377;999")
 
 
 class AccessCheckTests(PlanTestCase):
