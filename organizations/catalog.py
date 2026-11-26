@@ -32,6 +32,9 @@ PERMISSIONS = {
     'stock.issue': ("Issue stock", 'Store', erp.INVENTORY, None),
     'dispatch.post': ("Post dispatches", 'Store', erp.INVENTORY, SELLING),
     'stock.view': ("View stock", 'Store', erp.INVENTORY, None),
+    'items.manage': ("Create and edit items", 'Store', erp.INVENTORY, None),
+    'warehouses.manage': ("Manage warehouses", 'Store', erp.INVENTORY, None),
+    'stock.adjust': ("Enter opening stock and stock adjustments", 'Store', erp.INVENTORY, None),
     'gate_entry.record': ("Record gate entries (vehicles in and out)", 'Store', erp.INVENTORY, None),
 
     'bom.manage': ("Manage bills of materials", 'Production', erp.BOM, None),
@@ -63,7 +66,7 @@ LIGHT_PERMISSIONS = {
 DEFAULT_ROLES = {
     ORG_ADMIN: ("Org Admin", "Manages company settings, people and roles", list(PERMISSIONS), FULL),
     'purchase_manager': ("Purchase Manager", "Creates and approves purchase orders and bills", [
-        'po.create', 'po.approve', 'purchase_bill.create', 'purchase_bill.approve', 'stock.view',
+        'po.create', 'po.approve', 'purchase_bill.create', 'purchase_bill.approve', 'stock.view', 'items.manage',
     ], FULL),
     'purchase_executive': ("Purchase Executive", "Creates purchase orders and enters bills", [
         'po.create', 'purchase_bill.create', 'stock.view',
@@ -75,10 +78,10 @@ DEFAULT_ROLES = {
         'quotation.create', 'so.create', 'stock.view',
     ], FULL),
     'store': ("Store / Warehouse", "Receives goods, issues stock and dispatches", [
-        'grn.post', 'stock.issue', 'dispatch.post', 'stock.view',
+        'grn.post', 'stock.issue', 'dispatch.post', 'stock.view', 'items.manage', 'warehouses.manage', 'stock.adjust',
     ], FULL),
     'production_planner': ("Production Planner", "Maintains BOMs and work orders", [
-        'bom.manage', 'production.record', 'work_order.manage', 'stock.view',
+        'bom.manage', 'production.record', 'work_order.manage', 'stock.view', 'items.manage',
     ], FULL),
     'accounts': ("Accounts", "Invoices, payments and ledgers", [
         'invoice.create', 'purchase_bill.create', 'purchase_bill.approve', 'payment.record', 'payment.approve',

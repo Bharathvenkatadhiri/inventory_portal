@@ -6,14 +6,29 @@ import { day } from "../lib/format";
 import { useMe, useSwitchOrganization, type Active, type Me } from "../lib/session";
 import { ErrorText, Loading, Notice } from "./ui";
 
-const NAV = [
+const PURCHASE_ROLES = ["po.create", "po.approve", "grn.post", "purchase_bill.create", "purchase_bill.approve", "payment.record", "ledger.view"];
+const ACCOUNTS_ROLES = ["payment.record", "payment.approve", "ledger.view"];
+const SALES_ROLES = ["so.create", "so.approve", "quotation.create", "invoice.create", "dispatch.post"];
+
+type NavItem = { to: string; label: string; exact: boolean; show?: (active: Active) => boolean };
+const NAV: NavItem[] = [
   { to: "/", label: "Home", exact: true },
   { to: "/partners", label: "Partners", exact: false },
+  {
+    to: "/purchase", label: "Purchase", exact: false,
+    show: (a) => a.company.buying_enabled && PURCHASE_ROLES.some((code) => a.allowed.includes(code)),
+  },
+  {
+    to: "/sales", label: "Sales", exact: false,
+    show: (a) => a.company.selling_enabled && SALES_ROLES.some((code) => a.allowed.includes(code)),
+  },
+  { to: "/inventory", label: "Inventory", exact: false },
+  { to: "/accounts", label: "Accounts", exact: false, show: (a) => ACCOUNTS_ROLES.some((code) => a.allowed.includes(code)) },
   { to: "/settings", label: "Settings", exact: false },
-] as const;
+];
 
 // The modules the ERP is growing into, shown so people know what's coming.
-const COMING = ["Purchase", "Sales", "Inventory", "Production", "Accounts"];
+const COMING = ["Production"];
 
 export function AppShell() {
   const { data: me, error, isLoading } = useMe();
@@ -46,7 +61,7 @@ export function AppShell() {
           </a>
         </div>
         <nav className="flex-1 space-y-1 px-3 py-2">
-          {NAV.map((item) => (
+          {NAV.filter((item) => !item.show || item.show(me.active!)).map((item) => (
             <Link
               key={item.to}
               to={item.to}

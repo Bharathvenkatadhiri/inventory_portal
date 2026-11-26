@@ -25,3 +25,12 @@ export function plural(count: number, one: string, many = `${one}s`): string {
 export function ofLimit(used: number, limit: number | null | undefined): string {
   return limit === null || limit === undefined ? `${used} (no limit)` : `${used} of ${limit}`;
 }
+
+/** A stock quantity in Indian grouping (1,25,000.5), up to 3 decimals, with its unit. */
+export function quantity(value: string | number | null | undefined, unit = ""): string {
+  if (value === null || value === undefined || value === "") return "—";
+  const n = typeof value === "number" ? value : Number(value);
+  if (Number.isNaN(n)) return "—";
+  const text = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 3 }).format(n);
+  return unit ? `${text} ${unit}` : text;
+}

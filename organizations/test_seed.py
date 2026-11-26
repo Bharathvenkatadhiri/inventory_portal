@@ -29,6 +29,29 @@ class SeedERPDemoTests(TestCase):
         self.assertEqual(Membership.objects.filter(user=shared).count(), 2)
         admin = User.objects.get(email=seed.demo_email('arjun'))
         self.assertTrue(admin.check_password(seed.PASSWORD))
+        from inventory.models import Item, StockEntry, Warehouse
+        sri = Company.objects.get(gstin=seed.ORGANIZATIONS['sri_lakshmi'][0])
+        self.assertEqual(Item.objects.filter(company=sri).count(), len(seed.ITEMS['sri_lakshmi']))
+        self.assertEqual(list(Warehouse.objects.filter(company=sri, is_default=True).values_list('name', flat=True)), ['Plant store'])
+        self.assertTrue(Warehouse.objects.filter(company=sri, address__label='Ambattur warehouse').exists())
+        self.assertTrue(StockEntry.objects.filter(company=sri, item__code='BO-BOLT-M10').count() == 2)
+        from purchase.models import PurchaseBill, PurchaseOrder
+        self.assertEqual(sorted(PurchaseOrder.objects.filter(company=sri).values_list('status', flat=True)),
+                         ['draft', 'partially_received', 'pending_approval'])
+        self.assertTrue(PurchaseBill.objects.filter(company=sri, status='posted').exists())
+        self.assertTrue(PurchaseOrder.objects.filter(supplier=sri, status='issued').exists())  # Tejas' order
+        self.assertTrue(StockEntry.objects.filter(company=sri, kind='receipt').exists())
+        from sales.models import SalesInvoice, SalesOrder
+        kaveri = Company.objects.get(gstin=seed.ORGANIZATIONS['kaveri'][0])
+        castings = PurchaseOrder.objects.get(company=sri, supplier=kaveri)
+        self.assertEqual(castings.supplier_response, 'accepted')
+        self.assertEqual(SalesOrder.objects.get(purchase_order=castings).status, 'partially_dispatched')
+        invoice = SalesInvoice.objects.get(company=kaveri, status='posted')
+        self.assertTrue(PurchaseBill.objects.filter(company=sri, supplier_invoice_number=invoice.number).exists())
+        self.assertTrue(StockEntry.objects.filter(company=kaveri, kind='dispatch').exists())
+        from finance.services import balance
+        self.assertEqual(balance(invoice)['payment_status'], 'partly_paid')
+        self.assertEqual(balance(PurchaseBill.objects.get(company=sri, supplier=kaveri))['payment_status'], 'partly_paid')
         self.assertIn("Sample GSTINs still free", output)
         self.assertIn("27AAGCN2468V1ZG", output)
         self.assertNotIn("33AABCS1234K1Z7  ", output.split("still free")[1])

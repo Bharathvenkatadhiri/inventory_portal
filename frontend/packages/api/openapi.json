@@ -1,6 +1,69 @@
 {
   "components": {
     "schemas": {
+      "AcceptIn": {
+        "properties": {
+          "dispatch_from_id": {
+            "title": "Dispatch From Id",
+            "type": "integer"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/AcceptLineIn"
+            },
+            "title": "Lines",
+            "type": "array"
+          }
+        },
+        "required": [
+          "dispatch_from_id",
+          "lines"
+        ],
+        "title": "AcceptIn",
+        "type": "object"
+      },
+      "AcceptLineIn": {
+        "properties": {
+          "item_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item Id"
+          },
+          "purchase_order_line_id": {
+            "title": "Purchase Order Line Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "purchase_order_line_id"
+        ],
+        "title": "AcceptLineIn",
+        "type": "object"
+      },
+      "AcceptOut": {
+        "properties": {
+          "sales_order_id": {
+            "title": "Sales Order Id",
+            "type": "integer"
+          },
+          "sales_order_number": {
+            "title": "Sales Order Number",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sales_order_id",
+          "sales_order_number"
+        ],
+        "title": "AcceptOut",
+        "type": "object"
+      },
       "ActionOut": {
         "properties": {
           "message": {
@@ -265,6 +328,460 @@
         "title": "BankAccountOut",
         "type": "object"
       },
+      "BillActionsOut": {
+        "properties": {
+          "approve": {
+            "title": "Approve",
+            "type": "boolean"
+          },
+          "cancel": {
+            "title": "Cancel",
+            "type": "boolean"
+          },
+          "edit": {
+            "title": "Edit",
+            "type": "boolean"
+          },
+          "submit": {
+            "title": "Submit",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "edit",
+          "submit",
+          "approve",
+          "cancel"
+        ],
+        "title": "BillActionsOut",
+        "type": "object"
+      },
+      "BillIn": {
+        "properties": {
+          "invoice_date": {
+            "format": "date",
+            "title": "Invoice Date",
+            "type": "string"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/BillLineIn"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "notes": {
+            "default": "",
+            "title": "Notes",
+            "type": "string"
+          },
+          "order_id": {
+            "title": "Order Id",
+            "type": "integer"
+          },
+          "supplier_invoice_number": {
+            "title": "Supplier Invoice Number",
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id",
+          "supplier_invoice_number",
+          "invoice_date",
+          "lines"
+        ],
+        "title": "BillIn",
+        "type": "object"
+      },
+      "BillLineIn": {
+        "properties": {
+          "gst_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gst Rate"
+          },
+          "order_line_id": {
+            "title": "Order Line Id",
+            "type": "integer"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate"
+          }
+        },
+        "required": [
+          "order_line_id",
+          "quantity"
+        ],
+        "title": "BillLineIn",
+        "type": "object"
+      },
+      "BillLineOut": {
+        "properties": {
+          "gst_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Gst Rate"
+          },
+          "item_code": {
+            "title": "Item Code",
+            "type": "string"
+          },
+          "item_name": {
+            "title": "Item Name",
+            "type": "string"
+          },
+          "order_line_id": {
+            "title": "Order Line Id",
+            "type": "integer"
+          },
+          "order_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Order Rate"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Rate"
+          },
+          "rate_differs": {
+            "title": "Rate Differs",
+            "type": "boolean"
+          },
+          "tax_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Tax Amount"
+          },
+          "taxable_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Taxable Value"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_line_id",
+          "item_code",
+          "item_name",
+          "quantity",
+          "unit",
+          "rate",
+          "order_rate",
+          "rate_differs",
+          "gst_rate",
+          "taxable_value",
+          "tax_amount"
+        ],
+        "title": "BillLineOut",
+        "type": "object"
+      },
+      "BillOut": {
+        "properties": {
+          "actions": {
+            "$ref": "#/components/schemas/BillActionsOut"
+          },
+          "approved_by": {
+            "title": "Approved By",
+            "type": "string"
+          },
+          "cgst": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Cgst"
+          },
+          "created_by": {
+            "title": "Created By",
+            "type": "string"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "igst": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Igst"
+          },
+          "invoice_date": {
+            "format": "date",
+            "title": "Invoice Date",
+            "type": "string"
+          },
+          "is_interstate": {
+            "title": "Is Interstate",
+            "type": "boolean"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/BillLineOut"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "order_id": {
+            "title": "Order Id",
+            "type": "integer"
+          },
+          "order_number": {
+            "title": "Order Number",
+            "type": "string"
+          },
+          "outstanding": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Outstanding"
+          },
+          "paid": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Paid"
+          },
+          "payment_pending": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Payment Pending"
+          },
+          "payment_status": {
+            "title": "Payment Status",
+            "type": "string"
+          },
+          "payment_status_label": {
+            "title": "Payment Status Label",
+            "type": "string"
+          },
+          "place_of_supply": {
+            "title": "Place Of Supply",
+            "type": "string"
+          },
+          "rejection_reason": {
+            "title": "Rejection Reason",
+            "type": "string"
+          },
+          "round_off": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Round Off"
+          },
+          "sgst": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Sgst"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "submit_needs_approval": {
+            "title": "Submit Needs Approval",
+            "type": "boolean"
+          },
+          "supplier": {
+            "$ref": "#/components/schemas/PartyOut"
+          },
+          "supplier_invoice_number": {
+            "title": "Supplier Invoice Number",
+            "type": "string"
+          },
+          "taxable_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Taxable Value"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "required": [
+          "place_of_supply",
+          "is_interstate",
+          "taxable_value",
+          "cgst",
+          "sgst",
+          "igst",
+          "round_off",
+          "total",
+          "id",
+          "number",
+          "status",
+          "status_label",
+          "order_id",
+          "order_number",
+          "supplier",
+          "supplier_invoice_number",
+          "invoice_date",
+          "due_date",
+          "notes",
+          "rejection_reason",
+          "created_by",
+          "approved_by",
+          "lines",
+          "actions",
+          "submit_needs_approval",
+          "paid",
+          "payment_pending",
+          "outstanding",
+          "payment_status",
+          "payment_status_label"
+        ],
+        "title": "BillOut",
+        "type": "object"
+      },
       "BillingOut": {
         "properties": {
           "payments": {
@@ -295,6 +812,54 @@
           "seats"
         ],
         "title": "BillingOut",
+        "type": "object"
+      },
+      "BucketOut": {
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Amount"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "amount"
+        ],
+        "title": "BucketOut",
+        "type": "object"
+      },
+      "ChoiceOut": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "label"
+        ],
+        "title": "ChoiceOut",
         "type": "object"
       },
       "CompanyOut": {
@@ -453,6 +1018,363 @@
         "title": "ConnectOut",
         "type": "object"
       },
+      "CustomerOut": {
+        "properties": {
+          "address": {
+            "title": "Address",
+            "type": "string"
+          },
+          "customer_code": {
+            "title": "Customer Code",
+            "type": "string"
+          },
+          "gstin": {
+            "title": "Gstin",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "payment_terms_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Terms Days"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "gstin",
+          "state",
+          "payment_terms_days",
+          "customer_code",
+          "address"
+        ],
+        "title": "CustomerOut",
+        "type": "object"
+      },
+      "DefaultRoleOut": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Permissions",
+            "type": "array"
+          },
+          "user_type": {
+            "title": "User Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "description",
+          "user_type",
+          "permissions"
+        ],
+        "title": "DefaultRoleOut",
+        "type": "object"
+      },
+      "DispatchIn": {
+        "properties": {
+          "dispatch_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dispatch Date"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/DispatchLineIn"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "notes": {
+            "default": "",
+            "title": "Notes",
+            "type": "string"
+          },
+          "transporter": {
+            "default": "",
+            "title": "Transporter",
+            "type": "string"
+          },
+          "vehicle_number": {
+            "default": "",
+            "title": "Vehicle Number",
+            "type": "string"
+          },
+          "warehouse_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Warehouse Id"
+          }
+        },
+        "required": [
+          "lines"
+        ],
+        "title": "DispatchIn",
+        "type": "object"
+      },
+      "DispatchLineIn": {
+        "properties": {
+          "order_line_id": {
+            "title": "Order Line Id",
+            "type": "integer"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          }
+        },
+        "required": [
+          "order_line_id",
+          "quantity"
+        ],
+        "title": "DispatchLineIn",
+        "type": "object"
+      },
+      "DispatchLineOut": {
+        "properties": {
+          "item_code": {
+            "title": "Item Code",
+            "type": "string"
+          },
+          "item_name": {
+            "title": "Item Name",
+            "type": "string"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_code",
+          "item_name",
+          "quantity",
+          "unit"
+        ],
+        "title": "DispatchLineOut",
+        "type": "object"
+      },
+      "DispatchOut": {
+        "properties": {
+          "customer": {
+            "$ref": "#/components/schemas/PartyOut"
+          },
+          "dispatch_date": {
+            "format": "date",
+            "title": "Dispatch Date",
+            "type": "string"
+          },
+          "dispatched_by": {
+            "title": "Dispatched By",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/DispatchLineOut"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "order_id": {
+            "title": "Order Id",
+            "type": "integer"
+          },
+          "order_number": {
+            "title": "Order Number",
+            "type": "string"
+          },
+          "transporter": {
+            "title": "Transporter",
+            "type": "string"
+          },
+          "vehicle_number": {
+            "title": "Vehicle Number",
+            "type": "string"
+          },
+          "warehouse": {
+            "title": "Warehouse",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "order_id",
+          "order_number",
+          "customer",
+          "warehouse",
+          "dispatch_date",
+          "vehicle_number",
+          "transporter",
+          "notes",
+          "dispatched_by",
+          "lines"
+        ],
+        "title": "DispatchOut",
+        "type": "object"
+      },
+      "DocRefOut": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "date",
+          "status",
+          "status_label",
+          "detail",
+          "total"
+        ],
+        "title": "DocRefOut",
+        "type": "object"
+      },
+      "InventoryOptionsOut": {
+        "properties": {
+          "gst_rates": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Gst Rates",
+            "type": "array"
+          },
+          "kinds": {
+            "items": {
+              "$ref": "#/components/schemas/ChoiceOut"
+            },
+            "title": "Kinds",
+            "type": "array"
+          },
+          "units": {
+            "items": {
+              "$ref": "#/components/schemas/ChoiceOut"
+            },
+            "title": "Units",
+            "type": "array"
+          }
+        },
+        "required": [
+          "kinds",
+          "units",
+          "gst_rates"
+        ],
+        "title": "InventoryOptionsOut",
+        "type": "object"
+      },
       "InvitationOut": {
         "properties": {
           "created_at": {
@@ -544,6 +1466,652 @@
           "role_id"
         ],
         "title": "InviteIn",
+        "type": "object"
+      },
+      "InvoiceActionsOut": {
+        "properties": {
+          "cancel": {
+            "title": "Cancel",
+            "type": "boolean"
+          },
+          "edit": {
+            "title": "Edit",
+            "type": "boolean"
+          },
+          "post": {
+            "title": "Post",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "edit",
+          "post",
+          "cancel"
+        ],
+        "title": "InvoiceActionsOut",
+        "type": "object"
+      },
+      "InvoiceIn": {
+        "properties": {
+          "invoice_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Date"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/InvoiceLineIn"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "notes": {
+            "default": "",
+            "title": "Notes",
+            "type": "string"
+          },
+          "order_id": {
+            "title": "Order Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "order_id",
+          "lines"
+        ],
+        "title": "InvoiceIn",
+        "type": "object"
+      },
+      "InvoiceLineIn": {
+        "properties": {
+          "order_line_id": {
+            "title": "Order Line Id",
+            "type": "integer"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          }
+        },
+        "required": [
+          "order_line_id",
+          "quantity"
+        ],
+        "title": "InvoiceLineIn",
+        "type": "object"
+      },
+      "InvoiceLineOut": {
+        "properties": {
+          "gst_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Gst Rate"
+          },
+          "hsn_code": {
+            "title": "Hsn Code",
+            "type": "string"
+          },
+          "item_code": {
+            "title": "Item Code",
+            "type": "string"
+          },
+          "item_name": {
+            "title": "Item Name",
+            "type": "string"
+          },
+          "order_line_id": {
+            "title": "Order Line Id",
+            "type": "integer"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Rate"
+          },
+          "tax_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Tax Amount"
+          },
+          "taxable_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Taxable Value"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_line_id",
+          "item_code",
+          "item_name",
+          "hsn_code",
+          "quantity",
+          "unit",
+          "rate",
+          "gst_rate",
+          "taxable_value",
+          "tax_amount"
+        ],
+        "title": "InvoiceLineOut",
+        "type": "object"
+      },
+      "InvoiceOut": {
+        "properties": {
+          "actions": {
+            "$ref": "#/components/schemas/InvoiceActionsOut"
+          },
+          "cancel_reason": {
+            "title": "Cancel Reason",
+            "type": "string"
+          },
+          "cgst": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Cgst"
+          },
+          "created_by": {
+            "title": "Created By",
+            "type": "string"
+          },
+          "customer": {
+            "$ref": "#/components/schemas/PartyOut"
+          },
+          "customer_po_number": {
+            "title": "Customer Po Number",
+            "type": "string"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "igst": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Igst"
+          },
+          "invoice_date": {
+            "format": "date",
+            "title": "Invoice Date",
+            "type": "string"
+          },
+          "is_interstate": {
+            "title": "Is Interstate",
+            "type": "boolean"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/InvoiceLineOut"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "order_id": {
+            "title": "Order Id",
+            "type": "integer"
+          },
+          "order_number": {
+            "title": "Order Number",
+            "type": "string"
+          },
+          "outstanding": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Outstanding"
+          },
+          "paid": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Paid"
+          },
+          "payment_pending": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Payment Pending"
+          },
+          "payment_status": {
+            "title": "Payment Status",
+            "type": "string"
+          },
+          "payment_status_label": {
+            "title": "Payment Status Label",
+            "type": "string"
+          },
+          "place_of_supply": {
+            "title": "Place Of Supply",
+            "type": "string"
+          },
+          "posted_by": {
+            "title": "Posted By",
+            "type": "string"
+          },
+          "round_off": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Round Off"
+          },
+          "seller": {
+            "$ref": "#/components/schemas/PartyOut"
+          },
+          "sgst": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Sgst"
+          },
+          "ship_to": {
+            "title": "Ship To",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "taxable_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Taxable Value"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "status",
+          "status_label",
+          "order_id",
+          "order_number",
+          "customer_po_number",
+          "seller",
+          "customer",
+          "ship_to",
+          "invoice_date",
+          "due_date",
+          "notes",
+          "cancel_reason",
+          "place_of_supply",
+          "is_interstate",
+          "taxable_value",
+          "cgst",
+          "sgst",
+          "igst",
+          "round_off",
+          "total",
+          "created_by",
+          "posted_by",
+          "lines",
+          "actions",
+          "paid",
+          "payment_pending",
+          "outstanding",
+          "payment_status",
+          "payment_status_label"
+        ],
+        "title": "InvoiceOut",
+        "type": "object"
+      },
+      "ItemIn": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "gst_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "default": "18",
+            "title": "Gst Rate"
+          },
+          "hsn_code": {
+            "default": "",
+            "title": "Hsn Code",
+            "type": "string"
+          },
+          "is_active": {
+            "default": true,
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "kind": {
+            "default": "raw_material",
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "purchase_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purchase Price"
+          },
+          "reorder_level": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reorder Level"
+          },
+          "sale_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sale Price"
+          },
+          "unit": {
+            "default": "NOS",
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "ItemIn",
+        "type": "object"
+      },
+      "ItemOut": {
+        "properties": {
+          "below_reorder": {
+            "title": "Below Reorder",
+            "type": "boolean"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "gst_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Gst Rate"
+          },
+          "hsn_code": {
+            "title": "Hsn Code",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "kind_label": {
+            "title": "Kind Label",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "on_hand": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "On Hand"
+          },
+          "purchase_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purchase Price"
+          },
+          "reorder_level": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reorder Level"
+          },
+          "sale_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sale Price"
+          },
+          "tracks_stock": {
+            "title": "Tracks Stock",
+            "type": "boolean"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "kind",
+          "kind_label",
+          "unit",
+          "hsn_code",
+          "gst_rate",
+          "purchase_price",
+          "sale_price",
+          "reorder_level",
+          "description",
+          "is_active",
+          "tracks_stock",
+          "on_hand",
+          "below_reorder"
+        ],
+        "title": "ItemOut",
         "type": "object"
       },
       "MeIn": {
@@ -747,6 +2315,1001 @@
         "title": "MembershipOut",
         "type": "object"
       },
+      "OpenDocumentOut": {
+        "properties": {
+          "available": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Available"
+          },
+          "bucket": {
+            "title": "Bucket",
+            "type": "string"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "order_number": {
+            "title": "Order Number",
+            "type": "string"
+          },
+          "our_number": {
+            "title": "Our Number",
+            "type": "string"
+          },
+          "outstanding": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Outstanding"
+          },
+          "paid": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Paid"
+          },
+          "party": {
+            "$ref": "#/components/schemas/PartyOut"
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Pending"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "our_number",
+          "order_number",
+          "party",
+          "date",
+          "due_date",
+          "total",
+          "paid",
+          "pending",
+          "outstanding",
+          "available",
+          "status",
+          "status_label",
+          "bucket"
+        ],
+        "title": "OpenDocumentOut",
+        "type": "object"
+      },
+      "OpeningIn": {
+        "properties": {
+          "entry_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entry Date"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "note": {
+            "default": "",
+            "title": "Note",
+            "type": "string"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "default": "0",
+            "title": "Rate"
+          },
+          "warehouse_id": {
+            "title": "Warehouse Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "item_id",
+          "warehouse_id",
+          "quantity"
+        ],
+        "title": "OpeningIn",
+        "type": "object"
+      },
+      "OpeningOut": {
+        "properties": {
+          "entry_date": {
+            "format": "date",
+            "title": "Entry Date",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "item_code": {
+            "title": "Item Code",
+            "type": "string"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "item_name": {
+            "title": "Item Name",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Rate"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Value"
+          },
+          "warehouse_id": {
+            "title": "Warehouse Id",
+            "type": "integer"
+          },
+          "warehouse_name": {
+            "title": "Warehouse Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "item_id",
+          "item_code",
+          "item_name",
+          "unit",
+          "warehouse_id",
+          "warehouse_name",
+          "quantity",
+          "rate",
+          "value",
+          "entry_date",
+          "note"
+        ],
+        "title": "OpeningOut",
+        "type": "object"
+      },
+      "OrderActionsOut": {
+        "properties": {
+          "approve": {
+            "title": "Approve",
+            "type": "boolean"
+          },
+          "bill": {
+            "title": "Bill",
+            "type": "boolean"
+          },
+          "cancel": {
+            "title": "Cancel",
+            "type": "boolean"
+          },
+          "close": {
+            "title": "Close",
+            "type": "boolean"
+          },
+          "edit": {
+            "title": "Edit",
+            "type": "boolean"
+          },
+          "receive": {
+            "title": "Receive",
+            "type": "boolean"
+          },
+          "submit": {
+            "title": "Submit",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "edit",
+          "submit",
+          "approve",
+          "cancel",
+          "close",
+          "receive",
+          "bill"
+        ],
+        "title": "OrderActionsOut",
+        "type": "object"
+      },
+      "OrderIn": {
+        "properties": {
+          "expected_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Date"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/OrderLineIn"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "notes": {
+            "default": "",
+            "title": "Notes",
+            "type": "string"
+          },
+          "order_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order Date"
+          },
+          "payment_terms_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Terms Days"
+          },
+          "ship_to_id": {
+            "title": "Ship To Id",
+            "type": "integer"
+          },
+          "supplier_id": {
+            "title": "Supplier Id",
+            "type": "integer"
+          },
+          "supplier_reference": {
+            "default": "",
+            "title": "Supplier Reference",
+            "type": "string"
+          }
+        },
+        "required": [
+          "supplier_id",
+          "ship_to_id",
+          "lines"
+        ],
+        "title": "OrderIn",
+        "type": "object"
+      },
+      "OrderLineIn": {
+        "properties": {
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "gst_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gst Rate"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate"
+          }
+        },
+        "required": [
+          "item_id",
+          "quantity"
+        ],
+        "title": "OrderLineIn",
+        "type": "object"
+      },
+      "OrderLineOut": {
+        "properties": {
+          "billable_quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Billable Quantity"
+          },
+          "billed_quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Billed Quantity"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "gst_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Gst Rate"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "item_code": {
+            "title": "Item Code",
+            "type": "string"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "item_name": {
+            "title": "Item Name",
+            "type": "string"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Rate"
+          },
+          "received_quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Received Quantity"
+          },
+          "tax_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Tax Amount"
+          },
+          "taxable_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Taxable Value"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "item_id",
+          "item_code",
+          "item_name",
+          "description",
+          "quantity",
+          "unit",
+          "rate",
+          "gst_rate",
+          "taxable_value",
+          "tax_amount",
+          "received_quantity",
+          "billed_quantity",
+          "billable_quantity"
+        ],
+        "title": "OrderLineOut",
+        "type": "object"
+      },
+      "OrderOut": {
+        "properties": {
+          "actions": {
+            "$ref": "#/components/schemas/OrderActionsOut"
+          },
+          "approved_by": {
+            "title": "Approved By",
+            "type": "string"
+          },
+          "bills": {
+            "items": {
+              "$ref": "#/components/schemas/DocRefOut"
+            },
+            "title": "Bills",
+            "type": "array"
+          },
+          "cgst": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Cgst"
+          },
+          "created_by": {
+            "title": "Created By",
+            "type": "string"
+          },
+          "decline_reason": {
+            "title": "Decline Reason",
+            "type": "string"
+          },
+          "expected_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Date"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "igst": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Igst"
+          },
+          "is_interstate": {
+            "title": "Is Interstate",
+            "type": "boolean"
+          },
+          "issued_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issued At"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/OrderLineOut"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "order_date": {
+            "format": "date",
+            "title": "Order Date",
+            "type": "string"
+          },
+          "payment_terms_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Terms Days"
+          },
+          "place_of_supply": {
+            "title": "Place Of Supply",
+            "type": "string"
+          },
+          "receipts": {
+            "items": {
+              "$ref": "#/components/schemas/DocRefOut"
+            },
+            "title": "Receipts",
+            "type": "array"
+          },
+          "rejection_reason": {
+            "title": "Rejection Reason",
+            "type": "string"
+          },
+          "round_off": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Round Off"
+          },
+          "sgst": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Sgst"
+          },
+          "ship_to": {
+            "title": "Ship To",
+            "type": "string"
+          },
+          "ship_to_id": {
+            "title": "Ship To Id",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "submit_needs_approval": {
+            "title": "Submit Needs Approval",
+            "type": "boolean"
+          },
+          "supplier": {
+            "$ref": "#/components/schemas/PartyOut"
+          },
+          "supplier_dispatches": {
+            "items": {
+              "$ref": "#/components/schemas/DocRefOut"
+            },
+            "title": "Supplier Dispatches",
+            "type": "array"
+          },
+          "supplier_invoices": {
+            "items": {
+              "$ref": "#/components/schemas/DocRefOut"
+            },
+            "title": "Supplier Invoices",
+            "type": "array"
+          },
+          "supplier_on_network": {
+            "title": "Supplier On Network",
+            "type": "boolean"
+          },
+          "supplier_reference": {
+            "title": "Supplier Reference",
+            "type": "string"
+          },
+          "supplier_response": {
+            "title": "Supplier Response",
+            "type": "string"
+          },
+          "supplier_response_label": {
+            "title": "Supplier Response Label",
+            "type": "string"
+          },
+          "taxable_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Taxable Value"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "required": [
+          "place_of_supply",
+          "is_interstate",
+          "taxable_value",
+          "cgst",
+          "sgst",
+          "igst",
+          "round_off",
+          "total",
+          "id",
+          "number",
+          "status",
+          "status_label",
+          "order_date",
+          "expected_date",
+          "supplier",
+          "ship_to",
+          "supplier_on_network",
+          "supplier_response",
+          "supplier_response_label",
+          "ship_to_id",
+          "payment_terms_days",
+          "supplier_reference",
+          "notes",
+          "rejection_reason",
+          "created_by",
+          "approved_by",
+          "issued_at",
+          "lines",
+          "receipts",
+          "bills",
+          "actions",
+          "submit_needs_approval",
+          "decline_reason",
+          "supplier_dispatches",
+          "supplier_invoices"
+        ],
+        "title": "OrderOut",
+        "type": "object"
+      },
+      "OrderSummaryOut": {
+        "properties": {
+          "cgst": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Cgst"
+          },
+          "expected_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Date"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "igst": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Igst"
+          },
+          "is_interstate": {
+            "title": "Is Interstate",
+            "type": "boolean"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "order_date": {
+            "format": "date",
+            "title": "Order Date",
+            "type": "string"
+          },
+          "place_of_supply": {
+            "title": "Place Of Supply",
+            "type": "string"
+          },
+          "round_off": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Round Off"
+          },
+          "sgst": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Sgst"
+          },
+          "ship_to": {
+            "title": "Ship To",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "supplier": {
+            "$ref": "#/components/schemas/PartyOut"
+          },
+          "supplier_on_network": {
+            "title": "Supplier On Network",
+            "type": "boolean"
+          },
+          "supplier_response": {
+            "title": "Supplier Response",
+            "type": "string"
+          },
+          "supplier_response_label": {
+            "title": "Supplier Response Label",
+            "type": "string"
+          },
+          "taxable_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Taxable Value"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "required": [
+          "place_of_supply",
+          "is_interstate",
+          "taxable_value",
+          "cgst",
+          "sgst",
+          "igst",
+          "round_off",
+          "total",
+          "id",
+          "number",
+          "status",
+          "status_label",
+          "order_date",
+          "expected_date",
+          "supplier",
+          "ship_to",
+          "supplier_on_network",
+          "supplier_response",
+          "supplier_response_label"
+        ],
+        "title": "OrderSummaryOut",
+        "type": "object"
+      },
       "OrganizationIn": {
         "properties": {
           "buying_enabled": {
@@ -795,6 +3358,90 @@
           }
         },
         "title": "OrganizationIn",
+        "type": "object"
+      },
+      "OurBankAccountOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "is_default": {
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "is_default"
+        ],
+        "title": "OurBankAccountOut",
+        "type": "object"
+      },
+      "OutstandingOut": {
+        "properties": {
+          "buckets": {
+            "items": {
+              "$ref": "#/components/schemas/BucketOut"
+            },
+            "title": "Buckets",
+            "type": "array"
+          },
+          "direction": {
+            "title": "Direction",
+            "type": "string"
+          },
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/OpenDocumentOut"
+            },
+            "title": "Documents",
+            "type": "array"
+          },
+          "overdue": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Overdue"
+          },
+          "parties": {
+            "items": {
+              "$ref": "#/components/schemas/PartyBalanceOut"
+            },
+            "title": "Parties",
+            "type": "array"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "required": [
+          "direction",
+          "total",
+          "overdue",
+          "buckets",
+          "parties",
+          "documents"
+        ],
+        "title": "OutstandingOut",
         "type": "object"
       },
       "PartnerCompanyOut": {
@@ -943,6 +3590,470 @@
           "activated_at"
         ],
         "title": "PartnerOut",
+        "type": "object"
+      },
+      "PartyBalanceOut": {
+        "properties": {
+          "advance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Advance"
+          },
+          "current": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Current"
+          },
+          "d1_30": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "D1 30"
+          },
+          "d31_60": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "D31 60"
+          },
+          "d61_90": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "D61 90"
+          },
+          "d90_plus": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "D90 Plus"
+          },
+          "documents": {
+            "title": "Documents",
+            "type": "integer"
+          },
+          "outstanding": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Outstanding"
+          },
+          "overdue": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Overdue"
+          },
+          "party": {
+            "$ref": "#/components/schemas/PartyOut"
+          }
+        },
+        "required": [
+          "party",
+          "documents",
+          "outstanding",
+          "overdue",
+          "current",
+          "d1_30",
+          "d31_60",
+          "d61_90",
+          "d90_plus",
+          "advance"
+        ],
+        "title": "PartyBalanceOut",
+        "type": "object"
+      },
+      "PartyOut": {
+        "properties": {
+          "gstin": {
+            "title": "Gstin",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "gstin",
+          "state"
+        ],
+        "title": "PartyOut",
+        "type": "object"
+      },
+      "PartyPaymentActionsOut": {
+        "properties": {
+          "approve": {
+            "title": "Approve",
+            "type": "boolean"
+          },
+          "cancel": {
+            "title": "Cancel",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "approve",
+          "cancel"
+        ],
+        "title": "PartyPaymentActionsOut",
+        "type": "object"
+      },
+      "PartyPaymentIn": {
+        "properties": {
+          "allocations": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/PaymentAllocationIn"
+            },
+            "title": "Allocations",
+            "type": "array"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Amount"
+          },
+          "bank_account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bank Account Id"
+          },
+          "direction": {
+            "title": "Direction",
+            "type": "string"
+          },
+          "mode": {
+            "default": "bank",
+            "title": "Mode",
+            "type": "string"
+          },
+          "notes": {
+            "default": "",
+            "title": "Notes",
+            "type": "string"
+          },
+          "party_id": {
+            "title": "Party Id",
+            "type": "integer"
+          },
+          "payment_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Date"
+          },
+          "reference": {
+            "default": "",
+            "title": "Reference",
+            "type": "string"
+          }
+        },
+        "required": [
+          "direction",
+          "party_id",
+          "amount"
+        ],
+        "title": "PartyPaymentIn",
+        "type": "object"
+      },
+      "PartyPaymentOut": {
+        "properties": {
+          "actions": {
+            "$ref": "#/components/schemas/PartyPaymentActionsOut"
+          },
+          "allocations": {
+            "items": {
+              "$ref": "#/components/schemas/PaymentAllocationOut"
+            },
+            "title": "Allocations",
+            "type": "array"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Amount"
+          },
+          "approved_by": {
+            "title": "Approved By",
+            "type": "string"
+          },
+          "bank_account": {
+            "title": "Bank Account",
+            "type": "string"
+          },
+          "cancel_reason": {
+            "title": "Cancel Reason",
+            "type": "string"
+          },
+          "created_by": {
+            "title": "Created By",
+            "type": "string"
+          },
+          "direction": {
+            "title": "Direction",
+            "type": "string"
+          },
+          "direction_label": {
+            "title": "Direction Label",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "mode_label": {
+            "title": "Mode Label",
+            "type": "string"
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "party": {
+            "$ref": "#/components/schemas/PartyOut"
+          },
+          "payment_date": {
+            "format": "date",
+            "title": "Payment Date",
+            "type": "string"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "rejection_reason": {
+            "title": "Rejection Reason",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "unallocated": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Unallocated"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "direction",
+          "direction_label",
+          "party",
+          "status",
+          "status_label",
+          "payment_date",
+          "amount",
+          "unallocated",
+          "mode",
+          "mode_label",
+          "reference",
+          "bank_account",
+          "notes",
+          "created_by",
+          "approved_by",
+          "rejection_reason",
+          "cancel_reason",
+          "allocations",
+          "warnings",
+          "actions"
+        ],
+        "title": "PartyPaymentOut",
+        "type": "object"
+      },
+      "PaymentAllocationIn": {
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Amount"
+          },
+          "document_id": {
+            "title": "Document Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "document_id",
+          "amount"
+        ],
+        "title": "PaymentAllocationIn",
+        "type": "object"
+      },
+      "PaymentAllocationOut": {
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Amount"
+          },
+          "document_id": {
+            "title": "Document Id",
+            "type": "integer"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "number",
+          "amount"
+        ],
+        "title": "PaymentAllocationOut",
+        "type": "object"
+      },
+      "PaymentOptionsOut": {
+        "properties": {
+          "bank_accounts": {
+            "items": {
+              "$ref": "#/components/schemas/OurBankAccountOut"
+            },
+            "title": "Bank Accounts",
+            "type": "array"
+          },
+          "modes": {
+            "items": {
+              "$ref": "#/components/schemas/ChoiceOut"
+            },
+            "title": "Modes",
+            "type": "array"
+          },
+          "needs_approval": {
+            "title": "Needs Approval",
+            "type": "boolean"
+          },
+          "parties": {
+            "items": {
+              "$ref": "#/components/schemas/PartyOut"
+            },
+            "title": "Parties",
+            "type": "array"
+          }
+        },
+        "required": [
+          "parties",
+          "bank_accounts",
+          "modes",
+          "needs_approval"
+        ],
+        "title": "PaymentOptionsOut",
         "type": "object"
       },
       "PaymentOut": {
@@ -1339,6 +4450,427 @@
         "title": "PlanOut",
         "type": "object"
       },
+      "ReasonIn": {
+        "properties": {
+          "reason": {
+            "default": "",
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "title": "ReasonIn",
+        "type": "object"
+      },
+      "ReceiptIn": {
+        "properties": {
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/ReceiptLineIn"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "notes": {
+            "default": "",
+            "title": "Notes",
+            "type": "string"
+          },
+          "received_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Received Date"
+          },
+          "supplier_challan": {
+            "default": "",
+            "title": "Supplier Challan",
+            "type": "string"
+          },
+          "vehicle_number": {
+            "default": "",
+            "title": "Vehicle Number",
+            "type": "string"
+          },
+          "warehouse_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Warehouse Id"
+          }
+        },
+        "required": [
+          "lines"
+        ],
+        "title": "ReceiptIn",
+        "type": "object"
+      },
+      "ReceiptLineIn": {
+        "properties": {
+          "order_line_id": {
+            "title": "Order Line Id",
+            "type": "integer"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          }
+        },
+        "required": [
+          "order_line_id",
+          "quantity"
+        ],
+        "title": "ReceiptLineIn",
+        "type": "object"
+      },
+      "ReceiptLineOut": {
+        "properties": {
+          "item_code": {
+            "title": "Item Code",
+            "type": "string"
+          },
+          "item_name": {
+            "title": "Item Name",
+            "type": "string"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_code",
+          "item_name",
+          "quantity",
+          "unit"
+        ],
+        "title": "ReceiptLineOut",
+        "type": "object"
+      },
+      "ReceiptOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/ReceiptLineOut"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "order_id": {
+            "title": "Order Id",
+            "type": "integer"
+          },
+          "order_number": {
+            "title": "Order Number",
+            "type": "string"
+          },
+          "received_by": {
+            "title": "Received By",
+            "type": "string"
+          },
+          "received_date": {
+            "format": "date",
+            "title": "Received Date",
+            "type": "string"
+          },
+          "supplier": {
+            "$ref": "#/components/schemas/PartyOut"
+          },
+          "supplier_challan": {
+            "title": "Supplier Challan",
+            "type": "string"
+          },
+          "vehicle_number": {
+            "title": "Vehicle Number",
+            "type": "string"
+          },
+          "warehouse": {
+            "title": "Warehouse",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "order_id",
+          "order_number",
+          "supplier",
+          "warehouse",
+          "received_date",
+          "supplier_challan",
+          "vehicle_number",
+          "notes",
+          "received_by",
+          "lines"
+        ],
+        "title": "ReceiptOut",
+        "type": "object"
+      },
+      "ReceivedOrderOut": {
+        "properties": {
+          "buyer": {
+            "$ref": "#/components/schemas/PartyOut"
+          },
+          "can_reply": {
+            "title": "Can Reply",
+            "type": "boolean"
+          },
+          "cgst": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Cgst"
+          },
+          "decline_reason": {
+            "title": "Decline Reason",
+            "type": "string"
+          },
+          "expected_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Date"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "igst": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Igst"
+          },
+          "is_interstate": {
+            "title": "Is Interstate",
+            "type": "boolean"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/OrderLineOut"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "order_date": {
+            "format": "date",
+            "title": "Order Date",
+            "type": "string"
+          },
+          "payment_terms_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Terms Days"
+          },
+          "place_of_supply": {
+            "title": "Place Of Supply",
+            "type": "string"
+          },
+          "responded_by": {
+            "title": "Responded By",
+            "type": "string"
+          },
+          "round_off": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Round Off"
+          },
+          "sales_order_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sales Order Id"
+          },
+          "sales_order_number": {
+            "title": "Sales Order Number",
+            "type": "string"
+          },
+          "sgst": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Sgst"
+          },
+          "ship_to": {
+            "title": "Ship To",
+            "type": "string"
+          },
+          "ship_to_address": {
+            "title": "Ship To Address",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "suggested_items": {
+            "additionalProperties": true,
+            "title": "Suggested Items",
+            "type": "object"
+          },
+          "supplier": {
+            "$ref": "#/components/schemas/PartyOut"
+          },
+          "supplier_on_network": {
+            "title": "Supplier On Network",
+            "type": "boolean"
+          },
+          "supplier_response": {
+            "title": "Supplier Response",
+            "type": "string"
+          },
+          "supplier_response_label": {
+            "title": "Supplier Response Label",
+            "type": "string"
+          },
+          "taxable_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Taxable Value"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "required": [
+          "place_of_supply",
+          "is_interstate",
+          "taxable_value",
+          "cgst",
+          "sgst",
+          "igst",
+          "round_off",
+          "total",
+          "id",
+          "number",
+          "status",
+          "status_label",
+          "order_date",
+          "expected_date",
+          "supplier",
+          "ship_to",
+          "supplier_on_network",
+          "supplier_response",
+          "supplier_response_label",
+          "buyer",
+          "ship_to_address",
+          "payment_terms_days",
+          "notes",
+          "lines",
+          "decline_reason",
+          "responded_by",
+          "sales_order_id",
+          "sales_order_number",
+          "can_reply",
+          "suggested_items"
+        ],
+        "title": "ReceivedOrderOut",
+        "type": "object"
+      },
       "RoleIn": {
         "properties": {
           "description": {
@@ -1496,6 +5028,660 @@
         "title": "RoleUpdateIn",
         "type": "object"
       },
+      "SalesActionsOut": {
+        "properties": {
+          "approve": {
+            "title": "Approve",
+            "type": "boolean"
+          },
+          "cancel": {
+            "title": "Cancel",
+            "type": "boolean"
+          },
+          "close": {
+            "title": "Close",
+            "type": "boolean"
+          },
+          "dispatch": {
+            "title": "Dispatch",
+            "type": "boolean"
+          },
+          "edit": {
+            "title": "Edit",
+            "type": "boolean"
+          },
+          "invoice": {
+            "title": "Invoice",
+            "type": "boolean"
+          },
+          "submit": {
+            "title": "Submit",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "edit",
+          "submit",
+          "approve",
+          "cancel",
+          "close",
+          "dispatch",
+          "invoice"
+        ],
+        "title": "SalesActionsOut",
+        "type": "object"
+      },
+      "SalesLineIn": {
+        "properties": {
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "gst_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gst Rate"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate"
+          }
+        },
+        "required": [
+          "item_id",
+          "quantity"
+        ],
+        "title": "SalesLineIn",
+        "type": "object"
+      },
+      "SalesLineOut": {
+        "properties": {
+          "customer_item": {
+            "title": "Customer Item",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "dispatched_quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Dispatched Quantity"
+          },
+          "gst_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Gst Rate"
+          },
+          "hsn_code": {
+            "title": "Hsn Code",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "invoiceable_quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Invoiceable Quantity"
+          },
+          "invoiced_quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Invoiced Quantity"
+          },
+          "item_code": {
+            "title": "Item Code",
+            "type": "string"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "item_name": {
+            "title": "Item Name",
+            "type": "string"
+          },
+          "on_hand": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "On Hand"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Rate"
+          },
+          "tax_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Tax Amount"
+          },
+          "taxable_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Taxable Value"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "item_id",
+          "item_code",
+          "item_name",
+          "hsn_code",
+          "description",
+          "customer_item",
+          "quantity",
+          "unit",
+          "rate",
+          "gst_rate",
+          "taxable_value",
+          "tax_amount",
+          "dispatched_quantity",
+          "invoiced_quantity",
+          "invoiceable_quantity",
+          "on_hand"
+        ],
+        "title": "SalesLineOut",
+        "type": "object"
+      },
+      "SalesOrderIn": {
+        "properties": {
+          "customer_id": {
+            "title": "Customer Id",
+            "type": "integer"
+          },
+          "customer_po_number": {
+            "default": "",
+            "title": "Customer Po Number",
+            "type": "string"
+          },
+          "delivery_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delivery Date"
+          },
+          "dispatch_from_id": {
+            "title": "Dispatch From Id",
+            "type": "integer"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/SalesLineIn"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "notes": {
+            "default": "",
+            "title": "Notes",
+            "type": "string"
+          },
+          "order_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order Date"
+          },
+          "payment_terms_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Terms Days"
+          },
+          "ship_to": {
+            "default": "",
+            "title": "Ship To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "dispatch_from_id",
+          "lines"
+        ],
+        "title": "SalesOrderIn",
+        "type": "object"
+      },
+      "SalesOrderOut": {
+        "properties": {
+          "actions": {
+            "$ref": "#/components/schemas/SalesActionsOut"
+          },
+          "approved_by": {
+            "title": "Approved By",
+            "type": "string"
+          },
+          "cancel_needs_reason": {
+            "title": "Cancel Needs Reason",
+            "type": "boolean"
+          },
+          "cgst": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Cgst"
+          },
+          "created_by": {
+            "title": "Created By",
+            "type": "string"
+          },
+          "customer": {
+            "$ref": "#/components/schemas/PartyOut"
+          },
+          "customer_po_number": {
+            "title": "Customer Po Number",
+            "type": "string"
+          },
+          "delivery_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delivery Date"
+          },
+          "dispatch_from": {
+            "title": "Dispatch From",
+            "type": "string"
+          },
+          "dispatch_from_id": {
+            "title": "Dispatch From Id",
+            "type": "integer"
+          },
+          "dispatches": {
+            "items": {
+              "$ref": "#/components/schemas/DocRefOut"
+            },
+            "title": "Dispatches",
+            "type": "array"
+          },
+          "from_purchase_order": {
+            "title": "From Purchase Order",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "igst": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Igst"
+          },
+          "invoices": {
+            "items": {
+              "$ref": "#/components/schemas/DocRefOut"
+            },
+            "title": "Invoices",
+            "type": "array"
+          },
+          "is_interstate": {
+            "title": "Is Interstate",
+            "type": "boolean"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/SalesLineOut"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "order_date": {
+            "format": "date",
+            "title": "Order Date",
+            "type": "string"
+          },
+          "payment_terms_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Terms Days"
+          },
+          "place_of_supply": {
+            "title": "Place Of Supply",
+            "type": "string"
+          },
+          "rejection_reason": {
+            "title": "Rejection Reason",
+            "type": "string"
+          },
+          "round_off": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Round Off"
+          },
+          "sgst": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Sgst"
+          },
+          "ship_to": {
+            "title": "Ship To",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "submit_needs_approval": {
+            "title": "Submit Needs Approval",
+            "type": "boolean"
+          },
+          "taxable_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Taxable Value"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "status",
+          "status_label",
+          "order_date",
+          "delivery_date",
+          "customer",
+          "customer_po_number",
+          "from_purchase_order",
+          "dispatch_from",
+          "taxable_value",
+          "total",
+          "place_of_supply",
+          "is_interstate",
+          "cgst",
+          "sgst",
+          "igst",
+          "round_off",
+          "dispatch_from_id",
+          "ship_to",
+          "payment_terms_days",
+          "notes",
+          "rejection_reason",
+          "created_by",
+          "approved_by",
+          "lines",
+          "dispatches",
+          "invoices",
+          "actions",
+          "submit_needs_approval",
+          "cancel_needs_reason"
+        ],
+        "title": "SalesOrderOut",
+        "type": "object"
+      },
+      "SalesSummaryOut": {
+        "properties": {
+          "customer": {
+            "$ref": "#/components/schemas/PartyOut"
+          },
+          "customer_po_number": {
+            "title": "Customer Po Number",
+            "type": "string"
+          },
+          "delivery_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delivery Date"
+          },
+          "dispatch_from": {
+            "title": "Dispatch From",
+            "type": "string"
+          },
+          "from_purchase_order": {
+            "title": "From Purchase Order",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "order_date": {
+            "format": "date",
+            "title": "Order Date",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "taxable_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Taxable Value"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "status",
+          "status_label",
+          "order_date",
+          "delivery_date",
+          "customer",
+          "customer_po_number",
+          "from_purchase_order",
+          "dispatch_from",
+          "taxable_value",
+          "total"
+        ],
+        "title": "SalesSummaryOut",
+        "type": "object"
+      },
       "SearchResultOut": {
         "properties": {
           "city": {
@@ -1614,6 +5800,68 @@
           "teams_included"
         ],
         "title": "SeatsOut",
+        "type": "object"
+      },
+      "StockRowOut": {
+        "properties": {
+          "item_code": {
+            "title": "Item Code",
+            "type": "string"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "item_name": {
+            "title": "Item Name",
+            "type": "string"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Value"
+          },
+          "warehouse_id": {
+            "title": "Warehouse Id",
+            "type": "integer"
+          },
+          "warehouse_name": {
+            "title": "Warehouse Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_id",
+          "item_code",
+          "item_name",
+          "unit",
+          "warehouse_id",
+          "warehouse_name",
+          "quantity",
+          "value"
+        ],
+        "title": "StockRowOut",
         "type": "object"
       },
       "SubscriptionOut": {
@@ -1743,6 +5991,51 @@
           "next_extra_light_users"
         ],
         "title": "SubscriptionOut",
+        "type": "object"
+      },
+      "SupplierOut": {
+        "properties": {
+          "gstin": {
+            "title": "Gstin",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "payment_terms_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Terms Days"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "vendor_code": {
+            "title": "Vendor Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "gstin",
+          "state",
+          "payment_terms_days",
+          "vendor_code"
+        ],
+        "title": "SupplierOut",
         "type": "object"
       },
       "SwitchIn": {
@@ -1927,10 +6220,143 @@
         ],
         "title": "UserOut",
         "type": "object"
+      },
+      "WarehouseIn": {
+        "properties": {
+          "address_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Id"
+          },
+          "code": {
+            "default": "",
+            "title": "Code",
+            "type": "string"
+          },
+          "is_active": {
+            "default": true,
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "is_default": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Default"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "WarehouseIn",
+        "type": "object"
+      },
+      "WarehouseOut": {
+        "properties": {
+          "address": {
+            "title": "Address",
+            "type": "string"
+          },
+          "address_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Id"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "has_stock": {
+            "title": "Has Stock",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "is_default": {
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "code",
+          "address_id",
+          "address",
+          "is_default",
+          "is_active",
+          "has_stock"
+        ],
+        "title": "WarehouseOut",
+        "type": "object"
+      },
+      "WarehousesOut": {
+        "properties": {
+          "included": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Included"
+          },
+          "used": {
+            "title": "Used",
+            "type": "integer"
+          },
+          "warehouses": {
+            "items": {
+              "$ref": "#/components/schemas/WarehouseOut"
+            },
+            "title": "Warehouses",
+            "type": "array"
+          }
+        },
+        "required": [
+          "warehouses",
+          "used",
+          "included"
+        ],
+        "title": "WarehousesOut",
+        "type": "object"
       }
     },
     "securitySchemes": {
-      "SessionAuth": {
+      "TabSessionAuth": {
         "in": "cookie",
         "name": "sessionid",
         "type": "apiKey"
@@ -1944,6 +6370,97 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/accounts/outstanding": {
+      "get": {
+        "description": "Receivables (direction=received: customers owe us) or payables\n(direction=made: we owe suppliers), with ageing by days overdue.",
+        "operationId": "finance_api_outstanding",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "direction",
+            "required": true,
+            "schema": {
+              "title": "Direction",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "party_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Party Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutstandingOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Outstanding",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/api/v1/accounts/payment-options": {
+      "get": {
+        "operationId": "finance_api_payment_options",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "direction",
+            "required": true,
+            "schema": {
+              "title": "Direction",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentOptionsOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Payment Options",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
     "/api/v1/billing": {
       "get": {
         "operationId": "billing_api_get_billing",
@@ -1962,7 +6479,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "Get Billing",
@@ -1989,7 +6506,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "Cancel Subscription",
@@ -2026,7 +6543,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "Choose Plan",
@@ -2053,12 +6570,74 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "Reactivate Subscription",
         "tags": [
           "billing"
+        ]
+      }
+    },
+    "/api/v1/dispatches": {
+      "get": {
+        "operationId": "sales_api_list_dispatches",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DispatchOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "List Dispatches",
+        "tags": [
+          "sales"
+        ]
+      }
+    },
+    "/api/v1/goods-receipts": {
+      "get": {
+        "operationId": "purchase_api_list_receipts",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReceiptOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "List Receipts",
+        "tags": [
+          "purchase"
         ]
       }
     },
@@ -2074,6 +6653,212 @@
         "summary": "Health",
         "tags": [
           "platform"
+        ]
+      }
+    },
+    "/api/v1/inventory/options": {
+      "get": {
+        "description": "The choices item forms offer.",
+        "operationId": "inventory_api_inventory_options",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryOptionsOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Inventory Options",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
+    "/api/v1/items": {
+      "get": {
+        "operationId": "inventory_api_list_items",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Kind",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "active",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Active"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ItemOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "List Items",
+        "tags": [
+          "inventory"
+        ]
+      },
+      "post": {
+        "operationId": "inventory_api_create_item",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItemIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Create Item",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
+    "/api/v1/items/{item_id}": {
+      "delete": {
+        "operationId": "inventory_api_delete_item",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Delete Item",
+        "tags": [
+          "inventory"
+        ]
+      },
+      "put": {
+        "operationId": "inventory_api_update_item",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItemIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Update Item",
+        "tags": [
+          "inventory"
         ]
       }
     },
@@ -2095,7 +6880,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "Get Me",
@@ -2130,7 +6915,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "Update Me",
@@ -2167,7 +6952,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "Switch Organization",
@@ -2194,7 +6979,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "Get Organization",
@@ -2229,7 +7014,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "Update Organization",
@@ -2260,7 +7045,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "List Addresses",
@@ -2295,7 +7080,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "Create Address",
@@ -2325,7 +7110,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "Delete Address",
@@ -2370,7 +7155,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "Update Address",
@@ -2401,7 +7186,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "List Bank Accounts",
@@ -2436,7 +7221,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "Create Bank Account",
@@ -2466,7 +7251,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "Delete Bank Account",
@@ -2511,7 +7296,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "Update Bank Account",
@@ -2543,7 +7328,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "List Permissions",
@@ -2574,7 +7359,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "List Partners",
@@ -2609,7 +7394,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "Connect Partner",
@@ -2651,7 +7436,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "Search Partners",
@@ -2698,7 +7483,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "Update Partner Terms",
@@ -2735,7 +7520,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "Accept Partner",
@@ -2772,7 +7557,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "Block Partner",
@@ -2802,7 +7587,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "Decline Partner",
@@ -2839,12 +7624,230 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "Unblock Partner",
         "tags": [
           "partners"
+        ]
+      }
+    },
+    "/api/v1/payments": {
+      "get": {
+        "operationId": "finance_api_list_payments",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "direction",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Direction",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Status",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PartyPaymentOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "List Payments",
+        "tags": [
+          "accounts"
+        ]
+      },
+      "post": {
+        "operationId": "finance_api_record_payment",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PartyPaymentIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartyPaymentOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Record Payment",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/api/v1/payments/{payment_id}/approve": {
+      "post": {
+        "operationId": "finance_api_approve_payment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "payment_id",
+            "required": true,
+            "schema": {
+              "title": "Payment Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartyPaymentOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Approve Payment",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/api/v1/payments/{payment_id}/cancel": {
+      "post": {
+        "operationId": "finance_api_cancel_payment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "payment_id",
+            "required": true,
+            "schema": {
+              "title": "Payment Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartyPaymentOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Cancel Payment",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/api/v1/payments/{payment_id}/reject": {
+      "post": {
+        "operationId": "finance_api_reject_payment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "payment_id",
+            "required": true,
+            "schema": {
+              "title": "Payment Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartyPaymentOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Reject Payment",
+        "tags": [
+          "accounts"
         ]
       }
     },
@@ -2866,7 +7869,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "List People",
@@ -2903,7 +7906,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "Create Invitation",
@@ -2933,7 +7936,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "Revoke Invitation",
@@ -2970,7 +7973,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "Resend Invitation",
@@ -3017,7 +8020,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "Update Member",
@@ -3080,6 +8083,822 @@
         ]
       }
     },
+    "/api/v1/purchase-bills": {
+      "get": {
+        "operationId": "purchase_api_list_bills",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Status",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BillOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "List Bills",
+        "tags": [
+          "purchase"
+        ]
+      },
+      "post": {
+        "operationId": "purchase_api_create_bill",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Create Bill",
+        "tags": [
+          "purchase"
+        ]
+      }
+    },
+    "/api/v1/purchase-bills/{bill_id}": {
+      "delete": {
+        "operationId": "purchase_api_delete_bill",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bill_id",
+            "required": true,
+            "schema": {
+              "title": "Bill Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Delete Bill",
+        "tags": [
+          "purchase"
+        ]
+      },
+      "get": {
+        "operationId": "purchase_api_get_bill",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bill_id",
+            "required": true,
+            "schema": {
+              "title": "Bill Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Get Bill",
+        "tags": [
+          "purchase"
+        ]
+      },
+      "put": {
+        "operationId": "purchase_api_update_bill",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bill_id",
+            "required": true,
+            "schema": {
+              "title": "Bill Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Update Bill",
+        "tags": [
+          "purchase"
+        ]
+      }
+    },
+    "/api/v1/purchase-bills/{bill_id}/approve": {
+      "post": {
+        "operationId": "purchase_api_approve_bill",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bill_id",
+            "required": true,
+            "schema": {
+              "title": "Bill Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Approve Bill",
+        "tags": [
+          "purchase"
+        ]
+      }
+    },
+    "/api/v1/purchase-bills/{bill_id}/cancel": {
+      "post": {
+        "operationId": "purchase_api_cancel_bill",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bill_id",
+            "required": true,
+            "schema": {
+              "title": "Bill Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Cancel Bill",
+        "tags": [
+          "purchase"
+        ]
+      }
+    },
+    "/api/v1/purchase-bills/{bill_id}/reject": {
+      "post": {
+        "operationId": "purchase_api_reject_bill",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bill_id",
+            "required": true,
+            "schema": {
+              "title": "Bill Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Reject Bill",
+        "tags": [
+          "purchase"
+        ]
+      }
+    },
+    "/api/v1/purchase-bills/{bill_id}/submit": {
+      "post": {
+        "operationId": "purchase_api_submit_bill",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bill_id",
+            "required": true,
+            "schema": {
+              "title": "Bill Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Submit Bill",
+        "tags": [
+          "purchase"
+        ]
+      }
+    },
+    "/api/v1/purchase-orders": {
+      "get": {
+        "operationId": "purchase_api_list_orders",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Status",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Q",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OrderSummaryOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "List Orders",
+        "tags": [
+          "purchase"
+        ]
+      },
+      "post": {
+        "operationId": "purchase_api_create_order",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Create Order",
+        "tags": [
+          "purchase"
+        ]
+      }
+    },
+    "/api/v1/purchase-orders/{order_id}": {
+      "delete": {
+        "operationId": "purchase_api_delete_order",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "title": "Order Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Delete Order",
+        "tags": [
+          "purchase"
+        ]
+      },
+      "get": {
+        "operationId": "purchase_api_get_order",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "title": "Order Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Get Order",
+        "tags": [
+          "purchase"
+        ]
+      },
+      "put": {
+        "operationId": "purchase_api_update_order",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "title": "Order Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Update Order",
+        "tags": [
+          "purchase"
+        ]
+      }
+    },
+    "/api/v1/purchase-orders/{order_id}/approve": {
+      "post": {
+        "operationId": "purchase_api_approve_order",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "title": "Order Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Approve Order",
+        "tags": [
+          "purchase"
+        ]
+      }
+    },
+    "/api/v1/purchase-orders/{order_id}/cancel": {
+      "post": {
+        "operationId": "purchase_api_cancel_order",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "title": "Order Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Cancel Order",
+        "tags": [
+          "purchase"
+        ]
+      }
+    },
+    "/api/v1/purchase-orders/{order_id}/close": {
+      "post": {
+        "operationId": "purchase_api_close_order",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "title": "Order Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Close Order",
+        "tags": [
+          "purchase"
+        ]
+      }
+    },
+    "/api/v1/purchase-orders/{order_id}/receipts": {
+      "post": {
+        "operationId": "purchase_api_receive",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "title": "Order Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceiptIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Receive",
+        "tags": [
+          "purchase"
+        ]
+      }
+    },
+    "/api/v1/purchase-orders/{order_id}/reject": {
+      "post": {
+        "operationId": "purchase_api_reject_order",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "title": "Order Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Reject Order",
+        "tags": [
+          "purchase"
+        ]
+      }
+    },
+    "/api/v1/purchase-orders/{order_id}/submit": {
+      "post": {
+        "operationId": "purchase_api_submit_order",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "title": "Order Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Submit Order",
+        "tags": [
+          "purchase"
+        ]
+      }
+    },
+    "/api/v1/purchase/suppliers": {
+      "get": {
+        "description": "Organizations this one can order from (active relationships where it buys).",
+        "operationId": "purchase_api_list_suppliers",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SupplierOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "List Suppliers",
+        "tags": [
+          "purchase"
+        ]
+      }
+    },
     "/api/v1/roles": {
       "get": {
         "operationId": "organizations_app_api_list_roles",
@@ -3102,7 +8921,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "List Roles",
@@ -3137,7 +8956,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "Create Role",
@@ -3157,7 +8976,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/RoleOut"
+                    "$ref": "#/components/schemas/DefaultRoleOut"
                   },
                   "title": "Response",
                   "type": "array"
@@ -3194,7 +9013,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "Delete Role",
@@ -3239,12 +9058,1016 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "Update Role",
         "tags": [
           "roles"
+        ]
+      }
+    },
+    "/api/v1/sales-invoices": {
+      "get": {
+        "operationId": "sales_api_list_invoices",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Status",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/InvoiceOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "List Invoices",
+        "tags": [
+          "sales"
+        ]
+      },
+      "post": {
+        "operationId": "sales_api_create_invoice",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvoiceIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Create Invoice",
+        "tags": [
+          "sales"
+        ]
+      }
+    },
+    "/api/v1/sales-invoices/{invoice_id}": {
+      "delete": {
+        "operationId": "sales_api_delete_invoice",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invoice_id",
+            "required": true,
+            "schema": {
+              "title": "Invoice Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Delete Invoice",
+        "tags": [
+          "sales"
+        ]
+      },
+      "get": {
+        "operationId": "sales_api_get_invoice",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invoice_id",
+            "required": true,
+            "schema": {
+              "title": "Invoice Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Get Invoice",
+        "tags": [
+          "sales"
+        ]
+      },
+      "put": {
+        "operationId": "sales_api_update_invoice",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invoice_id",
+            "required": true,
+            "schema": {
+              "title": "Invoice Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvoiceIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Update Invoice",
+        "tags": [
+          "sales"
+        ]
+      }
+    },
+    "/api/v1/sales-invoices/{invoice_id}/cancel": {
+      "post": {
+        "operationId": "sales_api_cancel_invoice",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invoice_id",
+            "required": true,
+            "schema": {
+              "title": "Invoice Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Cancel Invoice",
+        "tags": [
+          "sales"
+        ]
+      }
+    },
+    "/api/v1/sales-invoices/{invoice_id}/post": {
+      "post": {
+        "operationId": "sales_api_post_invoice",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invoice_id",
+            "required": true,
+            "schema": {
+              "title": "Invoice Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Post Invoice",
+        "tags": [
+          "sales"
+        ]
+      }
+    },
+    "/api/v1/sales-orders": {
+      "get": {
+        "operationId": "sales_api_list_sales_orders",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Status",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Q",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SalesSummaryOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "List Sales Orders",
+        "tags": [
+          "sales"
+        ]
+      },
+      "post": {
+        "operationId": "sales_api_create_sales_order",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesOrderIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Create Sales Order",
+        "tags": [
+          "sales"
+        ]
+      }
+    },
+    "/api/v1/sales-orders/{order_id}": {
+      "delete": {
+        "operationId": "sales_api_delete_sales_order",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "title": "Order Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Delete Sales Order",
+        "tags": [
+          "sales"
+        ]
+      },
+      "get": {
+        "operationId": "sales_api_get_sales_order",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "title": "Order Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Get Sales Order",
+        "tags": [
+          "sales"
+        ]
+      },
+      "put": {
+        "operationId": "sales_api_update_sales_order",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "title": "Order Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesOrderIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Update Sales Order",
+        "tags": [
+          "sales"
+        ]
+      }
+    },
+    "/api/v1/sales-orders/{order_id}/approve": {
+      "post": {
+        "operationId": "sales_api_approve_sales_order",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "title": "Order Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Approve Sales Order",
+        "tags": [
+          "sales"
+        ]
+      }
+    },
+    "/api/v1/sales-orders/{order_id}/cancel": {
+      "post": {
+        "operationId": "sales_api_cancel_sales_order",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "title": "Order Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Cancel Sales Order",
+        "tags": [
+          "sales"
+        ]
+      }
+    },
+    "/api/v1/sales-orders/{order_id}/close": {
+      "post": {
+        "operationId": "sales_api_close_sales_order",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "title": "Order Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Close Sales Order",
+        "tags": [
+          "sales"
+        ]
+      }
+    },
+    "/api/v1/sales-orders/{order_id}/dispatches": {
+      "post": {
+        "operationId": "sales_api_dispatch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "title": "Order Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DispatchIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DispatchOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Dispatch",
+        "tags": [
+          "sales"
+        ]
+      }
+    },
+    "/api/v1/sales-orders/{order_id}/reject": {
+      "post": {
+        "operationId": "sales_api_reject_sales_order",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "title": "Order Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Reject Sales Order",
+        "tags": [
+          "sales"
+        ]
+      }
+    },
+    "/api/v1/sales-orders/{order_id}/submit": {
+      "post": {
+        "operationId": "sales_api_submit_sales_order",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "title": "Order Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Submit Sales Order",
+        "tags": [
+          "sales"
+        ]
+      }
+    },
+    "/api/v1/sales/customers": {
+      "get": {
+        "operationId": "sales_api_list_customers",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CustomerOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "List Customers",
+        "tags": [
+          "sales"
+        ]
+      }
+    },
+    "/api/v1/sales/orders-received": {
+      "get": {
+        "description": "Purchase orders customers on MakeSetu have issued to this organization:\nthe same rows they see under Purchase, nothing copied.",
+        "operationId": "sales_api_list_orders_received",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReceivedOrderOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "List Orders Received",
+        "tags": [
+          "sales"
+        ]
+      }
+    },
+    "/api/v1/sales/orders-received/{po_id}/accept": {
+      "post": {
+        "operationId": "sales_api_accept_order",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "po_id",
+            "required": true,
+            "schema": {
+              "title": "Po Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Accept Order",
+        "tags": [
+          "sales"
+        ]
+      }
+    },
+    "/api/v1/sales/orders-received/{po_id}/decline": {
+      "post": {
+        "operationId": "sales_api_decline_order",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "po_id",
+            "required": true,
+            "schema": {
+              "title": "Po Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Decline Order",
+        "tags": [
+          "sales"
+        ]
+      }
+    },
+    "/api/v1/stock": {
+      "get": {
+        "operationId": "inventory_api_stock",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "warehouse_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Warehouse Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "item_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StockRowOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Stock",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
+    "/api/v1/stock/opening": {
+      "get": {
+        "operationId": "inventory_api_list_opening",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OpeningOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "List Opening",
+        "tags": [
+          "inventory"
+        ]
+      },
+      "put": {
+        "description": "Sets an item's opening stock in a warehouse; a quantity of 0 removes it.",
+        "operationId": "inventory_api_set_opening",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpeningIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpeningOut"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Set Opening",
+        "tags": [
+          "inventory"
         ]
       }
     },
@@ -3270,7 +10093,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "List Teams",
@@ -3305,7 +10128,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "Create Team",
@@ -3335,7 +10158,7 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "Delete Team",
@@ -3380,12 +10203,149 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TabSessionAuth": []
           }
         ],
         "summary": "Update Team",
         "tags": [
           "teams"
+        ]
+      }
+    },
+    "/api/v1/warehouses": {
+      "get": {
+        "operationId": "inventory_api_list_warehouses",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WarehousesOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "List Warehouses",
+        "tags": [
+          "inventory"
+        ]
+      },
+      "post": {
+        "operationId": "inventory_api_create_warehouse",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WarehouseIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WarehouseOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Create Warehouse",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
+    "/api/v1/warehouses/{warehouse_id}": {
+      "delete": {
+        "operationId": "inventory_api_delete_warehouse",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "warehouse_id",
+            "required": true,
+            "schema": {
+              "title": "Warehouse Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Delete Warehouse",
+        "tags": [
+          "inventory"
+        ]
+      },
+      "put": {
+        "operationId": "inventory_api_update_warehouse",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "warehouse_id",
+            "required": true,
+            "schema": {
+              "title": "Warehouse Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WarehouseIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WarehouseOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Update Warehouse",
+        "tags": [
+          "inventory"
         ]
       }
     }

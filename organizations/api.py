@@ -24,7 +24,7 @@ class PlanOut(Schema):
     features: List[str]
 
 
-class RoleOut(Schema):
+class DefaultRoleOut(Schema):
     key: str
     name: str
     description: str
@@ -44,7 +44,7 @@ def plans(request):
     ]
 
 
-@router.get("/roles/defaults", response=List[RoleOut], auth=None)
+@router.get("/roles/defaults", response=List[DefaultRoleOut], auth=None)
 def default_roles(request):
     """The roles every new organization starts with, and what each allows."""
     return [

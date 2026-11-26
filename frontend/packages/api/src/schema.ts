@@ -4,6 +4,44 @@
  */
 
 export interface paths {
+    "/api/v1/accounts/outstanding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Outstanding
+         * @description Receivables (direction=received: customers owe us) or payables
+         *     (direction=made: we owe suppliers), with ageing by days overdue.
+         */
+        get: operations["finance_api_outstanding"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/accounts/payment-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Payment Options */
+        get: operations["finance_api_payment_options"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/billing": {
         parameters: {
             query?: never;
@@ -72,6 +110,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dispatches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Dispatches */
+        get: operations["sales_api_list_dispatches"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/goods-receipts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Receipts */
+        get: operations["purchase_api_list_receipts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -84,6 +156,62 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Inventory Options
+         * @description The choices item forms offer.
+         */
+        get: operations["inventory_api_inventory_options"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Items */
+        get: operations["inventory_api_list_items"];
+        put?: never;
+        /** Create Item */
+        post: operations["inventory_api_create_item"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/items/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Item */
+        put: operations["inventory_api_update_item"];
+        post?: never;
+        /** Delete Item */
+        delete: operations["inventory_api_delete_item"];
         options?: never;
         head?: never;
         patch?: never;
@@ -354,6 +482,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Payments */
+        get: operations["finance_api_list_payments"];
+        put?: never;
+        /** Record Payment */
+        post: operations["finance_api_record_payment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments/{payment_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve Payment */
+        post: operations["finance_api_approve_payment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments/{payment_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Payment */
+        post: operations["finance_api_cancel_payment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments/{payment_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject Payment */
+        post: operations["finance_api_reject_payment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/people": {
         parameters: {
             query?: never;
@@ -477,6 +674,270 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/purchase-bills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Bills */
+        get: operations["purchase_api_list_bills"];
+        put?: never;
+        /** Create Bill */
+        post: operations["purchase_api_create_bill"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchase-bills/{bill_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Bill */
+        get: operations["purchase_api_get_bill"];
+        /** Update Bill */
+        put: operations["purchase_api_update_bill"];
+        post?: never;
+        /** Delete Bill */
+        delete: operations["purchase_api_delete_bill"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchase-bills/{bill_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve Bill */
+        post: operations["purchase_api_approve_bill"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchase-bills/{bill_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Bill */
+        post: operations["purchase_api_cancel_bill"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchase-bills/{bill_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject Bill */
+        post: operations["purchase_api_reject_bill"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchase-bills/{bill_id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit Bill */
+        post: operations["purchase_api_submit_bill"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchase-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Orders */
+        get: operations["purchase_api_list_orders"];
+        put?: never;
+        /** Create Order */
+        post: operations["purchase_api_create_order"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchase-orders/{order_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Order */
+        get: operations["purchase_api_get_order"];
+        /** Update Order */
+        put: operations["purchase_api_update_order"];
+        post?: never;
+        /** Delete Order */
+        delete: operations["purchase_api_delete_order"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchase-orders/{order_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve Order */
+        post: operations["purchase_api_approve_order"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchase-orders/{order_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Order */
+        post: operations["purchase_api_cancel_order"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchase-orders/{order_id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Close Order */
+        post: operations["purchase_api_close_order"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchase-orders/{order_id}/receipts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Receive */
+        post: operations["purchase_api_receive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchase-orders/{order_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject Order */
+        post: operations["purchase_api_reject_order"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchase-orders/{order_id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit Order */
+        post: operations["purchase_api_submit_order"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchase/suppliers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Suppliers
+         * @description Organizations this one can order from (active relationships where it buys).
+         */
+        get: operations["purchase_api_list_suppliers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/roles": {
         parameters: {
             query?: never;
@@ -533,6 +994,326 @@ export interface paths {
         patch: operations["organizations_app_api_update_role"];
         trace?: never;
     };
+    "/api/v1/sales-invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Invoices */
+        get: operations["sales_api_list_invoices"];
+        put?: never;
+        /** Create Invoice */
+        post: operations["sales_api_create_invoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-invoices/{invoice_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Invoice */
+        get: operations["sales_api_get_invoice"];
+        /** Update Invoice */
+        put: operations["sales_api_update_invoice"];
+        post?: never;
+        /** Delete Invoice */
+        delete: operations["sales_api_delete_invoice"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-invoices/{invoice_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Invoice */
+        post: operations["sales_api_cancel_invoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-invoices/{invoice_id}/post": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Invoice */
+        post: operations["sales_api_post_invoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Sales Orders */
+        get: operations["sales_api_list_sales_orders"];
+        put?: never;
+        /** Create Sales Order */
+        post: operations["sales_api_create_sales_order"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{order_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Sales Order */
+        get: operations["sales_api_get_sales_order"];
+        /** Update Sales Order */
+        put: operations["sales_api_update_sales_order"];
+        post?: never;
+        /** Delete Sales Order */
+        delete: operations["sales_api_delete_sales_order"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{order_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve Sales Order */
+        post: operations["sales_api_approve_sales_order"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{order_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Sales Order */
+        post: operations["sales_api_cancel_sales_order"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{order_id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Close Sales Order */
+        post: operations["sales_api_close_sales_order"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{order_id}/dispatches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dispatch */
+        post: operations["sales_api_dispatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{order_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject Sales Order */
+        post: operations["sales_api_reject_sales_order"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{order_id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit Sales Order */
+        post: operations["sales_api_submit_sales_order"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales/customers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Customers */
+        get: operations["sales_api_list_customers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales/orders-received": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Orders Received
+         * @description Purchase orders customers on MakeSetu have issued to this organization:
+         *     the same rows they see under Purchase, nothing copied.
+         */
+        get: operations["sales_api_list_orders_received"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales/orders-received/{po_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept Order */
+        post: operations["sales_api_accept_order"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales/orders-received/{po_id}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decline Order */
+        post: operations["sales_api_decline_order"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Stock */
+        get: operations["inventory_api_stock"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stock/opening": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Opening */
+        get: operations["inventory_api_list_opening"];
+        /**
+         * Set Opening
+         * @description Sets an item's opening stock in a warehouse; a quantity of 0 removes it.
+         */
+        put: operations["inventory_api_set_opening"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams": {
         parameters: {
             query?: never;
@@ -569,10 +1350,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/warehouses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Warehouses */
+        get: operations["inventory_api_list_warehouses"];
+        put?: never;
+        /** Create Warehouse */
+        post: operations["inventory_api_create_warehouse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/warehouses/{warehouse_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Warehouse */
+        put: operations["inventory_api_update_warehouse"];
+        post?: never;
+        /** Delete Warehouse */
+        delete: operations["inventory_api_delete_warehouse"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AcceptIn */
+        AcceptIn: {
+            /** Dispatch From Id */
+            dispatch_from_id: number;
+            /** Lines */
+            lines: components["schemas"]["AcceptLineIn"][];
+        };
+        /** AcceptLineIn */
+        AcceptLineIn: {
+            /** Item Id */
+            item_id?: number | null;
+            /** Purchase Order Line Id */
+            purchase_order_line_id: number;
+        };
+        /** AcceptOut */
+        AcceptOut: {
+            /** Sales Order Id */
+            sales_order_id: number;
+            /** Sales Order Number */
+            sales_order_number: string;
+        };
         /** ActionOut */
         ActionOut: {
             /** Message */
@@ -721,6 +1559,136 @@ export interface components {
              */
             is_default: boolean;
         };
+        /** BillActionsOut */
+        BillActionsOut: {
+            /** Approve */
+            approve: boolean;
+            /** Cancel */
+            cancel: boolean;
+            /** Edit */
+            edit: boolean;
+            /** Submit */
+            submit: boolean;
+        };
+        /** BillIn */
+        BillIn: {
+            /**
+             * Invoice Date
+             * Format: date
+             */
+            invoice_date: string;
+            /** Lines */
+            lines: components["schemas"]["BillLineIn"][];
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /** Order Id */
+            order_id: number;
+            /** Supplier Invoice Number */
+            supplier_invoice_number: string;
+        };
+        /** BillLineIn */
+        BillLineIn: {
+            /** Gst Rate */
+            gst_rate?: number | string | null;
+            /** Order Line Id */
+            order_line_id: number;
+            /** Quantity */
+            quantity: number | string;
+            /** Rate */
+            rate?: number | string | null;
+        };
+        /** BillLineOut */
+        BillLineOut: {
+            /** Gst Rate */
+            gst_rate: number | string;
+            /** Item Code */
+            item_code: string;
+            /** Item Name */
+            item_name: string;
+            /** Order Line Id */
+            order_line_id: number;
+            /** Order Rate */
+            order_rate: number | string;
+            /** Quantity */
+            quantity: number | string;
+            /** Rate */
+            rate: number | string;
+            /** Rate Differs */
+            rate_differs: boolean;
+            /** Tax Amount */
+            tax_amount: number | string;
+            /** Taxable Value */
+            taxable_value: number | string;
+            /** Unit */
+            unit: string;
+        };
+        /** BillOut */
+        BillOut: {
+            actions: components["schemas"]["BillActionsOut"];
+            /** Approved By */
+            approved_by: string;
+            /** Cgst */
+            cgst: number | string;
+            /** Created By */
+            created_by: string;
+            /** Due Date */
+            due_date: string | null;
+            /** Id */
+            id: number;
+            /** Igst */
+            igst: number | string;
+            /**
+             * Invoice Date
+             * Format: date
+             */
+            invoice_date: string;
+            /** Is Interstate */
+            is_interstate: boolean;
+            /** Lines */
+            lines: components["schemas"]["BillLineOut"][];
+            /** Notes */
+            notes: string;
+            /** Number */
+            number: string;
+            /** Order Id */
+            order_id: number;
+            /** Order Number */
+            order_number: string;
+            /** Outstanding */
+            outstanding: number | string;
+            /** Paid */
+            paid: number | string;
+            /** Payment Pending */
+            payment_pending: number | string;
+            /** Payment Status */
+            payment_status: string;
+            /** Payment Status Label */
+            payment_status_label: string;
+            /** Place Of Supply */
+            place_of_supply: string;
+            /** Rejection Reason */
+            rejection_reason: string;
+            /** Round Off */
+            round_off: number | string;
+            /** Sgst */
+            sgst: number | string;
+            /** Status */
+            status: string;
+            /** Status Label */
+            status_label: string;
+            /** Submit Needs Approval */
+            submit_needs_approval: boolean;
+            supplier: components["schemas"]["PartyOut"];
+            /** Supplier Invoice Number */
+            supplier_invoice_number: string;
+            /** Taxable Value */
+            taxable_value: number | string;
+            /** Total */
+            total: number | string;
+        };
         /** BillingOut */
         BillingOut: {
             /** Payments */
@@ -729,6 +1697,22 @@ export interface components {
             plans: components["schemas"]["PlanChoiceOut"][];
             seats: components["schemas"]["SeatsOut"];
             subscription: components["schemas"]["SubscriptionOut"];
+        };
+        /** BucketOut */
+        BucketOut: {
+            /** Amount */
+            amount: number | string;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+        };
+        /** ChoiceOut */
+        ChoiceOut: {
+            /** Label */
+            label: string;
+            /** Value */
+            value: string;
         };
         /** CompanyOut */
         CompanyOut: {
@@ -784,6 +1768,136 @@ export interface components {
             invite_email_sent: boolean;
             partner: components["schemas"]["PartnerOut"];
         };
+        /** CustomerOut */
+        CustomerOut: {
+            /** Address */
+            address: string;
+            /** Customer Code */
+            customer_code: string;
+            /** Gstin */
+            gstin: string;
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Payment Terms Days */
+            payment_terms_days: number | null;
+            /** State */
+            state: string;
+        };
+        /** DefaultRoleOut */
+        DefaultRoleOut: {
+            /** Description */
+            description: string;
+            /** Key */
+            key: string;
+            /** Name */
+            name: string;
+            /** Permissions */
+            permissions: string[];
+            /** User Type */
+            user_type: string;
+        };
+        /** DispatchIn */
+        DispatchIn: {
+            /** Dispatch Date */
+            dispatch_date?: string | null;
+            /** Lines */
+            lines: components["schemas"]["DispatchLineIn"][];
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /**
+             * Transporter
+             * @default
+             */
+            transporter: string;
+            /**
+             * Vehicle Number
+             * @default
+             */
+            vehicle_number: string;
+            /** Warehouse Id */
+            warehouse_id?: number | null;
+        };
+        /** DispatchLineIn */
+        DispatchLineIn: {
+            /** Order Line Id */
+            order_line_id: number;
+            /** Quantity */
+            quantity: number | string;
+        };
+        /** DispatchLineOut */
+        DispatchLineOut: {
+            /** Item Code */
+            item_code: string;
+            /** Item Name */
+            item_name: string;
+            /** Quantity */
+            quantity: number | string;
+            /** Unit */
+            unit: string;
+        };
+        /** DispatchOut */
+        DispatchOut: {
+            customer: components["schemas"]["PartyOut"];
+            /**
+             * Dispatch Date
+             * Format: date
+             */
+            dispatch_date: string;
+            /** Dispatched By */
+            dispatched_by: string;
+            /** Id */
+            id: number;
+            /** Lines */
+            lines: components["schemas"]["DispatchLineOut"][];
+            /** Notes */
+            notes: string;
+            /** Number */
+            number: string;
+            /** Order Id */
+            order_id: number;
+            /** Order Number */
+            order_number: string;
+            /** Transporter */
+            transporter: string;
+            /** Vehicle Number */
+            vehicle_number: string;
+            /** Warehouse */
+            warehouse: string;
+        };
+        /** DocRefOut */
+        DocRefOut: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Detail */
+            detail: string;
+            /** Id */
+            id: number;
+            /** Number */
+            number: string;
+            /** Status */
+            status: string;
+            /** Status Label */
+            status_label: string;
+            /** Total */
+            total: number | string | null;
+        };
+        /** InventoryOptionsOut */
+        InventoryOptionsOut: {
+            /** Gst Rates */
+            gst_rates: string[];
+            /** Kinds */
+            kinds: components["schemas"]["ChoiceOut"][];
+            /** Units */
+            units: components["schemas"]["ChoiceOut"][];
+        };
         /** InvitationOut */
         InvitationOut: {
             /**
@@ -828,6 +1942,202 @@ export interface components {
              * @default []
              */
             team_ids: number[];
+        };
+        /** InvoiceActionsOut */
+        InvoiceActionsOut: {
+            /** Cancel */
+            cancel: boolean;
+            /** Edit */
+            edit: boolean;
+            /** Post */
+            post: boolean;
+        };
+        /** InvoiceIn */
+        InvoiceIn: {
+            /** Invoice Date */
+            invoice_date?: string | null;
+            /** Lines */
+            lines: components["schemas"]["InvoiceLineIn"][];
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /** Order Id */
+            order_id: number;
+        };
+        /** InvoiceLineIn */
+        InvoiceLineIn: {
+            /** Order Line Id */
+            order_line_id: number;
+            /** Quantity */
+            quantity: number | string;
+        };
+        /** InvoiceLineOut */
+        InvoiceLineOut: {
+            /** Gst Rate */
+            gst_rate: number | string;
+            /** Hsn Code */
+            hsn_code: string;
+            /** Item Code */
+            item_code: string;
+            /** Item Name */
+            item_name: string;
+            /** Order Line Id */
+            order_line_id: number;
+            /** Quantity */
+            quantity: number | string;
+            /** Rate */
+            rate: number | string;
+            /** Tax Amount */
+            tax_amount: number | string;
+            /** Taxable Value */
+            taxable_value: number | string;
+            /** Unit */
+            unit: string;
+        };
+        /** InvoiceOut */
+        InvoiceOut: {
+            actions: components["schemas"]["InvoiceActionsOut"];
+            /** Cancel Reason */
+            cancel_reason: string;
+            /** Cgst */
+            cgst: number | string;
+            /** Created By */
+            created_by: string;
+            customer: components["schemas"]["PartyOut"];
+            /** Customer Po Number */
+            customer_po_number: string;
+            /** Due Date */
+            due_date: string | null;
+            /** Id */
+            id: number;
+            /** Igst */
+            igst: number | string;
+            /**
+             * Invoice Date
+             * Format: date
+             */
+            invoice_date: string;
+            /** Is Interstate */
+            is_interstate: boolean;
+            /** Lines */
+            lines: components["schemas"]["InvoiceLineOut"][];
+            /** Notes */
+            notes: string;
+            /** Number */
+            number: string;
+            /** Order Id */
+            order_id: number;
+            /** Order Number */
+            order_number: string;
+            /** Outstanding */
+            outstanding: number | string;
+            /** Paid */
+            paid: number | string;
+            /** Payment Pending */
+            payment_pending: number | string;
+            /** Payment Status */
+            payment_status: string;
+            /** Payment Status Label */
+            payment_status_label: string;
+            /** Place Of Supply */
+            place_of_supply: string;
+            /** Posted By */
+            posted_by: string;
+            /** Round Off */
+            round_off: number | string;
+            seller: components["schemas"]["PartyOut"];
+            /** Sgst */
+            sgst: number | string;
+            /** Ship To */
+            ship_to: string;
+            /** Status */
+            status: string;
+            /** Status Label */
+            status_label: string;
+            /** Taxable Value */
+            taxable_value: number | string;
+            /** Total */
+            total: number | string;
+        };
+        /** ItemIn */
+        ItemIn: {
+            /** Code */
+            code: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Gst Rate
+             * @default 18
+             */
+            gst_rate: number | string;
+            /**
+             * Hsn Code
+             * @default
+             */
+            hsn_code: string;
+            /**
+             * Is Active
+             * @default true
+             */
+            is_active: boolean;
+            /**
+             * Kind
+             * @default raw_material
+             */
+            kind: string;
+            /** Name */
+            name: string;
+            /** Purchase Price */
+            purchase_price?: number | string | null;
+            /** Reorder Level */
+            reorder_level?: number | string | null;
+            /** Sale Price */
+            sale_price?: number | string | null;
+            /**
+             * Unit
+             * @default NOS
+             */
+            unit: string;
+        };
+        /** ItemOut */
+        ItemOut: {
+            /** Below Reorder */
+            below_reorder: boolean;
+            /** Code */
+            code: string;
+            /** Description */
+            description: string;
+            /** Gst Rate */
+            gst_rate: number | string;
+            /** Hsn Code */
+            hsn_code: string;
+            /** Id */
+            id: number;
+            /** Is Active */
+            is_active: boolean;
+            /** Kind */
+            kind: string;
+            /** Kind Label */
+            kind_label: string;
+            /** Name */
+            name: string;
+            /** On Hand */
+            on_hand: number | string | null;
+            /** Purchase Price */
+            purchase_price: number | string | null;
+            /** Reorder Level */
+            reorder_level: number | string | null;
+            /** Sale Price */
+            sale_price: number | string | null;
+            /** Tracks Stock */
+            tracks_stock: boolean;
+            /** Unit */
+            unit: string;
         };
         /** MeIn */
         MeIn: {
@@ -890,6 +2200,298 @@ export interface components {
             /** Role Type */
             role_type: string;
         };
+        /** OpenDocumentOut */
+        OpenDocumentOut: {
+            /** Available */
+            available: number | string;
+            /** Bucket */
+            bucket: string;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Due Date */
+            due_date: string | null;
+            /** Id */
+            id: number;
+            /** Number */
+            number: string;
+            /** Order Number */
+            order_number: string;
+            /** Our Number */
+            our_number: string;
+            /** Outstanding */
+            outstanding: number | string;
+            /** Paid */
+            paid: number | string;
+            party: components["schemas"]["PartyOut"];
+            /** Pending */
+            pending: number | string;
+            /** Status */
+            status: string;
+            /** Status Label */
+            status_label: string;
+            /** Total */
+            total: number | string;
+        };
+        /** OpeningIn */
+        OpeningIn: {
+            /** Entry Date */
+            entry_date?: string | null;
+            /** Item Id */
+            item_id: number;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+            /** Quantity */
+            quantity: number | string;
+            /**
+             * Rate
+             * @default 0
+             */
+            rate: number | string;
+            /** Warehouse Id */
+            warehouse_id: number;
+        };
+        /** OpeningOut */
+        OpeningOut: {
+            /**
+             * Entry Date
+             * Format: date
+             */
+            entry_date: string;
+            /** Id */
+            id: number;
+            /** Item Code */
+            item_code: string;
+            /** Item Id */
+            item_id: number;
+            /** Item Name */
+            item_name: string;
+            /** Note */
+            note: string;
+            /** Quantity */
+            quantity: number | string;
+            /** Rate */
+            rate: number | string;
+            /** Unit */
+            unit: string;
+            /** Value */
+            value: number | string;
+            /** Warehouse Id */
+            warehouse_id: number;
+            /** Warehouse Name */
+            warehouse_name: string;
+        };
+        /** OrderActionsOut */
+        OrderActionsOut: {
+            /** Approve */
+            approve: boolean;
+            /** Bill */
+            bill: boolean;
+            /** Cancel */
+            cancel: boolean;
+            /** Close */
+            close: boolean;
+            /** Edit */
+            edit: boolean;
+            /** Receive */
+            receive: boolean;
+            /** Submit */
+            submit: boolean;
+        };
+        /** OrderIn */
+        OrderIn: {
+            /** Expected Date */
+            expected_date?: string | null;
+            /** Lines */
+            lines: components["schemas"]["OrderLineIn"][];
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /** Order Date */
+            order_date?: string | null;
+            /** Payment Terms Days */
+            payment_terms_days?: number | null;
+            /** Ship To Id */
+            ship_to_id: number;
+            /** Supplier Id */
+            supplier_id: number;
+            /**
+             * Supplier Reference
+             * @default
+             */
+            supplier_reference: string;
+        };
+        /** OrderLineIn */
+        OrderLineIn: {
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Gst Rate */
+            gst_rate?: number | string | null;
+            /** Item Id */
+            item_id: number;
+            /** Quantity */
+            quantity: number | string;
+            /** Rate */
+            rate?: number | string | null;
+        };
+        /** OrderLineOut */
+        OrderLineOut: {
+            /** Billable Quantity */
+            billable_quantity: number | string;
+            /** Billed Quantity */
+            billed_quantity: number | string;
+            /** Description */
+            description: string;
+            /** Gst Rate */
+            gst_rate: number | string;
+            /** Id */
+            id: number;
+            /** Item Code */
+            item_code: string;
+            /** Item Id */
+            item_id: number;
+            /** Item Name */
+            item_name: string;
+            /** Quantity */
+            quantity: number | string;
+            /** Rate */
+            rate: number | string;
+            /** Received Quantity */
+            received_quantity: number | string;
+            /** Tax Amount */
+            tax_amount: number | string;
+            /** Taxable Value */
+            taxable_value: number | string;
+            /** Unit */
+            unit: string;
+        };
+        /** OrderOut */
+        OrderOut: {
+            actions: components["schemas"]["OrderActionsOut"];
+            /** Approved By */
+            approved_by: string;
+            /** Bills */
+            bills: components["schemas"]["DocRefOut"][];
+            /** Cgst */
+            cgst: number | string;
+            /** Created By */
+            created_by: string;
+            /** Decline Reason */
+            decline_reason: string;
+            /** Expected Date */
+            expected_date: string | null;
+            /** Id */
+            id: number;
+            /** Igst */
+            igst: number | string;
+            /** Is Interstate */
+            is_interstate: boolean;
+            /** Issued At */
+            issued_at: string | null;
+            /** Lines */
+            lines: components["schemas"]["OrderLineOut"][];
+            /** Notes */
+            notes: string;
+            /** Number */
+            number: string;
+            /**
+             * Order Date
+             * Format: date
+             */
+            order_date: string;
+            /** Payment Terms Days */
+            payment_terms_days: number | null;
+            /** Place Of Supply */
+            place_of_supply: string;
+            /** Receipts */
+            receipts: components["schemas"]["DocRefOut"][];
+            /** Rejection Reason */
+            rejection_reason: string;
+            /** Round Off */
+            round_off: number | string;
+            /** Sgst */
+            sgst: number | string;
+            /** Ship To */
+            ship_to: string;
+            /** Ship To Id */
+            ship_to_id: number;
+            /** Status */
+            status: string;
+            /** Status Label */
+            status_label: string;
+            /** Submit Needs Approval */
+            submit_needs_approval: boolean;
+            supplier: components["schemas"]["PartyOut"];
+            /** Supplier Dispatches */
+            supplier_dispatches: components["schemas"]["DocRefOut"][];
+            /** Supplier Invoices */
+            supplier_invoices: components["schemas"]["DocRefOut"][];
+            /** Supplier On Network */
+            supplier_on_network: boolean;
+            /** Supplier Reference */
+            supplier_reference: string;
+            /** Supplier Response */
+            supplier_response: string;
+            /** Supplier Response Label */
+            supplier_response_label: string;
+            /** Taxable Value */
+            taxable_value: number | string;
+            /** Total */
+            total: number | string;
+        };
+        /** OrderSummaryOut */
+        OrderSummaryOut: {
+            /** Cgst */
+            cgst: number | string;
+            /** Expected Date */
+            expected_date: string | null;
+            /** Id */
+            id: number;
+            /** Igst */
+            igst: number | string;
+            /** Is Interstate */
+            is_interstate: boolean;
+            /** Number */
+            number: string;
+            /**
+             * Order Date
+             * Format: date
+             */
+            order_date: string;
+            /** Place Of Supply */
+            place_of_supply: string;
+            /** Round Off */
+            round_off: number | string;
+            /** Sgst */
+            sgst: number | string;
+            /** Ship To */
+            ship_to: string;
+            /** Status */
+            status: string;
+            /** Status Label */
+            status_label: string;
+            supplier: components["schemas"]["PartyOut"];
+            /** Supplier On Network */
+            supplier_on_network: boolean;
+            /** Supplier Response */
+            supplier_response: string;
+            /** Supplier Response Label */
+            supplier_response_label: string;
+            /** Taxable Value */
+            taxable_value: number | string;
+            /** Total */
+            total: number | string;
+        };
         /** OrganizationIn */
         OrganizationIn: {
             /** Buying Enabled */
@@ -900,6 +2502,30 @@ export interface components {
             name?: string | null;
             /** Selling Enabled */
             selling_enabled?: boolean | null;
+        };
+        /** OurBankAccountOut */
+        OurBankAccountOut: {
+            /** Id */
+            id: number;
+            /** Is Default */
+            is_default: boolean;
+            /** Label */
+            label: string;
+        };
+        /** OutstandingOut */
+        OutstandingOut: {
+            /** Buckets */
+            buckets: components["schemas"]["BucketOut"][];
+            /** Direction */
+            direction: string;
+            /** Documents */
+            documents: components["schemas"]["OpenDocumentOut"][];
+            /** Overdue */
+            overdue: number | string;
+            /** Parties */
+            parties: components["schemas"]["PartyBalanceOut"][];
+            /** Total */
+            total: number | string;
         };
         /** PartnerCompanyOut */
         PartnerCompanyOut: {
@@ -948,6 +2574,154 @@ export interface components {
             vendor_code: string;
             /** Waiting On */
             waiting_on: string | null;
+        };
+        /** PartyBalanceOut */
+        PartyBalanceOut: {
+            /** Advance */
+            advance: number | string;
+            /** Current */
+            current: number | string;
+            /** D1 30 */
+            d1_30: number | string;
+            /** D31 60 */
+            d31_60: number | string;
+            /** D61 90 */
+            d61_90: number | string;
+            /** D90 Plus */
+            d90_plus: number | string;
+            /** Documents */
+            documents: number;
+            /** Outstanding */
+            outstanding: number | string;
+            /** Overdue */
+            overdue: number | string;
+            party: components["schemas"]["PartyOut"];
+        };
+        /** PartyOut */
+        PartyOut: {
+            /** Gstin */
+            gstin: string;
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** State */
+            state: string;
+        };
+        /** PartyPaymentActionsOut */
+        PartyPaymentActionsOut: {
+            /** Approve */
+            approve: boolean;
+            /** Cancel */
+            cancel: boolean;
+        };
+        /** PartyPaymentIn */
+        PartyPaymentIn: {
+            /**
+             * Allocations
+             * @default []
+             */
+            allocations: components["schemas"]["PaymentAllocationIn"][];
+            /** Amount */
+            amount: number | string;
+            /** Bank Account Id */
+            bank_account_id?: number | null;
+            /** Direction */
+            direction: string;
+            /**
+             * Mode
+             * @default bank
+             */
+            mode: string;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /** Party Id */
+            party_id: number;
+            /** Payment Date */
+            payment_date?: string | null;
+            /**
+             * Reference
+             * @default
+             */
+            reference: string;
+        };
+        /** PartyPaymentOut */
+        PartyPaymentOut: {
+            actions: components["schemas"]["PartyPaymentActionsOut"];
+            /** Allocations */
+            allocations: components["schemas"]["PaymentAllocationOut"][];
+            /** Amount */
+            amount: number | string;
+            /** Approved By */
+            approved_by: string;
+            /** Bank Account */
+            bank_account: string;
+            /** Cancel Reason */
+            cancel_reason: string;
+            /** Created By */
+            created_by: string;
+            /** Direction */
+            direction: string;
+            /** Direction Label */
+            direction_label: string;
+            /** Id */
+            id: number;
+            /** Mode */
+            mode: string;
+            /** Mode Label */
+            mode_label: string;
+            /** Notes */
+            notes: string;
+            /** Number */
+            number: string;
+            party: components["schemas"]["PartyOut"];
+            /**
+             * Payment Date
+             * Format: date
+             */
+            payment_date: string;
+            /** Reference */
+            reference: string;
+            /** Rejection Reason */
+            rejection_reason: string;
+            /** Status */
+            status: string;
+            /** Status Label */
+            status_label: string;
+            /** Unallocated */
+            unallocated: number | string;
+            /** Warnings */
+            warnings: string[];
+        };
+        /** PaymentAllocationIn */
+        PaymentAllocationIn: {
+            /** Amount */
+            amount: number | string;
+            /** Document Id */
+            document_id: number;
+        };
+        /** PaymentAllocationOut */
+        PaymentAllocationOut: {
+            /** Amount */
+            amount: number | string;
+            /** Document Id */
+            document_id: number;
+            /** Number */
+            number: string;
+        };
+        /** PaymentOptionsOut */
+        PaymentOptionsOut: {
+            /** Bank Accounts */
+            bank_accounts: components["schemas"]["OurBankAccountOut"][];
+            /** Modes */
+            modes: components["schemas"]["ChoiceOut"][];
+            /** Needs Approval */
+            needs_approval: boolean;
+            /** Parties */
+            parties: components["schemas"]["PartyOut"][];
         };
         /** PaymentOut */
         PaymentOut: {
@@ -1066,6 +2840,151 @@ export interface components {
             /** Warehouses */
             warehouses: number | null;
         };
+        /** ReasonIn */
+        ReasonIn: {
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+        };
+        /** ReceiptIn */
+        ReceiptIn: {
+            /** Lines */
+            lines: components["schemas"]["ReceiptLineIn"][];
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /** Received Date */
+            received_date?: string | null;
+            /**
+             * Supplier Challan
+             * @default
+             */
+            supplier_challan: string;
+            /**
+             * Vehicle Number
+             * @default
+             */
+            vehicle_number: string;
+            /** Warehouse Id */
+            warehouse_id?: number | null;
+        };
+        /** ReceiptLineIn */
+        ReceiptLineIn: {
+            /** Order Line Id */
+            order_line_id: number;
+            /** Quantity */
+            quantity: number | string;
+        };
+        /** ReceiptLineOut */
+        ReceiptLineOut: {
+            /** Item Code */
+            item_code: string;
+            /** Item Name */
+            item_name: string;
+            /** Quantity */
+            quantity: number | string;
+            /** Unit */
+            unit: string;
+        };
+        /** ReceiptOut */
+        ReceiptOut: {
+            /** Id */
+            id: number;
+            /** Lines */
+            lines: components["schemas"]["ReceiptLineOut"][];
+            /** Notes */
+            notes: string;
+            /** Number */
+            number: string;
+            /** Order Id */
+            order_id: number;
+            /** Order Number */
+            order_number: string;
+            /** Received By */
+            received_by: string;
+            /**
+             * Received Date
+             * Format: date
+             */
+            received_date: string;
+            supplier: components["schemas"]["PartyOut"];
+            /** Supplier Challan */
+            supplier_challan: string;
+            /** Vehicle Number */
+            vehicle_number: string;
+            /** Warehouse */
+            warehouse: string;
+        };
+        /** ReceivedOrderOut */
+        ReceivedOrderOut: {
+            buyer: components["schemas"]["PartyOut"];
+            /** Can Reply */
+            can_reply: boolean;
+            /** Cgst */
+            cgst: number | string;
+            /** Decline Reason */
+            decline_reason: string;
+            /** Expected Date */
+            expected_date: string | null;
+            /** Id */
+            id: number;
+            /** Igst */
+            igst: number | string;
+            /** Is Interstate */
+            is_interstate: boolean;
+            /** Lines */
+            lines: components["schemas"]["OrderLineOut"][];
+            /** Notes */
+            notes: string;
+            /** Number */
+            number: string;
+            /**
+             * Order Date
+             * Format: date
+             */
+            order_date: string;
+            /** Payment Terms Days */
+            payment_terms_days: number | null;
+            /** Place Of Supply */
+            place_of_supply: string;
+            /** Responded By */
+            responded_by: string;
+            /** Round Off */
+            round_off: number | string;
+            /** Sales Order Id */
+            sales_order_id: number | null;
+            /** Sales Order Number */
+            sales_order_number: string;
+            /** Sgst */
+            sgst: number | string;
+            /** Ship To */
+            ship_to: string;
+            /** Ship To Address */
+            ship_to_address: string;
+            /** Status */
+            status: string;
+            /** Status Label */
+            status_label: string;
+            /** Suggested Items */
+            suggested_items: {
+                [key: string]: unknown;
+            };
+            supplier: components["schemas"]["PartyOut"];
+            /** Supplier On Network */
+            supplier_on_network: boolean;
+            /** Supplier Response */
+            supplier_response: string;
+            /** Supplier Response Label */
+            supplier_response_label: string;
+            /** Taxable Value */
+            taxable_value: number | string;
+            /** Total */
+            total: number | string;
+        };
         /** RoleIn */
         RoleIn: {
             /**
@@ -1127,6 +3046,201 @@ export interface components {
             /** Permissions */
             permissions?: string[] | null;
         };
+        /** SalesActionsOut */
+        SalesActionsOut: {
+            /** Approve */
+            approve: boolean;
+            /** Cancel */
+            cancel: boolean;
+            /** Close */
+            close: boolean;
+            /** Dispatch */
+            dispatch: boolean;
+            /** Edit */
+            edit: boolean;
+            /** Invoice */
+            invoice: boolean;
+            /** Submit */
+            submit: boolean;
+        };
+        /** SalesLineIn */
+        SalesLineIn: {
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Gst Rate */
+            gst_rate?: number | string | null;
+            /** Item Id */
+            item_id: number;
+            /** Quantity */
+            quantity: number | string;
+            /** Rate */
+            rate?: number | string | null;
+        };
+        /** SalesLineOut */
+        SalesLineOut: {
+            /** Customer Item */
+            customer_item: string;
+            /** Description */
+            description: string;
+            /** Dispatched Quantity */
+            dispatched_quantity: number | string;
+            /** Gst Rate */
+            gst_rate: number | string;
+            /** Hsn Code */
+            hsn_code: string;
+            /** Id */
+            id: number;
+            /** Invoiceable Quantity */
+            invoiceable_quantity: number | string;
+            /** Invoiced Quantity */
+            invoiced_quantity: number | string;
+            /** Item Code */
+            item_code: string;
+            /** Item Id */
+            item_id: number;
+            /** Item Name */
+            item_name: string;
+            /** On Hand */
+            on_hand: number | string | null;
+            /** Quantity */
+            quantity: number | string;
+            /** Rate */
+            rate: number | string;
+            /** Tax Amount */
+            tax_amount: number | string;
+            /** Taxable Value */
+            taxable_value: number | string;
+            /** Unit */
+            unit: string;
+        };
+        /** SalesOrderIn */
+        SalesOrderIn: {
+            /** Customer Id */
+            customer_id: number;
+            /**
+             * Customer Po Number
+             * @default
+             */
+            customer_po_number: string;
+            /** Delivery Date */
+            delivery_date?: string | null;
+            /** Dispatch From Id */
+            dispatch_from_id: number;
+            /** Lines */
+            lines: components["schemas"]["SalesLineIn"][];
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /** Order Date */
+            order_date?: string | null;
+            /** Payment Terms Days */
+            payment_terms_days?: number | null;
+            /**
+             * Ship To
+             * @default
+             */
+            ship_to: string;
+        };
+        /** SalesOrderOut */
+        SalesOrderOut: {
+            actions: components["schemas"]["SalesActionsOut"];
+            /** Approved By */
+            approved_by: string;
+            /** Cancel Needs Reason */
+            cancel_needs_reason: boolean;
+            /** Cgst */
+            cgst: number | string;
+            /** Created By */
+            created_by: string;
+            customer: components["schemas"]["PartyOut"];
+            /** Customer Po Number */
+            customer_po_number: string;
+            /** Delivery Date */
+            delivery_date: string | null;
+            /** Dispatch From */
+            dispatch_from: string;
+            /** Dispatch From Id */
+            dispatch_from_id: number;
+            /** Dispatches */
+            dispatches: components["schemas"]["DocRefOut"][];
+            /** From Purchase Order */
+            from_purchase_order: boolean;
+            /** Id */
+            id: number;
+            /** Igst */
+            igst: number | string;
+            /** Invoices */
+            invoices: components["schemas"]["DocRefOut"][];
+            /** Is Interstate */
+            is_interstate: boolean;
+            /** Lines */
+            lines: components["schemas"]["SalesLineOut"][];
+            /** Notes */
+            notes: string;
+            /** Number */
+            number: string;
+            /**
+             * Order Date
+             * Format: date
+             */
+            order_date: string;
+            /** Payment Terms Days */
+            payment_terms_days: number | null;
+            /** Place Of Supply */
+            place_of_supply: string;
+            /** Rejection Reason */
+            rejection_reason: string;
+            /** Round Off */
+            round_off: number | string;
+            /** Sgst */
+            sgst: number | string;
+            /** Ship To */
+            ship_to: string;
+            /** Status */
+            status: string;
+            /** Status Label */
+            status_label: string;
+            /** Submit Needs Approval */
+            submit_needs_approval: boolean;
+            /** Taxable Value */
+            taxable_value: number | string;
+            /** Total */
+            total: number | string;
+        };
+        /** SalesSummaryOut */
+        SalesSummaryOut: {
+            customer: components["schemas"]["PartyOut"];
+            /** Customer Po Number */
+            customer_po_number: string;
+            /** Delivery Date */
+            delivery_date: string | null;
+            /** Dispatch From */
+            dispatch_from: string;
+            /** From Purchase Order */
+            from_purchase_order: boolean;
+            /** Id */
+            id: number;
+            /** Number */
+            number: string;
+            /**
+             * Order Date
+             * Format: date
+             */
+            order_date: string;
+            /** Status */
+            status: string;
+            /** Status Label */
+            status_label: string;
+            /** Taxable Value */
+            taxable_value: number | string;
+            /** Total */
+            total: number | string;
+        };
         /** SearchResultOut */
         SearchResultOut: {
             /** City */
@@ -1165,6 +3279,25 @@ export interface components {
             /** Teams Included */
             teams_included: number | null;
         };
+        /** StockRowOut */
+        StockRowOut: {
+            /** Item Code */
+            item_code: string;
+            /** Item Id */
+            item_id: number;
+            /** Item Name */
+            item_name: string;
+            /** Quantity */
+            quantity: number | string;
+            /** Unit */
+            unit: string;
+            /** Value */
+            value: number | string;
+            /** Warehouse Id */
+            warehouse_id: number;
+            /** Warehouse Name */
+            warehouse_name: string;
+        };
         /** SubscriptionOut */
         SubscriptionOut: {
             /** Auto Renew */
@@ -1197,6 +3330,21 @@ export interface components {
             status: string;
             /** Trial Ends At */
             trial_ends_at: string | null;
+        };
+        /** SupplierOut */
+        SupplierOut: {
+            /** Gstin */
+            gstin: string;
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Payment Terms Days */
+            payment_terms_days: number | null;
+            /** State */
+            state: string;
+            /** Vendor Code */
+            vendor_code: string;
         };
         /** SwitchIn */
         SwitchIn: {
@@ -1256,6 +3404,53 @@ export interface components {
             /** Phone */
             phone: string;
         };
+        /** WarehouseIn */
+        WarehouseIn: {
+            /** Address Id */
+            address_id?: number | null;
+            /**
+             * Code
+             * @default
+             */
+            code: string;
+            /**
+             * Is Active
+             * @default true
+             */
+            is_active: boolean;
+            /** Is Default */
+            is_default?: boolean | null;
+            /** Name */
+            name: string;
+        };
+        /** WarehouseOut */
+        WarehouseOut: {
+            /** Address */
+            address: string;
+            /** Address Id */
+            address_id: number | null;
+            /** Code */
+            code: string;
+            /** Has Stock */
+            has_stock: boolean;
+            /** Id */
+            id: number;
+            /** Is Active */
+            is_active: boolean;
+            /** Is Default */
+            is_default: boolean;
+            /** Name */
+            name: string;
+        };
+        /** WarehousesOut */
+        WarehousesOut: {
+            /** Included */
+            included: number | null;
+            /** Used */
+            used: number;
+            /** Warehouses */
+            warehouses: components["schemas"]["WarehouseOut"][];
+        };
     };
     responses: never;
     parameters: never;
@@ -1265,6 +3460,51 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    finance_api_outstanding: {
+        parameters: {
+            query: {
+                direction: string;
+                party_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutstandingOut"];
+                };
+            };
+        };
+    };
+    finance_api_payment_options: {
+        parameters: {
+            query: {
+                direction: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentOptionsOut"];
+                };
+            };
+        };
+    };
     billing_api_get_billing: {
         parameters: {
             query?: never;
@@ -1349,6 +3589,46 @@ export interface operations {
             };
         };
     };
+    sales_api_list_dispatches: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DispatchOut"][];
+                };
+            };
+        };
+    };
+    purchase_api_list_receipts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReceiptOut"][];
+                };
+            };
+        };
+    };
     core_api_health: {
         parameters: {
             query?: never;
@@ -1360,6 +3640,120 @@ export interface operations {
         responses: {
             /** @description OK */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    inventory_api_inventory_options: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InventoryOptionsOut"];
+                };
+            };
+        };
+    };
+    inventory_api_list_items: {
+        parameters: {
+            query?: {
+                q?: string;
+                kind?: string;
+                active?: boolean | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemOut"][];
+                };
+            };
+        };
+    };
+    inventory_api_create_item: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ItemIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemOut"];
+                };
+            };
+        };
+    };
+    inventory_api_update_item: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ItemIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemOut"];
+                };
+            };
+        };
+    };
+    inventory_api_delete_item: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1857,6 +4251,127 @@ export interface operations {
             };
         };
     };
+    finance_api_list_payments: {
+        parameters: {
+            query?: {
+                direction?: string;
+                status?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartyPaymentOut"][];
+                };
+            };
+        };
+    };
+    finance_api_record_payment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PartyPaymentIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartyPaymentOut"];
+                };
+            };
+        };
+    };
+    finance_api_approve_payment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payment_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartyPaymentOut"];
+                };
+            };
+        };
+    };
+    finance_api_cancel_payment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payment_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartyPaymentOut"];
+                };
+            };
+        };
+    };
+    finance_api_reject_payment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payment_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartyPaymentOut"];
+                };
+            };
+        };
+    };
     organizations_app_api_list_people: {
         parameters: {
             query?: never;
@@ -2011,6 +4526,487 @@ export interface operations {
             };
         };
     };
+    purchase_api_list_bills: {
+        parameters: {
+            query?: {
+                status?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillOut"][];
+                };
+            };
+        };
+    };
+    purchase_api_create_bill: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BillIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillOut"];
+                };
+            };
+        };
+    };
+    purchase_api_get_bill: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bill_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillOut"];
+                };
+            };
+        };
+    };
+    purchase_api_update_bill: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bill_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BillIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillOut"];
+                };
+            };
+        };
+    };
+    purchase_api_delete_bill: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bill_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    purchase_api_approve_bill: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bill_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillOut"];
+                };
+            };
+        };
+    };
+    purchase_api_cancel_bill: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bill_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillOut"];
+                };
+            };
+        };
+    };
+    purchase_api_reject_bill: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bill_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillOut"];
+                };
+            };
+        };
+    };
+    purchase_api_submit_bill: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bill_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillOut"];
+                };
+            };
+        };
+    };
+    purchase_api_list_orders: {
+        parameters: {
+            query?: {
+                status?: string;
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderSummaryOut"][];
+                };
+            };
+        };
+    };
+    purchase_api_create_order: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrderIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderOut"];
+                };
+            };
+        };
+    };
+    purchase_api_get_order: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderOut"];
+                };
+            };
+        };
+    };
+    purchase_api_update_order: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrderIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderOut"];
+                };
+            };
+        };
+    };
+    purchase_api_delete_order: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    purchase_api_approve_order: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderOut"];
+                };
+            };
+        };
+    };
+    purchase_api_cancel_order: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderOut"];
+                };
+            };
+        };
+    };
+    purchase_api_close_order: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderOut"];
+                };
+            };
+        };
+    };
+    purchase_api_receive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReceiptIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReceiptOut"];
+                };
+            };
+        };
+    };
+    purchase_api_reject_order: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderOut"];
+                };
+            };
+        };
+    };
+    purchase_api_submit_order: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderOut"];
+                };
+            };
+        };
+    };
+    purchase_api_list_suppliers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierOut"][];
+                };
+            };
+        };
+    };
     organizations_app_api_list_roles: {
         parameters: {
             query?: never;
@@ -2070,7 +5066,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RoleOut"][];
+                    "application/json": components["schemas"]["DefaultRoleOut"][];
                 };
             };
         };
@@ -2118,6 +5114,591 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["RoleOut"];
                 };
+            };
+        };
+    };
+    sales_api_list_invoices: {
+        parameters: {
+            query?: {
+                status?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceOut"][];
+                };
+            };
+        };
+    };
+    sales_api_create_invoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvoiceIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceOut"];
+                };
+            };
+        };
+    };
+    sales_api_get_invoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceOut"];
+                };
+            };
+        };
+    };
+    sales_api_update_invoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvoiceIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceOut"];
+                };
+            };
+        };
+    };
+    sales_api_delete_invoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    sales_api_cancel_invoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceOut"];
+                };
+            };
+        };
+    };
+    sales_api_post_invoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceOut"];
+                };
+            };
+        };
+    };
+    sales_api_list_sales_orders: {
+        parameters: {
+            query?: {
+                status?: string;
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SalesSummaryOut"][];
+                };
+            };
+        };
+    };
+    sales_api_create_sales_order: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SalesOrderIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SalesOrderOut"];
+                };
+            };
+        };
+    };
+    sales_api_get_sales_order: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SalesOrderOut"];
+                };
+            };
+        };
+    };
+    sales_api_update_sales_order: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SalesOrderIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SalesOrderOut"];
+                };
+            };
+        };
+    };
+    sales_api_delete_sales_order: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    sales_api_approve_sales_order: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SalesOrderOut"];
+                };
+            };
+        };
+    };
+    sales_api_cancel_sales_order: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SalesOrderOut"];
+                };
+            };
+        };
+    };
+    sales_api_close_sales_order: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SalesOrderOut"];
+                };
+            };
+        };
+    };
+    sales_api_dispatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DispatchIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DispatchOut"];
+                };
+            };
+        };
+    };
+    sales_api_reject_sales_order: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SalesOrderOut"];
+                };
+            };
+        };
+    };
+    sales_api_submit_sales_order: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SalesOrderOut"];
+                };
+            };
+        };
+    };
+    sales_api_list_customers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerOut"][];
+                };
+            };
+        };
+    };
+    sales_api_list_orders_received: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReceivedOrderOut"][];
+                };
+            };
+        };
+    };
+    sales_api_accept_order: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                po_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcceptOut"];
+                };
+            };
+        };
+    };
+    sales_api_decline_order: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                po_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonIn"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    inventory_api_stock: {
+        parameters: {
+            query?: {
+                warehouse_id?: number | null;
+                item_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockRowOut"][];
+                };
+            };
+        };
+    };
+    inventory_api_list_opening: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpeningOut"][];
+                };
+            };
+        };
+    };
+    inventory_api_set_opening: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpeningIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpeningOut"];
+                };
+            };
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -2197,6 +5778,96 @@ export interface operations {
             header?: never;
             path: {
                 team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    inventory_api_list_warehouses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehousesOut"];
+                };
+            };
+        };
+    };
+    inventory_api_create_warehouse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WarehouseIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseOut"];
+                };
+            };
+        };
+    };
+    inventory_api_update_warehouse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                warehouse_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WarehouseIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseOut"];
+                };
+            };
+        };
+    };
+    inventory_api_delete_warehouse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                warehouse_id: number;
             };
             cookie?: never;
         };

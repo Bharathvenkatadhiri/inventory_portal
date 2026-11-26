@@ -20,6 +20,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from accounts import team as marketplace_team
@@ -31,7 +32,15 @@ from gst.services.providers.mock import SAMPLE_COMPANIES, MockGSTProvider
 from gst.services.verification import GSTVerificationService
 from organizations.models import Address, BankAccount, BusinessRelationship, Invitation, Membership, Team, TeamMembership
 from organizations.services import set_up_organization
+from inventory import services as inventory
+from inventory.models import Item, StockEntry, Warehouse
+from finance import services as finance
+from finance.models import Payment
 from plans import erp
+from purchase import services as purchase
+from purchase.models import GoodsReceipt, PurchaseBill, PurchaseOrder
+from sales import services as sales
+from sales.models import Dispatch, SalesInvoice, SalesOrder
 
 DEMO_DOMAIN = 'demo.makesetu.test'
 PASSWORD = 'Setu#Demo-2026'
@@ -117,6 +126,43 @@ BANKS = {
     'tejas': ('Tejas Electronics Pvt Ltd', 'ICICI Bank', '000405012345', 'ICIC0000004', 'Gachibowli'),
 }
 
+# org: [(name, code, address label or None)]; the first is the default.
+WAREHOUSES = {
+    'sri_lakshmi': [('Plant store', 'PS', 'Sriperumbudur plant'), ('Ambattur warehouse', 'AMB', 'Ambattur warehouse')],
+    'kaveri': [('Foundry store', 'FS', 'Chakan foundry')],
+    'tejas': [('Receiving store', 'RS', 'Receiving dock')],
+}
+
+# org: [(code, name, kind, unit, HSN/SAC, GST %, purchase price, sale price, reorder level,
+#        {warehouse code: (opening quantity, rate)})]
+ITEMS = {
+    'sri_lakshmi': [
+        ('RM-EN8-40', 'EN8 round bar, 40 mm', 'raw_material', 'KGS', '7214', '18', '78', None, '1500', {'PS': ('4200', '76.50')}),
+        ('RM-AL6061-P12', 'Aluminium 6061 plate, 12 mm', 'raw_material', 'KGS', '7606', '18', '310', None, '300', {'PS': ('640', '305')}),
+        ('RM-SS304-S2', 'SS304 sheet, 2 mm', 'raw_material', 'KGS', '7219', '18', '245', None, '250', {'AMB': ('180', '240')}),
+        ('BO-BOLT-M10', 'Hex bolt M10 x 50, grade 8.8', 'component', 'NOS', '7318', '18', '6.20', None, '1000',
+         {'PS': ('3500', '6'), 'AMB': ('1200', '6.10')}),
+        ('BO-BRG-6205', 'Ball bearing 6205-2RS', 'component', 'NOS', '8482', '18', '145', None, '100', {'AMB': ('60', '142')}),
+        ('CO-OIL-CUT', 'Soluble cutting oil', 'consumable', 'LTR', '3403', '18', '185', None, '50', {'PS': ('210', '180')}),
+        ('TL-INS-CNMG', 'CNMG 120408 carbide insert', 'tool', 'NOS', '8209', '18', '420', None, '20', {'PS': ('35', '410')}),
+        ('FG-GS-120', 'Gear shaft GS-120', 'finished_good', 'NOS', '8483', '18', None, '850', None, {'AMB': ('240', '610')}),
+        ('FG-PH-75', 'Pump housing PH-75', 'finished_good', 'NOS', '8413', '18', None, '2400', None, {'AMB': ('85', '1720')}),
+        ('SV-CNC', 'CNC machining charges', 'service', 'OTH', '998898', '18', None, '1200', None, {}),
+        ('BO-CAST-VB50', 'Valve body casting VB-50 (from Kaveri)', 'component', 'NOS', '7325', '18', '980', None, '50', {}),
+    ],
+    'kaveri': [
+        ('RM-PIG-IRON', 'Foundry-grade pig iron', 'raw_material', 'TON', '7201', '18', '41000', None, '20', {'FS': ('48', '40500')}),
+        ('RM-FESI-75', 'Ferro silicon 75%', 'raw_material', 'KGS', '7202', '18', '118', None, '500', {'FS': ('1250', '115')}),
+        ('CO-SAND-SILICA', 'Silica moulding sand', 'consumable', 'TON', '2505', '5', '2600', None, '10', {'FS': ('35', '2550')}),
+        ('FG-VB-50', 'Valve body casting VB-50', 'finished_good', 'NOS', '7325', '18', None, '1450', None, {'FS': ('320', '980')}),
+    ],
+    'tejas': [
+        ('BO-PCB-CTRL', 'Controller PCB assembly, rev C', 'component', 'NOS', '8534', '18', '860', None, '50', {'RS': ('120', '845')}),
+        ('BO-ENC-AL', 'Machined aluminium enclosure', 'component', 'NOS', '7616', '18', '640', None, '40', {'RS': ('25', '630')}),
+        ('FG-DRV-5K', 'Motor drive unit 5 kW', 'finished_good', 'NOS', '8504', '18', None, '18500', None, {}),
+    ],
+}
+
 # (buyer, supplier, status, initiated by, vendor code, customer code, payment days, credit limit)
 RELATIONSHIPS = [
     ('tejas', 'sri_lakshmi', Status.ACTIVE, 'tejas', 'V-0012', 'C-TEJ01', 45, 500000),
@@ -161,6 +207,16 @@ class Command(BaseCommand):
     def _flush(self):
         gstins = [g for g, *_ in ORGANIZATIONS.values()] + [UNCLAIMED_GSTIN]
         companies = Company.objects.filter(gstin__in=gstins)
+        # Payments, sales and purchase documents PROTECT the companies, documents, items and lines they point to.
+        Payment.objects.filter(Q(company__in=companies) | Q(party__in=companies)).delete()
+        SalesInvoice.objects.filter(Q(company__in=companies) | Q(customer__in=companies)).delete()
+        Dispatch.objects.filter(Q(company__in=companies) | Q(order__customer__in=companies)).delete()
+        SalesOrder.objects.filter(Q(company__in=companies) | Q(customer__in=companies)).delete()
+        either_side = Q(company__in=companies) | Q(supplier__in=companies)
+        PurchaseBill.objects.filter(either_side).delete()
+        GoodsReceipt.objects.filter(Q(company__in=companies) | Q(order__supplier__in=companies)).delete()
+        PurchaseOrder.objects.filter(either_side).delete()
+        StockEntry.objects.filter(company__in=companies).delete()  # PROTECTs items and warehouses
         BusinessRelationship.objects.filter(buyer__in=companies).delete()
         BusinessRelationship.objects.filter(supplier__in=companies).delete()
         Membership.objects.filter(company__in=companies).delete()  # Role is PROTECT from Membership
@@ -217,6 +273,7 @@ class Command(BaseCommand):
                 name, bank, number, ifsc, branch = BANKS[key]
                 BankAccount.objects.create(company=company, account_name=name, bank_name=bank, account_number=number,
                                            ifsc=ifsc, branch=branch, is_default=True)
+            self._inventory(key, company, owner, now)
             self._subscription(company, plan, state, now)
             self.orgs[key] = company
 
@@ -242,6 +299,121 @@ class Command(BaseCommand):
                 activated_at=now - timedelta(days=20) if status in (Status.ACTIVE, Status.BLOCKED) else None,
                 blocked_by=self.orgs[initiator] if status == Status.BLOCKED else None,
             )
+
+        self._purchases(users, now)
+
+    def _purchases(self, users, now):
+        """Purchase documents in each state, made through purchase.services
+        by the people whose roles would make them."""
+        sri, tejas = self.orgs['sri_lakshmi'], self.orgs['tejas']
+
+        def member(key, local):
+            return Membership.objects.select_related('company', 'role', 'user').get(company=self.orgs[key], user=users[key][local])
+
+        def item(company, code):
+            return Item.objects.get(company=company, code=code).pk
+
+        def ago(days):
+            return (now - timedelta(days=days)).date()
+
+        plant = Warehouse.objects.get(company=sri, code='PS')
+        priya, karthik = member('sri_lakshmi', 'priya'), member('sri_lakshmi', 'karthik')
+
+        # Issued, partly received and billed: castings from Kaveri.
+        castings = purchase.save_order(priya, PurchaseOrder(), {
+            'supplier_id': self.orgs['kaveri'].pk, 'ship_to_id': plant.pk, 'order_date': ago(20), 'expected_date': ago(5),
+            'supplier_reference': 'KC/Q/2627/088', 'notes': 'Castings to drawing VB-50 rev B. Test certificate with each lot.',
+            'lines': [{'item_id': item(sri, 'BO-CAST-VB50'), 'quantity': '400', 'rate': '980'}],
+        })
+        castings = purchase.submit_order(priya, castings)  # a Purchase Manager issues directly
+
+        # Kaveri accepts it on MakeSetu, sends 250 and invoices them.
+        kaveri = self.orgs['kaveri']
+        sneha = member('kaveri', 'sneha')  # Sales Manager: may accept on Growth
+        sales_order = sales.accept(sneha, castings, {
+            'dispatch_from_id': Warehouse.objects.get(company=kaveri, code='FS').pk,
+            'lines': [{'purchase_order_line_id': castings.lines.get().pk, 'item_id': item(kaveri, 'FG-VB-50')}],
+        })
+        # Accepting dates the sales order today; this demo happened three weeks ago.
+        SalesOrder.objects.filter(pk=sales_order.pk).update(order_date=ago(19))
+        sales_order.refresh_from_db()
+        challan = sales.post_dispatch(member('kaveri', 'nikhil'), sales_order, {
+            'dispatch_date': ago(13), 'vehicle_number': 'MH 14 GU 4410', 'transporter': 'Deccan Roadlines',
+            'lines': [{'order_line_id': sales_order.lines.get().pk, 'quantity': '250'}],
+        })
+        invoice = sales.save_invoice(sneha, SalesInvoice(), sales_order, {
+            'invoice_date': ago(13), 'lines': [{'order_line_id': sales_order.lines.get().pk, 'quantity': '250'}],
+        })
+        invoice = sales.post_invoice(sneha, invoice)
+
+        # Sri Lakshmi receives them against Kaveri's challan and enters Kaveri's invoice as a bill.
+        purchase.post_receipt(member('sri_lakshmi', 'suresh'), castings, {
+            'received_date': ago(12), 'supplier_challan': challan.number, 'vehicle_number': challan.vehicle_number,
+            'lines': [{'order_line_id': castings.lines.get().pk, 'quantity': '250'}],
+        })
+        accounts = member('sri_lakshmi', 'lakshmi.accounts')
+        bill = purchase.save_bill(accounts, PurchaseBill(), castings, {
+            'supplier_invoice_number': invoice.number, 'invoice_date': invoice.invoice_date,
+            'lines': [{'order_line_id': castings.lines.get().pk, 'quantity': '250'}],
+        })
+        bill = purchase.submit_bill(accounts, bill)
+
+        # Sri Lakshmi pays part of it by NEFT; Kaveri records the same money as received.
+        utr, part = 'HDFCN52026112600741', Decimal('150000')
+        bank = sri.bank_accounts.first()
+        finance.record_payment(accounts, {
+            'direction': 'made', 'party_id': kaveri.pk, 'amount': part, 'payment_date': ago(4), 'mode': 'bank',
+            'reference': utr, 'bank_account_id': bank.pk if bank else None,
+            'allocations': [{'document_id': bill.pk, 'amount': part}],
+        })
+        finance.record_payment(member('kaveri', 'pooja'), {
+            'direction': 'received', 'party_id': sri.pk, 'amount': part, 'payment_date': ago(4), 'mode': 'bank',
+            'reference': utr, 'bank_account_id': kaveri.bank_accounts.first().pk,
+            'allocations': [{'document_id': invoice.pk, 'amount': part}],
+        })
+
+        # Waiting for approval: an executive's order to Malabar (Pro has approvals).
+        bearings = purchase.save_order(karthik, PurchaseOrder(), {
+            'supplier_id': self.orgs['malabar'].pk, 'ship_to_id': Warehouse.objects.get(company=sri, code='AMB').pk,
+            'order_date': ago(2), 'lines': [{'item_id': item(sri, 'BO-BRG-6205'), 'quantity': '200', 'rate': '145'}],
+        })
+        purchase.submit_order(karthik, bearings)
+
+        # A draft to the supplier that isn't on MakeSetu yet.
+        purchase.save_order(priya, PurchaseOrder(), {
+            'supplier_id': self.orgs['rudra'].pk, 'ship_to_id': plant.pk, 'order_date': ago(1),
+            'lines': [{'item_id': item(sri, 'CO-OIL-CUT'), 'quantity': '100'}],
+        })
+
+        # Tejas orders enclosures from Sri Lakshmi: Sri Lakshmi sees it under Orders received.
+        kavya = member('tejas', 'kavya')
+        enclosures = purchase.save_order(kavya, PurchaseOrder(), {
+            'supplier_id': sri.pk, 'ship_to_id': Warehouse.objects.get(company=tejas, code='RS').pk,
+            'order_date': ago(6), 'expected_date': (now + timedelta(days=9)).date(),
+            'lines': [{'item_id': item(tejas, 'BO-ENC-AL'), 'quantity': '50', 'rate': '640'}],
+        })
+        purchase.submit_order(kavya, enclosures)
+
+    @staticmethod
+    def _inventory(key, company, owner, now):
+        """Warehouses, items and opening stock, through inventory.services
+        so the same rules apply as in the app."""
+        warehouses = {}
+        for name, code, address_label in WAREHOUSES.get(key, []):
+            address = company.addresses.filter(label=address_label).first() if address_label else None
+            warehouses[code] = inventory.save_warehouse(company, Warehouse(), {
+                'name': name, 'code': code, 'address_id': address.pk if address else None,
+            })
+        as_of = (now - timedelta(days=30)).date()
+        for code, name, kind, unit, hsn, gst, buy, sell, reorder, opening in ITEMS.get(key, []):
+            item = inventory.save_item(company, owner, Item(), {
+                'code': code, 'name': name, 'kind': kind, 'unit': unit, 'hsn_code': hsn, 'gst_rate': Decimal(gst),
+                'purchase_price': Decimal(buy) if buy else None, 'sale_price': Decimal(sell) if sell else None,
+                'reorder_level': Decimal(reorder) if reorder else None,
+            })
+            for warehouse_code, (quantity, rate) in opening.items():
+                inventory.set_opening_stock(company, owner, item_id=item.pk, warehouse_id=warehouses[warehouse_code].pk,
+                                            quantity=Decimal(quantity), rate=Decimal(rate), entry_date=as_of)
 
     @staticmethod
     def _subscription(company, plan, state, now):

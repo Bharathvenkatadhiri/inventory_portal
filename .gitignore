@@ -158,3 +158,6 @@ nginx/ssl/
 # The frontend's source has lib/ folders, which the Python "lib/" rule above
 # would ignore. Keep this last so it wins.
 !frontend/**/src/lib/
+
+# Office lock files (created while a document is open)
+~$*

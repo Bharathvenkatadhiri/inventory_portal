@@ -56,3 +56,7 @@ def health(request):
 api.add_router("/", "organizations.api.router")
 api.add_router("/", "organizations.app_api.router")
 api.add_router("/", "billing.api.router")
+api.add_router("/", "inventory.api.router")
+api.add_router("/", "purchase.api.router")
+api.add_router("/", "sales.api.router")
+api.add_router("/", "finance.api.router")
