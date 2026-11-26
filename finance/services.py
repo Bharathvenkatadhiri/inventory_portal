@@ -63,12 +63,18 @@ def settled(direction, document_ids):
 
 
 def adjusted_totals(direction, documents):
-    """{document id: total + debit notes - credit notes} (posted notes only)."""
+    """{document id: what's to be settled}: total + debit notes - credit notes
+    (posted notes only), less TDS deducted on a bill, which goes to the
+    government rather than the supplier."""
     from adjustments.models import CreditDebitNote
     from adjustments.services import adjustments_for
     side = CreditDebitNote.Side.SALES if direction == Direction.RECEIVED else CreditDebitNote.Side.PURCHASE
     notes = adjustments_for(side, [d.pk for d in documents])
-    return {d.pk: d.total + notes.get(d.pk, (ZERO, ZERO))[0] - notes.get(d.pk, (ZERO, ZERO))[1] for d in documents}
+    out = {}
+    for d in documents:
+        debit, credit = notes.get(d.pk, (ZERO, ZERO))
+        out[d.pk] = d.total + debit - credit - (getattr(d, 'tds_amount', ZERO) or ZERO)
+    return out
 
 
 def payment_state(total, paid, pending, due_date, today=None):
@@ -93,7 +99,8 @@ def balance(document):
     total = adjusted_totals(direction, [document])[document.pk]
     key, label = payment_state(total, paid, pending, document.due_date)
     posted = document.status == 'posted'
-    return {'adjusted_total': total, 'paid': paid, 'payment_pending': pending, 'outstanding': total - paid,
+    # adjusted_total stays "after notes"; TDS is shown on its own.
+    return {'adjusted_total': total + (getattr(document, 'tds_amount', ZERO) or ZERO), 'net_payable': total, 'paid': paid, 'payment_pending': pending, 'outstanding': total - paid,
             'payment_status': key if posted else '', 'payment_status_label': label if posted else ''}
 
 

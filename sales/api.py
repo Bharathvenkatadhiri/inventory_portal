@@ -520,6 +520,8 @@ class InvoiceOut(Schema):
     # The total after posted credit and debit notes; outstanding is this less paid
     # (negative when a credit note leaves money due back).
     adjusted_total: Decimal
+    # What's to be settled: after notes and, for a bill, less TDS.
+    net_payable: Decimal
     paid: Decimal
     payment_pending: Decimal
     outstanding: Decimal

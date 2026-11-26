@@ -152,6 +152,11 @@ class PurchaseBill(TaxTotals):
     rejection_reason = models.CharField(max_length=300, blank=True)
     posted_at = models.DateTimeField(null=True, blank=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)
+    # TDS deducted on this bill, worked out when it's posted (tds.services).
+    tds_section = models.CharField(max_length=12, blank=True)
+    tds_rate = models.DecimalField(max_digits=5, decimal_places=3, default=0)
+    tds_base = models.DecimalField(**MONEY)
+    tds_amount = models.DecimalField(**MONEY)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -34,6 +34,8 @@ from organizations.models import Address, BankAccount, BusinessRelationship, Inv
 from organizations.services import set_up_organization
 from inventory import services as inventory
 from inventory.models import Item, StockEntry, Warehouse
+from adjustments import services as adjustments
+from adjustments.models import CreditDebitNote
 from finance import services as finance
 from finance.models import Payment
 from plans import erp
@@ -163,6 +165,17 @@ ITEMS = {
     ],
 }
 
+# Fictional TANs (format only) for the demo companies that deduct TDS.
+TANS = {'33AABCS1234K1Z7': 'CHES12345K', '27AADCK5678M1Z3': 'PNEK54321C'}
+
+# org: (logo initials, logo colour, signatory, invoice terms)
+BRANDING = {
+    'sri_lakshmi': ('SLP', (17, 53, 92), 'Arjun Raman',
+                    'Payment within the agreed credit period. Interest at 18% p.a. on overdue amounts. Subject to Chennai jurisdiction.'),
+    'kaveri': ('KC', (124, 45, 18), 'Nikhil Deshpande',
+               'Castings supplied to drawing and inspected before dispatch. Claims within 7 days of receipt. Subject to Pune jurisdiction.'),
+}
+
 # (buyer, supplier, status, initiated by, vendor code, customer code, payment days, credit limit)
 RELATIONSHIPS = [
     ('tejas', 'sri_lakshmi', Status.ACTIVE, 'tejas', 'V-0012', 'C-TEJ01', 45, 500000),
@@ -207,7 +220,8 @@ class Command(BaseCommand):
     def _flush(self):
         gstins = [g for g, *_ in ORGANIZATIONS.values()] + [UNCLAIMED_GSTIN]
         companies = Company.objects.filter(gstin__in=gstins)
-        # Payments, sales and purchase documents PROTECT the companies, documents, items and lines they point to.
+        # Notes, payments, sales and purchase documents PROTECT the companies, documents, items and lines they point to.
+        CreditDebitNote.objects.filter(Q(company__in=companies) | Q(party__in=companies)).delete()
         Payment.objects.filter(Q(company__in=companies) | Q(party__in=companies)).delete()
         SalesInvoice.objects.filter(Q(company__in=companies) | Q(customer__in=companies)).delete()
         Dispatch.objects.filter(Q(company__in=companies) | Q(order__customer__in=companies)).delete()
@@ -274,6 +288,8 @@ class Command(BaseCommand):
                 BankAccount.objects.create(company=company, account_name=name, bank_name=bank, account_number=number,
                                            ifsc=ifsc, branch=branch, is_default=True)
             self._inventory(key, company, owner, now)
+            if key in BRANDING:
+                self._branding(company, *BRANDING[key])
             self._subscription(company, plan, state, now)
             self.orgs[key] = company
 
@@ -372,6 +388,24 @@ class Command(BaseCommand):
             'allocations': [{'document_id': invoice.pk, 'amount': part}],
         })
 
+        # 10 castings fail Sri Lakshmi's inspection and go back. Kaveri issues a credit note
+        # (stock back into its Foundry store); Sri Lakshmi records it against the bill
+        # (stock out of its Plant store).
+        credit_note = adjustments.save_note(sneha, CreditDebitNote(), {
+            'side': 'sales', 'kind': 'credit', 'document_id': invoice.pk, 'reason': 'goods_returned', 'note_date': ago(6),
+            'warehouse_id': Warehouse.objects.get(company=kaveri, code='FS').pk,
+            'remarks': 'Blow holes found at incoming inspection; 10 castings returned.',
+            'lines': [{'line_id': invoice.lines.get().pk, 'quantity': '10'}],
+        })
+        credit_note = adjustments.post_note(sneha, credit_note)
+        supplier_note = adjustments.save_note(accounts, CreditDebitNote(), {
+            'side': 'purchase', 'kind': 'credit', 'document_id': bill.pk, 'reason': 'goods_returned', 'note_date': ago(5),
+            'party_note_number': credit_note.number, 'warehouse_id': plant.pk,
+            'remarks': 'Rejected at incoming inspection (blow holes).',
+            'lines': [{'line_id': bill.lines.get().pk, 'quantity': '10'}],
+        })
+        adjustments.post_note(accounts, supplier_note)
+
         # Waiting for approval: an executive's order to Malabar (Pro has approvals).
         bearings = purchase.save_order(karthik, PurchaseOrder(), {
             'supplier_id': self.orgs['malabar'].pk, 'ship_to_id': Warehouse.objects.get(company=sri, code='AMB').pk,
@@ -414,6 +448,30 @@ class Command(BaseCommand):
             for warehouse_code, (quantity, rate) in opening.items():
                 inventory.set_opening_stock(company, owner, item_id=item.pk, warehouse_id=warehouses[warehouse_code].pk,
                                             quantity=Decimal(quantity), rate=Decimal(rate), entry_date=as_of)
+
+    @staticmethod
+    def _branding(company, initials, colour, signatory, terms):
+        """A generated logo (initials on a coloured tile), the signatory and invoice terms."""
+        import io
+
+        from django.core.files.base import ContentFile
+        from PIL import Image, ImageDraw, ImageFont
+
+        image = Image.new('RGB', (360, 120), colour)
+        draw = ImageDraw.Draw(image)
+        try:
+            font = ImageFont.load_default(size=64)
+        except TypeError:  # older Pillow: fixed-size default font
+            font = ImageFont.load_default()
+        draw.text((180, 60), initials, fill=(255, 255, 255), font=font, anchor='mm')
+        data = io.BytesIO()
+        image.save(data, format='PNG')
+        if company.logo:
+            company.logo.delete(save=False)
+        company.logo.save(f"{company.pk}-logo.png", ContentFile(data.getvalue()), save=False)
+        company.signatory_name, company.invoice_terms = signatory, terms
+        company.tan = TANS.get(company.gstin, '')
+        company.save(update_fields=['logo', 'signatory_name', 'invoice_terms', 'tan', 'updated_at'])
 
     @staticmethod
     def _subscription(company, plan, state, now):

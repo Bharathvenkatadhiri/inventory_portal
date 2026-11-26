@@ -285,6 +285,8 @@ class BusinessRelationship(models.Model):
     credit_limit = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
     vendor_code = models.CharField(max_length=30, blank=True)    # the buyer's code for the supplier
     customer_code = models.CharField(max_length=30, blank=True)  # the supplier's code for the buyer
+    # The buyer deducts TDS under this section when it pays the supplier (tds.rules).
+    tds_section = models.CharField('TDS section', max_length=12, blank=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     activated_at = models.DateTimeField(null=True, blank=True)
     # The side that blocked it; only that side can unblock.

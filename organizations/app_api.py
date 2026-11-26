@@ -92,6 +92,8 @@ class CompanyOut(Schema):
     findable: bool
     plan: str
     plan_label: str
+    tan: str
+    tds_194q: bool
 
 
 class SeatsOut(Schema):
@@ -159,6 +161,7 @@ def company_out(company):
         'state': company.state, 'state_code': company.state_code, 'pincode': company.pincode,
         'buying_enabled': company.buying_enabled, 'selling_enabled': company.selling_enabled,
         'findable': company.findable, 'plan': company.erp_plan, 'plan_label': plan['label'] if plan else '',
+        'tan': company.tan, 'tds_194q': company.tds_194q,
     }
 
 
@@ -240,6 +243,8 @@ class OrganizationIn(Schema):
     findable: Optional[bool] = None
     buying_enabled: Optional[bool] = None
     selling_enabled: Optional[bool] = None
+    tan: Optional[str] = None
+    tds_194q: Optional[bool] = None
 
 
 @router.get('/organization', response=CompanyOut, tags=['organization'])
@@ -256,9 +261,15 @@ def update_organization(request, payload: OrganizationIn):
         if not name:
             raise HttpError(400, "Enter the name your company goes by.")
         company.name = name[:255]
-    for field in ('findable', 'buying_enabled', 'selling_enabled'):
+    for field in ('findable', 'buying_enabled', 'selling_enabled', 'tds_194q'):
         if field in changes and changes[field] is not None:
             setattr(company, field, changes[field])
+    if 'tan' in changes and changes['tan'] is not None:
+        import re
+        tan = changes['tan'].strip().upper()
+        if tan and not re.fullmatch(r'[A-Z]{4}\d{5}[A-Z]', tan):
+            raise HttpError(400, "A TAN is 4 letters, 5 digits and a letter, e.g. CHEA12345B.")
+        company.tan = tan
     if not company.buying_enabled and not company.selling_enabled:
         raise HttpError(400, "Keep buying, selling or both switched on.")
     company.save()
@@ -871,6 +882,7 @@ class PartnerOut(Schema):
     credit_limit: Optional[str]
     vendor_code: str
     customer_code: str
+    tds_section: str
     editable_terms: List[str]
     created_at: datetime
     activated_at: Optional[datetime]
@@ -902,6 +914,7 @@ class TermsIn(Schema):
     credit_limit: Optional[str] = None
     vendor_code: Optional[str] = None
     customer_code: Optional[str] = None
+    tds_section: Optional[str] = None
 
 
 def _partner_out(relationship, company):
@@ -990,6 +1003,11 @@ def update_partner_terms(request, relationship_id: int, payload: TermsIn):
     company = membership_for(request, 'partners.manage', write=True).company
     relationship = _relationship(company, relationship_id)
     changes = payload.dict(exclude_unset=True)
+    if 'tds_section' in changes:
+        from tds.rules import SECTIONS
+        changes['tds_section'] = changes['tds_section'] or ''
+        if changes['tds_section'] and changes['tds_section'] not in SECTIONS:
+            raise HttpError(400, "Choose a TDS section from the list.")
     if 'payment_terms_days' in changes and changes['payment_terms_days'] is not None \
             and not 0 <= changes['payment_terms_days'] <= 365:
         raise HttpError(400, "Payment terms are 0 to 365 days.")

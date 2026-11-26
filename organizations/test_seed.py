@@ -1,3 +1,4 @@
+import tempfile
 from io import StringIO
 
 from django.core.management import CommandError, call_command
@@ -10,7 +11,7 @@ from organizations.management.commands import seed_erp_demo as seed
 from organizations.models import BusinessRelationship, Membership
 
 
-@override_settings(DEBUG=True)
+@override_settings(DEBUG=True, MEDIA_ROOT=tempfile.mkdtemp(prefix='seed-tests-'))
 class SeedERPDemoTests(TestCase):
     def run_seed(self, *args):
         out = StringIO()
@@ -49,6 +50,12 @@ class SeedERPDemoTests(TestCase):
         invoice = SalesInvoice.objects.get(company=kaveri, status='posted')
         self.assertTrue(PurchaseBill.objects.filter(company=sri, supplier_invoice_number=invoice.number).exists())
         self.assertTrue(StockEntry.objects.filter(company=kaveri, kind='dispatch').exists())
+        from adjustments.models import CreditDebitNote
+        credit = CreditDebitNote.objects.get(company=kaveri, side='sales', status='posted')
+        self.assertTrue(CreditDebitNote.objects.filter(company=sri, side='purchase', party_note_number=credit.number,
+                                                       status='posted').exists())
+        self.assertTrue(StockEntry.objects.filter(company=sri, kind='purchase_return').exists())
+        self.assertTrue(sri.__class__.objects.get(pk=sri.pk).logo)
         from finance.services import balance
         self.assertEqual(balance(invoice)['payment_status'], 'partly_paid')
         self.assertEqual(balance(PurchaseBill.objects.get(company=sri, supplier=kaveri))['payment_status'], 'partly_paid')

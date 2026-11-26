@@ -303,12 +303,15 @@ function EditTerms({ partner, onClose }: { partner: Partner; onClose: () => void
   const [credit, setCredit] = useState(partner.credit_limit ?? "");
   const [vendorCode, setVendorCode] = useState(partner.vendor_code);
   const [customerCode, setCustomerCode] = useState(partner.customer_code);
+  const [tdsSection, setTdsSection] = useState(partner.tds_section);
+  const sections = useQuery({ queryKey: ["tds-sections"], queryFn: async () => unwrap(await api.GET("/api/v1/tds/sections")), staleTime: Infinity });
   const save = useMutation({
     mutationFn: async () => {
       const body: Schemas["TermsIn"] = { payment_terms_days: days === "" ? null : Number(days) };
       if (editable.has("credit_limit")) body.credit_limit = credit === "" ? null : credit;
       if (editable.has("vendor_code")) body.vendor_code = vendorCode;
       if (editable.has("customer_code")) body.customer_code = customerCode;
+      if (editable.has("tds_section")) body.tds_section = tdsSection;
       return unwrap(await api.PATCH("/api/v1/partners/{relationship_id}", { params: { path: { relationship_id: partner.id } }, body }));
     },
     onSuccess: () => {
@@ -333,6 +336,16 @@ function EditTerms({ partner, onClose }: { partner: Partner; onClose: () => void
       {editable.has("vendor_code") ? (
         <Field label="Your vendor code for them">
           {(id) => <input id={id} className="field-input" maxLength={30} value={vendorCode} onChange={(e) => setVendorCode(e.target.value)} />}
+        </Field>
+      ) : null}
+      {editable.has("tds_section") ? (
+        <Field label="TDS you deduct when paying them" hint="Worked out on each bill when it's posted, on the value before GST.">
+          {(id) => (
+            <select id={id} className="field-input" value={tdsSection} onChange={(e) => setTdsSection(e.target.value)}>
+              <option value="">No TDS</option>
+              {(sections.data ?? []).map((sec) => <option key={sec.value} value={sec.value}>{sec.label}</option>)}
+            </select>
+          )}
         </Field>
       ) : null}
       {editable.has("customer_code") ? (

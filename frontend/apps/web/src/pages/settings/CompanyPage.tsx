@@ -43,6 +43,7 @@ export function CompanyPage() {
 function Profile({ company, manage }: { company: Company; manage: boolean }) {
   const queryClient = useQueryClient();
   const [name, setName] = useState(company.name);
+  const [tan, setTan] = useState(company.tan);
   const update = useMutation({
     mutationFn: async (body: Schemas["OrganizationIn"]) => unwrap(await api.PATCH("/api/v1/organization", { body })),
     onSuccess: (data) => {
@@ -76,6 +77,20 @@ function Profile({ company, manage }: { company: Company; manage: boolean }) {
           </div>
           {manage ? <button type="submit" className="btn-secondary mb-5" disabled={update.isPending || name === company.name}>Save</button> : null}
         </form>
+        <form
+          className="flex items-end gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            update.mutate({ tan });
+          }}
+        >
+          <div className="flex-1">
+            <Field label="TAN" hint="Tax deduction account number, for the TDS you deduct from suppliers.">
+              {(id) => <input id={id} className="field-input font-mono uppercase" maxLength={10} placeholder="e.g. CHEA12345B" value={tan} disabled={!manage} onChange={(e) => setTan(e.target.value)} />}
+            </Field>
+          </div>
+          {manage ? <button type="submit" className="btn-secondary mb-5" disabled={update.isPending || tan === company.tan}>Save</button> : null}
+        </form>
       </Card>
 
       <Card title="How you use MakeSetu">
@@ -93,6 +108,13 @@ function Profile({ company, manage }: { company: Company; manage: boolean }) {
             checked={company.selling_enabled}
             disabled={!manage || update.isPending}
             onChange={(value) => update.mutate({ selling_enabled: value })}
+          />
+          <Toggle
+            label="Deduct TDS on purchases of goods (194Q)"
+            description="Switch on if your turnover was over ₹10 crore last financial year: 0.1% on purchases above ₹50 lakh a year from one seller."
+            checked={company.tds_194q}
+            disabled={!manage || update.isPending}
+            onChange={(value) => update.mutate({ tds_194q: value })}
           />
           <Toggle
             label="Findable by name"

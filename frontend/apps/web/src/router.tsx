@@ -5,6 +5,7 @@ import { AccountsLayout } from "./pages/accounts/AccountsLayout";
 import { PayablesPage, ReceivablesPage } from "./pages/accounts/OutstandingPage";
 import { GstReturnsPage } from "./pages/accounts/GstReturnsPage";
 import { PaymentsPage } from "./pages/accounts/PaymentsPage";
+import { TdsPage } from "./pages/accounts/TdsPage";
 import { HomePage } from "./pages/HomePage";
 import { SalesNotesPage, SupplierNotesPage } from "./pages/notes/NotesPage";
 import { InventoryLayout } from "./pages/inventory/InventoryLayout";
@@ -112,6 +113,7 @@ const accountsIndexRoute = createRoute({
 const receivablesRoute = createRoute({ getParentRoute: () => accountsRoute, path: "receivables", component: ReceivablesPage });
 const payablesRoute = createRoute({ getParentRoute: () => accountsRoute, path: "payables", component: PayablesPage });
 const paymentsRoute = createRoute({ getParentRoute: () => accountsRoute, path: "payments", component: PaymentsPage });
+const tdsRoute = createRoute({ getParentRoute: () => accountsRoute, path: "tds", component: TdsPage });
 const gstReturnsRoute = createRoute({ getParentRoute: () => accountsRoute, path: "gst-returns", component: GstReturnsPage });
 const profileRoute = createRoute({ getParentRoute: () => rootRoute, path: "profile", component: ProfilePage });
 const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: "settings", component: SettingsLayout });
@@ -131,7 +133,7 @@ const billingRoute = createRoute({ getParentRoute: () => settingsRoute, path: "b
 const routeTree = rootRoute.addChildren([
   homeRoute,
   partnersRoute,
-  accountsRoute.addChildren([accountsIndexRoute, receivablesRoute, payablesRoute, paymentsRoute, gstReturnsRoute]),
+  accountsRoute.addChildren([accountsIndexRoute, receivablesRoute, payablesRoute, paymentsRoute, tdsRoute, gstReturnsRoute]),
   purchaseRoute.addChildren([purchaseIndexRoute, ordersRoute, newOrderRoute, orderRoute, editOrderRoute, receiptsRoute, billsRoute, supplierNotesRoute]),
   salesRoute.addChildren([salesIndexRoute, ordersReceivedRoute, salesOrdersRoute, newSalesOrderRoute, salesOrderRoute, editSalesOrderRoute, dispatchesRoute, invoicesRoute, salesNotesRoute]),
   inventoryRoute.addChildren([inventoryIndexRoute, itemsRoute, warehousesRoute, stockRoute]),

@@ -113,6 +113,10 @@ class Company(models.Model):
     signature = models.ImageField(upload_to='company/signatures/', blank=True)
     signatory_name = models.CharField(max_length=100, blank=True)  # "Authorised signatory" under the signature
     invoice_terms = models.TextField(blank=True)  # printed at the foot of every tax invoice
+    # TDS (tds app): the tax deduction account number, and whether purchases
+    # of goods attract 194Q (turnover over ₹10 crore in the previous year).
+    tan = models.CharField('TAN', max_length=10, blank=True)
+    tds_194q = models.BooleanField('Deducts TDS under 194Q', default=False)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

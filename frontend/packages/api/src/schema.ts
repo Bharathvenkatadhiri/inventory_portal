@@ -1585,6 +1585,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tds/26q": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Form 26Q
+         * @description The quarter's deductee rows as CSV, to key into the 26Q return utility.
+         */
+        get: operations["tds_api_form_26q"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tds/deposits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record Deposit */
+        post: operations["tds_api_record_deposit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tds/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Register */
+        get: operations["tds_api_register"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tds/sections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tds Sections */
+        get: operations["tds_api_tds_sections"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams": {
         parameters: {
             query?: never;
@@ -1922,6 +1993,8 @@ export interface components {
             is_interstate: boolean;
             /** Lines */
             lines: components["schemas"]["BillLineOut"][];
+            /** Net Payable */
+            net_payable: number | string;
             /** Notes */
             notes: string;
             /** Number */
@@ -1959,6 +2032,16 @@ export interface components {
             supplier_invoice_number: string;
             /** Taxable Value */
             taxable_value: number | string;
+            /** Tds Amount */
+            tds_amount: number | string;
+            /** Tds Base */
+            tds_base: number | string;
+            /** Tds Rate */
+            tds_rate: number | string;
+            /** Tds Section */
+            tds_section: string;
+            /** Tds Section Label */
+            tds_section_label: string;
             /** Total */
             total: number | string;
         };
@@ -2052,6 +2135,10 @@ export interface components {
             state: string;
             /** State Code */
             state_code: string;
+            /** Tan */
+            tan: string;
+            /** Tds 194Q */
+            tds_194q: boolean;
             /** Trade Name */
             trade_name: string;
         };
@@ -2089,6 +2176,33 @@ export interface components {
             /** State */
             state: string;
         };
+        /** DeductionOut */
+        DeductionOut: {
+            /** Base */
+            base: number | string;
+            /** Bill Id */
+            bill_id: number;
+            /** Bill Number */
+            bill_number: string;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Pan */
+            pan: string;
+            /** Rate */
+            rate: number | string;
+            /** Section */
+            section: string;
+            /** Section Label */
+            section_label: string;
+            supplier: components["schemas"]["PartyOut"];
+            /** Supplier Invoice Number */
+            supplier_invoice_number: string;
+            /** Tds */
+            tds: number | string;
+        };
         /** DefaultRoleOut */
         DefaultRoleOut: {
             /** Description */
@@ -2101,6 +2215,58 @@ export interface components {
             permissions: string[];
             /** User Type */
             user_type: string;
+        };
+        /** DepositIn */
+        DepositIn: {
+            /** Amount */
+            amount: number | string;
+            /** Bsr Code */
+            bsr_code: string;
+            /** Challan Serial */
+            challan_serial: string;
+            /** Deposited On */
+            deposited_on?: string | null;
+            /**
+             * Interest
+             * @default 0
+             */
+            interest: number | string;
+            /**
+             * Period
+             * Format: date
+             */
+            period: string;
+            /** Section */
+            section: string;
+        };
+        /** DepositOut */
+        DepositOut: {
+            /** Amount */
+            amount: number | string;
+            /** Bsr Code */
+            bsr_code: string;
+            /** Challan Serial */
+            challan_serial: string;
+            /**
+             * Deposited On
+             * Format: date
+             */
+            deposited_on: string;
+            /** Id */
+            id: number;
+            /** Interest */
+            interest: number | string;
+            /**
+             * Period
+             * Format: date
+             */
+            period: string;
+            /** Recorded By */
+            recorded_by: string;
+            /** Section */
+            section: string;
+            /** Section Label */
+            section_label: string;
         };
         /** DispatchIn */
         DispatchIn: {
@@ -2329,6 +2495,8 @@ export interface components {
             is_interstate: boolean;
             /** Lines */
             lines: components["schemas"]["InvoiceLineOut"][];
+            /** Net Payable */
+            net_payable: number | string;
             /** Notes */
             notes: string;
             /** Number */
@@ -2505,6 +2673,33 @@ export interface components {
             role_name: string;
             /** Role Type */
             role_type: string;
+        };
+        /** MonthOut */
+        MonthOut: {
+            /** Balance */
+            balance: number | string;
+            /** Deducted */
+            deducted: number | string;
+            /** Deposited */
+            deposited: number | string;
+            /**
+             * Due Date
+             * Format: date
+             */
+            due_date: string;
+            /** Interest If Paid Today */
+            interest_if_paid_today: number | string;
+            /**
+             * Month
+             * Format: date
+             */
+            month: string;
+            /** Overdue */
+            overdue: boolean;
+            /** Section */
+            section: string;
+            /** Section Label */
+            section_label: string;
         };
         /** NoteActionsOut */
         NoteActionsOut: {
@@ -2970,6 +3165,10 @@ export interface components {
             name?: string | null;
             /** Selling Enabled */
             selling_enabled?: boolean | null;
+            /** Tan */
+            tan?: string | null;
+            /** Tds 194Q */
+            tds_194q?: boolean | null;
         };
         /** OurBankAccountOut */
         OurBankAccountOut: {
@@ -3038,6 +3237,8 @@ export interface components {
             relation: string;
             /** Status */
             status: string;
+            /** Tds Section */
+            tds_section: string;
             /** Vendor Code */
             vendor_code: string;
             /** Waiting On */
@@ -3452,6 +3653,27 @@ export interface components {
             taxable_value: number | string;
             /** Total */
             total: number | string;
+        };
+        /** RegisterOut */
+        RegisterOut: {
+            /** Deductions */
+            deductions: components["schemas"]["DeductionOut"][];
+            /** Deposits */
+            deposits: components["schemas"]["DepositOut"][];
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            /** Months */
+            months: components["schemas"]["MonthOut"][];
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+            /** Tan */
+            tan: string;
         };
         /** ReturnSummaryOut */
         ReturnSummaryOut: {
@@ -3924,6 +4146,8 @@ export interface components {
             customer_code?: string | null;
             /** Payment Terms Days */
             payment_terms_days?: number | null;
+            /** Tds Section */
+            tds_section?: string | null;
             /** Vendor Code */
             vendor_code?: string | null;
         };
@@ -6684,6 +6908,94 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    tds_api_form_26q: {
+        parameters: {
+            query: {
+                quarter: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    tds_api_record_deposit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DepositIn"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    tds_api_register: {
+        parameters: {
+            query: {
+                quarter: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegisterOut"];
+                };
+            };
+        };
+    };
+    tds_api_tds_sections: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChoiceOut"][];
+                };
             };
         };
     };

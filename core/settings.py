@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "sales",
     "finance",
     "adjustments",
+    "tds",
 ]
 
 MIDDLEWARE = [

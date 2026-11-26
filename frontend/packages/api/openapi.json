@@ -629,6 +629,17 @@
             "title": "Lines",
             "type": "array"
           },
+          "net_payable": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Net Payable"
+          },
           "notes": {
             "title": "Notes",
             "type": "string"
@@ -746,6 +757,47 @@
             ],
             "title": "Taxable Value"
           },
+          "tds_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Tds Amount"
+          },
+          "tds_base": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Tds Base"
+          },
+          "tds_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Tds Rate"
+          },
+          "tds_section": {
+            "title": "Tds Section",
+            "type": "string"
+          },
+          "tds_section_label": {
+            "title": "Tds Section Label",
+            "type": "string"
+          },
           "total": {
             "anyOf": [
               {
@@ -784,7 +836,13 @@
           "lines",
           "actions",
           "submit_needs_approval",
+          "tds_section",
+          "tds_section_label",
+          "tds_rate",
+          "tds_base",
+          "tds_amount",
           "adjusted_total",
+          "net_payable",
           "paid",
           "payment_pending",
           "outstanding",
@@ -1002,6 +1060,14 @@
             "title": "State Code",
             "type": "string"
           },
+          "tan": {
+            "title": "Tan",
+            "type": "string"
+          },
+          "tds_194q": {
+            "title": "Tds 194Q",
+            "type": "boolean"
+          },
           "trade_name": {
             "title": "Trade Name",
             "type": "string"
@@ -1024,7 +1090,9 @@
           "selling_enabled",
           "findable",
           "plan",
-          "plan_label"
+          "plan_label",
+          "tan",
+          "tds_194q"
         ],
         "title": "CompanyOut",
         "type": "object"
@@ -1142,6 +1210,90 @@
         "title": "CustomerOut",
         "type": "object"
       },
+      "DeductionOut": {
+        "properties": {
+          "base": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Base"
+          },
+          "bill_id": {
+            "title": "Bill Id",
+            "type": "integer"
+          },
+          "bill_number": {
+            "title": "Bill Number",
+            "type": "string"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "pan": {
+            "title": "Pan",
+            "type": "string"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Rate"
+          },
+          "section": {
+            "title": "Section",
+            "type": "string"
+          },
+          "section_label": {
+            "title": "Section Label",
+            "type": "string"
+          },
+          "supplier": {
+            "$ref": "#/components/schemas/PartyOut"
+          },
+          "supplier_invoice_number": {
+            "title": "Supplier Invoice Number",
+            "type": "string"
+          },
+          "tds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Tds"
+          }
+        },
+        "required": [
+          "bill_id",
+          "bill_number",
+          "supplier_invoice_number",
+          "date",
+          "supplier",
+          "pan",
+          "section",
+          "section_label",
+          "base",
+          "rate",
+          "tds"
+        ],
+        "title": "DeductionOut",
+        "type": "object"
+      },
       "DefaultRoleOut": {
         "properties": {
           "description": {
@@ -1176,6 +1328,145 @@
           "permissions"
         ],
         "title": "DefaultRoleOut",
+        "type": "object"
+      },
+      "DepositIn": {
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Amount"
+          },
+          "bsr_code": {
+            "title": "Bsr Code",
+            "type": "string"
+          },
+          "challan_serial": {
+            "title": "Challan Serial",
+            "type": "string"
+          },
+          "deposited_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deposited On"
+          },
+          "interest": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "default": "0",
+            "title": "Interest"
+          },
+          "period": {
+            "format": "date",
+            "title": "Period",
+            "type": "string"
+          },
+          "section": {
+            "title": "Section",
+            "type": "string"
+          }
+        },
+        "required": [
+          "period",
+          "section",
+          "amount",
+          "bsr_code",
+          "challan_serial"
+        ],
+        "title": "DepositIn",
+        "type": "object"
+      },
+      "DepositOut": {
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Amount"
+          },
+          "bsr_code": {
+            "title": "Bsr Code",
+            "type": "string"
+          },
+          "challan_serial": {
+            "title": "Challan Serial",
+            "type": "string"
+          },
+          "deposited_on": {
+            "format": "date",
+            "title": "Deposited On",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "interest": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Interest"
+          },
+          "period": {
+            "format": "date",
+            "title": "Period",
+            "type": "string"
+          },
+          "recorded_by": {
+            "title": "Recorded By",
+            "type": "string"
+          },
+          "section": {
+            "title": "Section",
+            "type": "string"
+          },
+          "section_label": {
+            "title": "Section Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "period",
+          "section",
+          "section_label",
+          "amount",
+          "interest",
+          "deposited_on",
+          "bsr_code",
+          "challan_serial",
+          "recorded_by"
+        ],
+        "title": "DepositOut",
         "type": "object"
       },
       "DispatchIn": {
@@ -1806,6 +2097,17 @@
             "title": "Lines",
             "type": "array"
           },
+          "net_payable": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Net Payable"
+          },
           "notes": {
             "title": "Notes",
             "type": "string"
@@ -1959,6 +2261,7 @@
           "lines",
           "actions",
           "adjusted_total",
+          "net_payable",
           "paid",
           "payment_pending",
           "outstanding",
@@ -2399,6 +2702,89 @@
           "role_type"
         ],
         "title": "MembershipOut",
+        "type": "object"
+      },
+      "MonthOut": {
+        "properties": {
+          "balance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Balance"
+          },
+          "deducted": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Deducted"
+          },
+          "deposited": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Deposited"
+          },
+          "due_date": {
+            "format": "date",
+            "title": "Due Date",
+            "type": "string"
+          },
+          "interest_if_paid_today": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Interest If Paid Today"
+          },
+          "month": {
+            "format": "date",
+            "title": "Month",
+            "type": "string"
+          },
+          "overdue": {
+            "title": "Overdue",
+            "type": "boolean"
+          },
+          "section": {
+            "title": "Section",
+            "type": "string"
+          },
+          "section_label": {
+            "title": "Section Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "month",
+          "section",
+          "section_label",
+          "deducted",
+          "deposited",
+          "balance",
+          "due_date",
+          "overdue",
+          "interest_if_paid_today"
+        ],
+        "title": "MonthOut",
         "type": "object"
       },
       "NoteActionsOut": {
@@ -3931,6 +4317,28 @@
               }
             ],
             "title": "Selling Enabled"
+          },
+          "tan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tan"
+          },
+          "tds_194q": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tds 194Q"
           }
         },
         "title": "OrganizationIn",
@@ -4134,6 +4542,10 @@
             "title": "Status",
             "type": "string"
           },
+          "tds_section": {
+            "title": "Tds Section",
+            "type": "string"
+          },
           "vendor_code": {
             "title": "Vendor Code",
             "type": "string"
@@ -4161,6 +4573,7 @@
           "credit_limit",
           "vendor_code",
           "customer_code",
+          "tds_section",
           "editable_terms",
           "created_at",
           "activated_at"
@@ -5445,6 +5858,55 @@
           "suggested_items"
         ],
         "title": "ReceivedOrderOut",
+        "type": "object"
+      },
+      "RegisterOut": {
+        "properties": {
+          "deductions": {
+            "items": {
+              "$ref": "#/components/schemas/DeductionOut"
+            },
+            "title": "Deductions",
+            "type": "array"
+          },
+          "deposits": {
+            "items": {
+              "$ref": "#/components/schemas/DepositOut"
+            },
+            "title": "Deposits",
+            "type": "array"
+          },
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "months": {
+            "items": {
+              "$ref": "#/components/schemas/MonthOut"
+            },
+            "title": "Months",
+            "type": "array"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "tan": {
+            "title": "Tan",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "tan",
+          "deductions",
+          "months",
+          "deposits"
+        ],
+        "title": "RegisterOut",
         "type": "object"
       },
       "ReturnSummaryOut": {
@@ -7013,6 +7475,17 @@
               }
             ],
             "title": "Payment Terms Days"
+          },
+          "tds_section": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tds Section"
           },
           "vendor_code": {
             "anyOf": [
@@ -11666,6 +12139,144 @@
         "summary": "Set Opening",
         "tags": [
           "inventory"
+        ]
+      }
+    },
+    "/api/v1/tds/26q": {
+      "get": {
+        "description": "The quarter's deductee rows as CSV, to key into the 26Q return utility.",
+        "operationId": "tds_api_form_26q",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "quarter",
+            "required": true,
+            "schema": {
+              "title": "Quarter",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Form 26Q",
+        "tags": [
+          "tds"
+        ]
+      }
+    },
+    "/api/v1/tds/deposits": {
+      "post": {
+        "operationId": "tds_api_record_deposit",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DepositIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Created"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Record Deposit",
+        "tags": [
+          "tds"
+        ]
+      }
+    },
+    "/api/v1/tds/register": {
+      "get": {
+        "operationId": "tds_api_register",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "quarter",
+            "required": true,
+            "schema": {
+              "title": "Quarter",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Register",
+        "tags": [
+          "tds"
+        ]
+      }
+    },
+    "/api/v1/tds/sections": {
+      "get": {
+        "operationId": "tds_api_tds_sections",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ChoiceOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Tds Sections",
+        "tags": [
+          "tds"
         ]
       }
     },

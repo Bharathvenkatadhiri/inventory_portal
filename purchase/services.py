@@ -432,10 +432,12 @@ def _locked_bill(bill, *statuses):
 
 
 def _post(bill, user):
+    from tds.services import apply_to_bill
     now = timezone.now()
     bill.status = Bill.Status.POSTED
     bill.approved_by, bill.approved_at, bill.posted_at = user, now, now
     bill.rejection_reason = ''
+    apply_to_bill(bill)  # TDS on this bill, now that it counts
 
 
 @transaction.atomic

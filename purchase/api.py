@@ -488,10 +488,17 @@ class BillOut(TotalsOut):
     lines: List[BillLineOut]
     actions: BillActionsOut
     submit_needs_approval: bool
+    tds_section: str
+    tds_section_label: str
+    tds_rate: Decimal
+    tds_base: Decimal
+    tds_amount: Decimal
     # Money settled by payments (finance): paid by posted payments, pending in ones waiting for approval.
     # The total after posted credit and debit notes; outstanding is this less paid
     # (negative when a credit note leaves money due back).
     adjusted_total: Decimal
+    # What's to be settled: after notes and, for a bill, less TDS.
+    net_payable: Decimal
     paid: Decimal
     payment_pending: Decimal
     outstanding: Decimal
@@ -523,7 +530,14 @@ def _bill_out(bill, membership):
         },
         'submit_needs_approval': services.approvals_on(bill.company) and not _can(membership, 'purchase_bill.approve'),
         **_balance(bill),
+        **_tds(bill),
     }
+
+
+def _tds(bill):
+    from tds.rules import SECTIONS
+    return {'tds_section': bill.tds_section, 'tds_section_label': SECTIONS.get(bill.tds_section, ('', ''))[0],
+            'tds_rate': bill.tds_rate, 'tds_base': bill.tds_base, 'tds_amount': bill.tds_amount}
 
 
 def _balance(bill):

@@ -184,7 +184,7 @@ def unblock(relationship, company, user):
 # Which side may change which term: the buyer keeps its own code for the
 # supplier, the supplier its code for the customer and the credit it gives;
 # payment terms are agreed, so either side may set them.
-BUYER_TERMS = {'vendor_code', 'payment_terms_days'}
+BUYER_TERMS = {'vendor_code', 'payment_terms_days', 'tds_section'}
 SUPPLIER_TERMS = {'customer_code', 'credit_limit', 'payment_terms_days'}
 
 
@@ -253,6 +253,7 @@ def describe(relationship, company):
         'credit_limit': relationship.credit_limit,
         'vendor_code': relationship.vendor_code,
         'customer_code': relationship.customer_code,
+        'tds_section': relationship.tds_section if we_buy else '',
         'editable_terms': sorted(BUYER_TERMS if we_buy else SUPPLIER_TERMS),
         'created_at': relationship.created_at,
         'activated_at': relationship.activated_at,

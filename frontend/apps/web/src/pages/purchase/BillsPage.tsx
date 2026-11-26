@@ -154,6 +154,12 @@ function BillDetail({ bill, onClose }: { bill: Bill; onClose: () => void }) {
       </table>
       <TotalsTable totals={bill} />
       {bill.status === "posted" ? <DocumentNotes side="purchase" documentId={bill.id} adjustedTotal={bill.adjusted_total} total={bill.total} /> : null}
+      {Number(bill.tds_amount) > 0 ? (
+        <p className="text-sm">
+          TDS {bill.tds_section_label.split(" · ")[0]} @ {Number(bill.tds_rate)}% on {rupees(bill.tds_base)}: <strong>{rupees(bill.tds_amount)}</strong>
+          {" · "}net payable to supplier <strong>{rupees(bill.net_payable)}</strong>
+        </p>
+      ) : null}
       {bill.status === "posted" ? (
         <p className="text-sm">Paid {rupees(bill.paid)} · outstanding <strong>{rupees(bill.outstanding)}</strong> <Badge tone={PAYMENT_TONES[bill.payment_status] ?? "gray"}>{bill.payment_status_label}</Badge></p>
       ) : null}
