@@ -900,6 +900,24 @@
         "title": "BucketOut",
         "type": "object"
       },
+      "CheckOut": {
+        "properties": {
+          "level": {
+            "title": "Level",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "level",
+          "message"
+        ],
+        "title": "CheckOut",
+        "type": "object"
+      },
       "ChoiceOut": {
         "properties": {
           "label": {
@@ -5429,6 +5447,53 @@
         "title": "ReceivedOrderOut",
         "type": "object"
       },
+      "ReturnSummaryOut": {
+        "properties": {
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/CheckOut"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "fp": {
+            "title": "Fp",
+            "type": "string"
+          },
+          "gstin": {
+            "title": "Gstin",
+            "type": "string"
+          },
+          "gstr1": {
+            "items": {
+              "$ref": "#/components/schemas/SectionOut"
+            },
+            "title": "Gstr1",
+            "type": "array"
+          },
+          "gstr3b": {
+            "items": {
+              "$ref": "#/components/schemas/TaxRowOut"
+            },
+            "title": "Gstr3B",
+            "type": "array"
+          },
+          "period": {
+            "title": "Period",
+            "type": "string"
+          }
+        },
+        "required": [
+          "period",
+          "fp",
+          "gstin",
+          "gstr1",
+          "gstr3b",
+          "checks"
+        ],
+        "title": "ReturnSummaryOut",
+        "type": "object"
+      },
       "RoleIn": {
         "properties": {
           "description": {
@@ -6465,6 +6530,53 @@
         "title": "SeatsOut",
         "type": "object"
       },
+      "SectionOut": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "tax": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Tax"
+          },
+          "taxable": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Taxable"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "count",
+          "taxable",
+          "tax"
+        ],
+        "title": "SectionOut",
+        "type": "object"
+      },
       "StockRowOut": {
         "properties": {
           "item_code": {
@@ -6712,6 +6824,72 @@
           "company_id"
         ],
         "title": "SwitchIn",
+        "type": "object"
+      },
+      "TaxRowOut": {
+        "properties": {
+          "cgst": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Cgst"
+          },
+          "igst": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Igst"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "sgst": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Sgst"
+          },
+          "taxable": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Taxable"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "taxable",
+          "igst",
+          "cgst",
+          "sgst"
+        ],
+        "title": "TaxRowOut",
         "type": "object"
       },
       "TeamIn": {
@@ -7331,6 +7509,133 @@
         "summary": "List Receipts",
         "tags": [
           "purchase"
+        ]
+      }
+    },
+    "/api/v1/gst-returns/gstr1": {
+      "get": {
+        "operationId": "gstreturns_api_gstr1_file",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "period",
+            "required": true,
+            "schema": {
+              "title": "Period",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Gstr1 File",
+        "tags": [
+          "gst-returns"
+        ]
+      }
+    },
+    "/api/v1/gst-returns/gstr3b": {
+      "get": {
+        "operationId": "gstreturns_api_gstr3b_file",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "period",
+            "required": true,
+            "schema": {
+              "title": "Period",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Gstr3B File",
+        "tags": [
+          "gst-returns"
+        ]
+      }
+    },
+    "/api/v1/gst-returns/summary": {
+      "get": {
+        "operationId": "gstreturns_api_summary",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "period",
+            "required": true,
+            "schema": {
+              "title": "Period",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReturnSummaryOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Summary",
+        "tags": [
+          "gst-returns"
+        ]
+      }
+    },
+    "/api/v1/gst-returns/tally": {
+      "get": {
+        "operationId": "gstreturns_api_tally_file",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "period",
+            "required": true,
+            "schema": {
+              "title": "Period",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Tally File",
+        "tags": [
+          "gst-returns"
         ]
       }
     },

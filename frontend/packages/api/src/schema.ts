@@ -161,6 +161,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/gst-returns/gstr1": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Gstr1 File */
+        get: operations["gstreturns_api_gstr1_file"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/gst-returns/gstr3b": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Gstr3B File */
+        get: operations["gstreturns_api_gstr3b_file"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/gst-returns/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Summary */
+        get: operations["gstreturns_api_summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/gst-returns/tally": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tally File */
+        get: operations["gstreturns_api_tally_file"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -1936,6 +2004,13 @@ export interface components {
             /** Label */
             label: string;
         };
+        /** CheckOut */
+        CheckOut: {
+            /** Level */
+            level: string;
+            /** Message */
+            message: string;
+        };
         /** ChoiceOut */
         ChoiceOut: {
             /** Label */
@@ -3378,6 +3453,21 @@ export interface components {
             /** Total */
             total: number | string;
         };
+        /** ReturnSummaryOut */
+        ReturnSummaryOut: {
+            /** Checks */
+            checks: components["schemas"]["CheckOut"][];
+            /** Fp */
+            fp: string;
+            /** Gstin */
+            gstin: string;
+            /** Gstr1 */
+            gstr1: components["schemas"]["SectionOut"][];
+            /** Gstr3B */
+            gstr3b: components["schemas"]["TaxRowOut"][];
+            /** Period */
+            period: string;
+        };
         /** RoleIn */
         RoleIn: {
             /**
@@ -3697,6 +3787,19 @@ export interface components {
             /** Teams Included */
             teams_included: number | null;
         };
+        /** SectionOut */
+        SectionOut: {
+            /** Count */
+            count: number;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Tax */
+            tax: number | string;
+            /** Taxable */
+            taxable: number | string;
+        };
         /** StockRowOut */
         StockRowOut: {
             /** Item Code */
@@ -3768,6 +3871,21 @@ export interface components {
         SwitchIn: {
             /** Company Id */
             company_id: number;
+        };
+        /** TaxRowOut */
+        TaxRowOut: {
+            /** Cgst */
+            cgst: number | string;
+            /** Igst */
+            igst: number | string;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Sgst */
+            sgst: number | string;
+            /** Taxable */
+            taxable: number | string;
         };
         /** TeamIn */
         TeamIn: {
@@ -4064,6 +4182,88 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ReceiptOut"][];
                 };
+            };
+        };
+    };
+    gstreturns_api_gstr1_file: {
+        parameters: {
+            query: {
+                period: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    gstreturns_api_gstr3b_file: {
+        parameters: {
+            query: {
+                period: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    gstreturns_api_summary: {
+        parameters: {
+            query: {
+                period: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReturnSummaryOut"];
+                };
+            };
+        };
+    };
+    gstreturns_api_tally_file: {
+        parameters: {
+            query: {
+                period: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

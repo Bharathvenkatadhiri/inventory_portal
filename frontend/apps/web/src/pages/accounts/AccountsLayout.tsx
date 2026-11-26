@@ -1,19 +1,22 @@
 import { Link, Outlet } from "@tanstack/react-router";
 
-import { useActive } from "../../lib/session";
+import { useActive, useCan } from "../../lib/session";
 
 const TABS = [
   { to: "/accounts/receivables", label: "Receivables", side: "selling" },
   { to: "/accounts/payables", label: "Payables", side: "buying" },
   { to: "/accounts/payments", label: "Payments" },
+  { to: "/accounts/gst-returns", label: "GST returns", needs: "ledger.view" },
 ] as const;
 
 export function AccountsLayout() {
   const { company } = useActive();
+  const can = useCan();
   return (
     <div>
       <nav className="mb-6 flex gap-1 overflow-x-auto border-b border-gray-200" aria-label="Accounts">
-        {TABS.filter((tab) => !("side" in tab) || (tab.side === "selling" ? company.selling_enabled : company.buying_enabled)).map((tab) => (
+        {TABS.filter((tab) => (!("side" in tab) || (tab.side === "selling" ? company.selling_enabled : company.buying_enabled))
+          && (!("needs" in tab) || can(tab.needs))).map((tab) => (
           <Link
             key={tab.to}
             to={tab.to}

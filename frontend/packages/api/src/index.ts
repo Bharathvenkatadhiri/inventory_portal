@@ -202,6 +202,32 @@ export async function openPdf(url: string): Promise<void> {
   }
 }
 
+/** Downloads a file from the API (e.g. a GST return) with this tab's headers, under the server's filename. */
+export async function downloadFile(url: string): Promise<void> {
+  const headers = new Headers();
+  if (tab.user()) headers.set("X-User-Id", tab.user());
+  if (tab.organization()) headers.set("X-Organization", tab.organization());
+  const response = await fetch(url, { credentials: "same-origin", headers });
+  if (response.status === 401) {
+    window.location.assign(signInUrl());
+    return;
+  }
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new ApiError(response.status, errorMessage(response.status, body));
+  }
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? "download";
+  const href = URL.createObjectURL(await response.blob());
+  const link = document.createElement("a");
+  link.href = href;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(href), 60 * 1000);
+}
+
 export const api = createClient<paths>({ baseUrl: "", credentials: "same-origin" });
 api.use(csrf, tabHeaders, sessionChanged);
 
