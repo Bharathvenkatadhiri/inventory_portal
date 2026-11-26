@@ -127,6 +127,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dispatches/{dispatch_id}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Challan Pdf */
+        get: operations["printouts_api_challan_pdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/goods-receipts": {
         parameters: {
             query?: never;
@@ -252,6 +269,116 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Notes */
+        get: operations["adjustments_api_list_notes"];
+        put?: never;
+        /** Create Note */
+        post: operations["adjustments_api_create_note"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notes/room": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Note Room */
+        get: operations["adjustments_api_note_room"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notes/{note_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Note */
+        get: operations["adjustments_api_get_note"];
+        /** Update Note */
+        put: operations["adjustments_api_update_note"];
+        post?: never;
+        /** Delete Note */
+        delete: operations["adjustments_api_delete_note"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notes/{note_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Note */
+        post: operations["adjustments_api_cancel_note"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notes/{note_id}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Note Pdf
+         * @description Credit and debit notes issued to customers: the issuer, and the
+         *     customer once posted when the deal came from their PO on MakeSetu.
+         *     (Notes received from suppliers are the supplier's documents to print.)
+         */
+        get: operations["printouts_api_note_pdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notes/{note_id}/post": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Note */
+        post: operations["adjustments_api_post_note"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organization": {
         parameters: {
             query?: never;
@@ -337,6 +464,45 @@ export interface paths {
         post?: never;
         /** Delete Bank Account */
         delete: operations["organizations_app_api_delete_bank_account"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organization/branding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Branding */
+        get: operations["organizations_app_api_get_branding"];
+        /** Update Branding */
+        put: operations["organizations_app_api_update_branding"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organization/branding/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload Branding
+         * @description The logo or signature printed on invoices, challans and purchase orders.
+         */
+        post: operations["organizations_app_api_upload_branding"];
+        /** Remove Branding */
+        delete: operations["organizations_app_api_remove_branding"];
         options?: never;
         head?: never;
         patch?: never;
@@ -867,6 +1033,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/purchase-orders/{order_id}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Purchase Order Pdf */
+        get: operations["printouts_api_purchase_order_pdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/purchase-orders/{order_id}/receipts": {
         parameters: {
             query?: never;
@@ -1042,6 +1225,26 @@ export interface paths {
         put?: never;
         /** Cancel Invoice */
         post: operations["sales_api_cancel_invoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-invoices/{invoice_id}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Invoice Pdf
+         * @description `copies=3` adds the duplicate (transporter) and triplicate (supplier) copies.
+         */
+        get: operations["printouts_api_invoice_pdf"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1628,6 +1831,8 @@ export interface components {
         /** BillOut */
         BillOut: {
             actions: components["schemas"]["BillActionsOut"];
+            /** Adjusted Total */
+            adjusted_total: number | string;
             /** Approved By */
             approved_by: string;
             /** Cgst */
@@ -1697,6 +1902,30 @@ export interface components {
             plans: components["schemas"]["PlanChoiceOut"][];
             seats: components["schemas"]["SeatsOut"];
             subscription: components["schemas"]["SubscriptionOut"];
+        };
+        /** BrandingIn */
+        BrandingIn: {
+            /**
+             * Invoice Terms
+             * @default
+             */
+            invoice_terms: string;
+            /**
+             * Signatory Name
+             * @default
+             */
+            signatory_name: string;
+        };
+        /** BrandingOut */
+        BrandingOut: {
+            /** Invoice Terms */
+            invoice_terms: string;
+            /** Logo Url */
+            logo_url: string;
+            /** Signatory Name */
+            signatory_name: string;
+            /** Signature Url */
+            signature_url: string;
         };
         /** BucketOut */
         BucketOut: {
@@ -1999,6 +2228,8 @@ export interface components {
         /** InvoiceOut */
         InvoiceOut: {
             actions: components["schemas"]["InvoiceActionsOut"];
+            /** Adjusted Total */
+            adjusted_total: number | string;
             /** Cancel Reason */
             cancel_reason: string;
             /** Cgst */
@@ -2199,6 +2430,168 @@ export interface components {
             role_name: string;
             /** Role Type */
             role_type: string;
+        };
+        /** NoteActionsOut */
+        NoteActionsOut: {
+            /** Cancel */
+            cancel: boolean;
+            /** Edit */
+            edit: boolean;
+            /** Post */
+            post: boolean;
+        };
+        /** NoteIn */
+        NoteIn: {
+            /** Document Id */
+            document_id: number;
+            /** Kind */
+            kind: string;
+            /** Lines */
+            lines: components["schemas"]["NoteLineIn"][];
+            /** Note Date */
+            note_date?: string | null;
+            /**
+             * Party Note Number
+             * @default
+             */
+            party_note_number: string;
+            /** Reason */
+            reason: string;
+            /**
+             * Remarks
+             * @default
+             */
+            remarks: string;
+            /** Side */
+            side: string;
+            /** Warehouse Id */
+            warehouse_id?: number | null;
+        };
+        /** NoteLineIn */
+        NoteLineIn: {
+            /** Line Id */
+            line_id: number;
+            /**
+             * Quantity
+             * @default 0
+             */
+            quantity: number | string;
+            /**
+             * Taxable Value
+             * @default 0
+             */
+            taxable_value: number | string;
+        };
+        /** NoteLineOut */
+        NoteLineOut: {
+            /** Gst Rate */
+            gst_rate: number | string;
+            /** Hsn Code */
+            hsn_code: string;
+            /** Item Code */
+            item_code: string;
+            /** Item Name */
+            item_name: string;
+            /** Quantity */
+            quantity: number | string;
+            /** Rate */
+            rate: number | string;
+            /** Tax Amount */
+            tax_amount: number | string;
+            /** Taxable Value */
+            taxable_value: number | string;
+            /** Unit */
+            unit: string;
+        };
+        /** NoteOut */
+        NoteOut: {
+            actions: components["schemas"]["NoteActionsOut"];
+            /** Cancel Reason */
+            cancel_reason: string;
+            /** Cgst */
+            cgst: number | string;
+            /** Created By */
+            created_by: string;
+            /**
+             * Document Date
+             * Format: date
+             */
+            document_date: string;
+            /** Document Id */
+            document_id: number;
+            /** Document Number */
+            document_number: string;
+            /** Id */
+            id: number;
+            /** Igst */
+            igst: number | string;
+            /** Is Interstate */
+            is_interstate: boolean;
+            /** Kind */
+            kind: string;
+            /** Kind Label */
+            kind_label: string;
+            /** Lines */
+            lines: components["schemas"]["NoteLineOut"][];
+            /**
+             * Note Date
+             * Format: date
+             */
+            note_date: string;
+            /** Number */
+            number: string;
+            party: components["schemas"]["PartyOut"];
+            /** Party Note Number */
+            party_note_number: string;
+            /** Place Of Supply */
+            place_of_supply: string;
+            /** Posted By */
+            posted_by: string;
+            /** Reason */
+            reason: string;
+            /** Reason Label */
+            reason_label: string;
+            /** Remarks */
+            remarks: string;
+            /** Round Off */
+            round_off: number | string;
+            /** Sgst */
+            sgst: number | string;
+            /** Side */
+            side: string;
+            /** Status */
+            status: string;
+            /** Status Label */
+            status_label: string;
+            /** Taxable Value */
+            taxable_value: number | string;
+            /** Total */
+            total: number | string;
+            /** Warehouse */
+            warehouse: string;
+        };
+        /** NoteRoomOut */
+        NoteRoomOut: {
+            /** Credit Deadline */
+            credit_deadline: string | null;
+            /** Credit Reasons */
+            credit_reasons: components["schemas"]["ChoiceOut"][];
+            /** Debit Reasons */
+            debit_reasons: components["schemas"]["ChoiceOut"][];
+            /**
+             * Document Date
+             * Format: date
+             */
+            document_date: string;
+            /** Document Id */
+            document_id: number;
+            /** Document Number */
+            document_number: string;
+            /** Is Interstate */
+            is_interstate: boolean;
+            /** Lines */
+            lines: components["schemas"]["RoomLineOut"][];
+            party: components["schemas"]["PartyOut"];
         };
         /** OpenDocumentOut */
         OpenDocumentOut: {
@@ -3046,6 +3439,31 @@ export interface components {
             /** Permissions */
             permissions?: string[] | null;
         };
+        /** RoomLineOut */
+        RoomLineOut: {
+            /** Creditable */
+            creditable: number | string;
+            /** Gst Rate */
+            gst_rate: number | string;
+            /** Hsn Code */
+            hsn_code: string;
+            /** Item Code */
+            item_code: string;
+            /** Item Name */
+            item_name: string;
+            /** Line Id */
+            line_id: number;
+            /** Quantity */
+            quantity: number | string;
+            /** Rate */
+            rate: number | string;
+            /** Returnable */
+            returnable: number | string;
+            /** Taxable Value */
+            taxable_value: number | string;
+            /** Unit */
+            unit: string;
+        };
         /** SalesActionsOut */
         SalesActionsOut: {
             /** Approve */
@@ -3609,6 +4027,26 @@ export interface operations {
             };
         };
     };
+    printouts_api_challan_pdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dispatch_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     purchase_api_list_receipts: {
         parameters: {
             query?: never;
@@ -3825,6 +4263,213 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MeOut"];
+                };
+            };
+        };
+    };
+    adjustments_api_list_notes: {
+        parameters: {
+            query: {
+                side: string;
+                status?: string;
+                document_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteOut"][];
+                };
+            };
+        };
+    };
+    adjustments_api_create_note: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoteIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteOut"];
+                };
+            };
+        };
+    };
+    adjustments_api_note_room: {
+        parameters: {
+            query: {
+                side: string;
+                document_id: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteRoomOut"];
+                };
+            };
+        };
+    };
+    adjustments_api_get_note: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                note_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteOut"];
+                };
+            };
+        };
+    };
+    adjustments_api_update_note: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                note_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoteIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteOut"];
+                };
+            };
+        };
+    };
+    adjustments_api_delete_note: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                note_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    adjustments_api_cancel_note: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                note_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteOut"];
+                };
+            };
+        };
+    };
+    printouts_api_note_pdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                note_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    adjustments_api_post_note: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                note_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteOut"];
                 };
             };
         };
@@ -4050,6 +4695,104 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    organizations_app_api_get_branding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrandingOut"];
+                };
+            };
+        };
+    };
+    organizations_app_api_update_branding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BrandingIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrandingOut"];
+                };
+            };
+        };
+    };
+    organizations_app_api_upload_branding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * File
+                     * Format: binary
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrandingOut"];
+                };
+            };
+        };
+    };
+    organizations_app_api_remove_branding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrandingOut"];
+                };
             };
         };
     };
@@ -4913,6 +5656,26 @@ export interface operations {
             };
         };
     };
+    printouts_api_purchase_order_pdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     purchase_api_receive: {
         parameters: {
             query?: never;
@@ -5254,6 +6017,28 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["InvoiceOut"];
                 };
+            };
+        };
+    };
+    printouts_api_invoice_pdf: {
+        parameters: {
+            query?: {
+                copies?: number;
+            };
+            header?: never;
+            path: {
+                invoice_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

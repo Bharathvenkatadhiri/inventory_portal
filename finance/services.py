@@ -62,11 +62,22 @@ def settled(direction, document_ids):
     return out
 
 
+def adjusted_totals(direction, documents):
+    """{document id: total + debit notes - credit notes} (posted notes only)."""
+    from adjustments.models import CreditDebitNote
+    from adjustments.services import adjustments_for
+    side = CreditDebitNote.Side.SALES if direction == Direction.RECEIVED else CreditDebitNote.Side.PURCHASE
+    notes = adjustments_for(side, [d.pk for d in documents])
+    return {d.pk: d.total + notes.get(d.pk, (ZERO, ZERO))[0] - notes.get(d.pk, (ZERO, ZERO))[1] for d in documents}
+
+
 def payment_state(total, paid, pending, due_date, today=None):
-    """(key, label) for a posted invoice or bill."""
+    """(key, label) for a posted invoice or bill; `total` after credit and debit notes."""
     today = today or timezone.localdate()
     outstanding = total - paid
-    if outstanding <= 0:
+    if outstanding < 0:
+        return 'credit', f"Credit ₹{-outstanding:,.2f} due back"
+    if outstanding == 0:
         return 'paid', 'Paid'
     if due_date and due_date < today:
         return 'overdue', f"Overdue {(today - due_date).days} days"
@@ -79,9 +90,11 @@ def balance(document):
     """Money facts for one posted invoice or bill (for the documents' own APIs)."""
     direction = Direction.RECEIVED if isinstance(document, SalesInvoice) else Direction.MADE
     paid, pending = settled(direction, [document.pk]).get(document.pk, (ZERO, ZERO))
-    key, label = payment_state(document.total, paid, pending, document.due_date)
-    return {'paid': paid, 'payment_pending': pending, 'outstanding': max(document.total - paid, ZERO),
-            'payment_status': key if document.status == 'posted' else '', 'payment_status_label': label if document.status == 'posted' else ''}
+    total = adjusted_totals(direction, [document])[document.pk]
+    key, label = payment_state(total, paid, pending, document.due_date)
+    posted = document.status == 'posted'
+    return {'adjusted_total': total, 'paid': paid, 'payment_pending': pending, 'outstanding': total - paid,
+            'payment_status': key if posted else '', 'payment_status_label': label if posted else ''}
 
 
 def has_live_payments(document):
@@ -106,20 +119,22 @@ def open_documents(company, direction, party_id=None):
         docs = docs.filter(**{('customer_id' if direction == Direction.RECEIVED else 'supplier_id'): party_id})
     docs = list(docs)
     sums = settled(direction, [d.pk for d in docs])
+    totals = adjusted_totals(direction, docs)
     today = timezone.localdate()
     out = []
     for d in docs:
         paid, pending = sums.get(d.pk, (ZERO, ZERO))
-        available = d.total - paid - pending
-        if d.total - paid <= 0:
+        total = totals[d.pk]
+        available = total - paid - pending
+        if total - paid <= 0:
             continue
         party = d.customer if direction == Direction.RECEIVED else d.supplier
-        key, label = payment_state(d.total, paid, pending, d.due_date, today)
+        key, label = payment_state(total, paid, pending, d.due_date, today)
         out.append({
             'document': d, 'party': party,
             'number': d.number if direction == Direction.RECEIVED else d.supplier_invoice_number,
-            'our_number': d.number, 'date': d.invoice_date, 'due_date': d.due_date, 'total': d.total, 'paid': paid,
-            'pending': pending, 'outstanding': d.total - paid, 'available': max(available, ZERO),
+            'our_number': d.number, 'date': d.invoice_date, 'due_date': d.due_date, 'total': total, 'paid': paid,
+            'pending': pending, 'outstanding': total - paid, 'available': max(available, ZERO),
             'status': key, 'status_label': label, 'bucket': _bucket(d.due_date, today),
         })
     out.sort(key=lambda r: (r['due_date'] or r['date'], r['date']))
@@ -205,6 +220,7 @@ def record_payment(membership, data):
     docs = {d.pk: d for d in _documents(company, direction).select_for_update()
             .filter(**{party_field: party}, pk__in=[r.get('document_id') for r in rows])}
     sums = settled(direction, docs.keys())
+    totals = adjusted_totals(direction, docs.values())
     allocations, allocated = [], ZERO
     for row in rows:
         doc = docs.get(row.get('document_id'))
@@ -214,7 +230,7 @@ def record_payment(membership, data):
         if share < 0:
             raise FinanceError("An allocation can't be negative.")
         paid, pending = sums.get(doc.pk, (ZERO, ZERO))
-        available = doc.total - paid - pending
+        available = totals[doc.pk] - paid - pending
         label = doc.number if direction == Direction.RECEIVED else doc.supplier_invoice_number
         if share > available:
             raise FinanceError(f"{label} has only ₹{available:,.2f} left to settle.")

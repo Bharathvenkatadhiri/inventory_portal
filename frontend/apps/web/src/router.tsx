@@ -5,6 +5,7 @@ import { AccountsLayout } from "./pages/accounts/AccountsLayout";
 import { PayablesPage, ReceivablesPage } from "./pages/accounts/OutstandingPage";
 import { PaymentsPage } from "./pages/accounts/PaymentsPage";
 import { HomePage } from "./pages/HomePage";
+import { SalesNotesPage, SupplierNotesPage } from "./pages/notes/NotesPage";
 import { InventoryLayout } from "./pages/inventory/InventoryLayout";
 import { ItemsPage } from "./pages/inventory/ItemsPage";
 import { StockPage } from "./pages/inventory/StockPage";
@@ -82,6 +83,10 @@ const salesIndexRoute = createRoute({
     throw redirect({ to: "/sales/orders-received" });
   },
 });
+// ?note=12 opens that note.
+const noteSearch = (search: Record<string, unknown>): { note?: number } => (search.note ? { note: Number(search.note) } : {});
+const salesNotesRoute = createRoute({ getParentRoute: () => salesRoute, path: "notes", component: SalesNotesPage, validateSearch: noteSearch });
+const supplierNotesRoute = createRoute({ getParentRoute: () => purchaseRoute, path: "notes", component: SupplierNotesPage, validateSearch: noteSearch });
 const ordersReceivedRoute = createRoute({ getParentRoute: () => salesRoute, path: "orders-received", component: OrdersReceivedPage });
 const salesOrdersRoute = createRoute({ getParentRoute: () => salesRoute, path: "orders", component: SalesOrdersPage });
 const newSalesOrderRoute = createRoute({ getParentRoute: () => salesRoute, path: "orders/new", component: SalesOrderEditor });
@@ -125,8 +130,8 @@ const routeTree = rootRoute.addChildren([
   homeRoute,
   partnersRoute,
   accountsRoute.addChildren([accountsIndexRoute, receivablesRoute, payablesRoute, paymentsRoute]),
-  purchaseRoute.addChildren([purchaseIndexRoute, ordersRoute, newOrderRoute, orderRoute, editOrderRoute, receiptsRoute, billsRoute]),
-  salesRoute.addChildren([salesIndexRoute, ordersReceivedRoute, salesOrdersRoute, newSalesOrderRoute, salesOrderRoute, editSalesOrderRoute, dispatchesRoute, invoicesRoute]),
+  purchaseRoute.addChildren([purchaseIndexRoute, ordersRoute, newOrderRoute, orderRoute, editOrderRoute, receiptsRoute, billsRoute, supplierNotesRoute]),
+  salesRoute.addChildren([salesIndexRoute, ordersReceivedRoute, salesOrdersRoute, newSalesOrderRoute, salesOrderRoute, editSalesOrderRoute, dispatchesRoute, invoicesRoute, salesNotesRoute]),
   inventoryRoute.addChildren([inventoryIndexRoute, itemsRoute, warehousesRoute, stockRoute]),
   profileRoute,
   settingsRoute.addChildren([settingsIndexRoute, companyRoute, peopleRoute, rolesRoute, teamsRoute, billingRoute]),

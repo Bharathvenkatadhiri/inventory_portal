@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { Badge, Card, Empty, ErrorText, Field, Loading, Modal, PageHeader, Toggle } from "../../components/ui";
 import { meKey, useCan, useWritable } from "../../lib/session";
+import { BrandingCard } from "./BrandingCard";
 
 type Company = Schemas["CompanyOut"];
 type Address = Schemas["AddressOut"];
@@ -32,6 +33,7 @@ export function CompanyPage() {
           <Profile company={company.data} manage={manage} />
           <Addresses manage={manage} />
           {can("org.manage") ? <BankAccounts manage={manage} /> : null}
+          <BrandingCard manage={manage} />
         </>
       ) : null}
     </div>

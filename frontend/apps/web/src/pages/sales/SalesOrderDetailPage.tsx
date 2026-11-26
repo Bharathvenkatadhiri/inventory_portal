@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { Badge, Card, ErrorText, Field, Loading, Modal, Notice, PageHeader } from "../../components/ui";
+import { PdfButton } from "../../components/PdfButton";
 import { day, quantity, rupees } from "../../lib/format";
 import { useWarehouses } from "../inventory/InventoryLayout";
 import { ReasonModal, StatusBadge, todayIso, TotalsTable } from "../purchase/PurchaseLayout";
@@ -130,7 +131,10 @@ export function SalesOrderDetailPage() {
           {o.dispatches.length === 0 ? <p className="text-sm text-gray-500">Nothing sent yet.</p> : (
             <ul className="divide-y divide-gray-100">
               {o.dispatches.map((d) => (
-                <li key={d.id} className="py-2 text-sm"><span className="font-semibold">{d.number}</span><p className="text-xs text-gray-500">{day(d.date)} · {d.detail}</p></li>
+                <li key={d.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                  <div><span className="font-semibold">{d.number}</span><p className="text-xs text-gray-500">{day(d.date)} · {d.detail}</p></div>
+                  <PdfButton url={`/api/v1/dispatches/${d.id}/pdf`} label="Challan" className="btn-link" />
+                </li>
               ))}
             </ul>
           )}

@@ -517,6 +517,9 @@ class InvoiceOut(Schema):
     lines: List[InvoiceLineOut]
     actions: InvoiceActionsOut
     # Money settled by payments (finance): paid by posted payments, pending in ones waiting for approval.
+    # The total after posted credit and debit notes; outstanding is this less paid
+    # (negative when a credit note leaves money due back).
+    adjusted_total: Decimal
     paid: Decimal
     payment_pending: Decimal
     outstanding: Decimal

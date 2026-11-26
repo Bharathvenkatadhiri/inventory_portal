@@ -4,8 +4,11 @@ import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { Badge, Card, Empty, ErrorText, Loading, Modal, Notice, PageHeader } from "../../components/ui";
+import { PdfButton } from "../../components/PdfButton";
 import { day, quantity, rupees } from "../../lib/format";
 import { PAYMENT_TONES } from "../accounts/AccountsLayout";
+import { NoteForm, type Kind } from "../notes/NoteForm";
+import { DocumentNotes } from "../notes/DocumentNotes";
 import { ReasonModal, StatusBadge, TotalsTable } from "../purchase/PurchaseLayout";
 
 type Invoice = Schemas["InvoiceOut"];
@@ -80,6 +83,8 @@ export function InvoicesPage() {
 function InvoiceDetail({ invoice: inv, onClose }: { invoice: Invoice; onClose: () => void }) {
   const queryClient = useQueryClient();
   const [cancelling, setCancelling] = useState(false);
+  const [noting, setNoting] = useState<Kind | null>(null);
+  const navigate = useNavigate();
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ["sales-invoices"] });
     queryClient.invalidateQueries({ queryKey: ["sales-order"] });
@@ -96,6 +101,10 @@ function InvoiceDetail({ invoice: inv, onClose }: { invoice: Invoice; onClose: (
       <>
         {a.edit ? <button type="button" className="btn-danger mr-auto" onClick={() => { if (window.confirm("Delete this draft?")) remove.mutate(); }}>Delete draft</button> : null}
         {a.cancel ? <button type="button" className="btn-danger mr-auto" onClick={() => setCancelling(true)}>Cancel invoice</button> : null}
+        {a.cancel ? <button type="button" className="btn-secondary" onClick={() => setNoting("credit")}>Credit note</button> : null}
+        {a.cancel ? <button type="button" className="btn-secondary" onClick={() => setNoting("debit")}>Debit note</button> : null}
+        <PdfButton url={`/api/v1/sales-invoices/${inv.id}/pdf`} label={inv.status === "draft" ? "Preview PDF" : "PDF"} />
+        {inv.status === "posted" ? <PdfButton url={`/api/v1/sales-invoices/${inv.id}/pdf?copies=3`} label="PDF, 3 copies" /> : null}
         {a.post ? <button type="button" className="btn-primary" disabled={post.isPending} onClick={() => post.mutate()}>Post invoice</button> : null}
         <button type="button" className="btn-secondary" onClick={onClose}>Close</button>
       </>
@@ -141,11 +150,14 @@ function InvoiceDetail({ invoice: inv, onClose }: { invoice: Invoice; onClose: (
         </tbody>
       </table>
       <TotalsTable totals={inv} />
+      {inv.status === "posted" ? <DocumentNotes side="sales" documentId={inv.id} adjustedTotal={inv.adjusted_total} total={inv.total} /> : null}
       {inv.status === "posted" ? (
         <p className="text-sm">Received {rupees(inv.paid)} · outstanding <strong>{rupees(inv.outstanding)}</strong> <Badge tone={PAYMENT_TONES[inv.payment_status] ?? "gray"}>{inv.payment_status_label}</Badge></p>
       ) : null}
       <p className="text-xs text-gray-500">Prepared by {inv.created_by || "—"}{inv.posted_by ? ` · posted by ${inv.posted_by}` : ""}</p>
       <ErrorText error={post.error ?? remove.error} />
+      {noting ? <NoteForm side="sales" kind={noting} documentId={inv.id} onClose={() => setNoting(null)}
+        onDone={(id) => navigate({ to: "/sales/notes", search: { note: id } })} /> : null}
       {cancelling ? (
         <ReasonModal title={`Cancel ${inv.number}`} label="Why is it being cancelled?" button="Cancel invoice" onClose={() => setCancelling(false)} send={async (reason) => {
           unwrap(await api.POST("/api/v1/sales-invoices/{invoice_id}/cancel", { ...path, body: { reason } }));

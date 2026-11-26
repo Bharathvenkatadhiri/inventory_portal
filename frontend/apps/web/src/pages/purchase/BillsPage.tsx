@@ -6,6 +6,8 @@ import { useState } from "react";
 import { Badge, Card, Empty, ErrorText, Loading, Modal, Notice, PageHeader } from "../../components/ui";
 import { day, quantity, rupees } from "../../lib/format";
 import { PAYMENT_TONES } from "../accounts/AccountsLayout";
+import { DocumentNotes } from "../notes/DocumentNotes";
+import { NoteForm, type Kind } from "../notes/NoteForm";
 import { RejectModal } from "./OrderDetailPage";
 import { StatusBadge, TotalsTable } from "./PurchaseLayout";
 
@@ -85,6 +87,8 @@ type Action = "submit" | "approve" | "cancel" | "delete";
 function BillDetail({ bill, onClose }: { bill: Bill; onClose: () => void }) {
   const queryClient = useQueryClient();
   const [rejecting, setRejecting] = useState(false);
+  const [noting, setNoting] = useState<Kind | null>(null);
+  const navigate = useNavigate();
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ["purchase-bills"] });
     queryClient.invalidateQueries({ queryKey: ["purchase-order"] });
@@ -110,6 +114,8 @@ function BillDetail({ bill, onClose }: { bill: Bill; onClose: () => void }) {
       <>
         {a.edit ? <button type="button" className="btn-danger mr-auto" onClick={() => { if (window.confirm("Delete this draft bill?")) act.mutate("delete"); }}>Delete</button> : null}
         {a.cancel ? <button type="button" className="btn-danger mr-auto" onClick={() => { if (window.confirm("Cancel this bill? Its quantities can then be billed again.")) act.mutate("cancel"); }}>Cancel bill</button> : null}
+        {bill.status === "posted" && a.cancel ? <button type="button" className="btn-secondary" onClick={() => setNoting("credit")}>Their credit note</button> : null}
+        {bill.status === "posted" && a.cancel ? <button type="button" className="btn-secondary" onClick={() => setNoting("debit")}>Their debit note</button> : null}
         {a.approve ? <button type="button" className="btn-secondary" onClick={() => setRejecting(true)}>Send back</button> : null}
         {a.approve ? <button type="button" className="btn-primary" disabled={act.isPending} onClick={() => act.mutate("approve")}>Approve and post</button> : null}
         {a.submit ? <button type="button" className="btn-primary" disabled={act.isPending} onClick={() => act.mutate("submit")}>{bill.submit_needs_approval ? "Send for approval" : "Post"}</button> : null}
@@ -147,11 +153,14 @@ function BillDetail({ bill, onClose }: { bill: Bill; onClose: () => void }) {
         </tbody>
       </table>
       <TotalsTable totals={bill} />
+      {bill.status === "posted" ? <DocumentNotes side="purchase" documentId={bill.id} adjustedTotal={bill.adjusted_total} total={bill.total} /> : null}
       {bill.status === "posted" ? (
         <p className="text-sm">Paid {rupees(bill.paid)} · outstanding <strong>{rupees(bill.outstanding)}</strong> <Badge tone={PAYMENT_TONES[bill.payment_status] ?? "gray"}>{bill.payment_status_label}</Badge></p>
       ) : null}
       <p className="text-xs text-gray-500">Entered by {bill.created_by || "—"}{bill.approved_by ? ` · posted by ${bill.approved_by}` : ""}</p>
       <ErrorText error={act.error} />
+      {noting ? <NoteForm side="purchase" kind={noting} documentId={bill.id} onClose={() => setNoting(null)}
+        onDone={(id) => navigate({ to: "/purchase/notes", search: { note: id } })} /> : null}
       {rejecting ? <RejectModal what="bill" onClose={() => setRejecting(false)} send={async (reason) => {
         unwrap(await api.POST("/api/v1/purchase-bills/{bill_id}/reject", { params: { path: { bill_id: bill.id } }, body: { reason } }));
         refresh();

@@ -10,6 +10,7 @@ const TABS = [
   { to: "/purchase/orders", label: "Purchase orders" },
   { to: "/purchase/receipts", label: "Goods receipts" },
   { to: "/purchase/bills", label: "Bills" },
+  { to: "/purchase/notes", label: "Supplier notes" },
 ] as const;
 
 export function PurchaseLayout() {

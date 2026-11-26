@@ -37,4 +37,5 @@ export const PAYMENT_TONES: Record<string, "gray" | "green" | "amber" | "red" | 
   partly_paid: "orange",
   paid: "green",
   overdue: "red",
+  credit: "navy",
 };

@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { Card, ErrorText, Field, Loading, Modal, Notice, PageHeader } from "../../components/ui";
+import { PdfButton } from "../../components/PdfButton";
 import { day, quantity, rupees } from "../../lib/format";
 import { useWarehouses } from "../inventory/InventoryLayout";
 import { orderKey, StatusBadge, todayIso, TotalsTable, useOrder } from "./PurchaseLayout";
@@ -59,6 +60,7 @@ export function OrderDetailPage() {
         description={<span className="flex flex-wrap items-center gap-2"><StatusBadge status={o.status} label={o.status_label} /> {o.supplier.name} · {day(o.order_date)}</span>}
         actions={
           <div className="flex flex-wrap gap-2">
+            <PdfButton url={`/api/v1/purchase-orders/${o.id}/pdf`} label={o.status === "draft" || o.status === "pending_approval" ? "Preview PDF" : "PDF"} />
             {a.edit ? <Link to="/purchase/orders/$orderId/edit" params={{ orderId }} className="btn-secondary">Edit</Link> : null}
             {a.edit ? <button type="button" className="btn-secondary" onClick={() => { if (window.confirm("Delete this draft?")) remove.mutate(); }}>Delete</button> : null}
             {a.submit ? <button type="button" className="btn-primary" disabled={act.isPending} onClick={() => act.mutate("submit")}>{o.submit_needs_approval ? "Send for approval" : "Issue to supplier"}</button> : null}
@@ -125,8 +127,8 @@ export function OrderDetailPage() {
       </div>
       {o.supplier_response === "accepted" ? (
         <div className="grid gap-6 md:grid-cols-2">
-          <DocList title={`Sent by ${o.supplier.name}`} empty="Nothing dispatched yet." docs={o.supplier_dispatches} />
-          <DocList title={`Invoiced by ${o.supplier.name}`} empty="No invoices yet." docs={o.supplier_invoices} />
+          <DocList title={`Sent by ${o.supplier.name}`} empty="Nothing dispatched yet." docs={o.supplier_dispatches} pdf={(id) => `/api/v1/dispatches/${id}/pdf`} />
+          <DocList title={`Invoiced by ${o.supplier.name}`} empty="No invoices yet." docs={o.supplier_invoices} pdf={(id) => `/api/v1/sales-invoices/${id}/pdf`} />
         </div>
       ) : null}
 
@@ -150,7 +152,9 @@ function SupplierReply({ order: o }: { order: Order }) {
   return <Notice tone="navy">Waiting for {o.supplier.name} to accept the order on MakeSetu.</Notice>;
 }
 
-function DocList({ title, empty, docs, link = false }: { title: string; empty: string; docs: Schemas["DocRefOut"][]; link?: boolean }) {
+function DocList({ title, empty, docs, link = false, pdf }: {
+  title: string; empty: string; docs: Schemas["DocRefOut"][]; link?: boolean; pdf?: (id: number) => string;
+}) {
   return (
     <Card title={title}>
       {docs.length === 0 ? <p className="text-sm text-gray-500">{empty}</p> : (
@@ -164,6 +168,7 @@ function DocList({ title, empty, docs, link = false }: { title: string; empty: s
               <div className="flex items-center gap-2">
                 {d.total != null ? <span>{rupees(d.total)}</span> : null}
                 {d.status !== "posted" || link ? <StatusBadge status={d.status} label={d.status_label} /> : null}
+                {pdf ? <PdfButton url={pdf(d.id)} className="btn-link" /> : null}
               </div>
             </li>
           ))}

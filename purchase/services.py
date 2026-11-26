@@ -478,6 +478,9 @@ def cancel_bill(membership, bill):
     from finance.services import has_live_payments
     if has_live_payments(bill):
         raise PurchaseError("A payment has been made against this bill. Cancel that payment first.")
+    from adjustments.services import has_live_notes
+    if has_live_notes(bill):
+        raise PurchaseError("The supplier's credit or debit notes are recorded against this bill. Cancel them first.")
     bill.status = Bill.Status.CANCELLED
     bill.cancelled_at = timezone.now()
     bill.save()

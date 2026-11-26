@@ -475,6 +475,9 @@ def cancel_invoice(membership, invoice, reason):
     from finance.services import has_live_payments
     if has_live_payments(invoice):
         raise SalesError("Money has been received against this invoice. Cancel that receipt first.")
+    from adjustments.services import has_live_notes
+    if has_live_notes(invoice):
+        raise SalesError("There are credit or debit notes against this invoice. Cancel them first.")
     invoice.status = Invoice.Status.CANCELLED
     invoice.cancelled_at, invoice.cancel_reason = timezone.now(), reason[:300]
     invoice.save()

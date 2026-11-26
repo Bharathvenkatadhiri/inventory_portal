@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
 import { Card, Empty, ErrorText, Loading, PageHeader } from "../../components/ui";
+import { PdfButton } from "../../components/PdfButton";
 import { day, quantity } from "../../lib/format";
 
 export function DispatchesPage() {
@@ -25,6 +26,7 @@ export function DispatchesPage() {
                 <th scope="col" className="table-head">Order · customer</th>
                 <th scope="col" className="table-head">Items</th>
                 <th scope="col" className="table-head">From · vehicle</th>
+                <th scope="col" className="table-head"><span className="sr-only">Challan PDF</span></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -37,6 +39,7 @@ export function DispatchesPage() {
                   </td>
                   <td className="table-cell text-sm">{d.lines.map((l) => <p key={l.item_code}>{quantity(l.quantity, l.unit)} {l.item_name}</p>)}</td>
                   <td className="table-cell text-sm">{d.warehouse}<p className="text-xs text-gray-500">{[d.vehicle_number, d.transporter].filter(Boolean).join(" · ") || "—"}</p></td>
+                  <td className="table-cell text-right"><PdfButton url={`/api/v1/dispatches/${d.id}/pdf`} label="Challan" className="btn-link" /></td>
                 </tr>
               ))}
             </tbody>

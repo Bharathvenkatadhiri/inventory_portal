@@ -7,6 +7,7 @@ const TABS = [
   { to: "/sales/orders", label: "Sales orders" },
   { to: "/sales/dispatches", label: "Dispatches" },
   { to: "/sales/invoices", label: "Invoices" },
+  { to: "/sales/notes", label: "Credit / debit notes" },
 ] as const;
 
 export function SalesLayout() {

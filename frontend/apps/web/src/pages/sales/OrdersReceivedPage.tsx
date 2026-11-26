@@ -4,6 +4,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { Card, Empty, ErrorText, Field, Loading, Modal, Notice, PageHeader } from "../../components/ui";
+import { PdfButton } from "../../components/PdfButton";
 import { day, quantity, rupees } from "../../lib/format";
 import { useItems, useWarehouses } from "../inventory/InventoryLayout";
 import { ReasonModal, StatusBadge, TotalsTable } from "../purchase/PurchaseLayout";
@@ -52,6 +53,7 @@ export function OrdersReceivedPage() {
                     <p className="text-xs text-gray-500">{day(o.order_date)}{o.expected_date ? ` · wanted by ${day(o.expected_date)}` : ""} · {rupees(o.total)}</p>
                   </button>
                   <div className="flex flex-wrap items-center gap-2">
+                    <PdfButton url={`/api/v1/purchase-orders/${o.id}/pdf`} label="PO PDF" className="btn-link" />
                     <StatusBadge status={o.supplier_response || "awaiting"} label={o.supplier_response_label} />
                     {o.sales_order_id ? (
                       <Link to="/sales/orders/$orderId" params={{ orderId: String(o.sales_order_id) }} className="btn-link">{o.sales_order_number}</Link>

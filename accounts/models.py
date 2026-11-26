@@ -107,6 +107,12 @@ class Company(models.Model):
     # search (organizations.partners). Off: only someone who already knows
     # the GSTIN can send it a request.
     findable = models.BooleanField(default=True)
+    # On the organization's printed documents (printouts): invoices,
+    # delivery challans and purchase orders.
+    logo = models.ImageField(upload_to='company/logos/', blank=True)
+    signature = models.ImageField(upload_to='company/signatures/', blank=True)
+    signatory_name = models.CharField(max_length=100, blank=True)  # "Authorised signatory" under the signature
+    invoice_terms = models.TextField(blank=True)  # printed at the foot of every tax invoice
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

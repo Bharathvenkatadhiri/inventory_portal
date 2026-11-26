@@ -556,6 +556,17 @@
           "actions": {
             "$ref": "#/components/schemas/BillActionsOut"
           },
+          "adjusted_total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Adjusted Total"
+          },
           "approved_by": {
             "title": "Approved By",
             "type": "string"
@@ -773,6 +784,7 @@
           "lines",
           "actions",
           "submit_needs_approval",
+          "adjusted_total",
           "paid",
           "payment_pending",
           "outstanding",
@@ -812,6 +824,50 @@
           "seats"
         ],
         "title": "BillingOut",
+        "type": "object"
+      },
+      "BrandingIn": {
+        "properties": {
+          "invoice_terms": {
+            "default": "",
+            "title": "Invoice Terms",
+            "type": "string"
+          },
+          "signatory_name": {
+            "default": "",
+            "title": "Signatory Name",
+            "type": "string"
+          }
+        },
+        "title": "BrandingIn",
+        "type": "object"
+      },
+      "BrandingOut": {
+        "properties": {
+          "invoice_terms": {
+            "title": "Invoice Terms",
+            "type": "string"
+          },
+          "logo_url": {
+            "title": "Logo Url",
+            "type": "string"
+          },
+          "signatory_name": {
+            "title": "Signatory Name",
+            "type": "string"
+          },
+          "signature_url": {
+            "title": "Signature Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "logo_url",
+          "signature_url",
+          "signatory_name",
+          "invoice_terms"
+        ],
+        "title": "BrandingOut",
         "type": "object"
       },
       "BucketOut": {
@@ -1652,6 +1708,17 @@
           "actions": {
             "$ref": "#/components/schemas/InvoiceActionsOut"
           },
+          "adjusted_total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Adjusted Total"
+          },
           "cancel_reason": {
             "title": "Cancel Reason",
             "type": "string"
@@ -1873,6 +1940,7 @@
           "posted_by",
           "lines",
           "actions",
+          "adjusted_total",
           "paid",
           "payment_pending",
           "outstanding",
@@ -2313,6 +2381,496 @@
           "role_type"
         ],
         "title": "MembershipOut",
+        "type": "object"
+      },
+      "NoteActionsOut": {
+        "properties": {
+          "cancel": {
+            "title": "Cancel",
+            "type": "boolean"
+          },
+          "edit": {
+            "title": "Edit",
+            "type": "boolean"
+          },
+          "post": {
+            "title": "Post",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "edit",
+          "post",
+          "cancel"
+        ],
+        "title": "NoteActionsOut",
+        "type": "object"
+      },
+      "NoteIn": {
+        "properties": {
+          "document_id": {
+            "title": "Document Id",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/NoteLineIn"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "note_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note Date"
+          },
+          "party_note_number": {
+            "default": "",
+            "title": "Party Note Number",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "remarks": {
+            "default": "",
+            "title": "Remarks",
+            "type": "string"
+          },
+          "side": {
+            "title": "Side",
+            "type": "string"
+          },
+          "warehouse_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Warehouse Id"
+          }
+        },
+        "required": [
+          "side",
+          "kind",
+          "document_id",
+          "reason",
+          "lines"
+        ],
+        "title": "NoteIn",
+        "type": "object"
+      },
+      "NoteLineIn": {
+        "properties": {
+          "line_id": {
+            "title": "Line Id",
+            "type": "integer"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "default": "0",
+            "title": "Quantity"
+          },
+          "taxable_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "default": "0",
+            "title": "Taxable Value"
+          }
+        },
+        "required": [
+          "line_id"
+        ],
+        "title": "NoteLineIn",
+        "type": "object"
+      },
+      "NoteLineOut": {
+        "properties": {
+          "gst_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Gst Rate"
+          },
+          "hsn_code": {
+            "title": "Hsn Code",
+            "type": "string"
+          },
+          "item_code": {
+            "title": "Item Code",
+            "type": "string"
+          },
+          "item_name": {
+            "title": "Item Name",
+            "type": "string"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Rate"
+          },
+          "tax_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Tax Amount"
+          },
+          "taxable_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Taxable Value"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_code",
+          "item_name",
+          "hsn_code",
+          "quantity",
+          "unit",
+          "rate",
+          "gst_rate",
+          "taxable_value",
+          "tax_amount"
+        ],
+        "title": "NoteLineOut",
+        "type": "object"
+      },
+      "NoteOut": {
+        "properties": {
+          "actions": {
+            "$ref": "#/components/schemas/NoteActionsOut"
+          },
+          "cancel_reason": {
+            "title": "Cancel Reason",
+            "type": "string"
+          },
+          "cgst": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Cgst"
+          },
+          "created_by": {
+            "title": "Created By",
+            "type": "string"
+          },
+          "document_date": {
+            "format": "date",
+            "title": "Document Date",
+            "type": "string"
+          },
+          "document_id": {
+            "title": "Document Id",
+            "type": "integer"
+          },
+          "document_number": {
+            "title": "Document Number",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "igst": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Igst"
+          },
+          "is_interstate": {
+            "title": "Is Interstate",
+            "type": "boolean"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "kind_label": {
+            "title": "Kind Label",
+            "type": "string"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/NoteLineOut"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "note_date": {
+            "format": "date",
+            "title": "Note Date",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "party": {
+            "$ref": "#/components/schemas/PartyOut"
+          },
+          "party_note_number": {
+            "title": "Party Note Number",
+            "type": "string"
+          },
+          "place_of_supply": {
+            "title": "Place Of Supply",
+            "type": "string"
+          },
+          "posted_by": {
+            "title": "Posted By",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "reason_label": {
+            "title": "Reason Label",
+            "type": "string"
+          },
+          "remarks": {
+            "title": "Remarks",
+            "type": "string"
+          },
+          "round_off": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Round Off"
+          },
+          "sgst": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Sgst"
+          },
+          "side": {
+            "title": "Side",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "taxable_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Taxable Value"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Total"
+          },
+          "warehouse": {
+            "title": "Warehouse",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "side",
+          "kind",
+          "kind_label",
+          "number",
+          "party_note_number",
+          "status",
+          "status_label",
+          "reason",
+          "reason_label",
+          "note_date",
+          "party",
+          "document_id",
+          "document_number",
+          "document_date",
+          "warehouse",
+          "remarks",
+          "cancel_reason",
+          "place_of_supply",
+          "is_interstate",
+          "taxable_value",
+          "cgst",
+          "sgst",
+          "igst",
+          "round_off",
+          "total",
+          "created_by",
+          "posted_by",
+          "lines",
+          "actions"
+        ],
+        "title": "NoteOut",
+        "type": "object"
+      },
+      "NoteRoomOut": {
+        "properties": {
+          "credit_deadline": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credit Deadline"
+          },
+          "credit_reasons": {
+            "items": {
+              "$ref": "#/components/schemas/ChoiceOut"
+            },
+            "title": "Credit Reasons",
+            "type": "array"
+          },
+          "debit_reasons": {
+            "items": {
+              "$ref": "#/components/schemas/ChoiceOut"
+            },
+            "title": "Debit Reasons",
+            "type": "array"
+          },
+          "document_date": {
+            "format": "date",
+            "title": "Document Date",
+            "type": "string"
+          },
+          "document_id": {
+            "title": "Document Id",
+            "type": "integer"
+          },
+          "document_number": {
+            "title": "Document Number",
+            "type": "string"
+          },
+          "is_interstate": {
+            "title": "Is Interstate",
+            "type": "boolean"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/RoomLineOut"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "party": {
+            "$ref": "#/components/schemas/PartyOut"
+          }
+        },
+        "required": [
+          "document_id",
+          "document_number",
+          "document_date",
+          "party",
+          "is_interstate",
+          "credit_deadline",
+          "credit_reasons",
+          "debit_reasons",
+          "lines"
+        ],
+        "title": "NoteRoomOut",
         "type": "object"
       },
       "OpenDocumentOut": {
@@ -5028,6 +5586,111 @@
         "title": "RoleUpdateIn",
         "type": "object"
       },
+      "RoomLineOut": {
+        "properties": {
+          "creditable": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Creditable"
+          },
+          "gst_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Gst Rate"
+          },
+          "hsn_code": {
+            "title": "Hsn Code",
+            "type": "string"
+          },
+          "item_code": {
+            "title": "Item Code",
+            "type": "string"
+          },
+          "item_name": {
+            "title": "Item Name",
+            "type": "string"
+          },
+          "line_id": {
+            "title": "Line Id",
+            "type": "integer"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Rate"
+          },
+          "returnable": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Returnable"
+          },
+          "taxable_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Taxable Value"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "line_id",
+          "item_code",
+          "item_name",
+          "hsn_code",
+          "quantity",
+          "unit",
+          "rate",
+          "gst_rate",
+          "taxable_value",
+          "returnable",
+          "creditable"
+        ],
+        "title": "RoomLineOut",
+        "type": "object"
+      },
       "SalesActionsOut": {
         "properties": {
           "approve": {
@@ -6610,6 +7273,36 @@
         ]
       }
     },
+    "/api/v1/dispatches/{dispatch_id}/pdf": {
+      "get": {
+        "operationId": "printouts_api_challan_pdf",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dispatch_id",
+            "required": true,
+            "schema": {
+              "title": "Dispatch Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Challan Pdf",
+        "tags": [
+          "printouts"
+        ]
+      }
+    },
     "/api/v1/goods-receipts": {
       "get": {
         "operationId": "purchase_api_list_receipts",
@@ -6961,6 +7654,379 @@
         ]
       }
     },
+    "/api/v1/notes": {
+      "get": {
+        "operationId": "adjustments_api_list_notes",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "side",
+            "required": true,
+            "schema": {
+              "title": "Side",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Status",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "document_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Document Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/NoteOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "List Notes",
+        "tags": [
+          "notes"
+        ]
+      },
+      "post": {
+        "operationId": "adjustments_api_create_note",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Create Note",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
+    "/api/v1/notes/room": {
+      "get": {
+        "operationId": "adjustments_api_note_room",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "side",
+            "required": true,
+            "schema": {
+              "title": "Side",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "title": "Document Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteRoomOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Note Room",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
+    "/api/v1/notes/{note_id}": {
+      "delete": {
+        "operationId": "adjustments_api_delete_note",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "note_id",
+            "required": true,
+            "schema": {
+              "title": "Note Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Delete Note",
+        "tags": [
+          "notes"
+        ]
+      },
+      "get": {
+        "operationId": "adjustments_api_get_note",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "note_id",
+            "required": true,
+            "schema": {
+              "title": "Note Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Get Note",
+        "tags": [
+          "notes"
+        ]
+      },
+      "put": {
+        "operationId": "adjustments_api_update_note",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "note_id",
+            "required": true,
+            "schema": {
+              "title": "Note Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Update Note",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
+    "/api/v1/notes/{note_id}/cancel": {
+      "post": {
+        "operationId": "adjustments_api_cancel_note",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "note_id",
+            "required": true,
+            "schema": {
+              "title": "Note Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Cancel Note",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
+    "/api/v1/notes/{note_id}/pdf": {
+      "get": {
+        "description": "Credit and debit notes issued to customers: the issuer, and the\ncustomer once posted when the deal came from their PO on MakeSetu.\n(Notes received from suppliers are the supplier's documents to print.)",
+        "operationId": "printouts_api_note_pdf",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "note_id",
+            "required": true,
+            "schema": {
+              "title": "Note Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Note Pdf",
+        "tags": [
+          "printouts"
+        ]
+      }
+    },
+    "/api/v1/notes/{note_id}/post": {
+      "post": {
+        "operationId": "adjustments_api_post_note",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "note_id",
+            "required": true,
+            "schema": {
+              "title": "Note Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Post Note",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
     "/api/v1/organization": {
       "get": {
         "operationId": "organizations_app_api_get_organization",
@@ -7300,6 +8366,162 @@
           }
         ],
         "summary": "Update Bank Account",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/api/v1/organization/branding": {
+      "get": {
+        "operationId": "organizations_app_api_get_branding",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandingOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Get Branding",
+        "tags": [
+          "organization"
+        ]
+      },
+      "put": {
+        "operationId": "organizations_app_api_update_branding",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrandingIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandingOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Update Branding",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/api/v1/organization/branding/{kind}": {
+      "delete": {
+        "operationId": "organizations_app_api_remove_branding",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "title": "Kind",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandingOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Remove Branding",
+        "tags": [
+          "organization"
+        ]
+      },
+      "post": {
+        "description": "The logo or signature printed on invoices, challans and purchase orders.",
+        "operationId": "organizations_app_api_upload_branding",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "title": "Kind",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "file": {
+                    "format": "binary",
+                    "title": "File",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file"
+                ],
+                "title": "FileParams",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandingOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Upload Branding",
         "tags": [
           "organization"
         ]
@@ -8736,6 +9958,36 @@
         ]
       }
     },
+    "/api/v1/purchase-orders/{order_id}/pdf": {
+      "get": {
+        "operationId": "printouts_api_purchase_order_pdf",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "title": "Order Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Purchase Order Pdf",
+        "tags": [
+          "printouts"
+        ]
+      }
+    },
     "/api/v1/purchase-orders/{order_id}/receipts": {
       "post": {
         "operationId": "purchase_api_receive",
@@ -9298,6 +10550,47 @@
         "summary": "Cancel Invoice",
         "tags": [
           "sales"
+        ]
+      }
+    },
+    "/api/v1/sales-invoices/{invoice_id}/pdf": {
+      "get": {
+        "description": "`copies=3` adds the duplicate (transporter) and triplicate (supplier) copies.",
+        "operationId": "printouts_api_invoice_pdf",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invoice_id",
+            "required": true,
+            "schema": {
+              "title": "Invoice Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "copies",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Copies",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Invoice Pdf",
+        "tags": [
+          "printouts"
         ]
       }
     },

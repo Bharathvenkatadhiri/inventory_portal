@@ -15,7 +15,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404
 from django.utils.text import slugify
-from ninja import Router, Schema
+from ninja import File, Router, Schema, UploadedFile
 from ninja.errors import HttpError
 
 from billing import erp as erp_billing
@@ -279,6 +279,84 @@ class AddressIn(Schema):
 
 class AddressOut(AddressIn):
     id: int
+
+
+# --- Branding on printed documents ------------------------------------------------
+
+BRANDING_KINDS = ('logo', 'signature')
+BRANDING_EXTENSIONS = {'.png', '.jpg', '.jpeg'}
+BRANDING_MAX_BYTES = 1024 * 1024
+
+
+class BrandingOut(Schema):
+    logo_url: str
+    signature_url: str
+    signatory_name: str
+    invoice_terms: str
+
+
+class BrandingIn(Schema):
+    signatory_name: str = ''
+    invoice_terms: str = ''
+
+
+def _branding_out(company):
+    def url(field):
+        try:
+            return field.url if field else ''
+        except Exception:
+            return ''
+    return {'logo_url': url(company.logo), 'signature_url': url(company.signature),
+            'signatory_name': company.signatory_name, 'invoice_terms': company.invoice_terms}
+
+
+@router.get('/organization/branding', response=BrandingOut, tags=['organization'])
+def get_branding(request):
+    return _branding_out(membership_for(request).company)
+
+
+@router.put('/organization/branding', response=BrandingOut, tags=['organization'])
+def update_branding(request, payload: BrandingIn):
+    company = membership_for(request, 'org.manage', write=True).company
+    company.signatory_name = payload.signatory_name.strip()[:100]
+    company.invoice_terms = payload.invoice_terms.strip()[:2000]
+    company.save(update_fields=['signatory_name', 'invoice_terms', 'updated_at'])
+    return _branding_out(company)
+
+
+def _branding_kind(kind):
+    if kind not in BRANDING_KINDS:
+        raise HttpError(404, "Unknown image.")
+    return kind
+
+
+@router.post('/organization/branding/{kind}', response=BrandingOut, tags=['organization'])
+def upload_branding(request, kind: str, file: UploadedFile = File(...)):
+    """The logo or signature printed on invoices, challans and purchase orders."""
+    from core.validators import validate_upload
+
+    company = membership_for(request, 'org.manage', write=True).company
+    kind = _branding_kind(kind)
+    try:
+        validate_upload(file, BRANDING_EXTENSIONS, max_bytes=BRANDING_MAX_BYTES, verify_image=True)
+    except ValidationError as exc:
+        raise HttpError(400, ' '.join(exc.messages))
+    field = getattr(company, kind)
+    if field:
+        field.delete(save=False)
+    field.save(f"{company.pk}-{kind}{file.name[file.name.rfind('.'):].lower()}", file, save=False)
+    company.save(update_fields=[kind, 'updated_at'])
+    return _branding_out(company)
+
+
+@router.delete('/organization/branding/{kind}', response=BrandingOut, tags=['organization'])
+def remove_branding(request, kind: str):
+    company = membership_for(request, 'org.manage', write=True).company
+    field = getattr(company, _branding_kind(kind))
+    if field:
+        field.delete(save=False)
+        company.save(update_fields=[kind, 'updated_at'])
+    return _branding_out(company)
 
 
 def _address_out(address):

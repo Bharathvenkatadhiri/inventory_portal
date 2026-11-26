@@ -170,6 +170,38 @@ export function watchSessionInOtherTabs(): () => void {
   return () => channel.close();
 }
 
+/**
+ * Opens a PDF from the API (e.g. /api/v1/sales-invoices/12/pdf) in a new tab.
+ * Fetched with this tab's headers rather than followed as a link, so it's
+ * for the organization this tab shows. The tab is opened first, while the
+ * click is still in progress, so popup blockers allow it.
+ */
+export async function openPdf(url: string): Promise<void> {
+  const win = window.open("", "_blank");
+  try {
+    const headers = new Headers();
+    if (tab.user()) headers.set("X-User-Id", tab.user());
+    if (tab.organization()) headers.set("X-Organization", tab.organization());
+    const response = await fetch(url, { credentials: "same-origin", headers });
+    if (response.status === 401) {
+      win?.close();
+      window.location.assign(signInUrl());
+      return;
+    }
+    if (!response.ok) {
+      const body = await response.json().catch(() => null);
+      throw new ApiError(response.status, errorMessage(response.status, body));
+    }
+    const href = URL.createObjectURL(await response.blob());
+    if (win) win.location.href = href;
+    else window.location.assign(href);
+    setTimeout(() => URL.revokeObjectURL(href), 5 * 60 * 1000);
+  } catch (error) {
+    win?.close();
+    throw error;
+  }
+}
+
 export const api = createClient<paths>({ baseUrl: "", credentials: "same-origin" });
 api.use(csrf, tabHeaders, sessionChanged);
 
