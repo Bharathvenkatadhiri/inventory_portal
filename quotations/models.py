@@ -46,6 +46,8 @@ class Quotation(TaxTotals):
     notes = models.TextField(blank=True)
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.DRAFT)
     response_note = models.CharField(max_length=300, blank=True)  # why declined or cancelled
+    # What it was before a revision superseded it, restored if that revision is deleted.
+    superseded_status = models.CharField(max_length=12, blank=True)
     sales_order = models.OneToOneField('sales.SalesOrder', on_delete=models.SET_NULL, null=True, blank=True, related_name='quotation')
     sent_at = models.DateTimeField(null=True, blank=True)
     responded_at = models.DateTimeField(null=True, blank=True)

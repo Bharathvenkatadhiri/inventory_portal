@@ -7,7 +7,7 @@ from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import DecimalField, F, Sum, Value
+from django.db.models import DecimalField, F, ProtectedError, Sum, Value
 from django.db.models.functions import Coalesce
 
 from plans import erp
@@ -84,7 +84,12 @@ def delete_item(item):
     inactive instead, so its history stays."""
     if item.stock_entries.exists():
         raise InventoryError("This item has stock entries, so it can't be deleted. Mark it inactive instead.")
-    item.delete()
+    try:
+        with transaction.atomic():
+            item.delete()
+    except ProtectedError:
+        raise InventoryError("This item is on orders, bills, BOMs or other documents, so it can't be deleted. "
+                             "Mark it inactive instead.")
 
 
 # --- Warehouses -------------------------------------------------------------------
@@ -175,9 +180,15 @@ def delete_warehouse(warehouse):
         raise InventoryError("This is a system location for QC; it can't be deleted.")
     if warehouse.stock_entries.exists():
         raise InventoryError("This warehouse has stock entries, so it can't be deleted. Mark it inactive instead.")
-    if warehouse.is_default and Warehouse.objects.filter(company=warehouse.company).exclude(pk=warehouse.pk).exists():
+    others = Warehouse.objects.filter(company=warehouse.company, kind=Warehouse.Kind.STORE).exclude(pk=warehouse.pk)
+    if warehouse.is_default and others.exists():
         raise InventoryError("This is your default warehouse. Make another one the default first.")
-    warehouse.delete()
+    try:
+        with transaction.atomic():
+            warehouse.delete()
+    except ProtectedError:
+        raise InventoryError("This warehouse is on orders, dispatches or other documents, so it can't be deleted. "
+                             "Mark it inactive instead.")
 
 
 # --- Stock ------------------------------------------------------------------------

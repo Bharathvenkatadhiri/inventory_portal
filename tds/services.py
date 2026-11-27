@@ -129,7 +129,9 @@ def record_deposit(membership, data):
     section = data.get('section')
     if section not in rules.SECTIONS:
         raise TdsError("Choose the section the TDS was deducted under.")
-    period = data.get('period')
+    if not data.get('period'):
+        raise TdsError("Choose the month the TDS was deducted in.")
+    period = _month(data['period'])
     deposited_on = data.get('deposited_on') or timezone.localdate()
     if deposited_on > timezone.localdate():
         raise TdsError("The deposit date can't be in the future.")
@@ -147,7 +149,7 @@ def record_deposit(membership, data):
     if TdsDeposit.objects.filter(company=company, bsr_code=bsr, challan_serial=serial, deposited_on=deposited_on, section=section).exists():
         raise TdsError("This challan is already recorded for that section.")
     return TdsDeposit.objects.create(
-        company=company, period=_month(period), section=section, amount=amount,
+        company=company, period=period, section=section, amount=amount,
         interest=Decimal(str(data.get('interest') or 0)), deposited_on=deposited_on, bsr_code=bsr,
         challan_serial=serial, created_by=membership.user,
     )
@@ -170,15 +172,22 @@ def quarter_range(value):
 
 
 def form_26q_rows(company, quarter):
-    """Deductee rows for the quarter, matched to deposits by month and section."""
+    """Deductee rows for the quarter, matched to deposits by month and
+    section. When a month has several challans, deductions are matched to
+    them in date order by amount: each goes to the first challan with
+    enough left to cover it (or, failing that, the one with the most left)."""
     start, end = quarter_range(quarter)
-    deposits = defaultdict(list)
-    for dep in TdsDeposit.objects.filter(company=company, period__gte=start, period__lte=end):
-        deposits[(dep.period, dep.section)].append(dep)
+    pools = defaultdict(list)  # (month, section): [[challan, amount not yet matched]]
+    for dep in TdsDeposit.objects.filter(company=company, period__gte=start, period__lte=end).order_by('deposited_on', 'id'):
+        pools[(dep.period, dep.section)].append([dep, dep.amount])
     rows = []
     for bill in deductions(company, start, end):
-        challans = deposits.get((_month(bill.invoice_date), bill.tds_section), [])
-        challan = challans[0] if challans else None
+        pool = pools.get((_month(bill.invoice_date), bill.tds_section), [])
+        slot = next((s for s in pool if s[1] >= bill.tds_amount), None) or (max(pool, key=lambda s: s[1]) if pool else None)
+        challan = None
+        if slot is not None:
+            challan = slot[0]
+            slot[1] -= bill.tds_amount
         rows.append({
             'deductee_pan': pan_of(bill.supplier) or 'PANNOTAVBL',
             'deductee_name': bill.supplier.legal_name or bill.supplier.name,

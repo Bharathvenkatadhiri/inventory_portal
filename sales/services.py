@@ -326,6 +326,8 @@ def post_dispatch(membership, order, data):
     warehouse = inventory.store(company, data.get('warehouse_id') or order.dispatch_from_id, lock=True)
     if warehouse is None:
         raise SalesError("Choose an active warehouse to dispatch from.")
+    if order.purchase_order_id and PO.objects.filter(pk=order.purchase_order_id, status=PO.Status.CANCELLED).exists():
+        raise SalesError("The customer has cancelled their purchase order. Cancel or close this order instead.")
     dispatch_date = data.get('dispatch_date') or timezone.localdate()
     _not_future(dispatch_date, 'dispatch date')
     if dispatch_date < order.order_date:

@@ -123,8 +123,8 @@ def revise(membership, q):
     _check(membership, 'quotation.create', counterparty=q.customer)
     old_pk = q.pk
     lines = list(QuotationLine.objects.filter(quotation_id=old_pk))
-    q.status = Q.Status.SUPERSEDED
-    q.save(update_fields=['status', 'updated_at'])
+    q.superseded_status, q.status = q.status, Q.Status.SUPERSEDED
+    q.save(update_fields=['status', 'superseded_status', 'updated_at'])
     new = Q.objects.get(pk=old_pk)
     new.pk = new.id = None
     new.revision = Q.objects.filter(company=q.company, number=q.number).order_by('-revision').first().revision + 1
@@ -208,7 +208,9 @@ def cancel_quotation(membership, q, reason):
 def delete_quotation(q):
     q = _locked(q, Q.Status.DRAFT)
     if q.previous_id:
-        Q.objects.filter(pk=q.previous_id).update(status=Q.Status.SENT)  # back to the revision that was sent
+        previous = Q.objects.select_for_update().get(pk=q.previous_id)
+        previous.status, previous.superseded_status = previous.superseded_status or Q.Status.SENT, ''
+        previous.save(update_fields=['status', 'superseded_status', 'updated_at'])
     q.delete()
 
 

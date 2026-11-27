@@ -256,6 +256,9 @@ def cancel_order(membership, order):
         raise PurchaseError("Goods have been received or billed against this order. Close it instead.")
     if order.status not in (Order.Status.PENDING_APPROVAL, Order.Status.ISSUED):
         raise PurchaseError(f"This order is {order.get_status_display().lower()}.")
+    if order.supplier_response == Order.SupplierResponse.ACCEPTED:
+        raise PurchaseError(f"{order.supplier.name or order.supplier.legal_name} has accepted this order and may be making "
+                            "the goods. Ask them to cancel their sales order; this order then shows as declined and can be cancelled.")
     order.status = Order.Status.CANCELLED
     order.closed_at = timezone.now()
     order.save()
