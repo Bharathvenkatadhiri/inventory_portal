@@ -147,6 +147,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/boms/{bom_id}/explode": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Explode Bom
+         * @description The whole tree under a BOM for `quantity` made, sub-assemblies expanded.
+         */
+        get: operations["production_api_explode_bom"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dispatches": {
         parameters: {
             query?: never;
@@ -1952,6 +1972,96 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/work-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Work Orders
+         * @description status: 'open' (draft, released or in progress), a status, or 'all'.
+         */
+        get: operations["production_api_list_work_orders"];
+        put?: never;
+        /** Create Work Order */
+        post: operations["production_api_create_work_order"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-orders/{wo_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Work Order */
+        get: operations["production_api_get_work_order"];
+        /** Update Work Order */
+        put: operations["production_api_update_work_order"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-orders/{wo_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Work Order */
+        post: operations["production_api_cancel_work_order"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-orders/{wo_id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Close Work Order */
+        post: operations["production_api_close_work_order"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-orders/{wo_id}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Release Work Order */
+        post: operations["production_api_release_work_order"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2329,6 +2439,8 @@ export interface components {
             item_id: number;
             /** Item Name */
             item_name: string;
+            /** Made In House */
+            made_in_house: number[];
             /** Name */
             name: string;
             /** Notes */
@@ -2690,7 +2802,7 @@ export interface components {
         /** EntryIn */
         EntryIn: {
             /** Bom Id */
-            bom_id: number;
+            bom_id?: number | null;
             /**
              * Consumption
              * @default []
@@ -2716,9 +2828,11 @@ export interface components {
              */
             shift: string;
             /** Source Warehouse Id */
-            source_warehouse_id: number;
+            source_warehouse_id?: number | null;
             /** Target Warehouse Id */
             target_warehouse_id?: number | null;
+            /** Work Order Id */
+            work_order_id?: number | null;
         };
         /** EntryOut */
         EntryOut: {
@@ -2767,6 +2881,31 @@ export interface components {
             unit: string;
             /** Unit Cost */
             unit_cost: number | string;
+            /** Work Order Id */
+            work_order_id: number | null;
+            /** Work Order Number */
+            work_order_number: string;
+        };
+        /** ExplodeRowOut */
+        ExplodeRowOut: {
+            /** Item Code */
+            item_code: string;
+            /** Item Id */
+            item_id: number;
+            /** Item Name */
+            item_name: string;
+            /** Level */
+            level: number;
+            /** Made */
+            made: boolean;
+            /** On Hand */
+            on_hand: number | string | null;
+            /** Quantity */
+            quantity: number | string;
+            /** Short */
+            short: number | string | null;
+            /** Unit */
+            unit: string;
         };
         /** InspectIn */
         InspectIn: {
@@ -3289,6 +3428,23 @@ export interface components {
             supplier: string;
             /** Unit */
             unit: string;
+        };
+        /** MaterialOut */
+        MaterialOut: {
+            /** Item Code */
+            item_code: string;
+            /** Item Name */
+            item_name: string;
+            /** On Hand */
+            on_hand: number | string;
+            /** Planned */
+            planned: number | string;
+            /** Short */
+            short: number | string;
+            /** Unit */
+            unit: string;
+            /** Used */
+            used: number | string;
         };
         /** MeIn */
         MeIn: {
@@ -4369,6 +4525,14 @@ export interface components {
             /** Tan */
             tan: string;
         };
+        /** ReleaseIn */
+        ReleaseIn: {
+            /**
+             * Make Subassemblies
+             * @default false
+             */
+            make_subassemblies: boolean;
+        };
         /** ReturnSummaryOut */
         ReturnSummaryOut: {
             /** Checks */
@@ -4907,6 +5071,109 @@ export interface components {
             /** Warehouses */
             warehouses: components["schemas"]["WarehouseOut"][];
         };
+        /** WorkOrderActionsOut */
+        WorkOrderActionsOut: {
+            /** Cancel */
+            cancel: boolean;
+            /** Close */
+            close: boolean;
+            /** Edit */
+            edit: boolean;
+            /** Record */
+            record: boolean;
+            /** Release */
+            release: boolean;
+        };
+        /** WorkOrderIn */
+        WorkOrderIn: {
+            /** Bom Id */
+            bom_id?: number | null;
+            /** Due Date */
+            due_date?: string | null;
+            /** Item Id */
+            item_id: number;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /** Quantity */
+            quantity: number | string;
+            /** Source Warehouse Id */
+            source_warehouse_id: number;
+            /** Target Warehouse Id */
+            target_warehouse_id?: number | null;
+        };
+        /** WorkOrderOut */
+        WorkOrderOut: {
+            actions: components["schemas"]["WorkOrderActionsOut"];
+            /** Actual Unit Cost */
+            actual_unit_cost: number | string;
+            /** Bom Id */
+            bom_id: number;
+            /** Bom Name */
+            bom_name: string;
+            /** Children */
+            children: components["schemas"]["WorkOrderRefOut"][];
+            /** Close Reason */
+            close_reason: string;
+            /** Due Date */
+            due_date: string | null;
+            /** Id */
+            id: number;
+            /** Item Code */
+            item_code: string;
+            /** Item Id */
+            item_id: number;
+            /** Item Name */
+            item_name: string;
+            /** Made */
+            made: number | string;
+            /** Materials */
+            materials: components["schemas"]["MaterialOut"][];
+            /** Notes */
+            notes: string;
+            /** Number */
+            number: string;
+            /** Overdue */
+            overdue: boolean;
+            parent: components["schemas"]["WorkOrderRefOut"] | null;
+            /** Planned Unit Cost */
+            planned_unit_cost: number | string;
+            /** Quantity */
+            quantity: number | string;
+            /** Rejected */
+            rejected: number | string;
+            /** Remaining */
+            remaining: number | string;
+            /** Source Warehouse */
+            source_warehouse: string;
+            /** Source Warehouse Id */
+            source_warehouse_id: number;
+            /** Status */
+            status: string;
+            /** Status Label */
+            status_label: string;
+            /** Target Warehouse */
+            target_warehouse: string;
+            /** Unit */
+            unit: string;
+        };
+        /** WorkOrderRefOut */
+        WorkOrderRefOut: {
+            /** Id */
+            id: number;
+            /** Item Name */
+            item_name: string;
+            /** Number */
+            number: string;
+            /** Quantity */
+            quantity: number | string;
+            /** Status */
+            status: string;
+            /** Status Label */
+            status_label: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -5157,6 +5424,31 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    production_api_explode_bom: {
+        parameters: {
+            query?: {
+                quantity?: number | string;
+                warehouse_id?: number | null;
+            };
+            header?: never;
+            path: {
+                bom_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExplodeRowOut"][];
+                };
             };
         };
     };
@@ -8274,6 +8566,178 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    production_api_list_work_orders: {
+        parameters: {
+            query?: {
+                status?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkOrderOut"][];
+                };
+            };
+        };
+    };
+    production_api_create_work_order: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkOrderIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkOrderOut"];
+                };
+            };
+        };
+    };
+    production_api_get_work_order: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wo_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkOrderOut"];
+                };
+            };
+        };
+    };
+    production_api_update_work_order: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wo_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkOrderIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkOrderOut"];
+                };
+            };
+        };
+    };
+    production_api_cancel_work_order: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wo_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkOrderOut"];
+                };
+            };
+        };
+    };
+    production_api_close_work_order: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wo_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkOrderOut"];
+                };
+            };
+        };
+    };
+    production_api_release_work_order: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wo_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReleaseIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkOrderOut"];
+                };
             };
         };
     };

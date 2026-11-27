@@ -3,6 +3,7 @@ import { Link, Navigate, Outlet } from "@tanstack/react-router";
 import { useCan } from "../../lib/session";
 
 const TABS = [
+  { to: "/production/work-orders", label: "Work orders", needs: ["work_order.manage", "production.record"] },
   { to: "/production/entries", label: "Production entries", needs: ["production.record"] },
   { to: "/production/boms", label: "Bills of materials", needs: ["bom.manage", "production.record"] },
   { to: "/production/job-work", label: "Job work", needs: ["job_work.manage"] },

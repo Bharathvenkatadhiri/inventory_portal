@@ -17,7 +17,7 @@ from inventory import services as inventory
 from inventory.models import Item, StockEntry, Warehouse
 from purchase.services import _decimal, next_number
 
-from .models import BillOfMaterials, BomComponent, ProductionConsumption, ProductionEntry
+from .models import BillOfMaterials, BomComponent, ProductionConsumption, ProductionEntry, WorkOrder
 
 ZERO, CENT = Decimal('0'), Decimal('0.01')
 QTY = Decimal('0.001')
@@ -72,6 +72,11 @@ def save_bom(membership, bom, data):
             raise ProductionError(f"{part.name}: the quantity must be more than 0.")
         components.append(BomComponent(item=part, quantity=quantity, position=position))
 
+    for c in components:
+        path = _path_to(c.item, item.pk)
+        if path:
+            raise ProductionError(f"That would make a loop: {item.name} needs {' → '.join(i.name for i in path)}, "
+                                  f"which needs {item.name}.")
     bom.company, bom.item, bom.name, bom.output_quantity = company, item, name, output
     bom.notes = (data.get('notes') or '').strip()
     if 'is_active' in data and data['is_active'] is not None:
@@ -122,6 +127,16 @@ def plan(bom, quantity_made, warehouse):
 @transaction.atomic
 def record(membership, data):
     company = membership.company
+    work_order = None
+    if data.get('work_order_id'):
+        work_order = WorkOrder.objects.select_for_update().filter(company=company, pk=data['work_order_id']).first()
+        if work_order is None:
+            raise ProductionError("Choose one of your work orders.")
+        if work_order.status not in (WorkOrder.Status.RELEASED, WorkOrder.Status.IN_PROGRESS):
+            raise ProductionError(f"This work order is {work_order.get_status_display().lower()}; release it first.")
+        data = {**data, 'bom_id': work_order.bom_id,
+                'source_warehouse_id': data.get('source_warehouse_id') or work_order.source_warehouse_id,
+                'target_warehouse_id': data.get('target_warehouse_id') or work_order.target_warehouse_id}
     bom = BillOfMaterials.objects.filter(company=company, pk=data.get('bom_id')).select_related('item').first()
     if bom is None:
         raise ProductionError("Choose what was made (its BOM).")
@@ -170,6 +185,7 @@ def record(membership, data):
         target_warehouse=target, material_cost=material_cost,
         unit_cost=(material_cost / good).quantize(CENT, rounding=ROUND_HALF_UP) if good else ZERO,
         shift=(data.get('shift') or '').strip()[:20], notes=(data.get('notes') or '').strip()[:300], created_by=membership.user,
+        work_order=work_order,
     )
     for item, planned, used, rate in lines:
         ProductionConsumption.objects.create(entry=entry, item=item, planned_quantity=planned, quantity=used, rate=rate)
@@ -188,6 +204,8 @@ def record(membership, data):
         if inspect:
             quality.open_lot(company, item=bom.item, quantity=good, rate=entry.unit_cost, destination=target,
                              source='production', reference=entry.number, received_on=entry_date, production_entry=entry)
+    if work_order is not None:
+        _update_progress(work_order)
     return entry
 
 
@@ -223,4 +241,200 @@ def cancel(membership, entry, reason):
     entry.status = ProductionEntry.Status.CANCELLED
     entry.cancel_reason, entry.cancelled_at = reason[:300], timezone.now()
     entry.save()
+    if entry.work_order_id:
+        _update_progress(WorkOrder.objects.select_for_update().get(pk=entry.work_order_id))
     return entry
+
+
+
+# --- Multi-level BOMs ----------------------------------------------------------------------------
+
+MAX_DEPTH = 10
+
+
+def default_bom(item):
+    return BillOfMaterials.objects.filter(item=item, is_default=True, is_active=True).first()
+
+
+def _path_to(item, target_id, depth=0):
+    """Items from `item` down its default BOMs to `target_id`, or [] if it isn't there."""
+    if item.pk == target_id:
+        return [item]
+    if depth >= MAX_DEPTH:
+        return []
+    bom = default_bom(item)
+    if bom is None:
+        return []
+    for c in bom.components.select_related('item'):
+        path = _path_to(c.item, target_id, depth + 1)
+        if path:
+            return [item] + path
+    return []
+
+
+def explode(bom, quantity, warehouse=None, level=1, depth=0):
+    """The full tree under `bom` for `quantity` made: one row per component at
+    each level, with made-in-house components expanded under their own default BOM."""
+    rows = []
+    factor = Decimal(quantity) / bom.output_quantity
+    for c in bom.components.select_related('item'):
+        needed = (c.quantity * factor).quantize(QTY, rounding=ROUND_HALF_UP)
+        sub = default_bom(c.item) if depth < MAX_DEPTH else None
+        on_hand = inventory.on_hand(bom.company, c.item, warehouse)[0] if warehouse else None
+        rows.append({'level': level, 'item': c.item, 'quantity': needed, 'made': sub is not None, 'bom': sub,
+                     'on_hand': on_hand, 'short': max(ZERO, needed - on_hand) if on_hand is not None else None})
+        if sub is not None:
+            rows += explode(sub, needed, warehouse, level + 1, depth + 1)
+    return rows
+
+
+def rolled_unit_cost(bom, depth=0):
+    """Material cost of one unit: bought components at their purchase price,
+    made ones at their own BOM's rolled cost."""
+    total = ZERO
+    for c in bom.components.select_related('item'):
+        sub = default_bom(c.item) if depth < MAX_DEPTH else None
+        rate = rolled_unit_cost(sub, depth + 1) if sub else (c.item.purchase_price or ZERO)
+        total += c.quantity * rate
+    return (total / bom.output_quantity).quantize(CENT, rounding=ROUND_HALF_UP)
+
+
+# --- Work orders -------------------------------------------------------------------------------
+
+WO = WorkOrder
+
+
+def _update_progress(wo):
+    """In progress once anything's made; completed once the planned quantity is."""
+    if wo.status in (WO.Status.CLOSED, WO.Status.CANCELLED):
+        return
+    made = sum((e.quantity_produced for e in wo.entries.filter(status=ProductionEntry.Status.POSTED)), ZERO)
+    if made >= wo.quantity:
+        wo.status, wo.finished_at = WO.Status.COMPLETED, timezone.now()
+    elif made > 0 or wo.entries.filter(status=ProductionEntry.Status.POSTED).exists():
+        wo.status, wo.finished_at = WO.Status.IN_PROGRESS, None
+    elif wo.status != WO.Status.DRAFT:
+        wo.status, wo.finished_at = WO.Status.RELEASED, None
+    wo.save(update_fields=['status', 'finished_at'])
+
+
+def _wo_fields(company, wo, data):
+    item = Item.objects.filter(company=company, pk=data.get('item_id')).first()
+    if item is None:
+        raise ProductionError("Choose what to make.")
+    bom = (BillOfMaterials.objects.filter(company=company, item=item, pk=data['bom_id']).first() if data.get('bom_id')
+           else default_bom(item))
+    if bom is None or not bom.is_active:
+        raise ProductionError(f"{item.name} has no active bill of materials. Add one first.")
+    quantity = _decimal(data.get('quantity'), 'the quantity')
+    if quantity <= 0:
+        raise ProductionError("The quantity must be more than 0.")
+    source = inventory.store(company, data.get('source_warehouse_id'))
+    if source is None:
+        raise ProductionError("Choose the store materials come from.")
+    target = inventory.store(company, data.get('target_warehouse_id')) if data.get('target_warehouse_id') else source
+    if target is None:
+        raise ProductionError("Choose the store finished goods go to.")
+    wo.company, wo.item, wo.bom, wo.quantity = company, item, bom, quantity
+    wo.due_date, wo.source_warehouse, wo.target_warehouse = data.get('due_date'), source, target
+    wo.notes = (data.get('notes') or '').strip()[:300]
+    return wo
+
+
+@transaction.atomic
+def save_work_order(membership, wo, data):
+    """Creates a draft work order, or updates one that's still a draft."""
+    if wo.pk:
+        wo = WO.objects.select_for_update().get(pk=wo.pk)
+        if wo.status != WO.Status.DRAFT:
+            raise ProductionError("Only a draft work order can be changed.")
+    wo = _wo_fields(membership.company, wo, data)
+    if wo.pk is None:
+        wo.number = next_number(membership.company, 'erp_wo', 'WO', timezone.localdate())
+        wo.created_by = membership.user
+    wo.save()
+    return wo
+
+
+def _create_child(membership, parent, item, bom, quantity):
+    child = WO.objects.create(
+        company=parent.company, number=next_number(parent.company, 'erp_wo', 'WO', timezone.localdate()), item=item, bom=bom,
+        quantity=quantity, due_date=parent.due_date, source_warehouse=parent.source_warehouse,
+        target_warehouse=parent.source_warehouse,  # sub-assemblies go where the parent takes its materials from
+        parent=parent, status=WO.Status.RELEASED, notes=f"For {parent.number}", created_by=membership.user,
+        released_at=timezone.now(),
+    )
+    _make_children(membership, child)
+    return child
+
+
+def _make_children(membership, wo, depth=0):
+    """Child work orders for the made-in-house components this order is short of."""
+    if depth >= MAX_DEPTH:
+        return
+    for row in plan(wo.bom, wo.quantity, wo.source_warehouse):
+        sub = default_bom(row['item'])
+        if sub is not None and row['short'] > 0:
+            _create_child(membership, wo, row['item'], sub, row['short'])
+
+
+@transaction.atomic
+def release(membership, wo, make_subassemblies=False):
+    wo = WO.objects.select_for_update().get(pk=wo.pk)
+    if wo.status != WO.Status.DRAFT:
+        raise ProductionError("Only a draft work order can be released.")
+    if not wo.bom.is_active:
+        raise ProductionError("Its BOM is inactive.")
+    wo.status, wo.released_at = WO.Status.RELEASED, timezone.now()
+    wo.save(update_fields=['status', 'released_at'])
+    if make_subassemblies:
+        _make_children(membership, wo)
+    return wo
+
+
+@transaction.atomic
+def close(membership, wo, reason):
+    """Stops an order that's been started: the rest won't be made."""
+    reason = (reason or '').strip()
+    if not reason:
+        raise ProductionError("Say why it's being closed short.")
+    wo = WO.objects.select_for_update().get(pk=wo.pk)
+    if wo.status != WO.Status.IN_PROGRESS:
+        raise ProductionError("Only a work order in progress can be closed short.")
+    wo.status, wo.close_reason, wo.finished_at = WO.Status.CLOSED, reason[:300], timezone.now()
+    wo.save(update_fields=['status', 'close_reason', 'finished_at'])
+    return wo
+
+
+@transaction.atomic
+def cancel_work_order(membership, wo, reason):
+    """Cancels an order nothing has been made against, with its unstarted child orders."""
+    reason = (reason or '').strip()
+    if not reason:
+        raise ProductionError("Say why it's being cancelled.")
+    wo = WO.objects.select_for_update().get(pk=wo.pk)
+    if wo.status not in (WO.Status.DRAFT, WO.Status.RELEASED):
+        raise ProductionError("Production has been recorded against this work order. Close it short instead.")
+    for child in wo.children.filter(status__in=[WO.Status.DRAFT, WO.Status.RELEASED]):
+        cancel_work_order(membership, child, f"Parent {wo.number} cancelled")
+    wo.status, wo.close_reason, wo.finished_at = WO.Status.CANCELLED, reason[:300], timezone.now()
+    wo.save(update_fields=['status', 'close_reason', 'finished_at'])
+    return wo
+
+
+def progress(wo):
+    """Planned vs actual: output, and material per component."""
+    entries = list(wo.entries.filter(status=ProductionEntry.Status.POSTED))
+    made = sum((e.quantity_produced for e in entries), ZERO)
+    rejected = sum((e.quantity_rejected for e in entries), ZERO)
+    cost = sum((e.material_cost for e in entries), ZERO)
+    used = {}
+    for c in ProductionConsumption.objects.filter(entry__in=entries).values('item_id', 'quantity'):
+        used[c['item_id']] = used.get(c['item_id'], ZERO) + c['quantity']
+    materials = []
+    for row in plan(wo.bom, wo.quantity, wo.source_warehouse):
+        materials.append({'item': row['item'], 'planned': row['planned'], 'used': used.get(row['item'].pk, ZERO),
+                          'on_hand': row['on_hand'], 'short': row['short']})
+    return {'made': made, 'rejected': rejected, 'remaining': max(ZERO, wo.quantity - made), 'material_cost': cost,
+            'actual_unit_cost': (cost / made).quantize(CENT, rounding=ROUND_HALF_UP) if made else ZERO,
+            'planned_unit_cost': rolled_unit_cost(wo.bom), 'materials': materials}

@@ -995,6 +995,13 @@
             "title": "Item Name",
             "type": "string"
           },
+          "made_in_house": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Made In House",
+            "type": "array"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -1032,6 +1039,7 @@
           "is_active",
           "components",
           "estimated_unit_cost",
+          "made_in_house",
           "entries",
           "editable"
         ],
@@ -2026,8 +2034,15 @@
       "EntryIn": {
         "properties": {
           "bom_id": {
-            "title": "Bom Id",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bom Id"
           },
           "consumption": {
             "default": [],
@@ -2083,8 +2098,15 @@
             "type": "string"
           },
           "source_warehouse_id": {
-            "title": "Source Warehouse Id",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Warehouse Id"
           },
           "target_warehouse_id": {
             "anyOf": [
@@ -2096,12 +2118,21 @@
               }
             ],
             "title": "Target Warehouse Id"
+          },
+          "work_order_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Work Order Id"
           }
         },
         "required": [
-          "bom_id",
-          "quantity_produced",
-          "source_warehouse_id"
+          "quantity_produced"
         ],
         "title": "EntryIn",
         "type": "object"
@@ -2223,6 +2254,21 @@
               }
             ],
             "title": "Unit Cost"
+          },
+          "work_order_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Work Order Id"
+          },
+          "work_order_number": {
+            "title": "Work Order Number",
+            "type": "string"
           }
         },
         "required": [
@@ -2245,10 +2291,92 @@
           "notes",
           "cancel_reason",
           "recorded_by",
+          "work_order_id",
+          "work_order_number",
           "consumption",
           "can_cancel"
         ],
         "title": "EntryOut",
+        "type": "object"
+      },
+      "ExplodeRowOut": {
+        "properties": {
+          "item_code": {
+            "title": "Item Code",
+            "type": "string"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "item_name": {
+            "title": "Item Name",
+            "type": "string"
+          },
+          "level": {
+            "title": "Level",
+            "type": "integer"
+          },
+          "made": {
+            "title": "Made",
+            "type": "boolean"
+          },
+          "on_hand": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "On Hand"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "short": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Short"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "level",
+          "item_id",
+          "item_code",
+          "item_name",
+          "unit",
+          "quantity",
+          "made",
+          "on_hand",
+          "short"
+        ],
+        "title": "ExplodeRowOut",
         "type": "object"
       },
       "InspectIn": {
@@ -3833,6 +3961,77 @@
           "can_inspect"
         ],
         "title": "LotOut",
+        "type": "object"
+      },
+      "MaterialOut": {
+        "properties": {
+          "item_code": {
+            "title": "Item Code",
+            "type": "string"
+          },
+          "item_name": {
+            "title": "Item Name",
+            "type": "string"
+          },
+          "on_hand": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "On Hand"
+          },
+          "planned": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Planned"
+          },
+          "short": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Short"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "used": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Used"
+          }
+        },
+        "required": [
+          "item_code",
+          "item_name",
+          "unit",
+          "planned",
+          "used",
+          "on_hand",
+          "short"
+        ],
+        "title": "MaterialOut",
         "type": "object"
       },
       "MeIn": {
@@ -7305,6 +7504,17 @@
         "title": "RegisterOut",
         "type": "object"
       },
+      "ReleaseIn": {
+        "properties": {
+          "make_subassemblies": {
+            "default": false,
+            "title": "Make Subassemblies",
+            "type": "boolean"
+          }
+        },
+        "title": "ReleaseIn",
+        "type": "object"
+      },
       "ReturnSummaryOut": {
         "properties": {
           "checks": {
@@ -9068,6 +9278,357 @@
         ],
         "title": "WarehousesOut",
         "type": "object"
+      },
+      "WorkOrderActionsOut": {
+        "properties": {
+          "cancel": {
+            "title": "Cancel",
+            "type": "boolean"
+          },
+          "close": {
+            "title": "Close",
+            "type": "boolean"
+          },
+          "edit": {
+            "title": "Edit",
+            "type": "boolean"
+          },
+          "record": {
+            "title": "Record",
+            "type": "boolean"
+          },
+          "release": {
+            "title": "Release",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "edit",
+          "release",
+          "record",
+          "close",
+          "cancel"
+        ],
+        "title": "WorkOrderActionsOut",
+        "type": "object"
+      },
+      "WorkOrderIn": {
+        "properties": {
+          "bom_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bom Id"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "notes": {
+            "default": "",
+            "title": "Notes",
+            "type": "string"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "source_warehouse_id": {
+            "title": "Source Warehouse Id",
+            "type": "integer"
+          },
+          "target_warehouse_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Warehouse Id"
+          }
+        },
+        "required": [
+          "item_id",
+          "quantity",
+          "source_warehouse_id"
+        ],
+        "title": "WorkOrderIn",
+        "type": "object"
+      },
+      "WorkOrderOut": {
+        "properties": {
+          "actions": {
+            "$ref": "#/components/schemas/WorkOrderActionsOut"
+          },
+          "actual_unit_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Actual Unit Cost"
+          },
+          "bom_id": {
+            "title": "Bom Id",
+            "type": "integer"
+          },
+          "bom_name": {
+            "title": "Bom Name",
+            "type": "string"
+          },
+          "children": {
+            "items": {
+              "$ref": "#/components/schemas/WorkOrderRefOut"
+            },
+            "title": "Children",
+            "type": "array"
+          },
+          "close_reason": {
+            "title": "Close Reason",
+            "type": "string"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "item_code": {
+            "title": "Item Code",
+            "type": "string"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "item_name": {
+            "title": "Item Name",
+            "type": "string"
+          },
+          "made": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Made"
+          },
+          "materials": {
+            "items": {
+              "$ref": "#/components/schemas/MaterialOut"
+            },
+            "title": "Materials",
+            "type": "array"
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "overdue": {
+            "title": "Overdue",
+            "type": "boolean"
+          },
+          "parent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkOrderRefOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "planned_unit_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Planned Unit Cost"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "rejected": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Rejected"
+          },
+          "remaining": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Remaining"
+          },
+          "source_warehouse": {
+            "title": "Source Warehouse",
+            "type": "string"
+          },
+          "source_warehouse_id": {
+            "title": "Source Warehouse Id",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "target_warehouse": {
+            "title": "Target Warehouse",
+            "type": "string"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "item_id",
+          "item_code",
+          "item_name",
+          "unit",
+          "bom_id",
+          "bom_name",
+          "quantity",
+          "due_date",
+          "overdue",
+          "source_warehouse_id",
+          "source_warehouse",
+          "target_warehouse",
+          "status",
+          "status_label",
+          "notes",
+          "close_reason",
+          "parent",
+          "children",
+          "made",
+          "rejected",
+          "remaining",
+          "planned_unit_cost",
+          "actual_unit_cost",
+          "materials",
+          "actions"
+        ],
+        "title": "WorkOrderOut",
+        "type": "object"
+      },
+      "WorkOrderRefOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "item_name": {
+            "title": "Item Name",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "item_name",
+          "quantity",
+          "status",
+          "status_label"
+        ],
+        "title": "WorkOrderRefOut",
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -9498,6 +10059,81 @@
           }
         ],
         "summary": "Update Bom",
+        "tags": [
+          "production"
+        ]
+      }
+    },
+    "/api/v1/boms/{bom_id}/explode": {
+      "get": {
+        "description": "The whole tree under a BOM for `quantity` made, sub-assemblies expanded.",
+        "operationId": "production_api_explode_bom",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bom_id",
+            "required": true,
+            "schema": {
+              "title": "Bom Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "quantity",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "default": "1",
+              "title": "Quantity"
+            }
+          },
+          {
+            "in": "query",
+            "name": "warehouse_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Warehouse Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ExplodeRowOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Explode Bom",
         "tags": [
           "production"
         ]
@@ -14734,6 +15370,307 @@
         "summary": "Update Warehouse",
         "tags": [
           "inventory"
+        ]
+      }
+    },
+    "/api/v1/work-orders": {
+      "get": {
+        "description": "status: 'open' (draft, released or in progress), a status, or 'all'.",
+        "operationId": "production_api_list_work_orders",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "open",
+              "title": "Status",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/WorkOrderOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "List Work Orders",
+        "tags": [
+          "production"
+        ]
+      },
+      "post": {
+        "operationId": "production_api_create_work_order",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkOrderIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkOrderOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Create Work Order",
+        "tags": [
+          "production"
+        ]
+      }
+    },
+    "/api/v1/work-orders/{wo_id}": {
+      "get": {
+        "operationId": "production_api_get_work_order",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wo_id",
+            "required": true,
+            "schema": {
+              "title": "Wo Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkOrderOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Get Work Order",
+        "tags": [
+          "production"
+        ]
+      },
+      "put": {
+        "operationId": "production_api_update_work_order",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wo_id",
+            "required": true,
+            "schema": {
+              "title": "Wo Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkOrderIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkOrderOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Update Work Order",
+        "tags": [
+          "production"
+        ]
+      }
+    },
+    "/api/v1/work-orders/{wo_id}/cancel": {
+      "post": {
+        "operationId": "production_api_cancel_work_order",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wo_id",
+            "required": true,
+            "schema": {
+              "title": "Wo Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkOrderOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Cancel Work Order",
+        "tags": [
+          "production"
+        ]
+      }
+    },
+    "/api/v1/work-orders/{wo_id}/close": {
+      "post": {
+        "operationId": "production_api_close_work_order",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wo_id",
+            "required": true,
+            "schema": {
+              "title": "Wo Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkOrderOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Close Work Order",
+        "tags": [
+          "production"
+        ]
+      }
+    },
+    "/api/v1/work-orders/{wo_id}/release": {
+      "post": {
+        "operationId": "production_api_release_work_order",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wo_id",
+            "required": true,
+            "schema": {
+              "title": "Wo Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReleaseIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkOrderOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Release Work Order",
+        "tags": [
+          "production"
         ]
       }
     }

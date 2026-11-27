@@ -45,6 +45,44 @@ class BomComponent(models.Model):
         constraints = [models.UniqueConstraint(fields=['bom', 'item'], name='component_once_per_bom')]
 
 
+class WorkOrder(models.Model):
+    """A planned run: make `quantity` of `item` by `due_date` with `bom`.
+    Production entries recorded against it use up materials and add output;
+    child orders make the sub-assemblies it needs (multi-level)."""
+
+    class Status(models.TextChoices):
+        DRAFT = 'draft', 'Draft'
+        RELEASED = 'released', 'Released'
+        IN_PROGRESS = 'in_progress', 'In progress'
+        COMPLETED = 'completed', 'Completed'
+        CLOSED = 'closed', 'Closed short'
+        CANCELLED = 'cancelled', 'Cancelled'
+
+    company = models.ForeignKey('accounts.Company', on_delete=models.CASCADE, related_name='work_orders')
+    number = models.CharField(max_length=30)
+    item = models.ForeignKey('inventory.Item', on_delete=models.PROTECT, related_name='work_orders')
+    bom = models.ForeignKey(BillOfMaterials, on_delete=models.PROTECT, related_name='work_orders')
+    quantity = models.DecimalField(**QUANTITY)
+    due_date = models.DateField(null=True, blank=True)
+    source_warehouse = models.ForeignKey('inventory.Warehouse', on_delete=models.PROTECT, related_name='+')
+    target_warehouse = models.ForeignKey('inventory.Warehouse', on_delete=models.PROTECT, related_name='+')
+    parent = models.ForeignKey('self', on_delete=models.PROTECT, null=True, blank=True, related_name='children')
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.DRAFT)
+    notes = models.CharField(max_length=300, blank=True)
+    close_reason = models.CharField(max_length=300, blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='+')
+    released_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at', '-id']
+        constraints = [models.UniqueConstraint(fields=['company', 'number'], name='work_order_number_unique')]
+
+    def __str__(self):
+        return self.number
+
+
 class ProductionEntry(models.Model):
     """Production recorded against a BOM: components out of stock, good
     units into stock at the cost of what went in."""
@@ -57,6 +95,7 @@ class ProductionEntry(models.Model):
     number = models.CharField(max_length=30)
     bom = models.ForeignKey(BillOfMaterials, on_delete=models.PROTECT, related_name='entries')
     item = models.ForeignKey('inventory.Item', on_delete=models.PROTECT, related_name='production_entries')
+    work_order = models.ForeignKey(WorkOrder, on_delete=models.PROTECT, null=True, blank=True, related_name='entries')
     entry_date = models.DateField()
     quantity_produced = models.DecimalField(**QUANTITY)  # good units
     quantity_rejected = models.DecimalField(**QUANTITY, default=0)

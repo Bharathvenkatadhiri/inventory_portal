@@ -6,6 +6,7 @@ import { Badge, Card, Empty, ErrorText, Field, Loading, Modal, PageHeader } from
 import { quantity, rupees } from "../../lib/format";
 import { useCan, useWritable } from "../../lib/session";
 import { useItems } from "../inventory/InventoryLayout";
+import { BomTree } from "./BomTree";
 
 type Bom = Schemas["BomOut"];
 
@@ -15,6 +16,7 @@ export function BomsPage() {
   const manage = can("bom.manage") && writable;
   const boms = useQuery({ queryKey: ["boms"], queryFn: async () => unwrap(await api.GET("/api/v1/boms")) });
   const [editing, setEditing] = useState<Bom | "new" | null>(null);
+  const [exploding, setExploding] = useState<Bom | null>(null);
 
   return (
     <div className="space-y-6">
@@ -37,17 +39,30 @@ export function BomsPage() {
                 <div className="flex shrink-0 items-center gap-2">
                   {b.is_default ? <Badge tone="navy">Default</Badge> : null}
                   {!b.is_active ? <Badge>Inactive</Badge> : null}
+                  <button type="button" className="btn-link" onClick={() => setExploding(b)}>All levels</button>
                   {b.editable ? <button type="button" className="btn-link" onClick={() => setEditing(b)}>Edit</button> : null}
                 </div>
               </div>
               <ul className="mt-3 space-y-1 text-sm text-gray-700">
-                {b.components.map((c) => <li key={c.item_id}>{quantity(c.quantity, c.unit)} {c.item_name} <span className="text-gray-500">{c.item_code}</span></li>)}
+                {b.components.map((c) => (
+                  <li key={c.item_id}>
+                    {quantity(c.quantity, c.unit)} {c.item_name} <span className="text-gray-500">{c.item_code}</span>
+                    {b.made_in_house.includes(c.item_id) ? <span className="ml-1"><Badge tone="navy">Made</Badge></span> : null}
+                  </li>
+                ))}
               </ul>
             </Card>
           ))}
         </div>
       )}
       {editing ? <BomForm bom={editing === "new" ? null : editing} onClose={() => setEditing(null)} /> : null}
+      {exploding ? (
+        <Modal wide title={`${exploding.item_name}: every level`} onClose={() => setExploding(null)}
+          footer={<button type="button" className="btn-secondary" onClick={() => setExploding(null)}>Close</button>}>
+          <p className="text-sm text-gray-600">For {quantity(exploding.output_quantity, exploding.unit)}. Made components are expanded under their own default BOM.</p>
+          <BomTree bomId={exploding.id} quantity={String(Number(exploding.output_quantity))} />
+        </Modal>
+      ) : null}
     </div>
   );
 }
