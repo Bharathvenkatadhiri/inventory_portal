@@ -18,6 +18,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from django.db import transaction
 from django.utils import timezone
 
+from inventory import batches
 from inventory import services as inventory
 from inventory.models import Item, StockEntry, Warehouse
 from organizations import access
@@ -93,7 +94,7 @@ def send(membership, data):
         on_hand = inventory.on_hand(company, item, source)[0]
         if quantity > on_hand:
             raise JobWorkError(f"{item.name}: only {on_hand.normalize():f} {item.unit} in {source.name}.")
-        wanted.append((item, quantity, inventory.average_cost(company, item, source)))
+        wanted.append((item, quantity, inventory.average_cost(company, item, source), row.get('batches') or []))
 
     challan = Challan.objects.create(
         company=company, number=next_number(company, 'erp_jw', 'JW', day), job_worker=worker, challan_date=day,
@@ -102,12 +103,12 @@ def send(membership, data):
         created_by=membership.user,
     )
     away = at_job_workers(company)
-    for item, quantity, rate in wanted:
+    for item, quantity, rate, picks in wanted:
         JobWorkChallanLine.objects.create(challan=challan, item=item, quantity=quantity, rate=rate)
+        rows = batches.outgoing(company, item, source, quantity, picks, day=day)
         for warehouse, sign in ((source, -1), (away, 1)):
-            StockEntry.objects.create(company=company, item=item, warehouse=warehouse, kind=StockEntry.Kind.JOB_WORK_OUT,
-                                      quantity=sign * quantity, rate=rate, entry_date=day, reference=challan.number,
-                                      note=f"{process} at {worker.name or worker.legal_name}"[:200], created_by=membership.user)
+            batches.write(company, item, warehouse, StockEntry.Kind.JOB_WORK_OUT, rows, sign=sign, rate=rate, entry_date=day,
+                          reference=challan.number, note=f"{process} at {worker.name or worker.legal_name}", user=membership.user)
     return challan
 
 
@@ -152,7 +153,9 @@ def receive(membership, challan, data):
         charge = _decimal(row.get('charge_per_unit') or 0, 'the charge')
         if charge < 0:
             raise JobWorkError("The job work charge can't be negative.")
-        rows.append((line, processed, waste, output_item, output, charge))
+        if output_item.by_serial and output_item == line.item and output != processed:
+            raise JobWorkError(f"{line.item.name} has serial numbers, so each unit comes back as itself.")
+        rows.append((line, processed, waste, output_item, output, charge, row.get('output_batches') or []))
     if not rows:
         raise JobWorkError("Enter what came back for at least one line.")
 
@@ -163,24 +166,38 @@ def receive(membership, challan, data):
     )
     away = at_job_workers(company)
     from quality import services as quality
-    for line, processed, waste, output_item, output, charge in rows:
+    for line, processed, waste, output_item, output, charge, output_given in rows:
         input_value = (processed + waste) * line.rate
         rate = ((input_value + charge * output) / output).quantize(CENT, rounding=ROUND_HALF_UP) if output else ZERO
         JobWorkReceiptLine.objects.create(receipt=receipt, challan_line=line, input_quantity=processed, waste_quantity=waste,
                                           output_item=output_item, output_quantity=output, charge_per_unit=charge, rate=rate)
-        StockEntry.objects.create(company=company, item=line.item, warehouse=away, kind=StockEntry.Kind.JOB_WORK_IN,
-                                  quantity=-(processed + waste), rate=line.rate, entry_date=day, reference=receipt.number,
-                                  note=f"Back from {challan.process}" + (f", {waste.normalize():f} lost" if waste else ''),
-                                  created_by=membership.user)
+        # Only the batches sent on this challan can come back against it.
+        sent = (StockEntry.objects.filter(company=company, reference=challan.number, item=line.item, warehouse=away,
+                                          batch__isnull=False).values_list('batch_id', flat=True)
+                if line.item.tracked else None)
+        processed_rows = batches.outgoing(company, line.item, away, processed, within=sent, allow_expired=True)
+        batches.write(company, line.item, away, StockEntry.Kind.JOB_WORK_IN, processed_rows, sign=-1, rate=line.rate,
+                      entry_date=day, reference=receipt.number, note=f"Back from {challan.process}", user=membership.user)
+        if waste:
+            waste_rows = batches.outgoing(company, line.item, away, waste, within=sent, allow_expired=True)
+            batches.write(company, line.item, away, StockEntry.Kind.JOB_WORK_IN, waste_rows, sign=-1, rate=line.rate,
+                          entry_date=day, reference=receipt.number, note=f"Lost in {challan.process}", user=membership.user)
         if output:
             inspect = quality.needs_inspection(company, output_item)
-            StockEntry.objects.create(company=company, item=output_item, warehouse=quality.hold(company) if inspect else into,
-                                      kind=StockEntry.Kind.JOB_WORK_IN, quantity=output, rate=rate, entry_date=day,
-                                      reference=receipt.number, note=f"{challan.process} ({challan.number})"[:200],
-                                      created_by=membership.user)
+            if output_item == line.item and output == processed and not output_given:
+                output_rows = processed_rows  # the same batches come back
+            else:
+                # Processed into another item (or a different count): it keeps the first batch's number unless given.
+                first = next((b for b, _q in processed_rows if b), None)
+                output_rows = batches.incoming(company, output_item, output, output_given, origin='job_work',
+                                               reference=receipt.number, day=day, supplier=challan.job_worker,
+                                               default_number=first.number if first else '')
+            batches.write(company, output_item, quality.hold(company) if inspect else into, StockEntry.Kind.JOB_WORK_IN,
+                          output_rows, sign=1, rate=rate, entry_date=day, reference=receipt.number,
+                          note=f"{challan.process} ({challan.number})", user=membership.user)
             if inspect:
-                quality.open_lot(company, item=output_item, quantity=output, rate=rate, destination=into, source='receipt',
-                                 reference=receipt.number, received_on=day, supplier=challan.job_worker)
+                quality.open_lots(company, item=output_item, rows=output_rows, rate=rate, destination=into, source='receipt',
+                                  reference=receipt.number, received_on=day, supplier=challan.job_worker)
         line.returned_quantity += processed
         line.waste_quantity += waste
         line.save(update_fields=['returned_quantity', 'waste_quantity'])
@@ -198,10 +215,9 @@ def cancel(membership, challan, reason):
     challan = Challan.objects.select_for_update().get(pk=challan.pk)
     if challan.status != Challan.Status.OPEN or challan.receipts.exists():
         raise JobWorkError("Goods have come back against this challan, so it can't be cancelled.")
-    for entry in StockEntry.objects.filter(company=challan.company, reference=challan.number, kind=StockEntry.Kind.JOB_WORK_OUT):
-        StockEntry.objects.create(company=challan.company, item=entry.item, warehouse=entry.warehouse, kind=entry.kind,
-                                  quantity=-entry.quantity, rate=entry.rate, entry_date=timezone.localdate(),
-                                  reference=challan.number, note=f"Cancelled: {reason}"[:200], created_by=membership.user)
+    batches.reverse(list(StockEntry.objects.filter(company=challan.company, reference=challan.number,
+                                                   kind=StockEntry.Kind.JOB_WORK_OUT).select_related('batch')),
+                    entry_date=timezone.localdate(), note=f"Cancelled: {reason}", user=membership.user)
     challan.status, challan.cancel_reason = Challan.Status.CANCELLED, reason[:300]
     challan.save(update_fields=['status', 'cancel_reason'])
     return challan

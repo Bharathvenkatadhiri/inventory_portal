@@ -8,6 +8,7 @@ import { useCan, useWritable } from "../../lib/session";
 import { useWarehouses } from "../inventory/InventoryLayout";
 import { ReasonModal, StatusBadge, todayIso } from "../purchase/PurchaseLayout";
 import { BomTree } from "./BomTree";
+import { CostSheetTable } from "./CostingPage";
 
 type WorkOrder = Schemas["WorkOrderOut"];
 const TONE: Record<string, string> = { draft: "draft", released: "issued", in_progress: "partially_received", completed: "received", closed: "closed", cancelled: "cancelled" };
@@ -201,6 +202,7 @@ function WorkOrderDetail({ id, onOpen, onClose }: { id: number; onOpen: (id: num
               ))}
             </tbody>
           </table>
+          {Number(wo.made) > 0 ? <WorkOrderCosts id={wo.id} /> : null}
           {wo.children.length ? (
             <div>
               <p className="field-label">Sub-assembly orders</p>
@@ -242,7 +244,7 @@ function RecordAgainst({ wo, onClose }: { wo: WorkOrder; onClose: () => void }) 
   const [on, setOn] = useState(todayIso());
   const save = useMutation({
     mutationFn: async () => unwrap(await api.POST("/api/v1/production/entries", {
-      body: { work_order_id: wo.id, quantity_produced: good || "0", quantity_rejected: rejected || "0", entry_date: on, shift, notes: "", consumption: [] },
+      body: { work_order_id: wo.id, quantity_produced: good || "0", quantity_rejected: rejected || "0", entry_date: on, shift, notes: "", consumption: [], output_batches: [] },
     })),
     onSuccess: () => { refresh(queryClient); onClose(); },
   });
@@ -262,5 +264,25 @@ function RecordAgainst({ wo, onClose }: { wo: WorkOrder; onClose: () => void }) 
       </div>
       <ErrorText error={save.error} />
     </Modal>
+  );
+}
+
+/** Standard against actual for what's been made, for people who see production costs. */
+function WorkOrderCosts({ id }: { id: number }) {
+  const can = useCan();
+  const sheet = useQuery({
+    queryKey: ["work-orders", id, "costs"],
+    enabled: can("costing.manage"),
+    queryFn: async () => unwrap(await api.GET("/api/v1/work-orders/{wo_id}/costs", { params: { path: { wo_id: id } } })),
+  });
+  if (!can("costing.manage") || !sheet.data) return null;
+  return (
+    <div>
+      <p className="field-label">
+        Cost so far{sheet.data.yield_percent != null ? ` · ${Number(sheet.data.yield_percent)}% yield` : ""}
+        {Number(sheet.data.labour_hours) || Number(sheet.data.machine_hours) ? ` · ${Number(sheet.data.labour_hours)} labour h, ${Number(sheet.data.machine_hours)} machine h` : ""}
+      </p>
+      <CostSheetTable sheet={sheet.data} />
+    </div>
   );
 }

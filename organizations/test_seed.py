@@ -32,7 +32,7 @@ class SeedERPDemoTests(TestCase):
         self.assertTrue(admin.check_password(seed.PASSWORD))
         from inventory.models import Item, StockEntry, Warehouse
         sri = Company.objects.get(gstin=seed.ORGANIZATIONS['sri_lakshmi'][0])
-        self.assertEqual(Item.objects.filter(company=sri).count(), len(seed.ITEMS['sri_lakshmi']))
+        self.assertEqual(Item.objects.filter(company=sri).count(), len(seed.ITEMS['sri_lakshmi']) + len(seed.COSTING['sri_lakshmi'][3]))
         self.assertEqual(list(Warehouse.objects.filter(company=sri, is_default=True).values_list('name', flat=True)), ['Plant store'])
         self.assertTrue(Warehouse.objects.filter(company=sri, address__label='Ambattur warehouse').exists())
         self.assertTrue(StockEntry.objects.filter(company=sri, item__code='BO-BOLT-M10').count() == 2)

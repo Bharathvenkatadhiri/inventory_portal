@@ -7,6 +7,37 @@ from django.db.models import Q
 QUANTITY = dict(max_digits=14, decimal_places=3)
 
 
+MONEY = dict(max_digits=16, decimal_places=2)
+HOURS = dict(max_digits=10, decimal_places=2)
+
+
+class CostSettings(models.Model):
+    """How production time is costed (plans with production costing)."""
+    company = models.OneToOneField('accounts.Company', on_delete=models.CASCADE, related_name='production_cost_settings')
+    labour_hour_rate = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # ₹ per person-hour
+    # Factory overheads (power, supervision, rent...) as a % of labour and machine cost.
+    overhead_percent = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class Machine(models.Model):
+    """A machine or work centre, with what an hour on it costs
+    (depreciation, power, maintenance)."""
+    company = models.ForeignKey('accounts.Company', on_delete=models.CASCADE, related_name='machines')
+    code = models.CharField(max_length=20)
+    name = models.CharField(max_length=80)
+    hour_rate = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['company', 'code']
+        constraints = [models.UniqueConstraint(fields=['company', 'code'], name='machine_code_unique_per_company')]
+
+    def __str__(self):
+        return f"{self.code} {self.name}"
+
+
 class BillOfMaterials(models.Model):
     """What goes into `output_quantity` units of `item` (single level: the
     components are taken from stock, not made from their own BOMs here)."""
@@ -17,6 +48,12 @@ class BillOfMaterials(models.Model):
     notes = models.TextField(blank=True)
     is_default = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
+    # The standard routing and scrap, for output_quantity (production costing).
+    machine = models.ForeignKey(Machine, on_delete=models.SET_NULL, null=True, blank=True, related_name='boms')
+    machine_hours = models.DecimalField(**HOURS, default=0)
+    labour_hours = models.DecimalField(**HOURS, default=0)
+    scrap_item = models.ForeignKey('inventory.Item', on_delete=models.PROTECT, null=True, blank=True, related_name='+')
+    scrap_quantity = models.DecimalField(**QUANTITY, default=0)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='+')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -103,6 +140,14 @@ class ProductionEntry(models.Model):
     target_warehouse = models.ForeignKey('inventory.Warehouse', on_delete=models.PROTECT, related_name='+')
     unit_cost = models.DecimalField(max_digits=14, decimal_places=2, default=0)  # cost of each good unit
     material_cost = models.DecimalField(max_digits=16, decimal_places=2, default=0)
+    # Production costing: time spent, what it cost, and scrap recovered (a credit).
+    machine = models.ForeignKey(Machine, on_delete=models.SET_NULL, null=True, blank=True, related_name='entries')
+    machine_hours = models.DecimalField(**HOURS, default=0)
+    labour_hours = models.DecimalField(**HOURS, default=0)
+    labour_cost = models.DecimalField(**MONEY, default=0)
+    machine_cost = models.DecimalField(**MONEY, default=0)
+    overhead_cost = models.DecimalField(**MONEY, default=0)
+    scrap_value = models.DecimalField(**MONEY, default=0)
     shift = models.CharField(max_length=20, blank=True)
     notes = models.CharField(max_length=300, blank=True)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.POSTED)
@@ -129,3 +174,19 @@ class ProductionConsumption(models.Model):
 
     class Meta:
         ordering = ['entry', 'id']
+
+
+class ProductionScrap(models.Model):
+    """Scrap or a by-product recovered (turnings, runners, offcuts): into
+    stock at what it fetches, which lowers the cost of the good units."""
+    entry = models.ForeignKey(ProductionEntry, on_delete=models.CASCADE, related_name='scrap')
+    item = models.ForeignKey('inventory.Item', on_delete=models.PROTECT, related_name='+')
+    quantity = models.DecimalField(**QUANTITY)
+    rate = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+
+    class Meta:
+        ordering = ['entry', 'id']
+
+    @property
+    def value(self):
+        return self.quantity * self.rate

@@ -16,6 +16,7 @@ from django.db import transaction
 from django.db.models import Sum
 from django.utils import timezone
 
+from inventory import batches
 from inventory import services as inventory
 from inventory.models import StockEntry, Warehouse
 from purchase.models import PurchaseBill, PurchaseBillLine
@@ -242,6 +243,39 @@ def _locked(note, *statuses):
     return note
 
 
+def _return_batches(note, doc, line, warehouse):
+    """[(batch, quantity)] for returned goods of a tracked item: back into
+    the batches sent against the invoice's order (latest first), or out of
+    the batches received against the bill's order when they're still in
+    the warehouse."""
+    item, quantity = line.item, line.quantity
+    if not item.tracked:
+        return [(None, quantity)]
+    if note.side == Side.SALES:
+        references = list(doc.order.dispatches.order_by('-dispatch_date', '-id').values_list('number', flat=True))
+        sent = batches.by_document(note.company, references, -1)
+        rows, left = [], quantity
+        for reference in references:
+            for batch, sent_quantity in sent.get((reference, item.pk), []):
+                if left == 0:
+                    break
+                if item.by_serial and batches.batch_stock(batch) > 0:
+                    continue  # this unit is already back
+                take = min(sent_quantity, left)
+                rows.append((batch, take))
+                left -= take
+        if left > 0:
+            raise NoteError(f"{item.name}: the batches sent against this order don't cover {quantity.normalize():f} {line.unit}.")
+        return rows
+    references = list(doc.order.receipts.values_list('number', flat=True))
+    received = [b.pk for (_ref, item_id), rows in batches.by_document(note.company, references, 1).items()
+                if item_id == item.pk for b, _q in rows]
+    try:
+        return batches.outgoing(note.company, item, warehouse, quantity, within=received, allow_expired=True)
+    except batches.BatchError:
+        return batches.outgoing(note.company, item, warehouse, quantity, allow_expired=True)
+
+
 @transaction.atomic
 def post_note(membership, note):
     """Posts a draft: numbers it and, for a return, moves the goods."""
@@ -269,13 +303,11 @@ def post_note(membership, note):
                 if line.quantity > on_hand:
                     raise NoteError(f"{line.item.name}: only {on_hand.normalize():f} {line.unit} in {warehouse.name} to send back.")
             sign = 1 if note.side == Side.SALES else -1
-            StockEntry.objects.create(
-                company=note.company, item=line.item, warehouse=warehouse,
-                kind=StockEntry.Kind.SALES_RETURN if note.side == Side.SALES else StockEntry.Kind.PURCHASE_RETURN,
-                quantity=sign * line.quantity, rate=inventory.average_cost(note.company, line.item, warehouse),
-                entry_date=note.note_date, reference=note.number,
-                note=f"{note.get_kind_display()} against {doc.number}"[:200], created_by=membership.user,
-            )
+            batches.write(note.company, line.item, warehouse,
+                          StockEntry.Kind.SALES_RETURN if note.side == Side.SALES else StockEntry.Kind.PURCHASE_RETURN,
+                          _return_batches(note, doc, line, warehouse), sign=sign,
+                          rate=inventory.average_cost(note.company, line.item, warehouse), entry_date=note.note_date,
+                          reference=note.number, note=f"{note.get_kind_display()} against {doc.number}", user=membership.user)
     note.status = Status.POSTED
     note.posted_by, note.posted_at = membership.user, timezone.now()
     note.save()
@@ -292,15 +324,19 @@ def cancel_note(membership, note, reason):
     note = _locked(note, Status.POSTED)
     if note.is_return and note.warehouse_id:
         warehouse = Warehouse.objects.select_for_update().get(pk=note.warehouse_id)
-        for entry in StockEntry.objects.filter(company=note.company, reference=note.number,
-                                               kind__in=[StockEntry.Kind.SALES_RETURN, StockEntry.Kind.PURCHASE_RETURN]):
+        moved = list(StockEntry.objects.filter(company=note.company, reference=note.number,
+                                               kind__in=[StockEntry.Kind.SALES_RETURN, StockEntry.Kind.PURCHASE_RETURN])
+                     .select_related('item', 'warehouse', 'batch'))
+        for entry in moved:
             if entry.quantity > 0:  # goods that came back in must still be there to take out again
                 on_hand, _value = inventory.on_hand(note.company, entry.item, warehouse)
                 if entry.quantity > on_hand:
                     raise NoteError(f"{entry.item.name}: the returned goods have already been used, so this can't be undone.")
-            StockEntry.objects.create(company=note.company, item=entry.item, warehouse=warehouse, kind=entry.kind,
-                                      quantity=-entry.quantity, rate=entry.rate, entry_date=timezone.localdate(),
-                                      reference=note.number, note=f"Cancelled: {reason}"[:200], created_by=membership.user)
+        try:
+            batches.still_on_hand(moved)
+        except batches.BatchError as exc:
+            raise NoteError(f"{exc} This can't be undone.")
+        batches.reverse(moved, entry_date=timezone.localdate(), note=f"Cancelled: {reason}", user=membership.user)
     note.status = Status.CANCELLED
     note.cancelled_at, note.cancel_reason = timezone.now(), reason[:300]
     note.save()

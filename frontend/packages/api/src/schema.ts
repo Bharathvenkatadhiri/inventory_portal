@@ -42,6 +42,88 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/batch-labels/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Batch Labels
+         * @description A sheet of barcode labels for batches or serial numbers (ids comma-separated).
+         */
+        get: operations["inventory_api_batch_labels"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/batches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Batches
+         * @description Batches and serial numbers, the first to expire first. in_stock
+         *     leaves out ones with nothing on hand (in `warehouse_id`, when given);
+         *     expiring_within (days) keeps only those expiring by then, expired included.
+         */
+        get: operations["inventory_api_list_batches"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/batches/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lookup Batch
+         * @description What a scanned label (or a typed batch, heat or serial number) is.
+         */
+        get: operations["inventory_api_lookup_batch"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/batches/{batch_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Batch Detail
+         * @description A batch's movements, and its trace: what it was made from and into.
+         */
+        get: operations["inventory_api_batch_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/billing": {
         parameters: {
             query?: never;
@@ -446,6 +528,45 @@ export interface paths {
         /** Receive */
         post: operations["jobwork_api_receive"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/machines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Machines
+         * @description Machines (work centres), for routing and production entries.
+         */
+        get: operations["production_api_list_machines"];
+        put?: never;
+        /** Create Machine */
+        post: operations["production_api_create_machine"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/machines/{machine_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Machine */
+        put: operations["production_api_update_machine"];
+        post?: never;
+        /** Delete Machine */
+        delete: operations["production_api_delete_machine"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1049,6 +1170,44 @@ export interface paths {
          *     users or warehouses null means no limit.
          */
         get: operations["organizations_api_plans"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/production/cost-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Cost Settings */
+        get: operations["production_api_get_cost_settings"];
+        /** Put Cost Settings */
+        put: operations["production_api_put_cost_settings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/production/costs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Production Costs
+         * @description Per item made between start and end: actual cost against standard, yield and scrap.
+         */
+        get: operations["production_api_production_costs"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2045,6 +2204,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/work-orders/{wo_id}/costs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Work Order Costs
+         * @description Standard against actual for what the work order has made so far.
+         */
+        get: operations["production_api_work_order_costs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/work-orders/{wo_id}/release": {
         parameters: {
             query?: never;
@@ -2099,6 +2278,8 @@ export interface components {
             /** Allowed */
             allowed: string[];
             company: components["schemas"]["CompanyOut"];
+            /** Features */
+            features: string[];
             /** Granted */
             granted: string[];
             role: components["schemas"]["RoleRef"];
@@ -2234,6 +2415,135 @@ export interface components {
              * @default false
              */
             is_default: boolean;
+        };
+        /** BatchDetailOut */
+        BatchDetailOut: {
+            batch: components["schemas"]["BatchOut"];
+            /** Made From */
+            made_from: components["schemas"]["BatchOut"][];
+            /** Made Into */
+            made_into: components["schemas"]["BatchOut"][];
+            /** Movements */
+            movements: components["schemas"]["BatchMovementOut"][];
+        };
+        /**
+         * BatchIn
+         * @description A batch (or serial number) coming in on a document. Leave the
+         *     quantity out for a serial number, or when one batch takes it all.
+         */
+        BatchIn: {
+            /** Expires On */
+            expires_on?: string | null;
+            /** Manufactured On */
+            manufactured_on?: string | null;
+            /**
+             * Number
+             * @default
+             */
+            number: string;
+            /** Quantity */
+            quantity?: number | string | null;
+            /**
+             * Supplier Batch
+             * @default
+             */
+            supplier_batch: string;
+        };
+        /** BatchMovementOut */
+        BatchMovementOut: {
+            /**
+             * Entry Date
+             * Format: date
+             */
+            entry_date: string;
+            /** Kind */
+            kind: string;
+            /** Kind Label */
+            kind_label: string;
+            /** Note */
+            note: string;
+            /** Quantity */
+            quantity: number | string;
+            /** Reference */
+            reference: string;
+            /** Warehouse Name */
+            warehouse_name: string;
+        };
+        /** BatchOut */
+        BatchOut: {
+            /** Expired */
+            expired: boolean;
+            /** Expires On */
+            expires_on: string | null;
+            /** Id */
+            id: number;
+            /** Item Code */
+            item_code: string;
+            /** Item Id */
+            item_id: number;
+            /** Item Name */
+            item_name: string;
+            /** Label Code */
+            label_code: string;
+            /** Manufactured On */
+            manufactured_on: string | null;
+            /** Number */
+            number: string;
+            /** On Hand */
+            on_hand: number | string;
+            /** Origin */
+            origin: string;
+            /** Origin Label */
+            origin_label: string;
+            /** Reference */
+            reference: string;
+            /** Stock */
+            stock: components["schemas"]["BatchStockOut"][];
+            /** Supplier Batch */
+            supplier_batch: string;
+            /** Supplier Name */
+            supplier_name: string;
+            /** Tracking */
+            tracking: string;
+            /** Unit */
+            unit: string;
+        };
+        /**
+         * BatchPickIn
+         * @description A batch (or serial number) picked for stock going out; by id or number.
+         */
+        BatchPickIn: {
+            /** Batch Id */
+            batch_id?: number | null;
+            /**
+             * Number
+             * @default
+             */
+            number: string;
+            /** Quantity */
+            quantity?: number | string | null;
+        };
+        /** BatchQtyOut */
+        BatchQtyOut: {
+            /** Batch Id */
+            batch_id: number;
+            /** Expires On */
+            expires_on: string | null;
+            /** Number */
+            number: string;
+            /** Quantity */
+            quantity: number | string;
+        };
+        /** BatchStockOut */
+        BatchStockOut: {
+            /** Quantity */
+            quantity: number | string;
+            /** Warehouse Id */
+            warehouse_id: number;
+            /** Warehouse Kind */
+            warehouse_kind: string;
+            /** Warehouse Name */
+            warehouse_name: string;
         };
         /** BillActionsOut */
         BillActionsOut: {
@@ -2402,6 +2712,18 @@ export interface components {
             /** Item Id */
             item_id: number;
             /**
+             * Labour Hours
+             * @default 0
+             */
+            labour_hours: number | string;
+            /**
+             * Machine Hours
+             * @default 0
+             */
+            machine_hours: number | string;
+            /** Machine Id */
+            machine_id?: number | null;
+            /**
              * Name
              * @default Standard
              */
@@ -2416,6 +2738,13 @@ export interface components {
              * @default 1
              */
             output_quantity: number | string;
+            /** Scrap Item Id */
+            scrap_item_id?: number | null;
+            /**
+             * Scrap Quantity
+             * @default 0
+             */
+            scrap_quantity: number | string;
         };
         /** BomOut */
         BomOut: {
@@ -2439,6 +2768,14 @@ export interface components {
             item_id: number;
             /** Item Name */
             item_name: string;
+            /** Labour Hours */
+            labour_hours: number | string;
+            /** Machine Hours */
+            machine_hours: number | string;
+            /** Machine Id */
+            machine_id: number | null;
+            /** Machine Name */
+            machine_name: string;
             /** Made In House */
             made_in_house: number[];
             /** Name */
@@ -2447,6 +2784,13 @@ export interface components {
             notes: string;
             /** Output Quantity */
             output_quantity: number | string;
+            /** Scrap Item Id */
+            scrap_item_id: number | null;
+            /** Scrap Item Name */
+            scrap_item_name: string;
+            /** Scrap Quantity */
+            scrap_quantity: number | string;
+            standard_cost: components["schemas"]["StandardCostOut"];
             /** Unit */
             unit: string;
         };
@@ -2579,13 +2923,20 @@ export interface components {
         };
         /** ConsumptionIn */
         ConsumptionIn: {
+            /**
+             * Batches
+             * @default []
+             */
+            batches: components["schemas"]["BatchPickIn"][];
             /** Item Id */
             item_id: number;
             /** Quantity */
-            quantity: number | string;
+            quantity?: number | string | null;
         };
         /** ConsumptionOut */
         ConsumptionOut: {
+            /** Batches */
+            batches: components["schemas"]["BatchQtyOut"][];
             /** Item Code */
             item_code: string;
             /** Item Name */
@@ -2598,6 +2949,83 @@ export interface components {
             rate: number | string;
             /** Unit */
             unit: string;
+        };
+        /** CostReportRowOut */
+        CostReportRowOut: {
+            /** Actual Unit Cost */
+            actual_unit_cost: number | string | null;
+            /** Entries */
+            entries: number;
+            /** Good */
+            good: number | string;
+            /** Item Code */
+            item_code: string;
+            /** Item Id */
+            item_id: number;
+            /** Item Name */
+            item_name: string;
+            /** Labour Hours */
+            labour_hours: number | string;
+            /** Machine Hours */
+            machine_hours: number | string;
+            /** Rejected */
+            rejected: number | string;
+            /** Rows */
+            rows: components["schemas"]["CostRowOut"][];
+            /** Scrap Quantity */
+            scrap_quantity: number | string;
+            /** Standard Unit Cost */
+            standard_unit_cost: number | string;
+            /** Unit */
+            unit: string;
+            /** Yield Percent */
+            yield_percent: number | string | null;
+        };
+        /** CostRowOut */
+        CostRowOut: {
+            /** Actual */
+            actual: number | string;
+            /** Part */
+            part: string;
+            /** Standard */
+            standard: number | string;
+            /** Variance */
+            variance: number | string;
+        };
+        /** CostSettingsIn */
+        CostSettingsIn: {
+            /** Labour Hour Rate */
+            labour_hour_rate: number | string;
+            /** Overhead Percent */
+            overhead_percent: number | string;
+        };
+        /** CostSettingsOut */
+        CostSettingsOut: {
+            /** Labour Hour Rate */
+            labour_hour_rate: number | string;
+            /** Overhead Percent */
+            overhead_percent: number | string;
+        };
+        /** CostSheetOut */
+        CostSheetOut: {
+            /** Actual Unit Cost */
+            actual_unit_cost: number | string | null;
+            /** Entries */
+            entries: number;
+            /** Good */
+            good: number | string;
+            /** Labour Hours */
+            labour_hours: number | string;
+            /** Machine Hours */
+            machine_hours: number | string;
+            /** Rejected */
+            rejected: number | string;
+            /** Rows */
+            rows: components["schemas"]["CostRowOut"][];
+            /** Standard Unit Cost */
+            standard_unit_cost: number | string;
+            /** Yield Percent */
+            yield_percent: number | string | null;
         };
         /** CustomerOut */
         CustomerOut: {
@@ -2734,6 +3162,11 @@ export interface components {
         };
         /** DispatchLineIn */
         DispatchLineIn: {
+            /**
+             * Batches
+             * @default []
+             */
+            batches: components["schemas"]["BatchPickIn"][];
             /** Order Line Id */
             order_line_id: number;
             /** Quantity */
@@ -2741,6 +3174,8 @@ export interface components {
         };
         /** DispatchLineOut */
         DispatchLineOut: {
+            /** Batches */
+            batches: components["schemas"]["BatchQtyOut"][];
             /** Item Code */
             item_code: string;
             /** Item Name */
@@ -2810,11 +3245,22 @@ export interface components {
             consumption: components["schemas"]["ConsumptionIn"][];
             /** Entry Date */
             entry_date?: string | null;
+            /** Labour Hours */
+            labour_hours?: number | string | null;
+            /** Machine Hours */
+            machine_hours?: number | string | null;
+            /** Machine Id */
+            machine_id?: number | null;
             /**
              * Notes
              * @default
              */
             notes: string;
+            /**
+             * Output Batches
+             * @default []
+             */
+            output_batches: components["schemas"]["BatchIn"][];
             /** Quantity Produced */
             quantity_produced: number | string;
             /**
@@ -2822,6 +3268,8 @@ export interface components {
              * @default 0
              */
             quantity_rejected: number | string;
+            /** Scrap */
+            scrap?: components["schemas"]["ScrapIn"][] | null;
             /**
              * Shift
              * @default
@@ -2855,18 +3303,36 @@ export interface components {
             item_code: string;
             /** Item Name */
             item_name: string;
+            /** Labour Cost */
+            labour_cost: number | string;
+            /** Labour Hours */
+            labour_hours: number | string;
+            /** Machine Cost */
+            machine_cost: number | string;
+            /** Machine Hours */
+            machine_hours: number | string;
+            /** Machine Name */
+            machine_name: string;
             /** Material Cost */
             material_cost: number | string;
             /** Notes */
             notes: string;
             /** Number */
             number: string;
+            /** Output Batches */
+            output_batches: components["schemas"]["BatchQtyOut"][];
+            /** Overhead Cost */
+            overhead_cost: number | string;
             /** Quantity Produced */
             quantity_produced: number | string;
             /** Quantity Rejected */
             quantity_rejected: number | string;
             /** Recorded By */
             recorded_by: string;
+            /** Scrap */
+            scrap: components["schemas"]["ScrapOut"][];
+            /** Scrap Value */
+            scrap_value: number | string;
             /** Shift */
             shift: string;
             /** Source Warehouse */
@@ -2877,6 +3343,8 @@ export interface components {
             status_label: string;
             /** Target Warehouse */
             target_warehouse: string;
+            /** Total Cost */
+            total_cost: number | string;
             /** Unit */
             unit: string;
             /** Unit Cost */
@@ -2922,6 +3390,11 @@ export interface components {
              */
             rejected: number | string;
             /**
+             * Rejected Serials
+             * @default []
+             */
+            rejected_serials: string[];
+            /**
              * Remarks
              * @default
              */
@@ -2945,10 +3418,14 @@ export interface components {
         };
         /** InventoryOptionsOut */
         InventoryOptionsOut: {
+            /** Batches Available */
+            batches_available: boolean;
             /** Gst Rates */
             gst_rates: string[];
             /** Kinds */
             kinds: components["schemas"]["ChoiceOut"][];
+            /** Tracking */
+            tracking: components["schemas"]["ChoiceOut"][];
             /** Units */
             units: components["schemas"]["ChoiceOut"][];
         };
@@ -3161,6 +3638,13 @@ export interface components {
             reorder_level?: number | string | null;
             /** Sale Price */
             sale_price?: number | string | null;
+            /** Shelf Life Days */
+            shelf_life_days?: number | null;
+            /**
+             * Tracking
+             * @default none
+             */
+            tracking: string;
             /**
              * Unit
              * @default NOS
@@ -3199,6 +3683,10 @@ export interface components {
             reorder_level: number | string | null;
             /** Sale Price */
             sale_price: number | string | null;
+            /** Shelf Life Days */
+            shelf_life_days: number | null;
+            /** Tracking */
+            tracking: string;
             /** Tracks Stock */
             tracks_stock: boolean;
             /** Unit */
@@ -3231,6 +3719,8 @@ export interface components {
         };
         /** JobWorkChallanLineOut */
         JobWorkChallanLineOut: {
+            /** Batches */
+            batches: components["schemas"]["BatchQtyOut"][];
             /** Id */
             id: number;
             /** Item Code */
@@ -3298,6 +3788,11 @@ export interface components {
         };
         /** JobWorkLineIn */
         JobWorkLineIn: {
+            /**
+             * Batches
+             * @default []
+             */
+            batches: components["schemas"]["BatchPickIn"][];
             /** Item Id */
             item_id: number;
             /** Quantity */
@@ -3373,6 +3868,11 @@ export interface components {
              * @default 0
              */
             input_quantity: number | string;
+            /**
+             * Output Batches
+             * @default []
+             */
+            output_batches: components["schemas"]["BatchIn"][];
             /** Output Item Id */
             output_item_id?: number | null;
             /** Output Quantity */
@@ -3387,6 +3887,8 @@ export interface components {
         LotOut: {
             /** Accepted Quantity */
             accepted_quantity: number | string;
+            /** Batches */
+            batches: components["schemas"]["BatchQtyOut"][];
             /** Can Inspect */
             can_inspect: boolean;
             /** Destination */
@@ -3426,8 +3928,39 @@ export interface components {
             status_label: string;
             /** Supplier */
             supplier: string;
+            /** Tracking */
+            tracking: string;
             /** Unit */
             unit: string;
+        };
+        /** MachineIn */
+        MachineIn: {
+            /** Code */
+            code: string;
+            /**
+             * Hour Rate
+             * @default 0
+             */
+            hour_rate: number | string;
+            /** Is Active */
+            is_active?: boolean | null;
+            /** Name */
+            name: string;
+        };
+        /** MachineOut */
+        MachineOut: {
+            /** Code */
+            code: string;
+            /** Hour Rate */
+            hour_rate: number | string | null;
+            /** Id */
+            id: number;
+            /** Is Active */
+            is_active: boolean;
+            /** Name */
+            name: string;
+            /** Used */
+            used: boolean;
         };
         /** MaterialOut */
         MaterialOut: {
@@ -3733,10 +4266,19 @@ export interface components {
         };
         /** OpeningIn */
         OpeningIn: {
+            /**
+             * Batch Number
+             * @default
+             */
+            batch_number: string;
             /** Entry Date */
             entry_date?: string | null;
+            /** Expires On */
+            expires_on?: string | null;
             /** Item Id */
             item_id: number;
+            /** Manufactured On */
+            manufactured_on?: string | null;
             /**
              * Note
              * @default
@@ -3749,16 +4291,30 @@ export interface components {
              * @default 0
              */
             rate: number | string;
+            /**
+             * Serials
+             * @default []
+             */
+            serials: string[];
+            /**
+             * Supplier Batch
+             * @default
+             */
+            supplier_batch: string;
             /** Warehouse Id */
             warehouse_id: number;
         };
         /** OpeningOut */
         OpeningOut: {
+            /** Batch Number */
+            batch_number: string;
             /**
              * Entry Date
              * Format: date
              */
             entry_date: string;
+            /** Expires On */
+            expires_on: string | null;
             /** Id */
             id: number;
             /** Item Code */
@@ -4393,6 +4949,11 @@ export interface components {
         };
         /** ReceiptLineIn */
         ReceiptLineIn: {
+            /**
+             * Batches
+             * @default []
+             */
+            batches: components["schemas"]["BatchIn"][];
             /** Order Line Id */
             order_line_id: number;
             /** Quantity */
@@ -4400,6 +4961,8 @@ export interface components {
         };
         /** ReceiptLineOut */
         ReceiptLineOut: {
+            /** Batches */
+            batches: components["schemas"]["BatchQtyOut"][];
             /** Item Code */
             item_code: string;
             /** Item Name */
@@ -4829,6 +5392,32 @@ export interface components {
             /** Total */
             total: number | string;
         };
+        /** ScrapIn */
+        ScrapIn: {
+            /** Item Id */
+            item_id: number;
+            /** Quantity */
+            quantity: number | string;
+            /** Rate */
+            rate?: number | string | null;
+        };
+        /** ScrapOut */
+        ScrapOut: {
+            /** Item Code */
+            item_code: string;
+            /** Item Id */
+            item_id: number;
+            /** Item Name */
+            item_name: string;
+            /** Quantity */
+            quantity: number | string;
+            /** Rate */
+            rate: number | string;
+            /** Unit */
+            unit: string;
+            /** Value */
+            value: number | string;
+        };
         /** SearchResultOut */
         SearchResultOut: {
             /** City */
@@ -4879,6 +5468,21 @@ export interface components {
             tax: number | string;
             /** Taxable */
             taxable: number | string;
+        };
+        /** StandardCostOut */
+        StandardCostOut: {
+            /** Labour */
+            labour: number | string;
+            /** Machine */
+            machine: number | string;
+            /** Material */
+            material: number | string;
+            /** Overhead */
+            overhead: number | string;
+            /** Scrap */
+            scrap: number | string;
+            /** Total */
+            total: number | string;
         };
         /** StockRowOut */
         StockRowOut: {
@@ -5224,6 +5828,97 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaymentOptionsOut"];
+                };
+            };
+        };
+    };
+    inventory_api_batch_labels: {
+        parameters: {
+            query: {
+                ids: string;
+                copies?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    inventory_api_list_batches: {
+        parameters: {
+            query?: {
+                item_id?: number | null;
+                warehouse_id?: number | null;
+                q?: string;
+                in_stock?: boolean;
+                expiring_within?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchOut"][];
+                };
+            };
+        };
+    };
+    inventory_api_lookup_batch: {
+        parameters: {
+            query: {
+                code: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchOut"][];
+                };
+            };
+        };
+    };
+    inventory_api_batch_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchDetailOut"];
                 };
             };
         };
@@ -5863,6 +6558,96 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["JobWorkChallanOut"];
                 };
+            };
+        };
+    };
+    production_api_list_machines: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MachineOut"][];
+                };
+            };
+        };
+    };
+    production_api_create_machine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MachineIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MachineOut"];
+                };
+            };
+        };
+    };
+    production_api_update_machine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                machine_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MachineIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MachineOut"];
+                };
+            };
+        };
+    };
+    production_api_delete_machine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                machine_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -6932,6 +7717,73 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlanOut"][];
+                };
+            };
+        };
+    };
+    production_api_get_cost_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CostSettingsOut"];
+                };
+            };
+        };
+    };
+    production_api_put_cost_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CostSettingsIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CostSettingsOut"];
+                };
+            };
+        };
+    };
+    production_api_production_costs: {
+        parameters: {
+            query: {
+                start: string;
+                end: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CostReportRowOut"][];
                 };
             };
         };
@@ -8711,6 +9563,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorkOrderOut"];
+                };
+            };
+        };
+    };
+    production_api_work_order_costs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wo_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CostSheetOut"];
                 };
             };
         };

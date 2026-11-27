@@ -25,6 +25,8 @@ class InspectionLot(models.Model):
     production_entry = models.ForeignKey('production.ProductionEntry', on_delete=models.PROTECT, null=True, blank=True, related_name='inspection_lots')
     supplier = models.ForeignKey('accounts.Company', on_delete=models.PROTECT, null=True, blank=True, related_name='+')
     item = models.ForeignKey('inventory.Item', on_delete=models.PROTECT, related_name='inspection_lots')
+    # The batch (one per lot) or the serial numbers in it, for tracked items.
+    batches = models.ManyToManyField('inventory.Batch', blank=True, related_name='inspection_lots')
     quantity = models.DecimalField(**QUANTITY)
     accepted_quantity = models.DecimalField(**QUANTITY, default=0)
     rejected_quantity = models.DecimalField(**QUANTITY, default=0)

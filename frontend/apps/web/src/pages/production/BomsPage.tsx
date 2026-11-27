@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { Badge, Card, Empty, ErrorText, Field, Loading, Modal, PageHeader } from "../../components/ui";
 import { quantity, rupees } from "../../lib/format";
-import { useCan, useWritable } from "../../lib/session";
+import { useActive, useCan, useWritable } from "../../lib/session";
 import { useItems } from "../inventory/InventoryLayout";
 import { BomTree } from "./BomTree";
 
@@ -17,6 +17,7 @@ export function BomsPage() {
   const boms = useQuery({ queryKey: ["boms"], queryFn: async () => unwrap(await api.GET("/api/v1/boms")) });
   const [editing, setEditing] = useState<Bom | "new" | null>(null);
   const [exploding, setExploding] = useState<Bom | null>(null);
+  const costed = useActive().features.includes("production_costing");
 
   return (
     <div className="space-y-6">
@@ -34,7 +35,17 @@ export function BomsPage() {
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <p className="font-semibold text-navy-900">{b.item_name} <span className="text-sm font-normal text-gray-500">{b.item_code}</span></p>
-                  <p className="text-sm text-gray-500">{b.name} · for {quantity(b.output_quantity, b.unit)} · about {rupees(b.estimated_unit_cost)} a unit in materials</p>
+                  <p className="text-sm text-gray-500">
+                    {b.name} · for {quantity(b.output_quantity, b.unit)} · {costed
+                      ? <>standard {rupees(b.standard_cost.total)} a unit</>
+                      : <>about {rupees(b.estimated_unit_cost)} a unit in materials</>}
+                  </p>
+                  {costed && (b.machine_name || Number(b.labour_hours) || b.scrap_item_name) ? (
+                    <p className="text-xs text-gray-500">
+                      {[b.machine_name ? `${Number(b.machine_hours)} h on ${b.machine_name}` : "", Number(b.labour_hours) ? `${Number(b.labour_hours)} labour h` : "",
+                        b.scrap_item_name ? `${Number(b.scrap_quantity)} ${b.scrap_item_name} scrap` : ""].filter(Boolean).join(" · ")}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   {b.is_default ? <Badge tone="navy">Default</Badge> : null}
@@ -81,6 +92,13 @@ function BomForm({ bom, onClose }: { bom: Bom | null; onClose: () => void }) {
   const [notes, setNotes] = useState(bom?.notes ?? "");
   const [isDefault, setIsDefault] = useState(bom?.is_default ?? false);
   const [isActive, setIsActive] = useState(bom?.is_active ?? true);
+  const costed = useActive().features.includes("production_costing");
+  const machines = useQuery({ queryKey: ["machines"], enabled: costed, queryFn: async () => unwrap(await api.GET("/api/v1/machines")) });
+  const [machineId, setMachineId] = useState<number | null>(bom?.machine_id ?? null);
+  const [machineHours, setMachineHours] = useState(bom && Number(bom.machine_hours) ? String(Number(bom.machine_hours)) : "");
+  const [labourHours, setLabourHours] = useState(bom && Number(bom.labour_hours) ? String(Number(bom.labour_hours)) : "");
+  const [scrapItemId, setScrapItemId] = useState<number | null>(bom?.scrap_item_id ?? null);
+  const [scrapQty, setScrapQty] = useState(bom && Number(bom.scrap_quantity) ? String(Number(bom.scrap_quantity)) : "");
   const [lines, setLines] = useState<Line[]>(bom ? bom.components.map((c) => ({ key: nextKey++, item_id: c.item_id, quantity: String(Number(c.quantity)) }))
     : [{ key: nextKey++, item_id: null, quantity: "" }]);
   const setLine = (key: number, patch: Partial<Line>) => setLines(lines.map((l) => (l.key === key ? { ...l, ...patch } : l)));
@@ -90,6 +108,8 @@ function BomForm({ bom, onClose }: { bom: Bom | null; onClose: () => void }) {
       const body = {
         item_id: itemId!, name, output_quantity: output, notes, is_default: isDefault, is_active: isActive,
         components: lines.filter((l) => l.item_id !== null).map((l) => ({ item_id: l.item_id!, quantity: l.quantity })),
+        machine_id: machineId, machine_hours: machineHours || "0", labour_hours: labourHours || "0",
+        scrap_item_id: scrapItemId, scrap_quantity: scrapItemId ? scrapQty || "0" : "0",
       };
       return bom ? unwrap(await api.PUT("/api/v1/boms/{bom_id}", { params: { path: { bom_id: bom.id } }, body }))
         : unwrap(await api.POST("/api/v1/boms", { body }));
@@ -156,6 +176,35 @@ function BomForm({ bom, onClose }: { bom: Bom | null; onClose: () => void }) {
             </tbody>
           </table>
           <button type="button" className="btn-link" onClick={() => setLines([...lines, { key: nextKey++, item_id: null, quantity: "" }])}>+ Add a component</button>
+          {costed ? (
+            <fieldset className="rounded border border-gray-200 p-3">
+              <legend className="px-1 text-sm font-semibold text-gray-700">Routing and scrap (for {output || "1"} {product?.unit ?? ""})</legend>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Field label="Machine">
+                  {(id) => (
+                    <select id={id} className="field-input" value={machineId ?? ""} onChange={(e) => setMachineId(e.target.value ? Number(e.target.value) : null)}>
+                      <option value="">None</option>
+                      {(machines.data ?? []).filter((m) => m.is_active || m.id === machineId).map((m) => <option key={m.id} value={m.id}>{m.code} · {m.name}</option>)}
+                    </select>
+                  )}
+                </Field>
+                <Field label="Machine hours">{(id) => <input id={id} className="field-input" inputMode="decimal" value={machineHours} disabled={!machineId} onChange={(e) => setMachineHours(e.target.value)} />}</Field>
+                <Field label="Labour hours" hint="Person-hours.">{(id) => <input id={id} className="field-input" inputMode="decimal" value={labourHours} onChange={(e) => setLabourHours(e.target.value)} />}</Field>
+                <div className="sm:col-span-2">
+                  <Field label="Scrap or by-product" hint="E.g. turnings, runners, offcuts. Goes into stock at its sale price.">
+                    {(id) => (
+                      <select id={id} className="field-input" value={scrapItemId ?? ""} onChange={(e) => setScrapItemId(e.target.value ? Number(e.target.value) : null)}>
+                        <option value="">None</option>
+                        {active.filter((i) => i.id !== itemId).sort((a, b) => Number(b.kind === "scrap") - Number(a.kind === "scrap"))
+                          .map((i) => <option key={i.id} value={i.id}>{i.code} · {i.name}</option>)}
+                      </select>
+                    )}
+                  </Field>
+                </div>
+                <Field label="Scrap quantity">{(id) => <input id={id} className="field-input" inputMode="decimal" value={scrapQty} disabled={!scrapItemId} onChange={(e) => setScrapQty(e.target.value)} />}</Field>
+              </div>
+            </fieldset>
+          ) : null}
           <Field label="Notes">{(id) => <textarea id={id} className="field-input" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />}</Field>
           <div className="flex flex-wrap gap-6 text-sm">
             <label className="flex items-center gap-2"><input type="checkbox" className="rounded border-gray-300 text-accent-500" checked={isDefault} onChange={(e) => setIsDefault(e.target.checked)} />Default BOM for this item</label>

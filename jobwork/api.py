@@ -12,6 +12,8 @@ from django.shortcuts import get_object_or_404
 from ninja import Router, Schema
 from ninja.errors import HttpError
 
+from inventory import batches as batch_tracking
+from inventory.api import BatchIn, BatchPickIn, BatchQtyOut, batch_rows
 from organizations.app_api import membership_for
 from purchase.api import PartyOut, _name, _party, _writes_allowed
 
@@ -33,6 +35,8 @@ def _run(fn, *args, **kwargs):
 class JobWorkLineIn(Schema):
     item_id: int
     quantity: Decimal
+    # Batch- or serial-tracked items: which to send. Left out, the first to expire.
+    batches: List[BatchPickIn] = []
 
 
 class JobWorkChallanIn(Schema):
@@ -57,6 +61,8 @@ class JobWorkChallanLineOut(Schema):
     returned_quantity: Decimal
     waste_quantity: Decimal
     pending_quantity: Decimal
+    # The batches sent.
+    batches: List[BatchQtyOut]
 
 
 class JobWorkReceiptLineOut(Schema):
@@ -102,6 +108,7 @@ class JobWorkChallanOut(Schema):
 
 def _challan_out(c, membership):
     lines = list(c.lines.select_related('item'))
+    sent = batch_tracking.by_document(c.company, [c.number], -1)
     return {
         'id': c.pk, 'number': c.number, 'job_worker': _party(c.job_worker), 'challan_date': c.challan_date, 'process': c.process,
         'expected_return': c.expected_return, 'due_back': services.due_back(c), 'age_flag': services.age_flag(c),
@@ -110,7 +117,8 @@ def _challan_out(c, membership):
         'value': sum((l.quantity * l.rate for l in lines), Decimal('0')).quantize(Decimal('0.01')),
         'lines': [{'id': l.pk, 'item_id': l.item_id, 'item_code': l.item.code, 'item_name': l.item.name, 'unit': l.item.unit,
                    'quantity': l.quantity, 'rate': l.rate, 'returned_quantity': l.returned_quantity,
-                   'waste_quantity': l.waste_quantity, 'pending_quantity': l.pending_quantity} for l in lines],
+                   'waste_quantity': l.waste_quantity, 'pending_quantity': l.pending_quantity,
+                   'batches': batch_rows(sent.get((c.number, l.item_id)))} for l in lines],
         'receipts': [{
             'id': r.pk, 'number': r.number, 'received_date': r.received_date, 'job_worker_challan': r.job_worker_challan,
             'into_warehouse': r.into_warehouse.name, 'recorded_by': _name(r.created_by),
@@ -156,6 +164,9 @@ class JobWorkReceiveLineIn(Schema):
     output_item_id: Optional[int] = None
     output_quantity: Optional[Decimal] = None
     charge_per_unit: Decimal = Decimal('0')
+    # A tracked item processed into another (or a different count): its batch number.
+    # Left out, the same batches come back, or the first batch's number is kept.
+    output_batches: List[BatchIn] = []
 
 
 class JobWorkReceiveIn(Schema):

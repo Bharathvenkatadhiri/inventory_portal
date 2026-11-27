@@ -300,13 +300,21 @@ def delivery_challan(dispatch):
                           [f"Their order: {order.customer_po_number}" if order.customer_po_number else '',
                            f"Transporter: {dispatch.transporter}" if dispatch.transporter else ''])
     story += [kit.two_boxes(consignor, consignee), Spacer(1, 4 * mm)]
+    from inventory import batches
+
+    sent = batches.by_document(dispatch.company, [dispatch.number], -1)
     head = [kit.P(h, kit.label if i < 2 else kit.label_right) for i, h in enumerate(['#', 'DESCRIPTION', 'HSN', 'QTY', 'RATE', 'VALUE', 'GST %'])]
     rows, value = [head], Decimal('0')
     for i, dl in enumerate(dispatch.lines.select_related('order_line__item'), start=1):
         l = dl.order_line
         amount = (dl.quantity * l.rate).quantize(Decimal('0.01'))
         value += amount
-        rows.append([kit.P(str(i)), [kit.P(_esc(l.item.name)), kit.P(_esc(l.item.code), kit.small)], kit.P(_esc(l.item.hsn_code), kit.right),
+        description = [kit.P(_esc(l.item.name)), kit.P(_esc(l.item.code), kit.small)]
+        used = sent.get((dispatch.number, l.item_id))
+        if used:
+            what = 'Serial no.' if l.item.by_serial else 'Batch'
+            description.append(kit.P(f"{what}: {_esc(batches.numbers(used))}", kit.small))
+        rows.append([kit.P(str(i)), description, kit.P(_esc(l.item.hsn_code), kit.right),
                      kit.P(f"{_qty(dl.quantity)} {l.unit}", kit.right), kit.P(_money(l.rate, 'INR'), kit.right),
                      kit.P(_money(amount, 'INR'), kit.right), kit.P(f"{l.gst_rate.normalize():f}%", kit.right)])
     rows.append(['', kit.P('<b>Value of goods (before GST)</b>'), '', '', '', kit.P(_money(value, 'INR'), kit.right_bold), ''])
@@ -455,3 +463,48 @@ def job_work_challan(challan):
     story += [Spacer(1, 8 * mm), kit.table([[received, kit.signature(company, 'Authorised signatory')]], [kit.width / 2, kit.width / 2])]
     watermark = 'CANCELLED' if challan.status == 'cancelled' else ''
     return _build(kit, f"Job work challan {challan.number}", [story], watermark)
+
+
+# --- Batch and serial number labels -----------------------------------------------------------
+
+def batch_labels(company, batch_list, copies=1):
+    """An A4 sheet of 24 labels (3 x 8, 70 x 37 mm) per page: item, batch
+    or serial number, expiry, and a Code 128 barcode a scanner reads back
+    (inventory.api batch lookup)."""
+    from reportlab.graphics.barcode.code128 import Code128
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.pdfgen import canvas
+
+    buffer = io.BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+    pdf.setTitle(f"Labels - {company.name or company.legal_name}")
+    width, height = A4
+    columns, rows_per_page, label_w, label_h = 3, 8, 70 * mm, 37 * mm
+    left, top = (width - columns * label_w) / 2, height - (height - rows_per_page * label_h) / 2
+    labels = [b for b in batch_list for _ in range(max(1, min(copies, 24)))]
+    for index, batch in enumerate(labels):
+        slot = index % (columns * rows_per_page)
+        if index and slot == 0:
+            pdf.showPage()
+        x = left + (slot % columns) * label_w + 4 * mm
+        y = top - (slot // columns) * label_h
+        pdf.setFont('Helvetica', 6.5)
+        pdf.setFillColorRGB(0.42, 0.45, 0.5)
+        pdf.drawString(x, y - 5 * mm, (company.name or company.legal_name)[:48])
+        pdf.setFillColorRGB(0, 0, 0)
+        pdf.setFont('Helvetica-Bold', 8)
+        pdf.drawString(x, y - 9 * mm, f"{batch.item.code}  {batch.item.name}"[:44])
+        pdf.setFont('Helvetica-Bold', 11)
+        pdf.drawString(x, y - 14 * mm, ('S/N ' if batch.item.by_serial else 'Batch ') + batch.number[:28])
+        pdf.setFont('Helvetica', 6.5)
+        details = [f"Exp {batch.expires_on:%d %b %Y}" if batch.expires_on else '',
+                   f"Mfg {batch.manufactured_on:%d %b %Y}" if batch.manufactured_on else '',
+                   f"Heat {batch.supplier_batch}" if batch.supplier_batch else '']
+        pdf.drawString(x, y - 17.5 * mm, '   '.join(d for d in details if d)[:60])
+        code = Code128(batch.label_code, barHeight=11 * mm, barWidth=0.32 * mm, humanReadable=True, fontSize=6)
+        code.drawOn(pdf, x - 6 * mm, y - 33 * mm)
+    if not labels:
+        pdf.drawString(20 * mm, height - 20 * mm, 'No labels.')
+    pdf.save()
+    return buffer.getvalue()

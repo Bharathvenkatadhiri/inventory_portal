@@ -10,6 +10,7 @@ export function active(overrides: Partial<Schemas["SubscriptionOut"]> = {}, allo
     },
     role: { id: 1, key: "org_admin", name: "Org Admin", user_type: "full" },
     granted: allowed,
+    features: [],
     allowed,
     subscription: {
       plan: "starter", plan_label: "Starter", status: "trialing", entitled: true, trial_ends_at: "2026-12-08T10:00:00Z",

@@ -13,6 +13,8 @@ from ninja import Router, Schema
 from ninja.errors import HttpError
 
 from organizations import access
+from inventory.api import BatchIn, BatchPickIn, BatchQtyOut, batch_rows
+from inventory import batches as batch_tracking
 from organizations.app_api import membership_for
 
 from . import services
@@ -373,6 +375,8 @@ def close_order(request, order_id: int):
 class ReceiptLineIn(Schema):
     order_line_id: int
     quantity: Decimal
+    # Batch- or serial-tracked items: the batches (or serial numbers) received.
+    batches: List[BatchIn] = []
 
 
 class ReceiptIn(Schema):
@@ -389,6 +393,7 @@ class ReceiptLineOut(Schema):
     item_name: str
     quantity: Decimal
     unit: str
+    batches: List[BatchQtyOut]
 
 
 class ReceiptOut(Schema):
@@ -407,13 +412,15 @@ class ReceiptOut(Schema):
 
 
 def _receipt_out(r):
+    moved = batch_tracking.by_document(r.company, [r.number], 1)
     return {
         'id': r.pk, 'number': r.number, 'order_id': r.order_id, 'order_number': r.order.number,
         'supplier': _party(r.order.supplier), 'warehouse': r.warehouse.name, 'received_date': r.received_date,
         'supplier_challan': r.supplier_challan, 'vehicle_number': r.vehicle_number, 'notes': r.notes,
         'received_by': _name(r.created_by),
         'lines': [{'item_code': l.order_line.item.code, 'item_name': l.order_line.item.name, 'quantity': l.quantity,
-                   'unit': l.order_line.unit} for l in r.lines.select_related('order_line__item')],
+                   'unit': l.order_line.unit, 'batches': batch_rows(moved.get((r.number, l.order_line.item_id)))}
+                  for l in r.lines.select_related('order_line__item')],
     }
 
 

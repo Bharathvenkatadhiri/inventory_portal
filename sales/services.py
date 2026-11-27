@@ -19,6 +19,7 @@ from django.db import transaction
 from django.db.models import Sum
 from django.utils import timezone
 
+from inventory import batches
 from inventory import services as inventory
 from inventory.models import GST_RATE_VALUES, Item, StockEntry, Warehouse
 from organizations import access
@@ -346,10 +347,10 @@ def post_dispatch(membership, order, data):
             raise SalesError(f"{line.item.name}: only {open_quantity.normalize():f} {line.unit} is still to send on this order.")
         if line.item.tracks_stock:
             on_hand, _value = inventory.on_hand(company, line.item, warehouse)
-            already = sum((q for l, q in wanted if l.item_id == line.item_id), Decimal('0'))
+            already = sum((q for l, q, _p in wanted if l.item_id == line.item_id), Decimal('0'))
             if quantity + already > on_hand:
                 raise SalesError(f"{line.item.name}: only {on_hand.normalize():f} {line.unit} in {warehouse.name}.")
-        wanted.append((line, quantity))
+        wanted.append((line, quantity, row.get('batches') or []))
     if not wanted:
         raise SalesError("Enter the quantity sent for at least one line.")
 
@@ -360,14 +361,14 @@ def post_dispatch(membership, order, data):
         created_by=membership.user,
     )
     customer_name = order.customer.name or order.customer.legal_name
-    for line, quantity in wanted:
+    for line, quantity, picks in wanted:
         DispatchLine.objects.create(dispatch=dispatch, order_line=line, quantity=quantity)
         if line.item.tracks_stock:
-            StockEntry.objects.create(
-                company=company, item=line.item, warehouse=warehouse, kind=StockEntry.Kind.DISPATCH, quantity=-quantity,
-                rate=inventory.average_cost(company, line.item, warehouse), entry_date=dispatch_date,
-                reference=dispatch.number, note=f"To {customer_name} against {order.number}"[:200], created_by=membership.user,
-            )
+            # The batches picked, or else the first to expire; expired ones can't be sent.
+            rows = batches.outgoing(company, line.item, warehouse, quantity, picks, day=dispatch_date)
+            batches.write(company, line.item, warehouse, StockEntry.Kind.DISPATCH, rows, sign=-1,
+                          rate=inventory.average_cost(company, line.item, warehouse), entry_date=dispatch_date,
+                          reference=dispatch.number, note=f"To {customer_name} against {order.number}", user=membership.user)
         line.dispatched_quantity += quantity
         line.save(update_fields=['dispatched_quantity'])
     complete = all(l.dispatched_quantity >= l.quantity for l in order_lines.values())

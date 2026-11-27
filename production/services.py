@@ -13,11 +13,13 @@ from decimal import ROUND_HALF_UP, Decimal
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
+from inventory import batches
 from inventory import services as inventory
 from inventory.models import Item, StockEntry, Warehouse
 from purchase.services import _decimal, next_number
 
-from .models import BillOfMaterials, BomComponent, ProductionConsumption, ProductionEntry, WorkOrder
+from . import costing
+from .models import BillOfMaterials, BomComponent, ProductionConsumption, ProductionEntry, ProductionScrap, WorkOrder
 
 ZERO, CENT = Decimal('0'), Decimal('0.01')
 QTY = Decimal('0.001')
@@ -79,6 +81,10 @@ def save_bom(membership, bom, data):
                                   f"which needs {item.name}.")
     bom.company, bom.item, bom.name, bom.output_quantity = company, item, name, output
     bom.notes = (data.get('notes') or '').strip()
+    try:
+        costing.apply_routing(company, bom, data)
+    except costing.CostingError as exc:
+        raise ProductionError(str(exc))
     if 'is_active' in data and data['is_active'] is not None:
         bom.is_active = bool(data['is_active'])
     if bom.pk is None:
@@ -160,7 +166,10 @@ def record(membership, data):
     source = warehouse('source_warehouse_id', 'the materials come from')
     target = warehouse('target_warehouse_id', 'the finished items go to') if data.get('target_warehouse_id') else source
 
-    overrides = {row['item_id']: _decimal(row.get('quantity'), 'a quantity used') for row in data.get('consumption') or []}
+    consumption = data.get('consumption') or []
+    overrides = {row['item_id']: _decimal(row.get('quantity'), 'a quantity used') for row in consumption
+                 if row.get('quantity') not in (None, '')}
+    picks = {row['item_id']: row.get('batches') or [] for row in consumption}
     lines, material_cost = [], ZERO
     planned_items = set()
     for row in plan(bom, good + rejected, source):
@@ -175,35 +184,54 @@ def record(membership, data):
         rate = inventory.average_cost(company, item, source)
         lines.append((item, row['planned'], used, rate))
         material_cost += (used * rate).quantize(CENT, rounding=ROUND_HALF_UP)
-    unknown = set(overrides) - planned_items
+    unknown = (set(overrides) | {k for k, v in picks.items() if v}) - planned_items
     if unknown:
         raise ProductionError("Consumption can only be for this BOM's components.")
+    try:
+        costs = costing.conversion(company, bom, good + rejected, data)
+    except costing.CostingError as exc:
+        raise ProductionError(str(exc))
+    scrap_value = sum((costing.money(q * r) for _i, q, r in costs['scrap']), ZERO)
+    total = material_cost + costs['labour_cost'] + costs['machine_cost'] + costs['overhead_cost'] - scrap_value
+    if total < 0:
+        raise ProductionError("The scrap is worth more than everything that went in; check its quantity and rate.")
 
     entry = ProductionEntry.objects.create(
         company=company, number=next_number(company, 'erp_pe', 'PE', entry_date), bom=bom, item=bom.item,
         entry_date=entry_date, quantity_produced=good, quantity_rejected=rejected, source_warehouse=source,
         target_warehouse=target, material_cost=material_cost,
-        unit_cost=(material_cost / good).quantize(CENT, rounding=ROUND_HALF_UP) if good else ZERO,
+        unit_cost=(total / good).quantize(CENT, rounding=ROUND_HALF_UP) if good else ZERO,
+        machine=costs['machine'], machine_hours=costs['machine_hours'], labour_hours=costs['labour_hours'],
+        labour_cost=costs['labour_cost'], machine_cost=costs['machine_cost'], overhead_cost=costs['overhead_cost'],
+        scrap_value=scrap_value,
         shift=(data.get('shift') or '').strip()[:20], notes=(data.get('notes') or '').strip()[:300], created_by=membership.user,
         work_order=work_order,
     )
     for item, planned, used, rate in lines:
         ProductionConsumption.objects.create(entry=entry, item=item, planned_quantity=planned, quantity=used, rate=rate)
         if used:
-            StockEntry.objects.create(company=company, item=item, warehouse=source, kind=StockEntry.Kind.PRODUCTION_ISSUE,
-                                      quantity=-used, rate=rate, entry_date=entry_date, reference=entry.number,
-                                      note=f"For {good.normalize():f} {bom.item.unit} {bom.item.code}"[:200], created_by=membership.user)
+            rows = batches.outgoing(company, item, source, used, picks.get(item.pk), day=entry_date)
+            batches.write(company, item, source, StockEntry.Kind.PRODUCTION_ISSUE, rows, sign=-1, rate=rate,
+                          entry_date=entry_date, reference=entry.number,
+                          note=f"For {good.normalize():f} {bom.item.unit} {bom.item.code}", user=membership.user)
+    for item, quantity, rate in costs['scrap']:
+        ProductionScrap.objects.create(entry=entry, item=item, quantity=quantity, rate=rate)
+        rows = batches.incoming(company, item, quantity, origin='production', reference=entry.number, day=entry_date)
+        batches.write(company, item, target, StockEntry.Kind.SCRAP, rows, sign=1, rate=rate, entry_date=entry_date,
+                      reference=entry.number, note=f"Scrap from {bom.item.code}", user=membership.user)
     if good:
         from quality import services as quality
         inspect = quality.needs_inspection(company, bom.item)
-        StockEntry.objects.create(company=company, item=bom.item, warehouse=quality.hold(company) if inspect else target,
-                                  kind=StockEntry.Kind.PRODUCTION_RECEIPT, quantity=good, rate=entry.unit_cost,
-                                  entry_date=entry_date, reference=entry.number,
-                                  note=f"BOM {bom.name}" + (f", {rejected.normalize():f} rejected" if rejected else ''),
-                                  created_by=membership.user)
+        # A new batch (numbered from the entry unless given), or the next serial numbers.
+        rows = batches.incoming(company, bom.item, good, data.get('output_batches'), origin='production',
+                                reference=entry.number, day=entry_date)
+        batches.write(company, bom.item, quality.hold(company) if inspect else target, StockEntry.Kind.PRODUCTION_RECEIPT,
+                      rows, sign=1, rate=entry.unit_cost, entry_date=entry_date, reference=entry.number,
+                      note=f"BOM {bom.name}" + (f", {rejected.normalize():f} rejected" if rejected else ''),
+                      user=membership.user)
         if inspect:
-            quality.open_lot(company, item=bom.item, quantity=good, rate=entry.unit_cost, destination=target,
-                             source='production', reference=entry.number, received_on=entry_date, production_entry=entry)
+            quality.open_lots(company, item=bom.item, rows=rows, rate=entry.unit_cost, destination=target,
+                              source='production', reference=entry.number, received_on=entry_date, production_entry=entry)
     if work_order is not None:
         _update_progress(work_order)
     return entry
@@ -233,11 +261,18 @@ def cancel(membership, entry, reason):
         if on_hand < entry.quantity_produced:
             raise ProductionError(f"Only {on_hand.normalize():f} {entry.item.unit} of {entry.item.name} is left in {target.name}; "
                                   "the rest has been used or sent, so this can't be undone.")
-    for stock in StockEntry.objects.filter(company=entry.company, reference=entry.number,
-                                           kind__in=[StockEntry.Kind.PRODUCTION_ISSUE, StockEntry.Kind.PRODUCTION_RECEIPT]):
-        StockEntry.objects.create(company=entry.company, item=stock.item, warehouse=stock.warehouse, kind=stock.kind,
-                                  quantity=-stock.quantity, rate=stock.rate, entry_date=timezone.localdate(),
-                                  reference=entry.number, note=f"Cancelled: {reason}"[:200], created_by=membership.user)
+    moved = list(StockEntry.objects.filter(company=entry.company, reference=entry.number,
+                                           kind__in=[StockEntry.Kind.PRODUCTION_ISSUE, StockEntry.Kind.PRODUCTION_RECEIPT,
+                                                     StockEntry.Kind.SCRAP])
+                 .select_related('item', 'warehouse', 'batch'))
+    for stock in moved:
+        if stock.kind == StockEntry.Kind.SCRAP and inventory.on_hand(entry.company, stock.item, stock.warehouse)[0] < stock.quantity:
+            raise ProductionError(f"The {stock.item.name} scrap from this entry has been sold or used, so it can't be undone.")
+    try:
+        batches.still_on_hand(moved)
+    except batches.BatchError as exc:
+        raise ProductionError(f"{exc} This can't be undone.")
+    batches.reverse(moved, entry_date=timezone.localdate(), note=f"Cancelled: {reason}", user=membership.user)
     entry.status = ProductionEntry.Status.CANCELLED
     entry.cancel_reason, entry.cancelled_at = reason[:300], timezone.now()
     entry.save()
@@ -427,7 +462,7 @@ def progress(wo):
     entries = list(wo.entries.filter(status=ProductionEntry.Status.POSTED))
     made = sum((e.quantity_produced for e in entries), ZERO)
     rejected = sum((e.quantity_rejected for e in entries), ZERO)
-    cost = sum((e.material_cost for e in entries), ZERO)
+    cost = sum((costing.total_cost(e) for e in entries), ZERO)
     used = {}
     for c in ProductionConsumption.objects.filter(entry__in=entries).values('item_id', 'quantity'):
         used[c['item_id']] = used.get(c['item_id'], ZERO) + c['quantity']
@@ -437,4 +472,4 @@ def progress(wo):
                           'on_hand': row['on_hand'], 'short': row['short']})
     return {'made': made, 'rejected': rejected, 'remaining': max(ZERO, wo.quantity - made), 'material_cost': cost,
             'actual_unit_cost': (cost / made).quantize(CENT, rounding=ROUND_HALF_UP) if made else ZERO,
-            'planned_unit_cost': rolled_unit_cost(wo.bom), 'materials': materials}
+            'planned_unit_cost': costing.standard_cost(wo.bom)['total'], 'materials': materials}

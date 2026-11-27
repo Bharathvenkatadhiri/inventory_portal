@@ -21,6 +21,7 @@ from django.db.models import Sum
 from django.utils import timezone
 
 from accounts.models import Company
+from inventory import batches
 from inventory.models import GST_RATE_VALUES, Item, StockEntry, Warehouse
 from marketplace.documents import financial_year
 from marketplace.models import DocumentSequence
@@ -310,7 +311,7 @@ def post_receipt(membership, order, data):
         open_quantity = line.quantity - line.received_quantity
         if quantity > open_quantity:
             raise PurchaseError(f"{line.item.name}: only {open_quantity.normalize():f} {line.unit} is still to come on this order.")
-        wanted.append((line, quantity))
+        wanted.append((line, quantity, row.get('batches') or []))
     if not wanted:
         raise PurchaseError("Enter the quantity received for at least one line.")
 
@@ -322,24 +323,23 @@ def post_receipt(membership, order, data):
         notes=(data.get('notes') or '').strip()[:300], created_by=membership.user,
     )
     from quality import services as quality
-    for line, quantity in wanted:
+    for line, quantity, given in wanted:
         receipt_line = GoodsReceiptLine.objects.create(receipt=receipt, order_line=line, quantity=quantity)
         line.received_quantity += quantity
         line.save(update_fields=['received_quantity'])
         if line.item.tracks_stock:
             # Items that need QC wait under inspection; the lot remembers the store they're for.
             inspect = quality.needs_inspection(company, line.item)
-            StockEntry.objects.create(
-                company=company, item=line.item, warehouse=quality.hold(company) if inspect else warehouse,
-                kind=StockEntry.Kind.RECEIPT, quantity=quantity, rate=line.rate, entry_date=received_date,
-                reference=receipt.number,
-                note=f"From {order.supplier.name or order.supplier.legal_name} against {order.number}"[:200],
-                created_by=membership.user,
-            )
+            rows = batches.incoming(company, line.item, quantity, given, origin='receipt', reference=receipt.number,
+                                    day=received_date, supplier=order.supplier)
+            batches.write(company, line.item, quality.hold(company) if inspect else warehouse, StockEntry.Kind.RECEIPT, rows,
+                          sign=1, rate=line.rate, entry_date=received_date, reference=receipt.number,
+                          note=f"From {order.supplier.name or order.supplier.legal_name} against {order.number}",
+                          user=membership.user)
             if inspect:
-                quality.open_lot(company, item=line.item, quantity=quantity, rate=line.rate, destination=warehouse,
-                                 source='receipt', reference=receipt.number, received_on=received_date,
-                                 receipt_line=receipt_line, supplier=order.supplier)
+                quality.open_lots(company, item=line.item, rows=rows, rate=line.rate, destination=warehouse,
+                                  source='receipt', reference=receipt.number, received_on=received_date,
+                                  receipt_line=receipt_line, supplier=order.supplier)
     complete = all(l.received_quantity >= l.quantity for l in order_lines.values())
     order.status = Order.Status.RECEIVED if complete else Order.Status.PARTIALLY_RECEIVED
     order.save(update_fields=['status', 'updated_at'])

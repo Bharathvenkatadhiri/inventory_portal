@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Card, Empty, ErrorText, Field, Loading, Modal, Notice, PageHeader } from "../../components/ui";
 import { day, quantity } from "../../lib/format";
 import { StatusBadge, todayIso } from "../purchase/PurchaseLayout";
+import { batchText } from "../inventory/batches";
 
 type Lot = Schemas["LotOut"];
 
@@ -43,6 +44,9 @@ export function QcPage() {
                   <p className="text-sm text-gray-500">
                     {lot.number} · {lot.source_label} {lot.reference}{lot.supplier ? ` from ${lot.supplier}` : ""} · {day(lot.received_on)} · for {lot.destination}
                   </p>
+                  {lot.batches.length ? (
+                    <p className="font-mono text-xs text-gray-500">{lot.tracking === "serial" ? "S/N " : "Batch "}{batchText(lot.batches, lot.tracking)}</p>
+                  ) : null}
                 </button>
                 <div className="flex items-center gap-3">
                   <div className="text-right text-sm">
@@ -79,9 +83,11 @@ function InspectForm({ lot, onClose }: { lot: Lot; onClose: () => void }) {
   const [rejected, setRejected] = useState("");
   const [remarks, setRemarks] = useState("");
   const [on, setOn] = useState(todayIso());
+  const [failed, setFailed] = useState<string[]>([]);
+  const serial = lot.tracking === "serial";
   const save = useMutation({
     mutationFn: async () => unwrap(await api.POST("/api/v1/qc/lots/{lot_id}/inspections", {
-      params: { path: { lot_id: lot.id } }, body: { accepted: accepted || "0", rejected: rejected || "0", remarks, inspected_on: on },
+      params: { path: { lot_id: lot.id } }, body: { accepted: accepted || "0", rejected: rejected || "0", remarks, inspected_on: on, rejected_serials: serial ? failed : [] },
     })),
     onSuccess: () => {
       for (const key of ["qc-lots", "stock", "items"]) queryClient.invalidateQueries({ queryKey: [key] });
@@ -102,6 +108,20 @@ function InspectForm({ lot, onClose }: { lot: Lot; onClose: () => void }) {
         <Field label="Passed">{(id) => <input id={id} className="field-input text-lg" inputMode="decimal" value={accepted} onChange={(e) => setAccepted(e.target.value)} />}</Field>
         <Field label="Rejected">{(id) => <input id={id} className="field-input text-lg" inputMode="decimal" value={rejected} onChange={(e) => setRejected(e.target.value)} />}</Field>
       </div>
+      {serial && Number(rejected) > 0 ? (
+        <fieldset>
+          <legend className="text-sm font-semibold text-gray-700">Which ones failed? ({failed.length} of {quantity(rejected)} ticked)</legend>
+          <div className="mt-1 grid max-h-40 grid-cols-2 gap-1 overflow-y-auto sm:grid-cols-3">
+            {lot.batches.map((b) => (
+              <label key={b.batch_id} className="flex items-center gap-2 font-mono text-xs">
+                <input type="checkbox" className="rounded border-gray-300 text-accent-500" checked={failed.includes(b.number)}
+                  onChange={(e) => setFailed(e.target.checked ? [...failed, b.number] : failed.filter((n) => n !== b.number))} />
+                {b.number}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
       {over ? <Notice tone="red">That's more than the {quantity(lot.pending_quantity, lot.unit)} waiting.</Notice> : null}
       <Field label={Number(rejected) > 0 ? "What was wrong (required)" : "Remarks"} hint="Defects found, measurements, sample size…">
         {(id) => <textarea id={id} className="field-input" rows={2} value={remarks} maxLength={300} onChange={(e) => setRemarks(e.target.value)} />}

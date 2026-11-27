@@ -9,12 +9,14 @@ import { TdsPage } from "./pages/accounts/TdsPage";
 import { HomePage } from "./pages/HomePage";
 import { QcPage } from "./pages/quality/QcPage";
 import { BomsPage } from "./pages/production/BomsPage";
+import { CostingPage } from "./pages/production/CostingPage";
 import { JobWorkPage } from "./pages/production/JobWorkPage";
 import { WorkOrdersPage } from "./pages/production/WorkOrdersPage";
 import { ProductionIndex, ProductionLayout } from "./pages/production/ProductionLayout";
 import { ProductionPage } from "./pages/production/ProductionPage";
 import { SalesNotesPage, SupplierNotesPage } from "./pages/notes/NotesPage";
 import { InventoryLayout } from "./pages/inventory/InventoryLayout";
+import { BatchesPage } from "./pages/inventory/BatchesPage";
 import { ItemsPage } from "./pages/inventory/ItemsPage";
 import { StockPage } from "./pages/inventory/StockPage";
 import { WarehousesPage } from "./pages/inventory/WarehousesPage";
@@ -63,6 +65,7 @@ const inventoryIndexRoute = createRoute({
 const itemsRoute = createRoute({ getParentRoute: () => inventoryRoute, path: "items", component: ItemsPage });
 const warehousesRoute = createRoute({ getParentRoute: () => inventoryRoute, path: "warehouses", component: WarehousesPage });
 const stockRoute = createRoute({ getParentRoute: () => inventoryRoute, path: "stock", component: StockPage });
+const batchesRoute = createRoute({ getParentRoute: () => inventoryRoute, path: "batches", component: BatchesPage });
 const purchaseRoute = createRoute({ getParentRoute: () => rootRoute, path: "purchase", component: PurchaseLayout });
 const purchaseIndexRoute = createRoute({
   getParentRoute: () => purchaseRoute,
@@ -127,6 +130,7 @@ const productionEntriesRoute = createRoute({ getParentRoute: () => productionRou
 const bomsRoute = createRoute({ getParentRoute: () => productionRoute, path: "boms", component: BomsPage });
 const workOrdersRoute = createRoute({ getParentRoute: () => productionRoute, path: "work-orders", component: WorkOrdersPage });
 const jobWorkRoute = createRoute({ getParentRoute: () => productionRoute, path: "job-work", component: JobWorkPage });
+const costingRoute = createRoute({ getParentRoute: () => productionRoute, path: "costing", component: CostingPage });
 const qcRoute = createRoute({ getParentRoute: () => rootRoute, path: "qc", component: QcPage });
 const profileRoute = createRoute({ getParentRoute: () => rootRoute, path: "profile", component: ProfilePage });
 const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: "settings", component: SettingsLayout });
@@ -147,11 +151,11 @@ const routeTree = rootRoute.addChildren([
   homeRoute,
   partnersRoute,
   qcRoute,
-  productionRoute.addChildren([productionIndexRoute, workOrdersRoute, productionEntriesRoute, bomsRoute, jobWorkRoute]),
+  productionRoute.addChildren([productionIndexRoute, workOrdersRoute, productionEntriesRoute, bomsRoute, jobWorkRoute, costingRoute]),
   accountsRoute.addChildren([accountsIndexRoute, receivablesRoute, payablesRoute, paymentsRoute, tdsRoute, gstReturnsRoute]),
   purchaseRoute.addChildren([purchaseIndexRoute, ordersRoute, newOrderRoute, orderRoute, editOrderRoute, receiptsRoute, billsRoute, supplierNotesRoute]),
   salesRoute.addChildren([salesIndexRoute, ordersReceivedRoute, salesOrdersRoute, newSalesOrderRoute, salesOrderRoute, editSalesOrderRoute, dispatchesRoute, invoicesRoute, salesNotesRoute]),
-  inventoryRoute.addChildren([inventoryIndexRoute, itemsRoute, warehousesRoute, stockRoute]),
+  inventoryRoute.addChildren([inventoryIndexRoute, itemsRoute, warehousesRoute, stockRoute, batchesRoute]),
   profileRoute,
   settingsRoute.addChildren([settingsIndexRoute, companyRoute, peopleRoute, rolesRoute, teamsRoute, billingRoute]),
 ]);

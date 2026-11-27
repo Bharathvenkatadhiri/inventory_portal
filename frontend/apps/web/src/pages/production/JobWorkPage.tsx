@@ -8,6 +8,7 @@ import { day, quantity, rupees } from "../../lib/format";
 import { useWritable } from "../../lib/session";
 import { useItems, useWarehouses } from "../inventory/InventoryLayout";
 import { ReasonModal, StatusBadge, todayIso } from "../purchase/PurchaseLayout";
+import { batchText } from "../inventory/batches";
 
 type Challan = Schemas["JobWorkChallanOut"];
 const STATUS_TONE: Record<string, string> = { open: "issued", partly: "partially_received", closed: "received", cancelled: "cancelled" };
@@ -107,7 +108,7 @@ function SendForm({ onClose }: { onClose: () => void }) {
   const save = useMutation({
     mutationFn: async () => unwrap(await api.POST("/api/v1/job-work", {
       body: { job_worker_id: workerId!, process, from_warehouse_id: source!, challan_date: sentOn, expected_return: returnBy || null,
-              vehicle_number: vehicle, notes: "", lines: lines.filter((l) => l.item_id).map((l) => ({ item_id: l.item_id!, quantity: l.quantity })) },
+              vehicle_number: vehicle, notes: "", lines: lines.filter((l) => l.item_id).map((l) => ({ item_id: l.item_id!, quantity: l.quantity, batches: [] })) },
     })),
     onSuccess: () => { refreshAll(queryClient); onClose(); },
   });
@@ -190,7 +191,10 @@ function ChallanDetail({ challan: c, onClose }: { challan: Challan; onClose: () 
         <tbody className="divide-y divide-gray-100">
           {c.lines.map((l) => (
             <tr key={l.id}>
-              <td className="table-cell text-sm">{l.item_name} <span className="text-gray-500">{l.item_code}</span></td>
+              <td className="table-cell text-sm">
+                {l.item_name} <span className="text-gray-500">{l.item_code}</span>
+                {l.batches.length ? <p className="font-mono text-xs text-gray-500">{batchText(l.batches)}</p> : null}
+              </td>
               <td className="table-cell text-right text-sm">{quantity(l.quantity, l.unit)}</td>
               <td className="table-cell text-right text-sm">{quantity(l.returned_quantity)}</td>
               <td className="table-cell text-right text-sm">{quantity(l.waste_quantity)}</td>
@@ -247,7 +251,7 @@ function ReceiveForm({ challan, onClose }: { challan: Challan; onClose: () => vo
         into_warehouse_id: intoId ?? stores.find((w) => w.is_default)?.id ?? null, received_date: on, job_worker_challan: theirChallan, notes: "",
         lines: away.map((l) => ({
           challan_line_id: l.id, input_quantity: rows[l.id].input || "0", waste_quantity: rows[l.id].waste || "0",
-          output_item_id: rows[l.id].outputItem, output_quantity: rows[l.id].output === "" ? null : rows[l.id].output, charge_per_unit: rows[l.id].charge || "0",
+          output_item_id: rows[l.id].outputItem, output_quantity: rows[l.id].output === "" ? null : rows[l.id].output, charge_per_unit: rows[l.id].charge || "0", output_batches: [],
         })),
       },
     })),

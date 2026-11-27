@@ -33,14 +33,15 @@ from gst.services.verification import GSTVerificationService
 from organizations.models import Address, BankAccount, BusinessRelationship, Invitation, Membership, Team, TeamMembership
 from organizations.services import set_up_organization
 from inventory import services as inventory
-from inventory.models import Item, StockEntry, Warehouse
+from inventory.models import Batch, Item, StockEntry, Warehouse
 from adjustments import services as adjustments
 from adjustments.models import CreditDebitNote
 from finance import services as finance
 from finance.models import Payment
 from plans import erp
+from production import costing
 from production import services as production
-from production.models import BillOfMaterials, ProductionEntry
+from production.models import BillOfMaterials, Machine, ProductionEntry
 from quality import services as quality
 from quality.models import InspectionLot
 from purchase import services as purchase
@@ -169,6 +170,19 @@ ITEMS = {
     ],
 }
 
+# org: {item code: (tracking, shelf life in days, opening stock's batch number)}.
+# Serial-numbered opening stock is numbered from the item code.
+TRACKING = {
+    'sri_lakshmi': {
+        'RM-EN8-40': ('batch', None, 'H-24117'),        # mill heat number
+        'CO-OIL-CUT': ('batch', 365, 'CO-2609'),
+        'FG-GS-120': ('batch', None, 'GS-2610'),
+        'BO-CAST-VB50': ('batch', None, None),           # received with Kaveri's heat number
+    },
+    'kaveri': {'FG-VB-50': ('batch', None, 'VB-2610')},
+    'tejas': {'BO-PCB-CTRL': ('serial', None, None)},
+}
+
 # Fictional TANs (format only) for the demo companies that deduct TDS.
 TANS = {'33AABCS1234K1Z7': 'CHES12345K', '27AADCK5678M1Z3': 'PNEK54321C'}
 
@@ -190,6 +204,19 @@ BOMS = {
         ('FG-VB-50', 'Standard', '10', [('RM-PIG-IRON', '0.12'), ('RM-FESI-75', '3'), ('CO-SAND-SILICA', '0.2')]),
     ],
 }
+# Production costing. org: (labour ₹/h, overhead %, [(machine code, name, ₹/h)],
+#   [(scrap item code, name, unit, HSN, sale price)],
+#   {BOM output code: (machine, machine hours, labour hours, scrap item, scrap quantity)} for the BOM's quantity)
+COSTING = {
+    'sri_lakshmi': ('180', '40', [('CNC-01', 'CNC lathe LT-2', '550'), ('VMC-01', 'Vertical machining centre', '750')],
+                    [('SC-EN8-TURN', 'EN8 turnings (scrap)', 'KGS', '7204', '22')],
+                    {'FG-GS-120': ('CNC-01', '0.35', '0.4', 'SC-EN8-TURN', '0.6'),
+                     'FG-PH-75': ('VMC-01', '0.8', '0.9', None, '0')}),
+    'kaveri': ('150', '60', [('IND-01', 'Induction furnace, 500 kg', '1800'), ('MLD-01', 'Moulding line', '900')],
+               [('SC-RUNNERS', 'Runners and risers (foundry returns)', 'KGS', '7204', '28')],
+               {'FG-VB-50': ('IND-01', '0.5', '6', 'SC-RUNNERS', '12')}),
+}
+
 # org: [(operator, output item code, good, rejected, materials warehouse code, finished warehouse code, days ago, shift)]
 PRODUCTION = {
     'sri_lakshmi': [('murugan', 'FG-GS-120', '40', '2', 'PS', 'AMB', 3, 'A')],
@@ -255,6 +282,7 @@ class Command(BaseCommand):
         GoodsReceipt.objects.filter(Q(company__in=companies) | Q(order__supplier__in=companies)).delete()
         PurchaseOrder.objects.filter(either_side).delete()
         StockEntry.objects.filter(company__in=companies).delete()  # PROTECTs items and warehouses
+        Batch.objects.filter(company__in=companies).delete()  # PROTECTs items
         BusinessRelationship.objects.filter(buyer__in=companies).delete()
         BusinessRelationship.objects.filter(supplier__in=companies).delete()
         Membership.objects.filter(company__in=companies).delete()  # Role is PROTECT from Membership
@@ -392,7 +420,8 @@ class Command(BaseCommand):
         Item.objects.filter(company=sri, code='BO-CAST-VB50').update(inspection_required=True)
         receipt = purchase.post_receipt(member('sri_lakshmi', 'suresh'), castings, {
             'received_date': ago(12), 'supplier_challan': challan.number, 'vehicle_number': challan.vehicle_number,
-            'lines': [{'order_line_id': castings.lines.get().pk, 'quantity': '250'}],
+            'lines': [{'order_line_id': castings.lines.get().pk, 'quantity': '250',
+                       'batches': [{'number': 'VB-2610', 'supplier_batch': 'VB-2610'}]}],
         })
         lot = InspectionLot.objects.get(receipt_line__receipt=receipt)
         quality.inspect(member('sri_lakshmi', 'vignesh'), lot, {
@@ -473,25 +502,43 @@ class Command(BaseCommand):
             })
         as_of = (now - timedelta(days=30)).date()
         for code, name, kind, unit, hsn, gst, buy, sell, reorder, opening in ITEMS.get(key, []):
+            tracking, shelf_life, batch_number = TRACKING.get(key, {}).get(code, ('none', None, ''))
             item = inventory.save_item(company, owner, Item(), {
                 'code': code, 'name': name, 'kind': kind, 'unit': unit, 'hsn_code': hsn, 'gst_rate': Decimal(gst),
                 'purchase_price': Decimal(buy) if buy else None, 'sale_price': Decimal(sell) if sell else None,
-                'reorder_level': Decimal(reorder) if reorder else None,
+                'reorder_level': Decimal(reorder) if reorder else None, 'tracking': tracking, 'shelf_life_days': shelf_life,
             })
             for warehouse_code, (quantity, rate) in opening.items():
                 inventory.set_opening_stock(company, owner, item_id=item.pk, warehouse_id=warehouses[warehouse_code].pk,
-                                            quantity=Decimal(quantity), rate=Decimal(rate), entry_date=as_of)
+                                            quantity=Decimal(quantity), rate=Decimal(rate), entry_date=as_of,
+                                            batch_number=batch_number or '', manufactured_on=as_of if shelf_life else None)
 
     @staticmethod
     def _production(key, company, people, now):
         """BOMs set up by the Org Admin; a shift's production recorded by a Machine Operator."""
         admin = Membership.objects.select_related('company', 'role', 'user').get(company=company, user=people[PEOPLE[key][0][0]])
+        routing = {}
+        if key in COSTING:
+            labour, overhead, machines, scrap_items, routing = COSTING[key]
+            costing.save_settings(company, {'labour_hour_rate': Decimal(labour), 'overhead_percent': Decimal(overhead)})
+            for code, name, rate in machines:
+                costing.save_machine(company, Machine(), {'code': code, 'name': name, 'hour_rate': Decimal(rate)})
+            for code, name, unit, hsn, price in scrap_items:
+                inventory.save_item(company, admin.user, Item(), {'code': code, 'name': name, 'kind': 'scrap', 'unit': unit,
+                                                                  'hsn_code': hsn, 'gst_rate': Decimal('18'), 'sale_price': Decimal(price)})
         boms = {}
         for code, name, makes, parts in BOMS.get(key, []):
             item = Item.objects.get(company=company, code=code)
+            route = {}
+            if code in routing:
+                machine, machine_hours, labour_hours, scrap, scrap_quantity = routing[code]
+                route = {'machine_id': Machine.objects.get(company=company, code=machine).pk, 'machine_hours': Decimal(machine_hours),
+                         'labour_hours': Decimal(labour_hours), 'scrap_quantity': Decimal(scrap_quantity),
+                         'scrap_item_id': Item.objects.get(company=company, code=scrap).pk if scrap else None}
             boms[code] = production.save_bom(admin, BillOfMaterials(), {
                 'item_id': item.pk, 'name': name, 'output_quantity': Decimal(makes),
                 'components': [{'item_id': Item.objects.get(company=company, code=c).pk, 'quantity': Decimal(q)} for c, q in parts],
+                **route,
             })
         for operator, code, good, rejected, src, dst, days, shift in PRODUCTION.get(key, []):
             member = Membership.objects.select_related('company', 'role', 'user').get(company=company, user=people[operator])

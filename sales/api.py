@@ -13,6 +13,8 @@ from ninja.errors import HttpError
 
 from finance.services import balance
 from organizations import access
+from inventory.api import BatchIn, BatchPickIn, BatchQtyOut, batch_rows
+from inventory import batches as batch_tracking
 from organizations.app_api import membership_for
 from purchase.api import DocRefOut, OrderLineOut, OrderSummaryOut, PartyOut, _name, _party, _summary, _totals, _writes_allowed
 from purchase.models import PurchaseOrder
@@ -399,6 +401,8 @@ def close_sales_order(request, order_id: int):
 class DispatchLineIn(Schema):
     order_line_id: int
     quantity: Decimal
+    # Batch- or serial-tracked items: which to send. Left out, the first to expire go.
+    batches: List[BatchPickIn] = []
 
 
 class DispatchIn(Schema):
@@ -415,6 +419,7 @@ class DispatchLineOut(Schema):
     item_name: str
     quantity: Decimal
     unit: str
+    batches: List[BatchQtyOut]
 
 
 class DispatchOut(Schema):
@@ -433,12 +438,14 @@ class DispatchOut(Schema):
 
 
 def _dispatch_out(d):
+    moved = batch_tracking.by_document(d.company, [d.number], -1)
     return {
         'id': d.pk, 'number': d.number, 'order_id': d.order_id, 'order_number': d.order.number, 'customer': _party(d.order.customer),
         'warehouse': d.warehouse.name, 'dispatch_date': d.dispatch_date, 'vehicle_number': d.vehicle_number,
         'transporter': d.transporter, 'notes': d.notes, 'dispatched_by': _name(d.created_by),
         'lines': [{'item_code': l.order_line.item.code, 'item_name': l.order_line.item.name, 'quantity': l.quantity,
-                   'unit': l.order_line.unit} for l in d.lines.select_related('order_line__item')],
+                   'unit': l.order_line.unit, 'batches': batch_rows(moved.get((d.number, l.order_line.item_id)))}
+                  for l in d.lines.select_related('order_line__item')],
     }
 
 

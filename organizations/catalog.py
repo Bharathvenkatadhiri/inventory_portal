@@ -41,6 +41,7 @@ PERMISSIONS = {
     'production.record': ("Record production", 'Production', erp.BOM, None),
     'work_order.manage': ("Create and update work orders", 'Production', erp.MULTI_LEVEL_BOM, None),
     'job_work.manage': ("Send goods for job work and receive them back", 'Production', erp.JOB_WORK, BUYING),
+    'costing.manage': ("Set cost rates and see production costs", 'Production', erp.PRODUCTION_COSTING, None),
 
     'inspection.record': ("Record QC inspections", 'QC', erp.QC, None),
 
@@ -84,10 +85,11 @@ DEFAULT_ROLES = {
     ], FULL),
     'production_planner': ("Production Planner", "Maintains BOMs and work orders", [
         'bom.manage', 'production.record', 'work_order.manage', 'stock.view', 'items.manage', 'job_work.manage',
+        'costing.manage',
     ], FULL),
     'accounts': ("Accounts", "Invoices, payments and ledgers", [
         'invoice.create', 'purchase_bill.create', 'purchase_bill.approve', 'payment.record', 'payment.approve',
-        'ledger.view',
+        'ledger.view', 'costing.manage',
     ], FULL),
     'qc': ("QC", "Records inspections", ['inspection.record', 'stock.view'], FULL),
 

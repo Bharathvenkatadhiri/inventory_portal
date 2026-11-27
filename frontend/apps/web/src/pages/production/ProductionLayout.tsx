@@ -7,6 +7,7 @@ const TABS = [
   { to: "/production/entries", label: "Production entries", needs: ["production.record"] },
   { to: "/production/boms", label: "Bills of materials", needs: ["bom.manage", "production.record"] },
   { to: "/production/job-work", label: "Job work", needs: ["job_work.manage"] },
+  { to: "/production/costing", label: "Costing", needs: ["costing.manage"] },
 ] as const;
 
 /** /production: the first tab this person can use. */

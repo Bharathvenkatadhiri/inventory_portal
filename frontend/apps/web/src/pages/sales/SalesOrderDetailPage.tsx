@@ -7,6 +7,7 @@ import { Badge, Card, ErrorText, Field, Loading, Modal, Notice, PageHeader } fro
 import { PdfButton } from "../../components/PdfButton";
 import { day, quantity, rupees } from "../../lib/format";
 import { useWarehouses } from "../inventory/InventoryLayout";
+import { BatchPicker, picksIn, useLineBatches, useTracking } from "../inventory/batches";
 import { ReasonModal, StatusBadge, todayIso, TotalsTable } from "../purchase/PurchaseLayout";
 import { salesOrderKey, useSalesOrder } from "./SalesLayout";
 
@@ -184,11 +185,14 @@ function DispatchModal({ order, onClose, onDone }: { order: Order; onClose: () =
   const [sent, setSent] = useState(todayIso());
   const [vehicle, setVehicle] = useState("");
   const [transporter, setTransporter] = useState("");
+  const tracking = useTracking();
+  const lineBatches = useLineBatches<number>();
   const post = useMutation({
     mutationFn: async () => unwrap(await api.POST("/api/v1/sales-orders/{order_id}/dispatches", {
       params: { path: { order_id: order.id } },
       body: { warehouse_id: warehouseId, dispatch_date: sent, vehicle_number: vehicle, transporter, notes: "",
-              lines: open.map((x) => ({ order_line_id: x.line.id, quantity: quantities[x.line.id] || "0" })) },
+              lines: open.map((x) => ({ order_line_id: x.line.id, quantity: quantities[x.line.id] || "0",
+                                        batches: picksIn(lineBatches.picks(x.line.id)) })) },
     })),
     onSuccess: onDone,
   });
@@ -218,7 +222,13 @@ function DispatchModal({ order, onClose, onDone }: { order: Order; onClose: () =
         <tbody className="divide-y divide-gray-100">
           {open.map((x) => (
             <tr key={x.line.id}>
-              <td className="table-cell text-sm">{x.line.item_name}</td>
+              <td className="table-cell text-sm">
+                {x.line.item_name}
+                {Number(quantities[x.line.id] || 0) > 0 ? (
+                  <BatchPicker label={x.line.item_name} tracking={tracking(x.line.item_id)} itemId={x.line.item_id} warehouseId={warehouseId}
+                    picks={lineBatches.picks(x.line.id)} onPicks={(p) => lineBatches.setPicks(x.line.id, p)} />
+                ) : null}
+              </td>
               <td className="table-cell text-right text-sm">{quantity(x.open, x.line.unit)}</td>
               <td className="table-cell text-right text-sm">{x.line.on_hand != null ? quantity(x.line.on_hand) : "—"}</td>
               <td className="table-cell"><input className="field-input" inputMode="decimal" aria-label={`Sending now, ${x.line.item_name}`} value={quantities[x.line.id]} onChange={(e) => setQuantities({ ...quantities, [x.line.id]: e.target.value })} /></td>

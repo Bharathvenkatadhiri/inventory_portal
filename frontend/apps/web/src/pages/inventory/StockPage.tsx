@@ -6,6 +6,7 @@ import { Card, Empty, ErrorText, Field, Loading, Modal, PageHeader } from "../..
 import { day, quantity, rupees } from "../../lib/format";
 import { useCan, useWritable } from "../../lib/session";
 import { useItems, useWarehouses } from "./InventoryLayout";
+import { splitSerials } from "./batches";
 
 type Opening = Schemas["OpeningOut"];
 
@@ -105,7 +106,10 @@ export function StockPage() {
             <tbody className="divide-y divide-gray-100">
               {(opening.data ?? []).map((o) => (
                 <tr key={o.id}>
-                  <td className="table-cell text-sm"><span className="font-semibold text-navy-900">{o.item_name}</span> <span className="text-gray-500">{o.item_code}</span></td>
+                  <td className="table-cell text-sm">
+                    <span className="font-semibold text-navy-900">{o.item_name}</span> <span className="text-gray-500">{o.item_code}</span>
+                    {o.batch_number ? <p className="font-mono text-xs text-gray-500">{o.batch_number}{o.expires_on ? ` · exp ${day(o.expires_on)}` : ""}</p> : null}
+                  </td>
                   <td className="table-cell text-sm">{o.warehouse_name}</td>
                   <td className="table-cell text-right text-sm">{quantity(o.quantity, o.unit)} × {rupees(o.rate)}</td>
                   <td className="table-cell text-sm">{day(o.entry_date)}</td>
@@ -133,6 +137,10 @@ function OpeningForm({ entry, onClose }: { entry: Opening | null; onClose: () =>
   const [rate, setRate] = useState(entry ? String(Number(entry.rate)) : "");
   const [asOf, setAsOf] = useState(entry?.entry_date ?? new Date().toISOString().slice(0, 10));
   const chosen = stockItems.find((i) => i.id === itemId);
+  const tracking = chosen?.tracking ?? "none";
+  const [batchNumber, setBatchNumber] = useState(entry?.batch_number ?? "");
+  const [expires, setExpires] = useState(entry?.expires_on ?? "");
+  const [serials, setSerials] = useState("");
   const done = () => {
     queryClient.invalidateQueries({ queryKey: ["stock"] });
     queryClient.invalidateQueries({ queryKey: ["items"] });
@@ -142,13 +150,18 @@ function OpeningForm({ entry, onClose }: { entry: Opening | null; onClose: () =>
   const save = useMutation({
     mutationFn: async (quantityValue: string) => {
       const result = await api.PUT("/api/v1/stock/opening", {
-        body: { item_id: itemId!, warehouse_id: (entry?.warehouse_id ?? warehouseId)!, quantity: quantityValue, rate: rate || "0", entry_date: asOf, note: entry?.note ?? "" },
+        body: {
+          item_id: itemId!, warehouse_id: (entry?.warehouse_id ?? warehouseId)!, quantity: quantityValue, rate: rate || "0", entry_date: asOf,
+          note: entry?.note ?? "", supplier_batch: "", batch_number: tracking === "batch" ? batchNumber : "", expires_on: tracking === "batch" && expires ? expires : null,
+          serials: tracking === "serial" && quantityValue !== "0" ? splitSerials(serials) : [],
+        },
       });
       return result.response.status === 204 ? null : unwrap(result);
     },
     onSuccess: done,
   });
-  const ready = itemId !== null && (entry || warehouseId !== null) && qty.trim() !== "";
+  const ready = itemId !== null && (entry || warehouseId !== null) && (qty.trim() !== "" || (tracking === "serial" && splitSerials(serials).length > 0))
+    && (tracking !== "batch" || batchNumber.trim() !== "");
 
   return (
     <Modal
@@ -196,6 +209,19 @@ function OpeningForm({ entry, onClose }: { entry: Opening | null; onClose: () =>
           {(id) => <input id={id} className="field-input" inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} />}
         </Field>
       </div>
+      {tracking === "batch" ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Batch number" hint="Opening stock is entered batch by batch.">
+            {(id) => <input id={id} className="field-input font-mono" value={batchNumber} disabled={!!entry} maxLength={60} onChange={(e) => setBatchNumber(e.target.value)} />}
+          </Field>
+          <Field label="Expires on" hint="Optional.">{(id) => <input id={id} type="date" className="field-input" value={expires} onChange={(e) => setExpires(e.target.value)} />}</Field>
+        </div>
+      ) : null}
+      {tracking === "serial" ? (
+        <Field label="Serial numbers" hint="One per line. They replace this item's opening serial numbers here; leave blank to number them from the item code.">
+          {(id) => <textarea id={id} className="field-input font-mono text-xs" rows={3} value={serials} onChange={(e) => setSerials(e.target.value)} />}
+        </Field>
+      ) : null}
       <Field label="As of">{(id) => <input id={id} type="date" className="field-input" value={asOf} onChange={(e) => setAsOf(e.target.value)} />}</Field>
       <ErrorText error={save.error} />
     </Modal>

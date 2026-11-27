@@ -134,6 +134,8 @@ class ActiveOut(Schema):
     allowed: List[str]
     subscription: SubscriptionOut
     seats: SeatsOut
+    # Plan feature keys (plans.erp) the organization's plan includes, e.g. 'batch_serial'.
+    features: List[str]
 
 
 class MeOut(Schema):
@@ -198,6 +200,8 @@ def me_out(request):
             'allowed': [code for code in granted if code in catalog.PERMISSIONS and access.check(active, code)],
             'subscription': subscription_out(active.company),
             'seats': workspace.seat_usage(active.company),
+            'features': sorted({k for _label, keys in erp.FEATURE_ROWS for k in keys
+                                if erp.includes(active.company.erp_plan, k)}),
         }
     return data
 

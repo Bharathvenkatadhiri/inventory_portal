@@ -110,6 +110,8 @@ function ItemForm({ item, onClose }: { item: Item | null; onClose: () => void })
     description: item?.description ?? "",
     is_active: item?.is_active ?? true,
     inspection_required: item?.inspection_required ?? false,
+    tracking: item?.tracking ?? "none",
+    shelf_life_days: item?.shelf_life_days != null ? String(item.shelf_life_days) : "",
   });
   const qc = useCan()("inspection.record");
   const set = (field: keyof typeof form) => (e: { target: { value: string } }) => setForm({ ...form, [field]: e.target.value });
@@ -126,6 +128,8 @@ function ItemForm({ item, onClose }: { item: Item | null; onClose: () => void })
         purchase_price: optionalNumber(form.purchase_price),
         sale_price: optionalNumber(form.sale_price),
         reorder_level: isService ? null : optionalNumber(form.reorder_level),
+        tracking: isService ? "none" : form.tracking,
+        shelf_life_days: form.tracking === "none" || !form.shelf_life_days.trim() ? null : Number(form.shelf_life_days),
       };
       return item
         ? unwrap(await api.PUT("/api/v1/items/{item_id}", { params: { path: { item_id: item.id } }, body }))
@@ -201,6 +205,23 @@ function ItemForm({ item, onClose }: { item: Item | null; onClose: () => void })
           </Field>
         </div>
       </div>
+      {!isService && (options.data?.batches_available || form.tracking !== "none") ? (
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field label="Track stock" hint={item?.on_hand && Number(item.on_hand) !== 0 ? "Can't change while the item has stock." : "Batch or heat number, or a serial number on each unit."}>
+            {(id) => (
+              <select id={id} className="field-input" value={form.tracking} onChange={set("tracking")}
+                disabled={!!item?.on_hand && Number(item.on_hand) !== 0}>
+                {(options.data?.tracking ?? []).map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            )}
+          </Field>
+          {form.tracking !== "none" ? (
+            <Field label="Shelf life (days)" hint="Fills in each batch's expiry. Leave blank if it doesn't expire.">
+              {(id) => <input id={id} className="field-input" inputMode="numeric" value={form.shelf_life_days} onChange={set("shelf_life_days")} />}
+            </Field>
+          ) : null}
+        </div>
+      ) : null}
       {qc && !isService ? (
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" className="rounded border-gray-300 text-accent-500" checked={form.inspection_required}

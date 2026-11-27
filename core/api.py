@@ -17,6 +17,8 @@ from django.contrib.admin.views.decorators import staff_member_required
 from ninja import NinjaAPI
 from ninja.security import SessionAuth
 
+from inventory.batches import BatchError
+
 from .api_errors import SessionConflict, SignedInAsSomeoneElse
 
 USER_HEADER = 'HTTP_X_USER_ID'
@@ -46,6 +48,12 @@ api = NinjaAPI(
 @api.exception_handler(SessionConflict)
 def session_conflict(request, exc):
     return api.create_response(request, {'detail': exc.message, 'code': exc.code}, status=409)
+
+
+@api.exception_handler(BatchError)
+def batch_error(request, exc):
+    """Batches entered or picked on any document that don't add up."""
+    return api.create_response(request, {'detail': str(exc)}, status=400)
 
 
 @api.get("/health", auth=None, tags=["platform"])

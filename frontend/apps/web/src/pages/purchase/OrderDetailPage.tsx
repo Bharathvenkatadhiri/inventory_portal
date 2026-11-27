@@ -7,6 +7,7 @@ import { Card, ErrorText, Field, Loading, Modal, Notice, PageHeader } from "../.
 import { PdfButton } from "../../components/PdfButton";
 import { day, quantity, rupees } from "../../lib/format";
 import { useWarehouses } from "../inventory/InventoryLayout";
+import { BatchesIn, batchesIn, useLineBatches, useTracking } from "../inventory/batches";
 import { orderKey, StatusBadge, todayIso, TotalsTable, useOrder } from "./PurchaseLayout";
 
 type Order = Schemas["OrderOut"];
@@ -186,12 +187,17 @@ function ReceiveModal({ order, onClose, onDone }: { order: Order; onClose: () =>
   const [received, setReceived] = useState(todayIso());
   const [challan, setChallan] = useState("");
   const [vehicle, setVehicle] = useState("");
+  const tracking = useTracking();
+  const lineBatches = useLineBatches<number>();
   const post = useMutation({
     mutationFn: async () => unwrap(await api.POST("/api/v1/purchase-orders/{order_id}/receipts", {
       params: { path: { order_id: order.id } },
       body: {
         warehouse_id: warehouseId, received_date: received, supplier_challan: challan, vehicle_number: vehicle, notes: "",
-        lines: open.map((x) => ({ order_line_id: x.line.id, quantity: quantities[x.line.id] || "0" })),
+        lines: open.map((x) => ({
+          order_line_id: x.line.id, quantity: quantities[x.line.id] || "0",
+          batches: batchesIn(tracking(x.line.item_id), lineBatches.rows(x.line.id), lineBatches.serials(x.line.id)),
+        })),
       },
     })),
     onSuccess: onDone,
@@ -222,7 +228,14 @@ function ReceiveModal({ order, onClose, onDone }: { order: Order; onClose: () =>
         <tbody className="divide-y divide-gray-100">
           {open.map((x) => (
             <tr key={x.line.id}>
-              <td className="table-cell text-sm">{x.line.item_name}</td>
+              <td className="table-cell text-sm">
+                {x.line.item_name}
+                {Number(quantities[x.line.id] || 0) > 0 ? (
+                  <BatchesIn label={x.line.item_name} tracking={tracking(x.line.item_id)} heat
+                    rows={lineBatches.rows(x.line.id)} onRows={(r) => lineBatches.setRows(x.line.id, r)}
+                    serials={lineBatches.serials(x.line.id)} onSerials={(t) => lineBatches.setSerials(x.line.id, t)} />
+                ) : null}
+              </td>
               <td className="table-cell text-right text-sm">{quantity(x.open, x.line.unit)}</td>
               <td className="table-cell"><input className="field-input" inputMode="decimal" aria-label={`Received now, ${x.line.item_name}`} value={quantities[x.line.id]} onChange={(e) => setQuantities({ ...quantities, [x.line.id]: e.target.value })} /></td>
             </tr>

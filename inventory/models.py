@@ -42,6 +42,7 @@ class Item(models.Model):
         FINISHED_GOOD = 'finished_good', 'Finished good'
         CONSUMABLE = 'consumable', 'Consumable'
         TOOL = 'tool', 'Tool / spare'
+        SCRAP = 'scrap', 'Scrap / by-product'
         SERVICE = 'service', 'Service'
 
     company = models.ForeignKey('accounts.Company', on_delete=models.CASCADE, related_name='items')
@@ -60,6 +61,13 @@ class Item(models.Model):
     # Received or produced quantities wait under inspection until QC passes
     # them (quality app; plans with QC only).
     inspection_required = models.BooleanField(default=False)
+    # Batch: every quantity carries a batch or heat number. Serial: every
+    # unit has its own number. Plans with batch/serial tracking only
+    # (inventory.batches); can't change while there's stock.
+    tracking = models.CharField(max_length=6, choices=[('none', 'Not tracked'), ('batch', 'By batch'), ('serial', 'By serial number')],
+                                default='none')
+    # Expiry is filled in from this when a batch is made, unless given.
+    shelf_life_days = models.PositiveIntegerField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -77,6 +85,18 @@ class Item(models.Model):
     @property
     def tracks_stock(self):
         return self.kind != self.Kind.SERVICE
+
+    @property
+    def by_batch(self):
+        return self.tracking == 'batch' and self.tracks_stock
+
+    @property
+    def by_serial(self):
+        return self.tracking == 'serial' and self.tracks_stock
+
+    @property
+    def tracked(self):
+        return self.by_batch or self.by_serial
 
     def clean(self):
         errors = {}
@@ -136,6 +156,43 @@ class Warehouse(models.Model):
         return self.name
 
 
+class Batch(models.Model):
+    """A batch (or heat) of a batch-tracked item, or one unit of a
+    serial-tracked item. Its stock is the ledger entries that carry it."""
+
+    class Origin(models.TextChoices):
+        OPENING = 'opening', 'Opening stock'
+        RECEIPT = 'receipt', 'Goods receipt'
+        PRODUCTION = 'production', 'Production'
+        JOB_WORK = 'job_work', 'Job work'
+        RETURN = 'return', 'Return'
+
+    company = models.ForeignKey('accounts.Company', on_delete=models.CASCADE, related_name='batches')
+    item = models.ForeignKey(Item, on_delete=models.PROTECT, related_name='batches')
+    number = models.CharField(max_length=60)
+    # The supplier's own batch or heat number, from their test certificate.
+    supplier_batch = models.CharField(max_length=60, blank=True)
+    manufactured_on = models.DateField(null=True, blank=True)
+    expires_on = models.DateField(null=True, blank=True)
+    origin = models.CharField(max_length=12, choices=Origin.choices)
+    reference = models.CharField(max_length=40, blank=True)  # the document that first brought it in
+    supplier = models.ForeignKey('accounts.Company', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['item', 'expires_on', 'created_at', 'id']
+        verbose_name_plural = 'batches'
+        constraints = [models.UniqueConstraint(Lower('number'), 'item', name='batch_number_unique_per_item')]
+
+    def __str__(self):
+        return f"{self.item.code} {self.number}"
+
+    @property
+    def label_code(self):
+        """What its barcode label encodes."""
+        return f"B{self.pk}"
+
+
 class StockEntry(models.Model):
     """One line of the stock ledger: a quantity of an item into (+) or out
     of (-) a warehouse. Stock on hand is the sum. Entries are never edited
@@ -154,6 +211,7 @@ class StockEntry(models.Model):
         PRODUCTION_RECEIPT = 'production_receipt', 'Produced'
         JOB_WORK_OUT = 'job_work_out', 'Sent for job work'
         JOB_WORK_IN = 'job_work_in', 'Back from job work'
+        SCRAP = 'scrap', 'Scrap from production'
 
     company = models.ForeignKey('accounts.Company', on_delete=models.CASCADE, related_name='stock_entries')
     item = models.ForeignKey(Item, on_delete=models.PROTECT, related_name='stock_entries')
@@ -166,6 +224,8 @@ class StockEntry(models.Model):
     note = models.CharField(max_length=200, blank=True)
     # The document that moved the stock, e.g. "GRN-2627-0004" (blank for opening stock).
     reference = models.CharField(max_length=40, blank=True)
+    # Set for batch- and serial-tracked items.
+    batch = models.ForeignKey(Batch, on_delete=models.PROTECT, null=True, blank=True, related_name='entries')
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -174,8 +234,8 @@ class StockEntry(models.Model):
         verbose_name_plural = 'stock entries'
         indexes = [models.Index(fields=['company', 'item', 'warehouse'])]
         constraints = [
-            models.UniqueConstraint(fields=['item', 'warehouse'], condition=Q(kind='opening'),
-                                    name='one_opening_entry_per_item_and_warehouse'),
+            models.UniqueConstraint(fields=['item', 'warehouse', 'batch'], condition=Q(kind='opening'), nulls_distinct=False,
+                                    name='one_opening_entry_per_item_warehouse_batch'),
         ]
 
     def __str__(self):

@@ -34,7 +34,7 @@ const NAV: NavItem[] = [
 
 // The modules the ERP is growing into, shown so people know what's coming.
 const COMING: string[] = [];
-const PRODUCTION_ROLES = ["bom.manage", "production.record", "job_work.manage", "work_order.manage"];
+const PRODUCTION_ROLES = ["bom.manage", "production.record", "job_work.manage", "work_order.manage", "costing.manage"];
 
 export function AppShell() {
   const { data: me, error, isLoading } = useMe();

@@ -10,6 +10,8 @@ from ninja import Router, Schema
 from ninja.errors import HttpError
 
 from organizations import access
+from inventory import batches as batch_tracking
+from inventory.api import BatchQtyOut, batch_rows
 from organizations.app_api import membership_for
 from purchase.api import _name, _writes_allowed
 
@@ -51,6 +53,9 @@ class LotOut(Schema):
     accepted_quantity: Decimal
     rejected_quantity: Decimal
     pending_quantity: Decimal
+    # 'none', 'batch' or 'serial'; batches: what's still waiting, per batch or serial number.
+    tracking: str
+    batches: List[BatchQtyOut]
     destination: str
     status: str
     status_label: str
@@ -60,12 +65,17 @@ class LotOut(Schema):
 
 
 def _lot_out(lot, membership):
+    waiting = []
+    if lot.item.tracked and lot.pending_quantity:
+        waiting = batch_tracking.stock_by_batch(lot.company, lot.item, services.hold(lot.company),
+                                               within=list(lot.batches.values_list('pk', flat=True)))
     return {
         'id': lot.pk, 'number': lot.number, 'source': lot.source, 'source_label': lot.get_source_display(),
         'reference': lot.reference, 'supplier': (lot.supplier.name or lot.supplier.legal_name) if lot.supplier else '',
         'item_id': lot.item_id, 'item_code': lot.item.code, 'item_name': lot.item.name, 'unit': lot.item.unit,
         'quantity': lot.quantity, 'accepted_quantity': lot.accepted_quantity, 'rejected_quantity': lot.rejected_quantity,
         'pending_quantity': lot.pending_quantity, 'destination': lot.destination.name, 'status': lot.status,
+        'tracking': lot.item.tracking, 'batches': batch_rows(waiting),
         'status_label': lot.get_status_display(), 'received_on': lot.received_on,
         'inspections': [{'inspected_on': i.inspected_on, 'accepted': i.accepted, 'rejected': i.rejected, 'remarks': i.remarks,
                          'inspector': _name(i.inspector)} for i in lot.inspections.select_related('inspector')],
@@ -93,6 +103,8 @@ class InspectIn(Schema):
     rejected: Decimal = Decimal('0')
     inspected_on: Optional[date] = None
     remarks: str = ''
+    # Serial-numbered items: the units that failed (the rest of those inspected pass).
+    rejected_serials: List[str] = []
 
 
 @router.post('/qc/lots/{lot_id}/inspections', response=LotOut)

@@ -2,20 +2,22 @@ import { api, unwrap } from "@makesetu/api";
 import { useQuery } from "@tanstack/react-query";
 import { Link, Outlet } from "@tanstack/react-router";
 
-import { useCan } from "../../lib/session";
+import { useActive, useCan } from "../../lib/session";
 
 const TABS = [
   { to: "/inventory/items", label: "Items" },
   { to: "/inventory/warehouses", label: "Warehouses" },
   { to: "/inventory/stock", label: "Stock", needs: "stock.view" },
+  { to: "/inventory/batches", label: "Batches", needs: "stock.view", feature: "batch_serial" },
 ] as const;
 
 export function InventoryLayout() {
   const can = useCan();
+  const features = useActive().features;
   return (
     <div>
       <nav className="mb-6 flex gap-1 overflow-x-auto border-b border-gray-200" aria-label="Inventory">
-        {TABS.filter((tab) => !("needs" in tab) || can(tab.needs)).map((tab) => (
+        {TABS.filter((tab) => (!("needs" in tab) || can(tab.needs)) && (!("feature" in tab) || features.includes(tab.feature))).map((tab) => (
           <Link
             key={tab.to}
             to={tab.to}

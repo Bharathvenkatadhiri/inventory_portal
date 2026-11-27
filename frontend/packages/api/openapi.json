@@ -108,6 +108,13 @@
           "company": {
             "$ref": "#/components/schemas/CompanyOut"
           },
+          "features": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Features",
+            "type": "array"
+          },
           "granted": {
             "items": {
               "type": "string"
@@ -131,7 +138,8 @@
           "granted",
           "allowed",
           "subscription",
-          "seats"
+          "seats",
+          "features"
         ],
         "title": "ActiveOut",
         "type": "object"
@@ -326,6 +334,387 @@
           "id"
         ],
         "title": "BankAccountOut",
+        "type": "object"
+      },
+      "BatchDetailOut": {
+        "properties": {
+          "batch": {
+            "$ref": "#/components/schemas/BatchOut"
+          },
+          "made_from": {
+            "items": {
+              "$ref": "#/components/schemas/BatchOut"
+            },
+            "title": "Made From",
+            "type": "array"
+          },
+          "made_into": {
+            "items": {
+              "$ref": "#/components/schemas/BatchOut"
+            },
+            "title": "Made Into",
+            "type": "array"
+          },
+          "movements": {
+            "items": {
+              "$ref": "#/components/schemas/BatchMovementOut"
+            },
+            "title": "Movements",
+            "type": "array"
+          }
+        },
+        "required": [
+          "batch",
+          "movements",
+          "made_from",
+          "made_into"
+        ],
+        "title": "BatchDetailOut",
+        "type": "object"
+      },
+      "BatchIn": {
+        "description": "A batch (or serial number) coming in on a document. Leave the\nquantity out for a serial number, or when one batch takes it all.",
+        "properties": {
+          "expires_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires On"
+          },
+          "manufactured_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manufactured On"
+          },
+          "number": {
+            "default": "",
+            "title": "Number",
+            "type": "string"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "supplier_batch": {
+            "default": "",
+            "title": "Supplier Batch",
+            "type": "string"
+          }
+        },
+        "title": "BatchIn",
+        "type": "object"
+      },
+      "BatchMovementOut": {
+        "properties": {
+          "entry_date": {
+            "format": "date",
+            "title": "Entry Date",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "kind_label": {
+            "title": "Kind Label",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "warehouse_name": {
+            "title": "Warehouse Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entry_date",
+          "kind",
+          "kind_label",
+          "warehouse_name",
+          "quantity",
+          "reference",
+          "note"
+        ],
+        "title": "BatchMovementOut",
+        "type": "object"
+      },
+      "BatchOut": {
+        "properties": {
+          "expired": {
+            "title": "Expired",
+            "type": "boolean"
+          },
+          "expires_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires On"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "item_code": {
+            "title": "Item Code",
+            "type": "string"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "item_name": {
+            "title": "Item Name",
+            "type": "string"
+          },
+          "label_code": {
+            "title": "Label Code",
+            "type": "string"
+          },
+          "manufactured_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manufactured On"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "on_hand": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "On Hand"
+          },
+          "origin": {
+            "title": "Origin",
+            "type": "string"
+          },
+          "origin_label": {
+            "title": "Origin Label",
+            "type": "string"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "stock": {
+            "items": {
+              "$ref": "#/components/schemas/BatchStockOut"
+            },
+            "title": "Stock",
+            "type": "array"
+          },
+          "supplier_batch": {
+            "title": "Supplier Batch",
+            "type": "string"
+          },
+          "supplier_name": {
+            "title": "Supplier Name",
+            "type": "string"
+          },
+          "tracking": {
+            "title": "Tracking",
+            "type": "string"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "item_id",
+          "item_code",
+          "item_name",
+          "unit",
+          "tracking",
+          "supplier_batch",
+          "manufactured_on",
+          "expires_on",
+          "expired",
+          "origin",
+          "origin_label",
+          "reference",
+          "supplier_name",
+          "on_hand",
+          "stock",
+          "label_code"
+        ],
+        "title": "BatchOut",
+        "type": "object"
+      },
+      "BatchPickIn": {
+        "description": "A batch (or serial number) picked for stock going out; by id or number.",
+        "properties": {
+          "batch_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch Id"
+          },
+          "number": {
+            "default": "",
+            "title": "Number",
+            "type": "string"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quantity"
+          }
+        },
+        "title": "BatchPickIn",
+        "type": "object"
+      },
+      "BatchQtyOut": {
+        "properties": {
+          "batch_id": {
+            "title": "Batch Id",
+            "type": "integer"
+          },
+          "expires_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires On"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          }
+        },
+        "required": [
+          "batch_id",
+          "number",
+          "quantity",
+          "expires_on"
+        ],
+        "title": "BatchQtyOut",
+        "type": "object"
+      },
+      "BatchStockOut": {
+        "properties": {
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "warehouse_id": {
+            "title": "Warehouse Id",
+            "type": "integer"
+          },
+          "warehouse_kind": {
+            "title": "Warehouse Kind",
+            "type": "string"
+          },
+          "warehouse_name": {
+            "title": "Warehouse Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "warehouse_id",
+          "warehouse_name",
+          "warehouse_kind",
+          "quantity"
+        ],
+        "title": "BatchStockOut",
         "type": "object"
       },
       "BillActionsOut": {
@@ -913,6 +1302,41 @@
             "title": "Item Id",
             "type": "integer"
           },
+          "labour_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "default": "0",
+            "title": "Labour Hours"
+          },
+          "machine_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "default": "0",
+            "title": "Machine Hours"
+          },
+          "machine_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Machine Id"
+          },
           "name": {
             "default": "Standard",
             "title": "Name",
@@ -934,6 +1358,29 @@
             ],
             "default": "1",
             "title": "Output Quantity"
+          },
+          "scrap_item_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scrap Item Id"
+          },
+          "scrap_quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "default": "0",
+            "title": "Scrap Quantity"
           }
         },
         "required": [
@@ -995,6 +1442,43 @@
             "title": "Item Name",
             "type": "string"
           },
+          "labour_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Labour Hours"
+          },
+          "machine_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Machine Hours"
+          },
+          "machine_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Machine Id"
+          },
+          "machine_name": {
+            "title": "Machine Name",
+            "type": "string"
+          },
           "made_in_house": {
             "items": {
               "type": "integer"
@@ -1021,6 +1505,35 @@
             ],
             "title": "Output Quantity"
           },
+          "scrap_item_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scrap Item Id"
+          },
+          "scrap_item_name": {
+            "title": "Scrap Item Name",
+            "type": "string"
+          },
+          "scrap_quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Scrap Quantity"
+          },
+          "standard_cost": {
+            "$ref": "#/components/schemas/StandardCostOut"
+          },
           "unit": {
             "title": "Unit",
             "type": "string"
@@ -1041,7 +1554,15 @@
           "estimated_unit_cost",
           "made_in_house",
           "entries",
-          "editable"
+          "editable",
+          "machine_id",
+          "machine_name",
+          "machine_hours",
+          "labour_hours",
+          "scrap_item_id",
+          "scrap_item_name",
+          "scrap_quantity",
+          "standard_cost"
         ],
         "title": "BomOut",
         "type": "object"
@@ -1401,6 +1922,14 @@
       },
       "ConsumptionIn": {
         "properties": {
+          "batches": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/BatchPickIn"
+            },
+            "title": "Batches",
+            "type": "array"
+          },
           "item_id": {
             "title": "Item Id",
             "type": "integer"
@@ -1412,20 +1941,29 @@
               },
               {
                 "type": "string"
+              },
+              {
+                "type": "null"
               }
             ],
             "title": "Quantity"
           }
         },
         "required": [
-          "item_id",
-          "quantity"
+          "item_id"
         ],
         "title": "ConsumptionIn",
         "type": "object"
       },
       "ConsumptionOut": {
         "properties": {
+          "batches": {
+            "items": {
+              "$ref": "#/components/schemas/BatchQtyOut"
+            },
+            "title": "Batches",
+            "type": "array"
+          },
           "item_code": {
             "title": "Item Code",
             "type": "string"
@@ -1478,9 +2016,377 @@
           "unit",
           "planned_quantity",
           "quantity",
-          "rate"
+          "rate",
+          "batches"
         ],
         "title": "ConsumptionOut",
+        "type": "object"
+      },
+      "CostReportRowOut": {
+        "properties": {
+          "actual_unit_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual Unit Cost"
+          },
+          "entries": {
+            "title": "Entries",
+            "type": "integer"
+          },
+          "good": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Good"
+          },
+          "item_code": {
+            "title": "Item Code",
+            "type": "string"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "item_name": {
+            "title": "Item Name",
+            "type": "string"
+          },
+          "labour_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Labour Hours"
+          },
+          "machine_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Machine Hours"
+          },
+          "rejected": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Rejected"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/CostRowOut"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "scrap_quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Scrap Quantity"
+          },
+          "standard_unit_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Standard Unit Cost"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "yield_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Yield Percent"
+          }
+        },
+        "required": [
+          "good",
+          "rejected",
+          "entries",
+          "labour_hours",
+          "machine_hours",
+          "yield_percent",
+          "standard_unit_cost",
+          "actual_unit_cost",
+          "rows",
+          "item_id",
+          "item_code",
+          "item_name",
+          "unit",
+          "scrap_quantity"
+        ],
+        "title": "CostReportRowOut",
+        "type": "object"
+      },
+      "CostRowOut": {
+        "properties": {
+          "actual": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Actual"
+          },
+          "part": {
+            "title": "Part",
+            "type": "string"
+          },
+          "standard": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Standard"
+          },
+          "variance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Variance"
+          }
+        },
+        "required": [
+          "part",
+          "standard",
+          "actual",
+          "variance"
+        ],
+        "title": "CostRowOut",
+        "type": "object"
+      },
+      "CostSettingsIn": {
+        "properties": {
+          "labour_hour_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Labour Hour Rate"
+          },
+          "overhead_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Overhead Percent"
+          }
+        },
+        "required": [
+          "labour_hour_rate",
+          "overhead_percent"
+        ],
+        "title": "CostSettingsIn",
+        "type": "object"
+      },
+      "CostSettingsOut": {
+        "properties": {
+          "labour_hour_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Labour Hour Rate"
+          },
+          "overhead_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Overhead Percent"
+          }
+        },
+        "required": [
+          "labour_hour_rate",
+          "overhead_percent"
+        ],
+        "title": "CostSettingsOut",
+        "type": "object"
+      },
+      "CostSheetOut": {
+        "properties": {
+          "actual_unit_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual Unit Cost"
+          },
+          "entries": {
+            "title": "Entries",
+            "type": "integer"
+          },
+          "good": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Good"
+          },
+          "labour_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Labour Hours"
+          },
+          "machine_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Machine Hours"
+          },
+          "rejected": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Rejected"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/CostRowOut"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "standard_unit_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Standard Unit Cost"
+          },
+          "yield_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Yield Percent"
+          }
+        },
+        "required": [
+          "good",
+          "rejected",
+          "entries",
+          "labour_hours",
+          "machine_hours",
+          "yield_percent",
+          "standard_unit_cost",
+          "actual_unit_cost",
+          "rows"
+        ],
+        "title": "CostSheetOut",
         "type": "object"
       },
       "CustomerOut": {
@@ -1848,6 +2754,14 @@
       },
       "DispatchLineIn": {
         "properties": {
+          "batches": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/BatchPickIn"
+            },
+            "title": "Batches",
+            "type": "array"
+          },
           "order_line_id": {
             "title": "Order Line Id",
             "type": "integer"
@@ -1873,6 +2787,13 @@
       },
       "DispatchLineOut": {
         "properties": {
+          "batches": {
+            "items": {
+              "$ref": "#/components/schemas/BatchQtyOut"
+            },
+            "title": "Batches",
+            "type": "array"
+          },
           "item_code": {
             "title": "Item Code",
             "type": "string"
@@ -1901,7 +2822,8 @@
           "item_code",
           "item_name",
           "quantity",
-          "unit"
+          "unit",
+          "batches"
         ],
         "title": "DispatchLineOut",
         "type": "object"
@@ -2064,10 +2986,57 @@
             ],
             "title": "Entry Date"
           },
+          "labour_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Labour Hours"
+          },
+          "machine_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Machine Hours"
+          },
+          "machine_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Machine Id"
+          },
           "notes": {
             "default": "",
             "title": "Notes",
             "type": "string"
+          },
+          "output_batches": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/BatchIn"
+            },
+            "title": "Output Batches",
+            "type": "array"
           },
           "quantity_produced": {
             "anyOf": [
@@ -2091,6 +3060,20 @@
             ],
             "default": "0",
             "title": "Quantity Rejected"
+          },
+          "scrap": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ScrapIn"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scrap"
           },
           "shift": {
             "default": "",
@@ -2175,6 +3158,54 @@
             "title": "Item Name",
             "type": "string"
           },
+          "labour_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Labour Cost"
+          },
+          "labour_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Labour Hours"
+          },
+          "machine_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Machine Cost"
+          },
+          "machine_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Machine Hours"
+          },
+          "machine_name": {
+            "title": "Machine Name",
+            "type": "string"
+          },
           "material_cost": {
             "anyOf": [
               {
@@ -2193,6 +3224,24 @@
           "number": {
             "title": "Number",
             "type": "string"
+          },
+          "output_batches": {
+            "items": {
+              "$ref": "#/components/schemas/BatchQtyOut"
+            },
+            "title": "Output Batches",
+            "type": "array"
+          },
+          "overhead_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Overhead Cost"
           },
           "quantity_produced": {
             "anyOf": [
@@ -2220,6 +3269,24 @@
             "title": "Recorded By",
             "type": "string"
           },
+          "scrap": {
+            "items": {
+              "$ref": "#/components/schemas/ScrapOut"
+            },
+            "title": "Scrap",
+            "type": "array"
+          },
+          "scrap_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Scrap Value"
+          },
           "shift": {
             "title": "Shift",
             "type": "string"
@@ -2239,6 +3306,17 @@
           "target_warehouse": {
             "title": "Target Warehouse",
             "type": "string"
+          },
+          "total_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Total Cost"
           },
           "unit": {
             "title": "Unit",
@@ -2290,11 +3368,21 @@
           "shift",
           "notes",
           "cancel_reason",
+          "output_batches",
           "recorded_by",
           "work_order_id",
           "work_order_number",
           "consumption",
-          "can_cancel"
+          "can_cancel",
+          "machine_name",
+          "machine_hours",
+          "labour_hours",
+          "labour_cost",
+          "machine_cost",
+          "overhead_cost",
+          "scrap_value",
+          "total_cost",
+          "scrap"
         ],
         "title": "EntryOut",
         "type": "object"
@@ -2417,6 +3505,14 @@
             "default": "0",
             "title": "Rejected"
           },
+          "rejected_serials": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Rejected Serials",
+            "type": "array"
+          },
           "remarks": {
             "default": "",
             "title": "Remarks",
@@ -2476,6 +3572,10 @@
       },
       "InventoryOptionsOut": {
         "properties": {
+          "batches_available": {
+            "title": "Batches Available",
+            "type": "boolean"
+          },
           "gst_rates": {
             "items": {
               "type": "string"
@@ -2490,6 +3590,13 @@
             "title": "Kinds",
             "type": "array"
           },
+          "tracking": {
+            "items": {
+              "$ref": "#/components/schemas/ChoiceOut"
+            },
+            "title": "Tracking",
+            "type": "array"
+          },
           "units": {
             "items": {
               "$ref": "#/components/schemas/ChoiceOut"
@@ -2501,7 +3608,9 @@
         "required": [
           "kinds",
           "units",
-          "gst_rates"
+          "gst_rates",
+          "tracking",
+          "batches_available"
         ],
         "title": "InventoryOptionsOut",
         "type": "object"
@@ -3126,6 +4235,22 @@
             ],
             "title": "Sale Price"
           },
+          "shelf_life_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shelf Life Days"
+          },
+          "tracking": {
+            "default": "none",
+            "title": "Tracking",
+            "type": "string"
+          },
           "unit": {
             "default": "NOS",
             "title": "Unit",
@@ -3248,6 +4373,21 @@
             ],
             "title": "Sale Price"
           },
+          "shelf_life_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shelf Life Days"
+          },
+          "tracking": {
+            "title": "Tracking",
+            "type": "string"
+          },
           "tracks_stock": {
             "title": "Tracks Stock",
             "type": "boolean"
@@ -3272,6 +4412,8 @@
           "description",
           "is_active",
           "inspection_required",
+          "tracking",
+          "shelf_life_days",
           "tracks_stock",
           "on_hand",
           "below_reorder"
@@ -3346,6 +4488,13 @@
       },
       "JobWorkChallanLineOut": {
         "properties": {
+          "batches": {
+            "items": {
+              "$ref": "#/components/schemas/BatchQtyOut"
+            },
+            "title": "Batches",
+            "type": "array"
+          },
           "id": {
             "title": "Id",
             "type": "integer"
@@ -3432,7 +4581,8 @@
           "rate",
           "returned_quantity",
           "waste_quantity",
-          "pending_quantity"
+          "pending_quantity",
+          "batches"
         ],
         "title": "JobWorkChallanLineOut",
         "type": "object"
@@ -3559,6 +4709,14 @@
       },
       "JobWorkLineIn": {
         "properties": {
+          "batches": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/BatchPickIn"
+            },
+            "title": "Batches",
+            "type": "array"
+          },
           "item_id": {
             "title": "Item Id",
             "type": "integer"
@@ -3779,6 +4937,14 @@
             "default": "0",
             "title": "Input Quantity"
           },
+          "output_batches": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/BatchIn"
+            },
+            "title": "Output Batches",
+            "type": "array"
+          },
           "output_item_id": {
             "anyOf": [
               {
@@ -3835,6 +5001,13 @@
               }
             ],
             "title": "Accepted Quantity"
+          },
+          "batches": {
+            "items": {
+              "$ref": "#/components/schemas/BatchQtyOut"
+            },
+            "title": "Batches",
+            "type": "array"
           },
           "can_inspect": {
             "title": "Can Inspect",
@@ -3933,6 +5106,10 @@
             "title": "Supplier",
             "type": "string"
           },
+          "tracking": {
+            "title": "Tracking",
+            "type": "string"
+          },
           "unit": {
             "title": "Unit",
             "type": "string"
@@ -3953,6 +5130,8 @@
           "accepted_quantity",
           "rejected_quantity",
           "pending_quantity",
+          "tracking",
+          "batches",
           "destination",
           "status",
           "status_label",
@@ -3961,6 +5140,95 @@
           "can_inspect"
         ],
         "title": "LotOut",
+        "type": "object"
+      },
+      "MachineIn": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "hour_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "default": "0",
+            "title": "Hour Rate"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "MachineIn",
+        "type": "object"
+      },
+      "MachineOut": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "hour_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hour Rate"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "used": {
+            "title": "Used",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "hour_rate",
+          "is_active",
+          "used"
+        ],
+        "title": "MachineOut",
         "type": "object"
       },
       "MaterialOut": {
@@ -4936,6 +6204,11 @@
       },
       "OpeningIn": {
         "properties": {
+          "batch_number": {
+            "default": "",
+            "title": "Batch Number",
+            "type": "string"
+          },
           "entry_date": {
             "anyOf": [
               {
@@ -4948,9 +6221,33 @@
             ],
             "title": "Entry Date"
           },
+          "expires_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires On"
+          },
           "item_id": {
             "title": "Item Id",
             "type": "integer"
+          },
+          "manufactured_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manufactured On"
           },
           "note": {
             "default": "",
@@ -4980,6 +6277,19 @@
             "default": "0",
             "title": "Rate"
           },
+          "serials": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Serials",
+            "type": "array"
+          },
+          "supplier_batch": {
+            "default": "",
+            "title": "Supplier Batch",
+            "type": "string"
+          },
           "warehouse_id": {
             "title": "Warehouse Id",
             "type": "integer"
@@ -4995,10 +6305,26 @@
       },
       "OpeningOut": {
         "properties": {
+          "batch_number": {
+            "title": "Batch Number",
+            "type": "string"
+          },
           "entry_date": {
             "format": "date",
             "title": "Entry Date",
             "type": "string"
+          },
+          "expires_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires On"
           },
           "id": {
             "title": "Id",
@@ -5078,7 +6404,9 @@
           "rate",
           "value",
           "entry_date",
-          "note"
+          "note",
+          "batch_number",
+          "expires_on"
         ],
         "title": "OpeningOut",
         "type": "object"
@@ -7101,6 +8429,14 @@
       },
       "ReceiptLineIn": {
         "properties": {
+          "batches": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/BatchIn"
+            },
+            "title": "Batches",
+            "type": "array"
+          },
           "order_line_id": {
             "title": "Order Line Id",
             "type": "integer"
@@ -7126,6 +8462,13 @@
       },
       "ReceiptLineOut": {
         "properties": {
+          "batches": {
+            "items": {
+              "$ref": "#/components/schemas/BatchQtyOut"
+            },
+            "title": "Batches",
+            "type": "array"
+          },
           "item_code": {
             "title": "Item Code",
             "type": "string"
@@ -7154,7 +8497,8 @@
           "item_code",
           "item_name",
           "quantity",
-          "unit"
+          "unit",
+          "batches"
         ],
         "title": "ReceiptLineOut",
         "type": "object"
@@ -8478,6 +9822,109 @@
         "title": "SalesSummaryOut",
         "type": "object"
       },
+      "ScrapIn": {
+        "properties": {
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate"
+          }
+        },
+        "required": [
+          "item_id",
+          "quantity"
+        ],
+        "title": "ScrapIn",
+        "type": "object"
+      },
+      "ScrapOut": {
+        "properties": {
+          "item_code": {
+            "title": "Item Code",
+            "type": "string"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "item_name": {
+            "title": "Item Name",
+            "type": "string"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Rate"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "item_id",
+          "item_code",
+          "item_name",
+          "unit",
+          "quantity",
+          "rate",
+          "value"
+        ],
+        "title": "ScrapOut",
+        "type": "object"
+      },
       "SearchResultOut": {
         "properties": {
           "city": {
@@ -8643,6 +10090,86 @@
           "tax"
         ],
         "title": "SectionOut",
+        "type": "object"
+      },
+      "StandardCostOut": {
+        "properties": {
+          "labour": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Labour"
+          },
+          "machine": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Machine"
+          },
+          "material": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Material"
+          },
+          "overhead": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Overhead"
+          },
+          "scrap": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Scrap"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "required": [
+          "material",
+          "labour",
+          "machine",
+          "overhead",
+          "scrap",
+          "total"
+        ],
+        "title": "StandardCostOut",
         "type": "object"
       },
       "StockRowOut": {
@@ -9734,6 +11261,228 @@
         "summary": "Payment Options",
         "tags": [
           "accounts"
+        ]
+      }
+    },
+    "/api/v1/batch-labels/pdf": {
+      "get": {
+        "description": "A sheet of barcode labels for batches or serial numbers (ids comma-separated).",
+        "operationId": "inventory_api_batch_labels",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "ids",
+            "required": true,
+            "schema": {
+              "title": "Ids",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "copies",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Copies",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Batch Labels",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
+    "/api/v1/batches": {
+      "get": {
+        "description": "Batches and serial numbers, the first to expire first. in_stock\nleaves out ones with nothing on hand (in `warehouse_id`, when given);\nexpiring_within (days) keeps only those expiring by then, expired included.",
+        "operationId": "inventory_api_list_batches",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "item_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Item Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "warehouse_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Warehouse Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "in_stock",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "In Stock",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "expiring_within",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Expiring Within"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BatchOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "List Batches",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
+    "/api/v1/batches/lookup": {
+      "get": {
+        "description": "What a scanned label (or a typed batch, heat or serial number) is.",
+        "operationId": "inventory_api_lookup_batch",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "title": "Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BatchOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Lookup Batch",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
+    "/api/v1/batches/{batch_id}": {
+      "get": {
+        "description": "A batch's movements, and its trace: what it was made from and into.",
+        "operationId": "inventory_api_batch_detail",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "title": "Batch Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchDetailOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Batch Detail",
+        "tags": [
+          "inventory"
         ]
       }
     },
@@ -10830,6 +12579,148 @@
         "summary": "Receive",
         "tags": [
           "job-work"
+        ]
+      }
+    },
+    "/api/v1/machines": {
+      "get": {
+        "description": "Machines (work centres), for routing and production entries.",
+        "operationId": "production_api_list_machines",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MachineOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "List Machines",
+        "tags": [
+          "production"
+        ]
+      },
+      "post": {
+        "operationId": "production_api_create_machine",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MachineIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Create Machine",
+        "tags": [
+          "production"
+        ]
+      }
+    },
+    "/api/v1/machines/{machine_id}": {
+      "delete": {
+        "operationId": "production_api_delete_machine",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "machine_id",
+            "required": true,
+            "schema": {
+              "title": "Machine Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Delete Machine",
+        "tags": [
+          "production"
+        ]
+      },
+      "put": {
+        "operationId": "production_api_update_machine",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "machine_id",
+            "required": true,
+            "schema": {
+              "title": "Machine Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MachineIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Update Machine",
+        "tags": [
+          "production"
         ]
       }
     },
@@ -12580,6 +14471,121 @@
         "summary": "Plans",
         "tags": [
           "public"
+        ]
+      }
+    },
+    "/api/v1/production/cost-settings": {
+      "get": {
+        "operationId": "production_api_get_cost_settings",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CostSettingsOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Get Cost Settings",
+        "tags": [
+          "production"
+        ]
+      },
+      "put": {
+        "operationId": "production_api_put_cost_settings",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CostSettingsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CostSettingsOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Put Cost Settings",
+        "tags": [
+          "production"
+        ]
+      }
+    },
+    "/api/v1/production/costs": {
+      "get": {
+        "description": "Per item made between start and end: actual cost against standard, yield and scrap.",
+        "operationId": "production_api_production_costs",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "start",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Start",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "End",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CostReportRowOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Production Costs",
+        "tags": [
+          "production"
         ]
       }
     },
@@ -15622,6 +17628,44 @@
           }
         ],
         "summary": "Close Work Order",
+        "tags": [
+          "production"
+        ]
+      }
+    },
+    "/api/v1/work-orders/{wo_id}/costs": {
+      "get": {
+        "description": "Standard against actual for what the work order has made so far.",
+        "operationId": "production_api_work_order_costs",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wo_id",
+            "required": true,
+            "schema": {
+              "title": "Wo Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CostSheetOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Work Order Costs",
         "tags": [
           "production"
         ]

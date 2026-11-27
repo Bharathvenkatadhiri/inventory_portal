@@ -28,11 +28,14 @@ def _messages(exc):
 # --- Items ------------------------------------------------------------------------
 
 ITEM_FIELDS = ('code', 'name', 'kind', 'unit', 'hsn_code', 'gst_rate', 'purchase_price', 'sale_price',
-               'reorder_level', 'description', 'is_active', 'inspection_required')
+               'reorder_level', 'description', 'is_active', 'inspection_required', 'tracking', 'shelf_life_days')
 
 
 def save_item(company, user, item, data):
     """Creates (item without pk) or updates `item` from `data`."""
+    from . import batches
+
+    was_tracking = Item.objects.filter(pk=item.pk).values_list('tracking', flat=True).first() if item.pk else 'none'
     for field in ITEM_FIELDS:
         if field in data:
             value = data[field]
@@ -45,6 +48,20 @@ def save_item(company, user, item, data):
         raise InventoryError("Enter the item's code and name.")
     if item.pk and item.kind == Item.Kind.SERVICE and item.stock_entries.exists():
         raise InventoryError("This item has stock, so it can't become a service.")
+    item.tracking = item.tracking or 'none'
+    if item.tracking not in batches.TRACKING:
+        raise InventoryError("Choose how the item is tracked: not tracked, by batch or by serial number.")
+    if item.kind == Item.Kind.SERVICE:
+        item.tracking = 'none'
+    if item.tracking != was_tracking:
+        if item.tracking != 'none' and not batches.available(company):
+            raise InventoryError("Batch and serial number tracking is on the Growth and Pro plans.")
+        if item.pk and any(q for q in on_hand_by_item(company, item.pk).values()):
+            raise InventoryError("This item has stock, so how it's tracked can't change. Bring its stock to zero first.")
+    if item.tracking == 'none':
+        item.shelf_life_days = None
+    if item.shelf_life_days is not None and not 0 < item.shelf_life_days <= 36500:
+        raise InventoryError("Enter the shelf life in days, e.g. 180.")
     if Item.objects.filter(company=company, code__iexact=item.code).exclude(pk=item.pk).exists():
         raise InventoryError(f"Another item already uses the code {item.code}.")
     item.company = company
@@ -166,32 +183,73 @@ def delete_warehouse(warehouse):
 # --- Stock ------------------------------------------------------------------------
 
 @transaction.atomic
-def set_opening_stock(company, user, *, item_id, warehouse_id, quantity, rate, entry_date=None, note=''):
+def set_opening_stock(company, user, *, item_id, warehouse_id, quantity, rate, entry_date=None, note='',
+                      batch_number='', supplier_batch='', manufactured_on=None, expires_on=None, serials=None):
     """Sets (or replaces) an item's opening stock in a warehouse. A
-    quantity of 0 removes it. Returns the entry, or None if removed."""
+    quantity of 0 removes it. Returns the entry, or None if removed.
+
+    A batch-tracked item has opening stock per batch (`batch_number`); a
+    serial-tracked one is given its serial numbers (or they're numbered
+    from the item code), which replace any it had in that warehouse."""
+    from . import batches
+
     item = Item.objects.filter(company=company, pk=item_id).first()
     warehouse = Warehouse.objects.filter(company=company, pk=warehouse_id, kind=Warehouse.Kind.STORE).first()
     if item is None or warehouse is None:
         raise InventoryError("Choose one of your items and warehouses.")
     if not item.tracks_stock:
         raise InventoryError(f"{item.name} is a service, so it has no stock.")
+    serials = [n for n in (serials or []) if str(n).strip()]
+    if item.by_serial and serials:
+        quantity = len(serials)
     quantity, rate = Decimal(quantity), Decimal(rate or 0)
     if quantity < 0 or rate < 0:
         raise InventoryError("Quantity and rate can't be negative.")
-    existing = StockEntry.objects.select_for_update().filter(item=item, warehouse=warehouse, kind=StockEntry.Kind.OPENING).first()
-    if quantity == 0:
-        if existing:
-            existing.delete()
-        return None
+    openings = StockEntry.objects.select_for_update(of=('self',)).filter(item=item, warehouse=warehouse, kind=StockEntry.Kind.OPENING)
+    batch = None
+    if item.by_batch:
+        batch = batches.find(item, batch_number)
+        if not (batch_number or '').strip():
+            raise InventoryError(f"{item.name} is tracked by batch: enter the batch number.")
+        openings = openings.filter(batch=batch) if batch else openings.none()
+    elif not item.by_serial:
+        openings = openings.filter(batch__isnull=True)
+    existing = list(openings.select_related('batch'))
+    for entry in existing:
+        if entry.batch_id and entry.batch.entries.exclude(pk=entry.pk).exists():
+            raise InventoryError(f"{item.name}: {entry.batch.number} has moved since, so its opening stock can't change.")
+    if quantity == 0 or item.by_serial:
+        for entry in existing:
+            entry.delete()
+            if entry.batch_id and not StockEntry.objects.filter(batch_id=entry.batch_id).exists():
+                entry.batch.delete()
+        existing = []
+        if quantity == 0:
+            return None
     if not warehouse.is_active:
         raise InventoryError(f"{warehouse.name} is inactive.")
     if not item.is_active:
         raise InventoryError(f"{item.name} is inactive.")
-    entry = existing or StockEntry(company=company, item=item, warehouse=warehouse, kind=StockEntry.Kind.OPENING,
-                                   created_by=user)
+    day = entry_date or date.today()
+    note = (note or '').strip()[:200]
+    if item.by_serial:
+        rows = batches.incoming(company, item, quantity, [{'number': n} for n in serials], origin='opening',
+                                reference='Opening', day=day)
+        entries = batches.write(company, item, warehouse, StockEntry.Kind.OPENING, rows, sign=1, rate=rate,
+                                entry_date=day, reference='', note=note, user=user)
+        return entries[0]
+    if item.by_batch and batch is None:
+        batch = batches.incoming(company, item, quantity, [{
+            'number': batch_number, 'quantity': quantity, 'supplier_batch': supplier_batch,
+            'manufactured_on': manufactured_on, 'expires_on': expires_on}], origin='opening', reference='Opening', day=day)[0][0]
+    elif batch is not None and (expires_on or manufactured_on):
+        batch.expires_on, batch.manufactured_on = expires_on or batch.expires_on, manufactured_on or batch.manufactured_on
+        batch.save(update_fields=['expires_on', 'manufactured_on'])
+    entry = existing[0] if existing else StockEntry(company=company, item=item, warehouse=warehouse,
+                                                    kind=StockEntry.Kind.OPENING, created_by=user, batch=batch)
     entry.quantity, entry.rate = quantity, rate
-    entry.entry_date = entry_date or date.today()
-    entry.note = (note or '').strip()[:200]
+    entry.entry_date = day
+    entry.note = note
     entry.save()
     return entry
 
@@ -232,7 +290,10 @@ def average_cost(company, item, warehouse):
     return (value / quantity).quantize(Decimal('0.01'))
 
 
-def on_hand_by_item(company):
+def on_hand_by_item(company, item_id=None):
     """Total stock on hand per item across warehouses: {item_id: quantity}."""
-    rows = StockEntry.objects.filter(company=company).values('item_id').annotate(quantity=Sum('quantity'))
+    entries = StockEntry.objects.filter(company=company)
+    if item_id:
+        entries = entries.filter(item_id=item_id)
+    rows = entries.values('item_id').annotate(quantity=Sum('quantity'))
     return {r['item_id']: r['quantity'] for r in rows}
