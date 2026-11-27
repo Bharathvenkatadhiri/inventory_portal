@@ -39,6 +39,8 @@ from adjustments.models import CreditDebitNote
 from finance import services as finance
 from finance.models import Payment
 from plans import erp
+from production import services as production
+from production.models import BillOfMaterials, ProductionEntry
 from purchase import services as purchase
 from purchase.models import GoodsReceipt, PurchaseBill, PurchaseOrder
 from sales import services as sales
@@ -176,6 +178,22 @@ BRANDING = {
                'Castings supplied to drawing and inspected before dispatch. Claims within 7 days of receipt. Subject to Pune jurisdiction.'),
 }
 
+# org: [(output item code, BOM name, makes, [(component code, quantity)])]
+BOMS = {
+    'sri_lakshmi': [
+        ('FG-GS-120', 'Standard', '1', [('RM-EN8-40', '2.4'), ('CO-OIL-CUT', '0.05')]),
+        ('FG-PH-75', 'Rev B', '1', [('RM-AL6061-P12', '3.2'), ('BO-BOLT-M10', '6')]),
+    ],
+    'kaveri': [
+        ('FG-VB-50', 'Standard', '10', [('RM-PIG-IRON', '0.12'), ('RM-FESI-75', '3'), ('CO-SAND-SILICA', '0.2')]),
+    ],
+}
+# org: [(operator, output item code, good, rejected, materials warehouse code, finished warehouse code, days ago, shift)]
+PRODUCTION = {
+    'sri_lakshmi': [('murugan', 'FG-GS-120', '40', '2', 'PS', 'AMB', 3, 'A')],
+    'kaveri': [('ganesh', 'FG-VB-50', '60', '4', 'FS', 'FS', 2, 'B')],
+}
+
 # (buyer, supplier, status, initiated by, vendor code, customer code, payment days, credit limit)
 RELATIONSHIPS = [
     ('tejas', 'sri_lakshmi', Status.ACTIVE, 'tejas', 'V-0012', 'C-TEJ01', 45, 500000),
@@ -220,6 +238,9 @@ class Command(BaseCommand):
     def _flush(self):
         gstins = [g for g, *_ in ORGANIZATIONS.values()] + [UNCLAIMED_GSTIN]
         companies = Company.objects.filter(gstin__in=gstins)
+        # Production entries and BOMs PROTECT items and warehouses.
+        ProductionEntry.objects.filter(company__in=companies).delete()
+        BillOfMaterials.objects.filter(company__in=companies).delete()
         # Notes, payments, sales and purchase documents PROTECT the companies, documents, items and lines they point to.
         CreditDebitNote.objects.filter(Q(company__in=companies) | Q(party__in=companies)).delete()
         Payment.objects.filter(Q(company__in=companies) | Q(party__in=companies)).delete()
@@ -290,6 +311,7 @@ class Command(BaseCommand):
             self._inventory(key, company, owner, now)
             if key in BRANDING:
                 self._branding(company, *BRANDING[key])
+            self._production(key, company, users[key], now)
             self._subscription(company, plan, state, now)
             self.orgs[key] = company
 
@@ -448,6 +470,26 @@ class Command(BaseCommand):
             for warehouse_code, (quantity, rate) in opening.items():
                 inventory.set_opening_stock(company, owner, item_id=item.pk, warehouse_id=warehouses[warehouse_code].pk,
                                             quantity=Decimal(quantity), rate=Decimal(rate), entry_date=as_of)
+
+    @staticmethod
+    def _production(key, company, people, now):
+        """BOMs set up by the Org Admin; a shift's production recorded by a Machine Operator."""
+        admin = Membership.objects.select_related('company', 'role', 'user').get(company=company, user=people[PEOPLE[key][0][0]])
+        boms = {}
+        for code, name, makes, parts in BOMS.get(key, []):
+            item = Item.objects.get(company=company, code=code)
+            boms[code] = production.save_bom(admin, BillOfMaterials(), {
+                'item_id': item.pk, 'name': name, 'output_quantity': Decimal(makes),
+                'components': [{'item_id': Item.objects.get(company=company, code=c).pk, 'quantity': Decimal(q)} for c, q in parts],
+            })
+        for operator, code, good, rejected, src, dst, days, shift in PRODUCTION.get(key, []):
+            member = Membership.objects.select_related('company', 'role', 'user').get(company=company, user=people[operator])
+            production.record(member, {
+                'bom_id': boms[code].pk, 'quantity_produced': Decimal(good), 'quantity_rejected': Decimal(rejected),
+                'entry_date': (now - timedelta(days=days)).date(), 'shift': shift,
+                'source_warehouse_id': Warehouse.objects.get(company=company, code=src).pk,
+                'target_warehouse_id': Warehouse.objects.get(company=company, code=dst).pk,
+            })
 
     @staticmethod
     def _branding(company, initials, colour, signatory, terms):

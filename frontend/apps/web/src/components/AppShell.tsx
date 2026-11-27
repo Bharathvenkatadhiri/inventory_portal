@@ -22,13 +22,18 @@ const NAV: NavItem[] = [
     to: "/sales", label: "Sales", exact: false,
     show: (a) => a.company.selling_enabled && SALES_ROLES.some((code) => a.allowed.includes(code)),
   },
+  {
+    to: "/production", label: "Production", exact: false,
+    show: (a) => PRODUCTION_ROLES.some((code) => a.allowed.includes(code)),
+  },
   { to: "/inventory", label: "Inventory", exact: false },
   { to: "/accounts", label: "Accounts", exact: false, show: (a) => ACCOUNTS_ROLES.some((code) => a.allowed.includes(code)) },
   { to: "/settings", label: "Settings", exact: false },
 ];
 
 // The modules the ERP is growing into, shown so people know what's coming.
-const COMING = ["Production"];
+const COMING: string[] = [];
+const PRODUCTION_ROLES = ["bom.manage", "production.record"];
 
 export function AppShell() {
   const { data: me, error, isLoading } = useMe();
@@ -73,7 +78,7 @@ export function AppShell() {
               {item.label}
             </Link>
           ))}
-          <p className="px-3 pb-1 pt-6 text-xs font-bold uppercase tracking-wide text-gray-400">Modules</p>
+          {COMING.length ? <p className="px-3 pb-1 pt-6 text-xs font-bold uppercase tracking-wide text-gray-400">Modules</p> : null}
           {COMING.map((name) => (
             <span key={name} className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-gray-400">
               {name}

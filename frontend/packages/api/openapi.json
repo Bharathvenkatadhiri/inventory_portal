@@ -884,6 +884,160 @@
         "title": "BillingOut",
         "type": "object"
       },
+      "BomIn": {
+        "properties": {
+          "components": {
+            "items": {
+              "$ref": "#/components/schemas/ComponentIn"
+            },
+            "title": "Components",
+            "type": "array"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "is_default": {
+            "default": false,
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "name": {
+            "default": "Standard",
+            "title": "Name",
+            "type": "string"
+          },
+          "notes": {
+            "default": "",
+            "title": "Notes",
+            "type": "string"
+          },
+          "output_quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "default": "1",
+            "title": "Output Quantity"
+          }
+        },
+        "required": [
+          "item_id",
+          "components"
+        ],
+        "title": "BomIn",
+        "type": "object"
+      },
+      "BomOut": {
+        "properties": {
+          "components": {
+            "items": {
+              "$ref": "#/components/schemas/ComponentOut"
+            },
+            "title": "Components",
+            "type": "array"
+          },
+          "editable": {
+            "title": "Editable",
+            "type": "boolean"
+          },
+          "entries": {
+            "title": "Entries",
+            "type": "integer"
+          },
+          "estimated_unit_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Estimated Unit Cost"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "is_default": {
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "item_code": {
+            "title": "Item Code",
+            "type": "string"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "item_name": {
+            "title": "Item Name",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "string"
+          },
+          "output_quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Output Quantity"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "item_id",
+          "item_code",
+          "item_name",
+          "unit",
+          "name",
+          "output_quantity",
+          "notes",
+          "is_default",
+          "is_active",
+          "components",
+          "estimated_unit_cost",
+          "entries",
+          "editable"
+        ],
+        "title": "BomOut",
+        "type": "object"
+      },
       "BrandingIn": {
         "properties": {
           "invoice_terms": {
@@ -1097,6 +1251,83 @@
         "title": "CompanyOut",
         "type": "object"
       },
+      "ComponentIn": {
+        "properties": {
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          }
+        },
+        "required": [
+          "item_id",
+          "quantity"
+        ],
+        "title": "ComponentIn",
+        "type": "object"
+      },
+      "ComponentOut": {
+        "properties": {
+          "item_code": {
+            "title": "Item Code",
+            "type": "string"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "item_name": {
+            "title": "Item Name",
+            "type": "string"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Rate"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_id",
+          "item_code",
+          "item_name",
+          "unit",
+          "quantity",
+          "rate"
+        ],
+        "title": "ComponentOut",
+        "type": "object"
+      },
       "ConnectIn": {
         "properties": {
           "company_id": {
@@ -1158,6 +1389,90 @@
           "invite_email_sent"
         ],
         "title": "ConnectOut",
+        "type": "object"
+      },
+      "ConsumptionIn": {
+        "properties": {
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          }
+        },
+        "required": [
+          "item_id",
+          "quantity"
+        ],
+        "title": "ConsumptionIn",
+        "type": "object"
+      },
+      "ConsumptionOut": {
+        "properties": {
+          "item_code": {
+            "title": "Item Code",
+            "type": "string"
+          },
+          "item_name": {
+            "title": "Item Name",
+            "type": "string"
+          },
+          "planned_quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Planned Quantity"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Rate"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_code",
+          "item_name",
+          "unit",
+          "planned_quantity",
+          "quantity",
+          "rate"
+        ],
+        "title": "ConsumptionOut",
         "type": "object"
       },
       "CustomerOut": {
@@ -1706,6 +2021,234 @@
           "total"
         ],
         "title": "DocRefOut",
+        "type": "object"
+      },
+      "EntryIn": {
+        "properties": {
+          "bom_id": {
+            "title": "Bom Id",
+            "type": "integer"
+          },
+          "consumption": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ConsumptionIn"
+            },
+            "title": "Consumption",
+            "type": "array"
+          },
+          "entry_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entry Date"
+          },
+          "notes": {
+            "default": "",
+            "title": "Notes",
+            "type": "string"
+          },
+          "quantity_produced": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity Produced"
+          },
+          "quantity_rejected": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "default": "0",
+            "title": "Quantity Rejected"
+          },
+          "shift": {
+            "default": "",
+            "title": "Shift",
+            "type": "string"
+          },
+          "source_warehouse_id": {
+            "title": "Source Warehouse Id",
+            "type": "integer"
+          },
+          "target_warehouse_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Warehouse Id"
+          }
+        },
+        "required": [
+          "bom_id",
+          "quantity_produced",
+          "source_warehouse_id"
+        ],
+        "title": "EntryIn",
+        "type": "object"
+      },
+      "EntryOut": {
+        "properties": {
+          "bom_name": {
+            "title": "Bom Name",
+            "type": "string"
+          },
+          "can_cancel": {
+            "title": "Can Cancel",
+            "type": "boolean"
+          },
+          "cancel_reason": {
+            "title": "Cancel Reason",
+            "type": "string"
+          },
+          "consumption": {
+            "items": {
+              "$ref": "#/components/schemas/ConsumptionOut"
+            },
+            "title": "Consumption",
+            "type": "array"
+          },
+          "entry_date": {
+            "format": "date",
+            "title": "Entry Date",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "item_code": {
+            "title": "Item Code",
+            "type": "string"
+          },
+          "item_name": {
+            "title": "Item Name",
+            "type": "string"
+          },
+          "material_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Material Cost"
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "quantity_produced": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity Produced"
+          },
+          "quantity_rejected": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity Rejected"
+          },
+          "recorded_by": {
+            "title": "Recorded By",
+            "type": "string"
+          },
+          "shift": {
+            "title": "Shift",
+            "type": "string"
+          },
+          "source_warehouse": {
+            "title": "Source Warehouse",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "target_warehouse": {
+            "title": "Target Warehouse",
+            "type": "string"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "unit_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Unit Cost"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "status",
+          "status_label",
+          "entry_date",
+          "item_code",
+          "item_name",
+          "unit",
+          "bom_name",
+          "quantity_produced",
+          "quantity_rejected",
+          "source_warehouse",
+          "target_warehouse",
+          "material_cost",
+          "unit_cost",
+          "shift",
+          "notes",
+          "cancel_reason",
+          "recorded_by",
+          "consumption",
+          "can_cancel"
+        ],
+        "title": "EntryOut",
         "type": "object"
       },
       "InventoryOptionsOut": {
@@ -5350,6 +5893,70 @@
         "title": "PlanIn",
         "type": "object"
       },
+      "PlanLineOut": {
+        "properties": {
+          "item_code": {
+            "title": "Item Code",
+            "type": "string"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "item_name": {
+            "title": "Item Name",
+            "type": "string"
+          },
+          "on_hand": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "On Hand"
+          },
+          "planned": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Planned"
+          },
+          "short": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Short"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_id",
+          "item_code",
+          "item_name",
+          "unit",
+          "planned",
+          "on_hand",
+          "short"
+        ],
+        "title": "PlanLineOut",
+        "type": "object"
+      },
       "PlanOut": {
         "properties": {
           "extra_light_user_monthly_inr": {
@@ -7893,6 +8500,215 @@
         ]
       }
     },
+    "/api/v1/boms": {
+      "get": {
+        "operationId": "production_api_list_boms",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "item_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Item Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "active",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Active"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BomOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "List Boms",
+        "tags": [
+          "production"
+        ]
+      },
+      "post": {
+        "operationId": "production_api_create_bom",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BomIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BomOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Create Bom",
+        "tags": [
+          "production"
+        ]
+      }
+    },
+    "/api/v1/boms/{bom_id}": {
+      "delete": {
+        "operationId": "production_api_delete_bom",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bom_id",
+            "required": true,
+            "schema": {
+              "title": "Bom Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Delete Bom",
+        "tags": [
+          "production"
+        ]
+      },
+      "get": {
+        "operationId": "production_api_get_bom",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bom_id",
+            "required": true,
+            "schema": {
+              "title": "Bom Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BomOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Get Bom",
+        "tags": [
+          "production"
+        ]
+      },
+      "put": {
+        "operationId": "production_api_update_bom",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bom_id",
+            "required": true,
+            "schema": {
+              "title": "Bom Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BomIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BomOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Update Bom",
+        "tags": [
+          "production"
+        ]
+      }
+    },
     "/api/v1/dispatches": {
       "get": {
         "operationId": "sales_api_list_dispatches",
@@ -10080,6 +10896,203 @@
         "summary": "Plans",
         "tags": [
           "public"
+        ]
+      }
+    },
+    "/api/v1/production/entries": {
+      "get": {
+        "operationId": "production_api_list_entries",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "item_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/EntryOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "List Entries",
+        "tags": [
+          "production"
+        ]
+      },
+      "post": {
+        "operationId": "production_api_record_entry",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntryIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntryOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Record Entry",
+        "tags": [
+          "production"
+        ]
+      }
+    },
+    "/api/v1/production/entries/{entry_id}/cancel": {
+      "post": {
+        "operationId": "production_api_cancel_entry",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "title": "Entry Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntryOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Cancel Entry",
+        "tags": [
+          "production"
+        ]
+      }
+    },
+    "/api/v1/production/plan": {
+      "get": {
+        "description": "What making `quantity` units (good + rejected) needs from a warehouse.",
+        "operationId": "production_api_production_plan",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "bom_id",
+            "required": true,
+            "schema": {
+              "title": "Bom Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "quantity",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "title": "Quantity"
+            }
+          },
+          {
+            "in": "query",
+            "name": "warehouse_id",
+            "required": true,
+            "schema": {
+              "title": "Warehouse Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PlanLineOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Production Plan",
+        "tags": [
+          "production"
         ]
       }
     },

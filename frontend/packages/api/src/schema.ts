@@ -110,6 +110,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/boms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Boms */
+        get: operations["production_api_list_boms"];
+        put?: never;
+        /** Create Bom */
+        post: operations["production_api_create_bom"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/boms/{bom_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Bom */
+        get: operations["production_api_get_bom"];
+        /** Update Bom */
+        put: operations["production_api_update_bom"];
+        post?: never;
+        /** Delete Bom */
+        delete: operations["production_api_delete_bom"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dispatches": {
         parameters: {
             query?: never;
@@ -900,6 +937,61 @@ export interface paths {
          *     users or warehouses null means no limit.
          */
         get: operations["organizations_api_plans"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/production/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Entries */
+        get: operations["production_api_list_entries"];
+        put?: never;
+        /** Record Entry */
+        post: operations["production_api_record_entry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/production/entries/{entry_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Entry */
+        post: operations["production_api_cancel_entry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/production/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Production Plan
+         * @description What making `quantity` units (good + rejected) needs from a warehouse.
+         */
+        get: operations["production_api_production_plan"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2054,6 +2146,66 @@ export interface components {
             seats: components["schemas"]["SeatsOut"];
             subscription: components["schemas"]["SubscriptionOut"];
         };
+        /** BomIn */
+        BomIn: {
+            /** Components */
+            components: components["schemas"]["ComponentIn"][];
+            /** Is Active */
+            is_active?: boolean | null;
+            /**
+             * Is Default
+             * @default false
+             */
+            is_default: boolean;
+            /** Item Id */
+            item_id: number;
+            /**
+             * Name
+             * @default Standard
+             */
+            name: string;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /**
+             * Output Quantity
+             * @default 1
+             */
+            output_quantity: number | string;
+        };
+        /** BomOut */
+        BomOut: {
+            /** Components */
+            components: components["schemas"]["ComponentOut"][];
+            /** Editable */
+            editable: boolean;
+            /** Entries */
+            entries: number;
+            /** Estimated Unit Cost */
+            estimated_unit_cost: number | string;
+            /** Id */
+            id: number;
+            /** Is Active */
+            is_active: boolean;
+            /** Is Default */
+            is_default: boolean;
+            /** Item Code */
+            item_code: string;
+            /** Item Id */
+            item_id: number;
+            /** Item Name */
+            item_name: string;
+            /** Name */
+            name: string;
+            /** Notes */
+            notes: string;
+            /** Output Quantity */
+            output_quantity: number | string;
+            /** Unit */
+            unit: string;
+        };
         /** BrandingIn */
         BrandingIn: {
             /**
@@ -2142,6 +2294,28 @@ export interface components {
             /** Trade Name */
             trade_name: string;
         };
+        /** ComponentIn */
+        ComponentIn: {
+            /** Item Id */
+            item_id: number;
+            /** Quantity */
+            quantity: number | string;
+        };
+        /** ComponentOut */
+        ComponentOut: {
+            /** Item Code */
+            item_code: string;
+            /** Item Id */
+            item_id: number;
+            /** Item Name */
+            item_name: string;
+            /** Quantity */
+            quantity: number | string;
+            /** Rate */
+            rate: number | string;
+            /** Unit */
+            unit: string;
+        };
         /** ConnectIn */
         ConnectIn: {
             /** Company Id */
@@ -2158,6 +2332,28 @@ export interface components {
             /** Invite Email Sent */
             invite_email_sent: boolean;
             partner: components["schemas"]["PartnerOut"];
+        };
+        /** ConsumptionIn */
+        ConsumptionIn: {
+            /** Item Id */
+            item_id: number;
+            /** Quantity */
+            quantity: number | string;
+        };
+        /** ConsumptionOut */
+        ConsumptionOut: {
+            /** Item Code */
+            item_code: string;
+            /** Item Name */
+            item_name: string;
+            /** Planned Quantity */
+            planned_quantity: number | string;
+            /** Quantity */
+            quantity: number | string;
+            /** Rate */
+            rate: number | string;
+            /** Unit */
+            unit: string;
         };
         /** CustomerOut */
         CustomerOut: {
@@ -2358,6 +2554,87 @@ export interface components {
             status_label: string;
             /** Total */
             total: number | string | null;
+        };
+        /** EntryIn */
+        EntryIn: {
+            /** Bom Id */
+            bom_id: number;
+            /**
+             * Consumption
+             * @default []
+             */
+            consumption: components["schemas"]["ConsumptionIn"][];
+            /** Entry Date */
+            entry_date?: string | null;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /** Quantity Produced */
+            quantity_produced: number | string;
+            /**
+             * Quantity Rejected
+             * @default 0
+             */
+            quantity_rejected: number | string;
+            /**
+             * Shift
+             * @default
+             */
+            shift: string;
+            /** Source Warehouse Id */
+            source_warehouse_id: number;
+            /** Target Warehouse Id */
+            target_warehouse_id?: number | null;
+        };
+        /** EntryOut */
+        EntryOut: {
+            /** Bom Name */
+            bom_name: string;
+            /** Can Cancel */
+            can_cancel: boolean;
+            /** Cancel Reason */
+            cancel_reason: string;
+            /** Consumption */
+            consumption: components["schemas"]["ConsumptionOut"][];
+            /**
+             * Entry Date
+             * Format: date
+             */
+            entry_date: string;
+            /** Id */
+            id: number;
+            /** Item Code */
+            item_code: string;
+            /** Item Name */
+            item_name: string;
+            /** Material Cost */
+            material_cost: number | string;
+            /** Notes */
+            notes: string;
+            /** Number */
+            number: string;
+            /** Quantity Produced */
+            quantity_produced: number | string;
+            /** Quantity Rejected */
+            quantity_rejected: number | string;
+            /** Recorded By */
+            recorded_by: string;
+            /** Shift */
+            shift: string;
+            /** Source Warehouse */
+            source_warehouse: string;
+            /** Status */
+            status: string;
+            /** Status Label */
+            status_label: string;
+            /** Target Warehouse */
+            target_warehouse: string;
+            /** Unit */
+            unit: string;
+            /** Unit Cost */
+            unit_cost: number | string;
         };
         /** InventoryOptionsOut */
         InventoryOptionsOut: {
@@ -3486,6 +3763,23 @@ export interface components {
             /** Plan */
             plan: string;
         };
+        /** PlanLineOut */
+        PlanLineOut: {
+            /** Item Code */
+            item_code: string;
+            /** Item Id */
+            item_id: number;
+            /** Item Name */
+            item_name: string;
+            /** On Hand */
+            on_hand: number | string;
+            /** Planned */
+            planned: number | string;
+            /** Short */
+            short: number | string;
+            /** Unit */
+            unit: string;
+        };
         /** PlanOut */
         PlanOut: {
             /** Extra Light User Monthly Inr */
@@ -4346,6 +4640,121 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ActionOut"];
                 };
+            };
+        };
+    };
+    production_api_list_boms: {
+        parameters: {
+            query?: {
+                item_id?: number | null;
+                active?: boolean | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BomOut"][];
+                };
+            };
+        };
+    };
+    production_api_create_bom: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BomIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BomOut"];
+                };
+            };
+        };
+    };
+    production_api_get_bom: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bom_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BomOut"];
+                };
+            };
+        };
+    };
+    production_api_update_bom: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bom_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BomIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BomOut"];
+                };
+            };
+        };
+    };
+    production_api_delete_bom: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bom_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -5689,6 +6098,102 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlanOut"][];
+                };
+            };
+        };
+    };
+    production_api_list_entries: {
+        parameters: {
+            query?: {
+                item_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntryOut"][];
+                };
+            };
+        };
+    };
+    production_api_record_entry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntryIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntryOut"];
+                };
+            };
+        };
+    };
+    production_api_cancel_entry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entry_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntryOut"];
+                };
+            };
+        };
+    };
+    production_api_production_plan: {
+        parameters: {
+            query: {
+                bom_id: number;
+                quantity: number | string;
+                warehouse_id: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanLineOut"][];
                 };
             };
         };

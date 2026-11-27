@@ -56,6 +56,10 @@ class SeedERPDemoTests(TestCase):
                                                        status='posted').exists())
         self.assertTrue(StockEntry.objects.filter(company=sri, kind='purchase_return').exists())
         self.assertTrue(sri.__class__.objects.get(pk=sri.pk).logo)
+        from production.models import ProductionEntry
+        run = ProductionEntry.objects.get(company=sri)
+        self.assertEqual((run.created_by.email, run.quantity_produced), (seed.demo_email('murugan'), 40))
+        self.assertTrue(StockEntry.objects.filter(company=sri, kind='production_receipt').exists())
         from finance.services import balance
         self.assertEqual(balance(invoice)['payment_status'], 'partly_paid')
         self.assertEqual(balance(PurchaseBill.objects.get(company=sri, supplier=kaveri))['payment_status'], 'partly_paid')

@@ -132,6 +132,8 @@ class StockEntry(models.Model):
         DISPATCH = 'dispatch', 'Dispatch'
         SALES_RETURN = 'sales_return', 'Returned by customer'
         PURCHASE_RETURN = 'purchase_return', 'Returned to supplier'
+        PRODUCTION_ISSUE = 'production_issue', 'Used in production'
+        PRODUCTION_RECEIPT = 'production_receipt', 'Produced'
 
     company = models.ForeignKey('accounts.Company', on_delete=models.CASCADE, related_name='stock_entries')
     item = models.ForeignKey(Item, on_delete=models.PROTECT, related_name='stock_entries')
