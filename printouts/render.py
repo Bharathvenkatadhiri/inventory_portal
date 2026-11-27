@@ -508,3 +508,79 @@ def batch_labels(company, batch_list, copies=1):
         pdf.drawString(20 * mm, height - 20 * mm, 'No labels.')
     pdf.save()
     return buffer.getvalue()
+
+
+# --- Quotation and request for quotation ------------------------------------------------------
+
+def quotation(q):
+    from reportlab.platypus import Spacer
+
+    kit = _Kit()
+    mm = kit.mm
+    seller, customer = q.company, q.customer
+    story = [kit.header(seller, 'QUOTATION', q.get_status_display() if q.status == 'draft' else 'Our offer', [
+        ('Quotation no.', q.display_number), ('Date', q.quote_date.strftime('%d %b %Y')),
+        ('Valid until', q.valid_until.strftime('%d %b %Y')),
+        ('Delivery', f"{q.delivery_days} days from order" if q.delivery_days is not None else '—'),
+        ('Payment terms', f"{q.payment_terms_days} days" if q.payment_terms_days is not None else '—'),
+        ('Your enquiry', q.enquiry_reference or '—'),
+    ]), Spacer(1, 4 * mm)]
+    to = kit.party('To', customer.legal_name or customer.name, customer.principal_address, customer.gstin, _state_code(customer))
+    supply = [kit.P('PLACE OF SUPPLY', kit.label), kit.P(f"<b>{_esc(_state(q.place_of_supply))}</b>"),
+              kit.P('IGST applies (inter-state)' if q.is_interstate else 'CGST + SGST apply (within the state)', kit.small)]
+    story += [kit.two_boxes(to, supply), Spacer(1, 4 * mm)]
+    head = [kit.P(h, kit.label if i < 2 else kit.label_right) for i, h in enumerate(['#', 'DESCRIPTION', 'QTY', 'RATE', 'GST %', 'AMOUNT'])]
+    rows = [head]
+    for i, l in enumerate(q.lines.select_related('item'), start=1):
+        desc = [kit.P(_esc(l.item.name)), kit.P(_esc(' · '.join(p for p in (l.item.code, f"HSN {l.item.hsn_code}" if l.item.hsn_code else '') if p)), kit.small)]
+        if l.description:
+            desc.append(kit.P(_esc(l.description), kit.small))
+        rows.append([kit.P(str(i)), desc, kit.P(f"{_qty(l.quantity)} {l.unit}", kit.right), kit.P(_money(l.rate, 'INR'), kit.right),
+                     kit.P(f"{l.gst_rate.normalize():f}%", kit.right), kit.P(_money(l.taxable_value, 'INR'), kit.right)])
+    story += [kit.table(rows, [7 * mm, kit.width - 100 * mm, 25 * mm, 25 * mm, 15 * mm, 28 * mm],
+                        [('LINEBELOW', (0, 0), (-1, 0), 0.8, kit.navy), ('LINEBELOW', (0, 1), (-1, -1), 0.3, kit.rule)], repeat=1),
+              Spacer(1, 3 * mm), kit.totals(q), Spacer(1, 2 * mm),
+              kit.P(f"<b>Amount in words:</b> {_esc(amount_in_words(q.total))}"), Spacer(1, 4 * mm)]
+    terms = [kit.P('TERMS', kit.label)]
+    if q.terms:
+        terms.append(kit.P(_esc(q.terms).replace('\n', '<br/>')))
+    terms.append(kit.P(f"Prices are valid until {q.valid_until:%d %b %Y}. GST as applicable at the time of supply. "
+                       "Please quote our quotation number on your purchase order.", kit.small))
+    story += [kit.table([[terms, kit.signature(seller, 'Authorised signatory')]], [kit.width * 0.6, kit.width * 0.4])]
+    return _build(kit, f"Quotation {q.display_number}", [story], watermark='DRAFT' if q.status == 'draft' else '')
+
+
+def request_for_quotation(rfq):
+    from reportlab.platypus import Spacer
+
+    kit = _Kit()
+    mm = kit.mm
+    buyer = rfq.company
+    address = rfq.ship_to.address
+    story = [kit.header(buyer, 'REQUEST FOR QUOTATION', rfq.title, [
+        ('RFQ no.', rfq.number), ('Date', rfq.rfq_date.strftime('%d %b %Y')),
+        ('Quote by', rfq.respond_by.strftime('%d %b %Y') if rfq.respond_by else '—'),
+        ('Needed by', rfq.required_by.strftime('%d %b %Y') if rfq.required_by else '—'),
+    ]), Spacer(1, 4 * mm)]
+    deliver = kit.party('Deliver to', buyer.legal_name or buyer.name,
+                        ', '.join(p for p in (rfq.ship_to.name, address.line1 if address else '', address.city if address else '',
+                                              address.pincode if address else '') if p),
+                        buyer.gstin, (address.state_code if address else '') or _state_code(buyer))
+    story += deliver + [Spacer(1, 4 * mm)]
+    head = [kit.P(h, kit.label if i < 2 else kit.label_right) for i, h in enumerate(['#', 'ITEM AND SPECIFICATION', 'QTY', 'YOUR RATE', 'GST %'])]
+    rows = [head]
+    for i, l in enumerate(rfq.lines.select_related('item'), start=1):
+        desc = [kit.P(_esc(l.item.name)), kit.P(_esc(' · '.join(p for p in (l.item.code, f"HSN {l.item.hsn_code}" if l.item.hsn_code else '') if p)), kit.small)]
+        if l.description:
+            desc.append(kit.P(_esc(l.description), kit.small))
+        rows.append([kit.P(str(i)), desc, kit.P(f"{_qty(l.quantity)} {l.unit}", kit.right), '', ''])
+    story += [kit.table(rows, [7 * mm, kit.width - 99 * mm, 28 * mm, 40 * mm, 24 * mm],
+                        [('LINEBELOW', (0, 0), (-1, 0), 0.8, kit.navy), ('LINEBELOW', (0, 1), (-1, -1), 0.3, kit.rule),
+                         ('BOTTOMPADDING', (0, 1), (-1, -1), 8)], repeat=1),
+              Spacer(1, 4 * mm)]
+    if rfq.notes:
+        story += [kit.P('NOTES', kit.label), kit.P(_esc(rfq.notes).replace('\n', '<br/>')), Spacer(1, 3 * mm)]
+    story += [kit.P("Please quote your rate per unit before GST, the GST rate, delivery time, payment terms and how long "
+                    "your quote is valid, quoting our RFQ number.", kit.small),
+              Spacer(1, 8 * mm), kit.table([['', kit.signature(buyer, 'Purchase')]], [kit.width * 0.6, kit.width * 0.4])]
+    return _build(kit, f"RFQ {rfq.number}", [story])

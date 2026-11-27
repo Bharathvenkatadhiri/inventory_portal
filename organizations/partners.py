@@ -184,8 +184,13 @@ def unblock(relationship, company, user):
 # Which side may change which term: the buyer keeps its own code for the
 # supplier, the supplier its code for the customer and the credit it gives;
 # payment terms are agreed, so either side may set them.
-BUYER_TERMS = {'vendor_code', 'payment_terms_days', 'tds_section'}
+BUYER_TERMS = {'vendor_code', 'payment_terms_days', 'tds_section', 'msme_category', 'msme_activity', 'udyam_number'}
 SUPPLIER_TERMS = {'customer_code', 'credit_limit', 'payment_terms_days'}
+
+
+def _msme_covered(relationship):
+    from finance.msme import covered
+    return covered(relationship)
 
 
 def update_terms(relationship, company, user, changes):
@@ -254,6 +259,10 @@ def describe(relationship, company):
         'vendor_code': relationship.vendor_code,
         'customer_code': relationship.customer_code,
         'tds_section': relationship.tds_section if we_buy else '',
+        'msme_category': relationship.msme_category if we_buy else '',
+        'msme_activity': relationship.msme_activity if we_buy else '',
+        'udyam_number': relationship.udyam_number if we_buy else '',
+        'msme_covered': we_buy and _msme_covered(relationship),
         'editable_terms': sorted(BUYER_TERMS if we_buy else SUPPLIER_TERMS),
         'created_at': relationship.created_at,
         'activated_at': relationship.activated_at,

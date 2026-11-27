@@ -304,6 +304,9 @@ function EditTerms({ partner, onClose }: { partner: Partner; onClose: () => void
   const [vendorCode, setVendorCode] = useState(partner.vendor_code);
   const [customerCode, setCustomerCode] = useState(partner.customer_code);
   const [tdsSection, setTdsSection] = useState(partner.tds_section);
+  const [msmeCategory, setMsmeCategory] = useState(partner.msme_category);
+  const [msmeActivity, setMsmeActivity] = useState(partner.msme_activity);
+  const [udyam, setUdyam] = useState(partner.udyam_number);
   const sections = useQuery({ queryKey: ["tds-sections"], queryFn: async () => unwrap(await api.GET("/api/v1/tds/sections")), staleTime: Infinity });
   const save = useMutation({
     mutationFn: async () => {
@@ -312,6 +315,7 @@ function EditTerms({ partner, onClose }: { partner: Partner; onClose: () => void
       if (editable.has("vendor_code")) body.vendor_code = vendorCode;
       if (editable.has("customer_code")) body.customer_code = customerCode;
       if (editable.has("tds_section")) body.tds_section = tdsSection;
+      if (editable.has("msme_category")) Object.assign(body, { msme_category: msmeCategory, msme_activity: msmeActivity, udyam_number: udyam });
       return unwrap(await api.PATCH("/api/v1/partners/{relationship_id}", { params: { path: { relationship_id: partner.id } }, body }));
     },
     onSuccess: () => {
@@ -347,6 +351,39 @@ function EditTerms({ partner, onClose }: { partner: Partner; onClose: () => void
             </select>
           )}
         </Field>
+      ) : null}
+      {editable.has("msme_category") ? (
+        <fieldset className="rounded border border-gray-200 p-3">
+          <legend className="px-1 text-sm font-semibold text-gray-700">MSME (from their Udyam certificate)</legend>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Enterprise">
+              {(id) => (
+                <select id={id} className="field-input" value={msmeCategory} onChange={(e) => setMsmeCategory(e.target.value)}>
+                  <option value="">Not an MSME / not known</option>
+                  <option value="micro">Micro</option>
+                  <option value="small">Small</option>
+                  <option value="medium">Medium</option>
+                </select>
+              )}
+            </Field>
+            <Field label="Activity">
+              {(id) => (
+                <select id={id} className="field-input" value={msmeActivity} disabled={!msmeCategory} onChange={(e) => setMsmeActivity(e.target.value)}>
+                  <option value="">—</option>
+                  <option value="manufacturing">Manufacturing</option>
+                  <option value="services">Services</option>
+                  <option value="trading">Trading</option>
+                </select>
+              )}
+            </Field>
+          </div>
+          <Field label="Udyam registration number" hint="E.g. UDYAM-TN-03-0012345.">
+            {(id) => <input id={id} className="field-input uppercase" maxLength={25} value={udyam} disabled={!msmeCategory} onChange={(e) => setUdyam(e.target.value)} />}
+          </Field>
+          <p className="text-xs text-gray-500">
+            Micro and small manufacturers and service providers must be paid within your credit period, at most 45 days (15 with no agreed terms). Bills from them are tracked under Accounts, MSME.
+          </p>
+        </fieldset>
       ) : null}
       {editable.has("customer_code") ? (
         <Field label="Your customer code for them">

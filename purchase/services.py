@@ -447,6 +447,8 @@ def _post(bill, user):
     bill.approved_by, bill.approved_at, bill.posted_at = user, now, now
     bill.rejection_reason = ''
     apply_to_bill(bill)  # TDS on this bill, now that it counts
+    from finance import msme
+    msme.apply_to_bill(bill)  # the 45-day due date for micro and small suppliers
 
 
 @transaction.atomic

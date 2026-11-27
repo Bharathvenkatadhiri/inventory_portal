@@ -4,6 +4,48 @@
  */
 
 export interface paths {
+    "/api/v1/accounts/msme": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Msme Report
+         * @description Bills from micro and small suppliers for a financial year: paid on time,
+         *     late, still owed, and what s.43B(h) disallows; plus what falls due this week.
+         */
+        get: operations["finance_api_msme_report"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/accounts/msme/form1.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Msme Form1
+         * @description MSME Form 1 for a half year (H1 April-September, H2 October-March):
+         *     what's owed to micro and small suppliers for more than 45 days.
+         */
+        get: operations["finance_api_msme_form1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/accounts/outstanding": {
         parameters: {
             query?: never;
@@ -1532,6 +1574,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/purchase/quotations-received": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Quotations Received
+         * @description Quotations suppliers have sent us on MakeSetu.
+         */
+        get: operations["quotations_api_quotations_received"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchase/quotations-received/{quotation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Quotation Received */
+        get: operations["quotations_api_quotation_received"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchase/quotations-received/{quotation_id}/response": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Respond To Quotation */
+        post: operations["quotations_api_respond_to_quotation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/purchase/suppliers": {
         parameters: {
             query?: never;
@@ -1583,6 +1679,331 @@ export interface paths {
         put?: never;
         /** Inspect */
         post: operations["quality_api_inspect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quotations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Quotations
+         * @description Our quotations, newest first; revised ones are left out (the latest revision shows).
+         */
+        get: operations["quotations_api_list_quotations"];
+        put?: never;
+        /** Create Quotation */
+        post: operations["quotations_api_create_quotation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quotations/{quotation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Quotation */
+        get: operations["quotations_api_get_quotation"];
+        /** Update Quotation */
+        put: operations["quotations_api_update_quotation"];
+        post?: never;
+        /** Delete Quotation */
+        delete: operations["quotations_api_delete_quotation"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quotations/{quotation_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Quotation */
+        post: operations["quotations_api_cancel_quotation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quotations/{quotation_id}/convert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Convert Quotation
+         * @description A draft sales order at the quoted rates.
+         */
+        post: operations["quotations_api_convert_quotation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quotations/{quotation_id}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Quotation Pdf
+         * @description The seller, and the customer once it's been sent.
+         */
+        get: operations["quotations_api_quotation_pdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quotations/{quotation_id}/response": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record Quotation Response
+         * @description The customer's answer, when they gave it by phone or email.
+         */
+        post: operations["quotations_api_record_quotation_response"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quotations/{quotation_id}/revise": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revise Quotation
+         * @description A new draft revision; the one sent is kept, marked revised.
+         */
+        post: operations["quotations_api_revise_quotation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quotations/{quotation_id}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send Quotation */
+        post: operations["quotations_api_send_quotation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rfqs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Rfqs */
+        get: operations["quotations_api_list_rfqs"];
+        put?: never;
+        /** Create Rfq */
+        post: operations["quotations_api_create_rfq"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rfqs/{rfq_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Rfq
+         * @description The RFQ with every supplier's quote side by side.
+         */
+        get: operations["quotations_api_get_rfq"];
+        /** Update Rfq */
+        put: operations["quotations_api_update_rfq"];
+        post?: never;
+        /** Delete Rfq */
+        delete: operations["quotations_api_delete_rfq"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rfqs/{rfq_id}/award": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Award Rfq
+         * @description Awards the RFQ and raises a draft purchase order for each supplier chosen.
+         */
+        post: operations["quotations_api_award_rfq"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rfqs/{rfq_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Rfq */
+        post: operations["quotations_api_cancel_rfq"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rfqs/{rfq_id}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Rfq Pdf
+         * @description The RFQ to send to a supplier who isn't on MakeSetu.
+         */
+        get: operations["quotations_api_rfq_pdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rfqs/{rfq_id}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send Rfq */
+        post: operations["quotations_api_send_rfq"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rfqs/{rfq_id}/suppliers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Rfq Supplier */
+        post: operations["quotations_api_add_rfq_supplier"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rfqs/{rfq_id}/suppliers/{invite_id}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Declined
+         * @description The supplier said they won't quote.
+         */
+        post: operations["quotations_api_mark_declined"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rfqs/{rfq_id}/suppliers/{invite_id}/quote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Enter Quote
+         * @description A supplier's quote, entered for them (from their email or letter).
+         */
+        post: operations["quotations_api_enter_quote"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1941,6 +2362,80 @@ export interface paths {
         put?: never;
         /** Decline Order */
         post: operations["sales_api_decline_order"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales/rfqs-received": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Rfqs Received
+         * @description RFQs customers have sent us on MakeSetu.
+         */
+        get: operations["quotations_api_rfqs_received"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales/rfqs-received/{invite_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Rfq Received */
+        get: operations["quotations_api_rfq_received"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales/rfqs-received/{invite_id}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decline Rfq Received */
+        post: operations["quotations_api_decline_rfq_received"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales/rfqs-received/{invite_id}/quote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Quote On Rfq
+         * @description Our quote to the customer, against their RFQ.
+         */
+        post: operations["quotations_api_quote_on_rfq"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2949,6 +3444,13 @@ export interface components {
             rate: number | string;
             /** Unit */
             unit: string;
+        };
+        /** ConvertedOut */
+        ConvertedOut: {
+            /** Sales Order Id */
+            sales_order_id: number;
+            /** Sales Order Number */
+            sales_order_number: string;
         };
         /** CostReportRowOut */
         CostReportRowOut: {
@@ -4067,6 +4569,104 @@ export interface components {
             /** Section Label */
             section_label: string;
         };
+        /** MsmeBillOut */
+        MsmeBillOut: {
+            /** Category */
+            category: string;
+            /** Days Overdue */
+            days_overdue: number;
+            /** Disallowed Expense */
+            disallowed_expense: number | string;
+            /** Effect */
+            effect: string;
+            /** Id */
+            id: number;
+            /** Interest */
+            interest: number | string;
+            /**
+             * Invoice Date
+             * Format: date
+             */
+            invoice_date: string;
+            /**
+             * Msme Due Date
+             * Format: date
+             */
+            msme_due_date: string;
+            /** Number */
+            number: string;
+            /** Paid Late */
+            paid_late: number | string;
+            /** Paid On Time */
+            paid_on_time: number | string;
+            /** Payable */
+            payable: number | string;
+            supplier: components["schemas"]["PartyOut"];
+            /** Supplier Invoice Number */
+            supplier_invoice_number: string;
+            /** Unpaid */
+            unpaid: number | string;
+        };
+        /** MsmeDueOut */
+        MsmeDueOut: {
+            /** Days Left */
+            days_left: number;
+            /** Id */
+            id: number;
+            /**
+             * Msme Due Date
+             * Format: date
+             */
+            msme_due_date: string;
+            /** Number */
+            number: string;
+            /** Outstanding */
+            outstanding: number | string;
+            supplier: components["schemas"]["PartyOut"];
+        };
+        /** MsmeOut */
+        MsmeOut: {
+            /** Bank Rate */
+            bank_rate: number | string;
+            /** Bills */
+            bills: components["schemas"]["MsmeBillOut"][];
+            /** Due Soon */
+            due_soon: components["schemas"]["MsmeDueOut"][];
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            /** Fy */
+            fy: string;
+            /** Fy Options */
+            fy_options: string[];
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+            summary: components["schemas"]["MsmeSummaryOut"];
+        };
+        /** MsmeSummaryOut */
+        MsmeSummaryOut: {
+            /** Disallowed Expense */
+            disallowed_expense: number | string;
+            /** Interest */
+            interest: number | string;
+            /** Open */
+            open: number | string;
+            /** Overdue */
+            overdue: number | string;
+            /** Paid Late */
+            paid_late: number | string;
+            /** Paid On Time */
+            paid_on_time: number | string;
+            /** Payable */
+            payable: number | string;
+            /** Unpaid */
+            unpaid: number | string;
+        };
         /** NoteActionsOut */
         NoteActionsOut: {
             /** Cancel */
@@ -4244,6 +4844,10 @@ export interface components {
             due_date: string | null;
             /** Id */
             id: number;
+            /** Msme */
+            msme: boolean;
+            /** Msme Due Date */
+            msme_due_date: string | null;
             /** Number */
             number: string;
             /** Order Number */
@@ -4619,6 +5223,12 @@ export interface components {
             editable_terms: string[];
             /** Id */
             id: number;
+            /** Msme Activity */
+            msme_activity: string;
+            /** Msme Category */
+            msme_category: string;
+            /** Msme Covered */
+            msme_covered: boolean;
             partner: components["schemas"]["PartnerCompanyOut"];
             /** Payment Terms Days */
             payment_terms_days: number | null;
@@ -4628,6 +5238,8 @@ export interface components {
             status: string;
             /** Tds Section */
             tds_section: string;
+            /** Udyam Number */
+            udyam_number: string;
             /** Vendor Code */
             vendor_code: string;
             /** Waiting On */
@@ -4915,6 +5527,210 @@ export interface components {
             /** Warehouses */
             warehouses: number | null;
         };
+        /** QuotationIn */
+        QuotationIn: {
+            /** Customer Id */
+            customer_id: number;
+            /** Delivery Days */
+            delivery_days?: number | null;
+            /** Dispatch From Id */
+            dispatch_from_id: number;
+            /**
+             * Enquiry Reference
+             * @default
+             */
+            enquiry_reference: string;
+            /** Lines */
+            lines: components["schemas"]["QuoteLineIn"][];
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /** Payment Terms Days */
+            payment_terms_days?: number | null;
+            /** Quote Date */
+            quote_date?: string | null;
+            /**
+             * Terms
+             * @default
+             */
+            terms: string;
+            /** Valid Until */
+            valid_until?: string | null;
+        };
+        /** QuotationOut */
+        QuotationOut: {
+            actions: components["schemas"]["QuoteActionsOut"];
+            customer: components["schemas"]["PartyOut"];
+            /** Delivery Days */
+            delivery_days: number | null;
+            /** Dispatch From */
+            dispatch_from: string;
+            /** Dispatch From Id */
+            dispatch_from_id: number;
+            /** Enquiry Reference */
+            enquiry_reference: string;
+            /** Expired */
+            expired: boolean;
+            /** Id */
+            id: number;
+            /** Lines */
+            lines: components["schemas"]["QuoteLineOut"][];
+            /** Notes */
+            notes: string;
+            /** Number */
+            number: string;
+            /** Payment Terms Days */
+            payment_terms_days: number | null;
+            /** Prepared By */
+            prepared_by: string;
+            /**
+             * Quote Date
+             * Format: date
+             */
+            quote_date: string;
+            /** Responded By */
+            responded_by: string;
+            /** Response Note */
+            response_note: string;
+            /** Revision */
+            revision: number;
+            /** Revisions */
+            revisions: components["schemas"]["QuoteRevisionOut"][];
+            /** Sales Order Id */
+            sales_order_id: number | null;
+            /** Sales Order Number */
+            sales_order_number: string;
+            seller: components["schemas"]["PartyOut"];
+            /** Status */
+            status: string;
+            /** Status Label */
+            status_label: string;
+            /** Terms */
+            terms: string;
+            totals: components["schemas"]["TotalsOut"];
+            /**
+             * Valid Until
+             * Format: date
+             */
+            valid_until: string;
+        };
+        /** QuoteActionsOut */
+        QuoteActionsOut: {
+            /** Cancel */
+            cancel: boolean;
+            /** Convert */
+            convert: boolean;
+            /** Edit */
+            edit: boolean;
+            /** Record Response */
+            record_response: boolean;
+            /** Respond */
+            respond: boolean;
+            /** Revise */
+            revise: boolean;
+            /** Send */
+            send: boolean;
+        };
+        /** QuoteLineIn */
+        QuoteLineIn: {
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Gst Rate */
+            gst_rate?: number | string | null;
+            /** Item Id */
+            item_id: number;
+            /** Quantity */
+            quantity: number | string;
+            /** Rate */
+            rate?: number | string | null;
+        };
+        /** QuoteLineOut */
+        QuoteLineOut: {
+            /** Description */
+            description: string;
+            /** Gst Rate */
+            gst_rate: number | string;
+            /** Hsn Code */
+            hsn_code: string;
+            /** Id */
+            id: number;
+            /** Item Code */
+            item_code: string;
+            /** Item Id */
+            item_id: number;
+            /** Item Name */
+            item_name: string;
+            /** Quantity */
+            quantity: number | string;
+            /** Rate */
+            rate: number | string;
+            /** Tax Amount */
+            tax_amount: number | string;
+            /** Taxable Value */
+            taxable_value: number | string;
+            /** Unit */
+            unit: string;
+        };
+        /** QuoteListOut */
+        QuoteListOut: {
+            /** Id */
+            id: number;
+            /** Number */
+            number: string;
+            party: components["schemas"]["PartyOut"];
+            /**
+             * Quote Date
+             * Format: date
+             */
+            quote_date: string;
+            /** Sales Order Number */
+            sales_order_number: string;
+            /** Status */
+            status: string;
+            /** Status Label */
+            status_label: string;
+            /** Total */
+            total: number | string;
+            /**
+             * Valid Until
+             * Format: date
+             */
+            valid_until: string;
+        };
+        /** QuoteReasonIn */
+        QuoteReasonIn: {
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+        };
+        /** QuoteResponseIn */
+        QuoteResponseIn: {
+            /** Accepted */
+            accepted: boolean;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /** QuoteRevisionOut */
+        QuoteRevisionOut: {
+            /** Id */
+            id: number;
+            /** Number */
+            number: string;
+            /** Status */
+            status: string;
+            /** Status Label */
+            status_label: string;
+        };
         /** ReasonIn */
         ReasonIn: {
             /**
@@ -5110,6 +5926,313 @@ export interface components {
             gstr3b: components["schemas"]["TaxRowOut"][];
             /** Period */
             period: string;
+        };
+        /** RfqActionsOut */
+        RfqActionsOut: {
+            /** Award */
+            award: boolean;
+            /** Cancel */
+            cancel: boolean;
+            /** Edit */
+            edit: boolean;
+            /** Enter Quotes */
+            enter_quotes: boolean;
+            /** Send */
+            send: boolean;
+        };
+        /** RfqAddSupplierIn */
+        RfqAddSupplierIn: {
+            /** Supplier Id */
+            supplier_id: number;
+        };
+        /** RfqAwardIn */
+        RfqAwardIn: {
+            /**
+             * Awards
+             * @default []
+             */
+            awards: components["schemas"]["RfqAwardLineIn"][];
+            /** Invite Id */
+            invite_id?: number | null;
+        };
+        /** RfqAwardLineIn */
+        RfqAwardLineIn: {
+            /** Invite Id */
+            invite_id: number;
+            /** Rfq Line Id */
+            rfq_line_id: number;
+        };
+        /** RfqAwardedOut */
+        RfqAwardedOut: {
+            /** Purchase Order Ids */
+            purchase_order_ids: number[];
+            rfq: components["schemas"]["RfqOut"];
+        };
+        /** RfqCompareLineOut */
+        RfqCompareLineOut: {
+            line: components["schemas"]["RfqLineOut"];
+            /** Offers */
+            offers: components["schemas"]["RfqOfferOut"][];
+        };
+        /** RfqIn */
+        RfqIn: {
+            /** Lines */
+            lines: components["schemas"]["RfqLineIn"][];
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /** Required By */
+            required_by?: string | null;
+            /** Respond By */
+            respond_by?: string | null;
+            /** Rfq Date */
+            rfq_date?: string | null;
+            /** Ship To Id */
+            ship_to_id: number;
+            /**
+             * Supplier Ids
+             * @default []
+             */
+            supplier_ids: number[];
+            /** Title */
+            title: string;
+        };
+        /** RfqInviteOut */
+        RfqInviteOut: {
+            /** Complete */
+            complete: boolean;
+            /** Delivery Days */
+            delivery_days: number | null;
+            /** Entered By Supplier */
+            entered_by_supplier: boolean;
+            /** Id */
+            id: number;
+            /** Lines Quoted */
+            lines_quoted: number;
+            /** Payment Terms Days */
+            payment_terms_days: number | null;
+            /** Purchase Order Id */
+            purchase_order_id: number | null;
+            /** Purchase Order Number */
+            purchase_order_number: string;
+            /** Remarks */
+            remarks: string;
+            /** Status */
+            status: string;
+            /** Status Label */
+            status_label: string;
+            supplier: components["schemas"]["PartyOut"];
+            /** Taxable Value */
+            taxable_value: number | string;
+            /** Their Reference */
+            their_reference: string;
+            /** Total */
+            total: number | string;
+            /** Valid Until */
+            valid_until: string | null;
+        };
+        /** RfqLineIn */
+        RfqLineIn: {
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Item Id */
+            item_id: number;
+            /** Quantity */
+            quantity: number | string;
+        };
+        /** RfqLineOut */
+        RfqLineOut: {
+            /** Awarded To */
+            awarded_to: number | null;
+            /** Description */
+            description: string;
+            /** Id */
+            id: number;
+            /** Item Code */
+            item_code: string;
+            /** Item Id */
+            item_id: number;
+            /** Item Name */
+            item_name: string;
+            /** Quantity */
+            quantity: number | string;
+            /** Unit */
+            unit: string;
+        };
+        /** RfqListOut */
+        RfqListOut: {
+            /** Asked */
+            asked: number;
+            /** Id */
+            id: number;
+            /** Number */
+            number: string;
+            /** Quoted */
+            quoted: number;
+            /** Respond By */
+            respond_by: string | null;
+            /**
+             * Rfq Date
+             * Format: date
+             */
+            rfq_date: string;
+            /** Status */
+            status: string;
+            /** Status Label */
+            status_label: string;
+            /** Title */
+            title: string;
+        };
+        /** RfqOfferOut */
+        RfqOfferOut: {
+            /** Gst Rate */
+            gst_rate: number | string;
+            /** Invite Id */
+            invite_id: number;
+            /** Lowest */
+            lowest: boolean;
+            /** Rate */
+            rate: number | string;
+            /** Value */
+            value: number | string;
+        };
+        /** RfqOut */
+        RfqOut: {
+            actions: components["schemas"]["RfqActionsOut"];
+            /** Cancel Reason */
+            cancel_reason: string;
+            /** Created By */
+            created_by: string;
+            /** Id */
+            id: number;
+            /** Lines */
+            lines: components["schemas"]["RfqCompareLineOut"][];
+            /** Notes */
+            notes: string;
+            /** Number */
+            number: string;
+            /** Required By */
+            required_by: string | null;
+            /** Respond By */
+            respond_by: string | null;
+            /**
+             * Rfq Date
+             * Format: date
+             */
+            rfq_date: string;
+            /** Ship To */
+            ship_to: string;
+            /** Ship To Id */
+            ship_to_id: number;
+            /** Status */
+            status: string;
+            /** Status Label */
+            status_label: string;
+            /** Suppliers */
+            suppliers: components["schemas"]["RfqInviteOut"][];
+            /** Title */
+            title: string;
+        };
+        /** RfqQuoteIn */
+        RfqQuoteIn: {
+            /** Delivery Days */
+            delivery_days?: number | null;
+            /** Lines */
+            lines: components["schemas"]["RfqQuoteLineIn"][];
+            /** Payment Terms Days */
+            payment_terms_days?: number | null;
+            /**
+             * Remarks
+             * @default
+             */
+            remarks: string;
+            /**
+             * Their Reference
+             * @default
+             */
+            their_reference: string;
+            /** Valid Until */
+            valid_until?: string | null;
+        };
+        /** RfqQuoteLineIn */
+        RfqQuoteLineIn: {
+            /** Gst Rate */
+            gst_rate?: number | string | null;
+            /** Rate */
+            rate?: number | string | null;
+            /** Rfq Line Id */
+            rfq_line_id: number;
+        };
+        /** RfqReceivedLineOut */
+        RfqReceivedLineOut: {
+            /** Awarded To You */
+            awarded_to_you: boolean | null;
+            /** Description */
+            description: string;
+            /** Gst Rate */
+            gst_rate: number | string | null;
+            /** Hsn Code */
+            hsn_code: string;
+            /** Item Code */
+            item_code: string;
+            /** Item Name */
+            item_name: string;
+            /** Quantity */
+            quantity: number | string;
+            /** Rate */
+            rate: number | string | null;
+            /** Rfq Line Id */
+            rfq_line_id: number;
+            /** Unit */
+            unit: string;
+        };
+        /** RfqReceivedOut */
+        RfqReceivedOut: {
+            buyer: components["schemas"]["PartyOut"];
+            /** Can Quote */
+            can_quote: boolean;
+            /** Deliver To */
+            deliver_to: string;
+            /** Delivery Days */
+            delivery_days: number | null;
+            /** Invite Id */
+            invite_id: number;
+            /** Lines */
+            lines: components["schemas"]["RfqReceivedLineOut"][];
+            /** Notes */
+            notes: string;
+            /** Payment Terms Days */
+            payment_terms_days: number | null;
+            /** Remarks */
+            remarks: string;
+            /** Required By */
+            required_by: string | null;
+            /** Respond By */
+            respond_by: string | null;
+            /**
+             * Rfq Date
+             * Format: date
+             */
+            rfq_date: string;
+            /** Rfq Number */
+            rfq_number: string;
+            /** Rfq Status */
+            rfq_status: string;
+            /** Status */
+            status: string;
+            /** Status Label */
+            status_label: string;
+            /** Their Reference */
+            their_reference: string;
+            /** Title */
+            title: string;
+            /** Valid Until */
+            valid_until: string | null;
         };
         /** RoleIn */
         RoleIn: {
@@ -5606,12 +6729,37 @@ export interface components {
             credit_limit?: string | null;
             /** Customer Code */
             customer_code?: string | null;
+            /** Msme Activity */
+            msme_activity?: string | null;
+            /** Msme Category */
+            msme_category?: string | null;
             /** Payment Terms Days */
             payment_terms_days?: number | null;
             /** Tds Section */
             tds_section?: string | null;
+            /** Udyam Number */
+            udyam_number?: string | null;
             /** Vendor Code */
             vendor_code?: string | null;
+        };
+        /** TotalsOut */
+        TotalsOut: {
+            /** Cgst */
+            cgst: number | string;
+            /** Igst */
+            igst: number | string;
+            /** Is Interstate */
+            is_interstate: boolean;
+            /** Place Of Supply */
+            place_of_supply: string;
+            /** Round Off */
+            round_off: number | string;
+            /** Sgst */
+            sgst: number | string;
+            /** Taxable Value */
+            taxable_value: number | string;
+            /** Total */
+            total: number | string;
         };
         /** UserOut */
         UserOut: {
@@ -5787,6 +6935,49 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    finance_api_msme_report: {
+        parameters: {
+            query?: {
+                fy?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MsmeOut"];
+                };
+            };
+        };
+    };
+    finance_api_msme_form1: {
+        parameters: {
+            query: {
+                fy: string;
+                half: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     finance_api_outstanding: {
         parameters: {
             query: {
@@ -8365,6 +9556,74 @@ export interface operations {
             };
         };
     };
+    quotations_api_quotations_received: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteListOut"][];
+                };
+            };
+        };
+    };
+    quotations_api_quotation_received: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quotation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotationOut"];
+                };
+            };
+        };
+    };
+    quotations_api_respond_to_quotation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quotation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuoteResponseIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotationOut"];
+                };
+            };
+        };
+    };
     purchase_api_list_suppliers: {
         parameters: {
             query?: never;
@@ -8430,6 +9689,544 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LotOut"];
+                };
+            };
+        };
+    };
+    quotations_api_list_quotations: {
+        parameters: {
+            query?: {
+                status?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteListOut"][];
+                };
+            };
+        };
+    };
+    quotations_api_create_quotation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuotationIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotationOut"];
+                };
+            };
+        };
+    };
+    quotations_api_get_quotation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quotation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotationOut"];
+                };
+            };
+        };
+    };
+    quotations_api_update_quotation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quotation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuotationIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotationOut"];
+                };
+            };
+        };
+    };
+    quotations_api_delete_quotation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quotation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    quotations_api_cancel_quotation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quotation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuoteReasonIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotationOut"];
+                };
+            };
+        };
+    };
+    quotations_api_convert_quotation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quotation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConvertedOut"];
+                };
+            };
+        };
+    };
+    quotations_api_quotation_pdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quotation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    quotations_api_record_quotation_response: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quotation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuoteResponseIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotationOut"];
+                };
+            };
+        };
+    };
+    quotations_api_revise_quotation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quotation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotationOut"];
+                };
+            };
+        };
+    };
+    quotations_api_send_quotation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quotation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotationOut"];
+                };
+            };
+        };
+    };
+    quotations_api_list_rfqs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfqListOut"][];
+                };
+            };
+        };
+    };
+    quotations_api_create_rfq: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RfqIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfqOut"];
+                };
+            };
+        };
+    };
+    quotations_api_get_rfq: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfqOut"];
+                };
+            };
+        };
+    };
+    quotations_api_update_rfq: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RfqIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfqOut"];
+                };
+            };
+        };
+    };
+    quotations_api_delete_rfq: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    quotations_api_award_rfq: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RfqAwardIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfqAwardedOut"];
+                };
+            };
+        };
+    };
+    quotations_api_cancel_rfq: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuoteReasonIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfqOut"];
+                };
+            };
+        };
+    };
+    quotations_api_rfq_pdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    quotations_api_send_rfq: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfqOut"];
+                };
+            };
+        };
+    };
+    quotations_api_add_rfq_supplier: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RfqAddSupplierIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfqOut"];
+                };
+            };
+        };
+    };
+    quotations_api_mark_declined: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: number;
+                invite_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuoteReasonIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfqOut"];
+                };
+            };
+        };
+    };
+    quotations_api_enter_quote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: number;
+                invite_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RfqQuoteIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfqOut"];
                 };
             };
         };
@@ -9074,6 +10871,100 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    quotations_api_rfqs_received: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfqReceivedOut"][];
+                };
+            };
+        };
+    };
+    quotations_api_rfq_received: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invite_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfqReceivedOut"];
+                };
+            };
+        };
+    };
+    quotations_api_decline_rfq_received: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invite_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuoteReasonIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfqReceivedOut"];
+                };
+            };
+        };
+    };
+    quotations_api_quote_on_rfq: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invite_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RfqQuoteIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfqReceivedOut"];
+                };
             };
         };
     };

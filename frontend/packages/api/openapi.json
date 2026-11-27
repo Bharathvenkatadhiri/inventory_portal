@@ -2022,6 +2022,24 @@
         "title": "ConsumptionOut",
         "type": "object"
       },
+      "ConvertedOut": {
+        "properties": {
+          "sales_order_id": {
+            "title": "Sales Order Id",
+            "type": "integer"
+          },
+          "sales_order_number": {
+            "title": "Sales Order Number",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sales_order_id",
+          "sales_order_number"
+        ],
+        "title": "ConvertedOut",
+        "type": "object"
+      },
       "CostReportRowOut": {
         "properties": {
           "actual_unit_cost": {
@@ -5586,6 +5604,346 @@
         "title": "MonthOut",
         "type": "object"
       },
+      "MsmeBillOut": {
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "days_overdue": {
+            "title": "Days Overdue",
+            "type": "integer"
+          },
+          "disallowed_expense": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Disallowed Expense"
+          },
+          "effect": {
+            "title": "Effect",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "interest": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Interest"
+          },
+          "invoice_date": {
+            "format": "date",
+            "title": "Invoice Date",
+            "type": "string"
+          },
+          "msme_due_date": {
+            "format": "date",
+            "title": "Msme Due Date",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "paid_late": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Paid Late"
+          },
+          "paid_on_time": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Paid On Time"
+          },
+          "payable": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Payable"
+          },
+          "supplier": {
+            "$ref": "#/components/schemas/PartyOut"
+          },
+          "supplier_invoice_number": {
+            "title": "Supplier Invoice Number",
+            "type": "string"
+          },
+          "unpaid": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Unpaid"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "supplier_invoice_number",
+          "supplier",
+          "category",
+          "invoice_date",
+          "msme_due_date",
+          "payable",
+          "paid_on_time",
+          "paid_late",
+          "unpaid",
+          "days_overdue",
+          "effect",
+          "disallowed_expense",
+          "interest"
+        ],
+        "title": "MsmeBillOut",
+        "type": "object"
+      },
+      "MsmeDueOut": {
+        "properties": {
+          "days_left": {
+            "title": "Days Left",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "msme_due_date": {
+            "format": "date",
+            "title": "Msme Due Date",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "outstanding": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Outstanding"
+          },
+          "supplier": {
+            "$ref": "#/components/schemas/PartyOut"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "supplier",
+          "msme_due_date",
+          "days_left",
+          "outstanding"
+        ],
+        "title": "MsmeDueOut",
+        "type": "object"
+      },
+      "MsmeOut": {
+        "properties": {
+          "bank_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Bank Rate"
+          },
+          "bills": {
+            "items": {
+              "$ref": "#/components/schemas/MsmeBillOut"
+            },
+            "title": "Bills",
+            "type": "array"
+          },
+          "due_soon": {
+            "items": {
+              "$ref": "#/components/schemas/MsmeDueOut"
+            },
+            "title": "Due Soon",
+            "type": "array"
+          },
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "fy": {
+            "title": "Fy",
+            "type": "string"
+          },
+          "fy_options": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Fy Options",
+            "type": "array"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/MsmeSummaryOut"
+          }
+        },
+        "required": [
+          "fy",
+          "fy_options",
+          "start",
+          "end",
+          "bank_rate",
+          "summary",
+          "bills",
+          "due_soon"
+        ],
+        "title": "MsmeOut",
+        "type": "object"
+      },
+      "MsmeSummaryOut": {
+        "properties": {
+          "disallowed_expense": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Disallowed Expense"
+          },
+          "interest": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Interest"
+          },
+          "open": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Open"
+          },
+          "overdue": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Overdue"
+          },
+          "paid_late": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Paid Late"
+          },
+          "paid_on_time": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Paid On Time"
+          },
+          "payable": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Payable"
+          },
+          "unpaid": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Unpaid"
+          }
+        },
+        "required": [
+          "payable",
+          "paid_on_time",
+          "paid_late",
+          "unpaid",
+          "disallowed_expense",
+          "interest",
+          "overdue",
+          "open"
+        ],
+        "title": "MsmeSummaryOut",
+        "type": "object"
+      },
       "NoteActionsOut": {
         "properties": {
           "cancel": {
@@ -6114,6 +6472,22 @@
             "title": "Id",
             "type": "integer"
           },
+          "msme": {
+            "title": "Msme",
+            "type": "boolean"
+          },
+          "msme_due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Msme Due Date"
+          },
           "number": {
             "title": "Number",
             "type": "string"
@@ -6197,7 +6571,9 @@
           "available",
           "status",
           "status_label",
-          "bucket"
+          "bucket",
+          "msme",
+          "msme_due_date"
         ],
         "title": "OpenDocumentOut",
         "type": "object"
@@ -7379,6 +7755,18 @@
             "title": "Id",
             "type": "integer"
           },
+          "msme_activity": {
+            "title": "Msme Activity",
+            "type": "string"
+          },
+          "msme_category": {
+            "title": "Msme Category",
+            "type": "string"
+          },
+          "msme_covered": {
+            "title": "Msme Covered",
+            "type": "boolean"
+          },
           "partner": {
             "$ref": "#/components/schemas/PartnerCompanyOut"
           },
@@ -7403,6 +7791,10 @@
           },
           "tds_section": {
             "title": "Tds Section",
+            "type": "string"
+          },
+          "udyam_number": {
+            "title": "Udyam Number",
             "type": "string"
           },
           "vendor_code": {
@@ -7433,6 +7825,10 @@
           "vendor_code",
           "customer_code",
           "tds_section",
+          "msme_category",
+          "msme_activity",
+          "udyam_number",
+          "msme_covered",
           "editable_terms",
           "created_at",
           "activated_at"
@@ -8362,6 +8758,578 @@
         "title": "PlanOut",
         "type": "object"
       },
+      "QuotationIn": {
+        "properties": {
+          "customer_id": {
+            "title": "Customer Id",
+            "type": "integer"
+          },
+          "delivery_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delivery Days"
+          },
+          "dispatch_from_id": {
+            "title": "Dispatch From Id",
+            "type": "integer"
+          },
+          "enquiry_reference": {
+            "default": "",
+            "title": "Enquiry Reference",
+            "type": "string"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/QuoteLineIn"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "notes": {
+            "default": "",
+            "title": "Notes",
+            "type": "string"
+          },
+          "payment_terms_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Terms Days"
+          },
+          "quote_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quote Date"
+          },
+          "terms": {
+            "default": "",
+            "title": "Terms",
+            "type": "string"
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Until"
+          }
+        },
+        "required": [
+          "customer_id",
+          "dispatch_from_id",
+          "lines"
+        ],
+        "title": "QuotationIn",
+        "type": "object"
+      },
+      "QuotationOut": {
+        "properties": {
+          "actions": {
+            "$ref": "#/components/schemas/QuoteActionsOut"
+          },
+          "customer": {
+            "$ref": "#/components/schemas/PartyOut"
+          },
+          "delivery_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delivery Days"
+          },
+          "dispatch_from": {
+            "title": "Dispatch From",
+            "type": "string"
+          },
+          "dispatch_from_id": {
+            "title": "Dispatch From Id",
+            "type": "integer"
+          },
+          "enquiry_reference": {
+            "title": "Enquiry Reference",
+            "type": "string"
+          },
+          "expired": {
+            "title": "Expired",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/QuoteLineOut"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "payment_terms_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Terms Days"
+          },
+          "prepared_by": {
+            "title": "Prepared By",
+            "type": "string"
+          },
+          "quote_date": {
+            "format": "date",
+            "title": "Quote Date",
+            "type": "string"
+          },
+          "responded_by": {
+            "title": "Responded By",
+            "type": "string"
+          },
+          "response_note": {
+            "title": "Response Note",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "revisions": {
+            "items": {
+              "$ref": "#/components/schemas/QuoteRevisionOut"
+            },
+            "title": "Revisions",
+            "type": "array"
+          },
+          "sales_order_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sales Order Id"
+          },
+          "sales_order_number": {
+            "title": "Sales Order Number",
+            "type": "string"
+          },
+          "seller": {
+            "$ref": "#/components/schemas/PartyOut"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "terms": {
+            "title": "Terms",
+            "type": "string"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/TotalsOut"
+          },
+          "valid_until": {
+            "format": "date",
+            "title": "Valid Until",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "revision",
+          "status",
+          "status_label",
+          "expired",
+          "seller",
+          "customer",
+          "quote_date",
+          "valid_until",
+          "enquiry_reference",
+          "dispatch_from_id",
+          "dispatch_from",
+          "delivery_days",
+          "payment_terms_days",
+          "terms",
+          "notes",
+          "response_note",
+          "responded_by",
+          "sales_order_id",
+          "sales_order_number",
+          "revisions",
+          "totals",
+          "lines",
+          "prepared_by",
+          "actions"
+        ],
+        "title": "QuotationOut",
+        "type": "object"
+      },
+      "QuoteActionsOut": {
+        "properties": {
+          "cancel": {
+            "title": "Cancel",
+            "type": "boolean"
+          },
+          "convert": {
+            "title": "Convert",
+            "type": "boolean"
+          },
+          "edit": {
+            "title": "Edit",
+            "type": "boolean"
+          },
+          "record_response": {
+            "title": "Record Response",
+            "type": "boolean"
+          },
+          "respond": {
+            "title": "Respond",
+            "type": "boolean"
+          },
+          "revise": {
+            "title": "Revise",
+            "type": "boolean"
+          },
+          "send": {
+            "title": "Send",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "edit",
+          "send",
+          "revise",
+          "record_response",
+          "convert",
+          "cancel",
+          "respond"
+        ],
+        "title": "QuoteActionsOut",
+        "type": "object"
+      },
+      "QuoteLineIn": {
+        "properties": {
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "gst_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gst Rate"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate"
+          }
+        },
+        "required": [
+          "item_id",
+          "quantity"
+        ],
+        "title": "QuoteLineIn",
+        "type": "object"
+      },
+      "QuoteLineOut": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "gst_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Gst Rate"
+          },
+          "hsn_code": {
+            "title": "Hsn Code",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "item_code": {
+            "title": "Item Code",
+            "type": "string"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "item_name": {
+            "title": "Item Name",
+            "type": "string"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Rate"
+          },
+          "tax_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Tax Amount"
+          },
+          "taxable_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Taxable Value"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "item_id",
+          "item_code",
+          "item_name",
+          "hsn_code",
+          "description",
+          "quantity",
+          "unit",
+          "rate",
+          "gst_rate",
+          "taxable_value",
+          "tax_amount"
+        ],
+        "title": "QuoteLineOut",
+        "type": "object"
+      },
+      "QuoteListOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "party": {
+            "$ref": "#/components/schemas/PartyOut"
+          },
+          "quote_date": {
+            "format": "date",
+            "title": "Quote Date",
+            "type": "string"
+          },
+          "sales_order_number": {
+            "title": "Sales Order Number",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Total"
+          },
+          "valid_until": {
+            "format": "date",
+            "title": "Valid Until",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "status",
+          "status_label",
+          "party",
+          "quote_date",
+          "valid_until",
+          "total",
+          "sales_order_number"
+        ],
+        "title": "QuoteListOut",
+        "type": "object"
+      },
+      "QuoteReasonIn": {
+        "properties": {
+          "reason": {
+            "default": "",
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "title": "QuoteReasonIn",
+        "type": "object"
+      },
+      "QuoteResponseIn": {
+        "properties": {
+          "accepted": {
+            "title": "Accepted",
+            "type": "boolean"
+          },
+          "note": {
+            "default": "",
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "accepted"
+        ],
+        "title": "QuoteResponseIn",
+        "type": "object"
+      },
+      "QuoteRevisionOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "status",
+          "status_label"
+        ],
+        "title": "QuoteRevisionOut",
+        "type": "object"
+      },
       "ReasonIn": {
         "properties": {
           "reason": {
@@ -8904,6 +9872,995 @@
           "checks"
         ],
         "title": "ReturnSummaryOut",
+        "type": "object"
+      },
+      "RfqActionsOut": {
+        "properties": {
+          "award": {
+            "title": "Award",
+            "type": "boolean"
+          },
+          "cancel": {
+            "title": "Cancel",
+            "type": "boolean"
+          },
+          "edit": {
+            "title": "Edit",
+            "type": "boolean"
+          },
+          "enter_quotes": {
+            "title": "Enter Quotes",
+            "type": "boolean"
+          },
+          "send": {
+            "title": "Send",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "edit",
+          "send",
+          "enter_quotes",
+          "award",
+          "cancel"
+        ],
+        "title": "RfqActionsOut",
+        "type": "object"
+      },
+      "RfqAddSupplierIn": {
+        "properties": {
+          "supplier_id": {
+            "title": "Supplier Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "supplier_id"
+        ],
+        "title": "RfqAddSupplierIn",
+        "type": "object"
+      },
+      "RfqAwardIn": {
+        "properties": {
+          "awards": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/RfqAwardLineIn"
+            },
+            "title": "Awards",
+            "type": "array"
+          },
+          "invite_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invite Id"
+          }
+        },
+        "title": "RfqAwardIn",
+        "type": "object"
+      },
+      "RfqAwardLineIn": {
+        "properties": {
+          "invite_id": {
+            "title": "Invite Id",
+            "type": "integer"
+          },
+          "rfq_line_id": {
+            "title": "Rfq Line Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "rfq_line_id",
+          "invite_id"
+        ],
+        "title": "RfqAwardLineIn",
+        "type": "object"
+      },
+      "RfqAwardedOut": {
+        "properties": {
+          "purchase_order_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Purchase Order Ids",
+            "type": "array"
+          },
+          "rfq": {
+            "$ref": "#/components/schemas/RfqOut"
+          }
+        },
+        "required": [
+          "rfq",
+          "purchase_order_ids"
+        ],
+        "title": "RfqAwardedOut",
+        "type": "object"
+      },
+      "RfqCompareLineOut": {
+        "properties": {
+          "line": {
+            "$ref": "#/components/schemas/RfqLineOut"
+          },
+          "offers": {
+            "items": {
+              "$ref": "#/components/schemas/RfqOfferOut"
+            },
+            "title": "Offers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "line",
+          "offers"
+        ],
+        "title": "RfqCompareLineOut",
+        "type": "object"
+      },
+      "RfqIn": {
+        "properties": {
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/RfqLineIn"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "notes": {
+            "default": "",
+            "title": "Notes",
+            "type": "string"
+          },
+          "required_by": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required By"
+          },
+          "respond_by": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Respond By"
+          },
+          "rfq_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rfq Date"
+          },
+          "ship_to_id": {
+            "title": "Ship To Id",
+            "type": "integer"
+          },
+          "supplier_ids": {
+            "default": [],
+            "items": {
+              "type": "integer"
+            },
+            "title": "Supplier Ids",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "ship_to_id",
+          "lines"
+        ],
+        "title": "RfqIn",
+        "type": "object"
+      },
+      "RfqInviteOut": {
+        "properties": {
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "delivery_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delivery Days"
+          },
+          "entered_by_supplier": {
+            "title": "Entered By Supplier",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "lines_quoted": {
+            "title": "Lines Quoted",
+            "type": "integer"
+          },
+          "payment_terms_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Terms Days"
+          },
+          "purchase_order_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purchase Order Id"
+          },
+          "purchase_order_number": {
+            "title": "Purchase Order Number",
+            "type": "string"
+          },
+          "remarks": {
+            "title": "Remarks",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "supplier": {
+            "$ref": "#/components/schemas/PartyOut"
+          },
+          "taxable_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Taxable Value"
+          },
+          "their_reference": {
+            "title": "Their Reference",
+            "type": "string"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Total"
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Until"
+          }
+        },
+        "required": [
+          "id",
+          "supplier",
+          "status",
+          "status_label",
+          "their_reference",
+          "valid_until",
+          "delivery_days",
+          "payment_terms_days",
+          "remarks",
+          "entered_by_supplier",
+          "lines_quoted",
+          "complete",
+          "taxable_value",
+          "total",
+          "purchase_order_id",
+          "purchase_order_number"
+        ],
+        "title": "RfqInviteOut",
+        "type": "object"
+      },
+      "RfqLineIn": {
+        "properties": {
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          }
+        },
+        "required": [
+          "item_id",
+          "quantity"
+        ],
+        "title": "RfqLineIn",
+        "type": "object"
+      },
+      "RfqLineOut": {
+        "properties": {
+          "awarded_to": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Awarded To"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "item_code": {
+            "title": "Item Code",
+            "type": "string"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "item_name": {
+            "title": "Item Name",
+            "type": "string"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "item_id",
+          "item_code",
+          "item_name",
+          "description",
+          "quantity",
+          "unit",
+          "awarded_to"
+        ],
+        "title": "RfqLineOut",
+        "type": "object"
+      },
+      "RfqListOut": {
+        "properties": {
+          "asked": {
+            "title": "Asked",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "quoted": {
+            "title": "Quoted",
+            "type": "integer"
+          },
+          "respond_by": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Respond By"
+          },
+          "rfq_date": {
+            "format": "date",
+            "title": "Rfq Date",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "title",
+          "status",
+          "status_label",
+          "rfq_date",
+          "respond_by",
+          "asked",
+          "quoted"
+        ],
+        "title": "RfqListOut",
+        "type": "object"
+      },
+      "RfqOfferOut": {
+        "properties": {
+          "gst_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Gst Rate"
+          },
+          "invite_id": {
+            "title": "Invite Id",
+            "type": "integer"
+          },
+          "lowest": {
+            "title": "Lowest",
+            "type": "boolean"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Rate"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "invite_id",
+          "rate",
+          "gst_rate",
+          "value",
+          "lowest"
+        ],
+        "title": "RfqOfferOut",
+        "type": "object"
+      },
+      "RfqOut": {
+        "properties": {
+          "actions": {
+            "$ref": "#/components/schemas/RfqActionsOut"
+          },
+          "cancel_reason": {
+            "title": "Cancel Reason",
+            "type": "string"
+          },
+          "created_by": {
+            "title": "Created By",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/RfqCompareLineOut"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "required_by": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required By"
+          },
+          "respond_by": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Respond By"
+          },
+          "rfq_date": {
+            "format": "date",
+            "title": "Rfq Date",
+            "type": "string"
+          },
+          "ship_to": {
+            "title": "Ship To",
+            "type": "string"
+          },
+          "ship_to_id": {
+            "title": "Ship To Id",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "suppliers": {
+            "items": {
+              "$ref": "#/components/schemas/RfqInviteOut"
+            },
+            "title": "Suppliers",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "title",
+          "status",
+          "status_label",
+          "rfq_date",
+          "respond_by",
+          "required_by",
+          "ship_to_id",
+          "ship_to",
+          "notes",
+          "cancel_reason",
+          "lines",
+          "suppliers",
+          "created_by",
+          "actions"
+        ],
+        "title": "RfqOut",
+        "type": "object"
+      },
+      "RfqQuoteIn": {
+        "properties": {
+          "delivery_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delivery Days"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/RfqQuoteLineIn"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "payment_terms_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Terms Days"
+          },
+          "remarks": {
+            "default": "",
+            "title": "Remarks",
+            "type": "string"
+          },
+          "their_reference": {
+            "default": "",
+            "title": "Their Reference",
+            "type": "string"
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Until"
+          }
+        },
+        "required": [
+          "lines"
+        ],
+        "title": "RfqQuoteIn",
+        "type": "object"
+      },
+      "RfqQuoteLineIn": {
+        "properties": {
+          "gst_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gst Rate"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate"
+          },
+          "rfq_line_id": {
+            "title": "Rfq Line Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "rfq_line_id"
+        ],
+        "title": "RfqQuoteLineIn",
+        "type": "object"
+      },
+      "RfqReceivedLineOut": {
+        "properties": {
+          "awarded_to_you": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Awarded To You"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "gst_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gst Rate"
+          },
+          "hsn_code": {
+            "title": "Hsn Code",
+            "type": "string"
+          },
+          "item_code": {
+            "title": "Item Code",
+            "type": "string"
+          },
+          "item_name": {
+            "title": "Item Name",
+            "type": "string"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate"
+          },
+          "rfq_line_id": {
+            "title": "Rfq Line Id",
+            "type": "integer"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rfq_line_id",
+          "item_code",
+          "item_name",
+          "hsn_code",
+          "description",
+          "quantity",
+          "unit",
+          "rate",
+          "gst_rate",
+          "awarded_to_you"
+        ],
+        "title": "RfqReceivedLineOut",
+        "type": "object"
+      },
+      "RfqReceivedOut": {
+        "properties": {
+          "buyer": {
+            "$ref": "#/components/schemas/PartyOut"
+          },
+          "can_quote": {
+            "title": "Can Quote",
+            "type": "boolean"
+          },
+          "deliver_to": {
+            "title": "Deliver To",
+            "type": "string"
+          },
+          "delivery_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delivery Days"
+          },
+          "invite_id": {
+            "title": "Invite Id",
+            "type": "integer"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/RfqReceivedLineOut"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "string"
+          },
+          "payment_terms_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Terms Days"
+          },
+          "remarks": {
+            "title": "Remarks",
+            "type": "string"
+          },
+          "required_by": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required By"
+          },
+          "respond_by": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Respond By"
+          },
+          "rfq_date": {
+            "format": "date",
+            "title": "Rfq Date",
+            "type": "string"
+          },
+          "rfq_number": {
+            "title": "Rfq Number",
+            "type": "string"
+          },
+          "rfq_status": {
+            "title": "Rfq Status",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "their_reference": {
+            "title": "Their Reference",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Until"
+          }
+        },
+        "required": [
+          "invite_id",
+          "rfq_number",
+          "title",
+          "buyer",
+          "rfq_date",
+          "respond_by",
+          "required_by",
+          "deliver_to",
+          "notes",
+          "rfq_status",
+          "status",
+          "status_label",
+          "their_reference",
+          "valid_until",
+          "delivery_days",
+          "payment_terms_days",
+          "remarks",
+          "lines",
+          "can_quote"
+        ],
+        "title": "RfqReceivedOut",
         "type": "object"
       },
       "RoleIn": {
@@ -10598,6 +12555,28 @@
             ],
             "title": "Customer Code"
           },
+          "msme_activity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Msme Activity"
+          },
+          "msme_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Msme Category"
+          },
           "payment_terms_days": {
             "anyOf": [
               {
@@ -10620,6 +12599,17 @@
             ],
             "title": "Tds Section"
           },
+          "udyam_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Udyam Number"
+          },
           "vendor_code": {
             "anyOf": [
               {
@@ -10633,6 +12623,96 @@
           }
         },
         "title": "TermsIn",
+        "type": "object"
+      },
+      "TotalsOut": {
+        "properties": {
+          "cgst": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Cgst"
+          },
+          "igst": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Igst"
+          },
+          "is_interstate": {
+            "title": "Is Interstate",
+            "type": "boolean"
+          },
+          "place_of_supply": {
+            "title": "Place Of Supply",
+            "type": "string"
+          },
+          "round_off": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Round Off"
+          },
+          "sgst": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Sgst"
+          },
+          "taxable_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Taxable Value"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "required": [
+          "place_of_supply",
+          "is_interstate",
+          "taxable_value",
+          "cgst",
+          "sgst",
+          "igst",
+          "round_off",
+          "total"
+        ],
+        "title": "TotalsOut",
         "type": "object"
       },
       "UserOut": {
@@ -11173,6 +13253,85 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/accounts/msme": {
+      "get": {
+        "description": "Bills from micro and small suppliers for a financial year: paid on time,\nlate, still owed, and what s.43B(h) disallows; plus what falls due this week.",
+        "operationId": "finance_api_msme_report",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "fy",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Fy",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MsmeOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Msme Report",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/api/v1/accounts/msme/form1.csv": {
+      "get": {
+        "description": "MSME Form 1 for a half year (H1 April-September, H2 October-March):\nwhat's owed to micro and small suppliers for more than 45 days.",
+        "operationId": "finance_api_msme_form1",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "fy",
+            "required": true,
+            "schema": {
+              "title": "Fy",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "half",
+            "required": true,
+            "schema": {
+              "title": "Half",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Msme Form1",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
     "/api/v1/accounts/outstanding": {
       "get": {
         "description": "Receivables (direction=received: customers owe us) or payables\n(direction=made: we owe suppliers), with ageing by days overdue.",
@@ -15600,6 +17759,122 @@
         ]
       }
     },
+    "/api/v1/purchase/quotations-received": {
+      "get": {
+        "description": "Quotations suppliers have sent us on MakeSetu.",
+        "operationId": "quotations_api_quotations_received",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/QuoteListOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Quotations Received",
+        "tags": [
+          "quotations"
+        ]
+      }
+    },
+    "/api/v1/purchase/quotations-received/{quotation_id}": {
+      "get": {
+        "operationId": "quotations_api_quotation_received",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "quotation_id",
+            "required": true,
+            "schema": {
+              "title": "Quotation Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotationOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Quotation Received",
+        "tags": [
+          "quotations"
+        ]
+      }
+    },
+    "/api/v1/purchase/quotations-received/{quotation_id}/response": {
+      "post": {
+        "operationId": "quotations_api_respond_to_quotation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "quotation_id",
+            "required": true,
+            "schema": {
+              "title": "Quotation Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuoteResponseIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotationOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Respond To Quotation",
+        "tags": [
+          "quotations"
+        ]
+      }
+    },
     "/api/v1/purchase/suppliers": {
       "get": {
         "description": "Organizations this one can order from (active relationships where it buys).",
@@ -15735,6 +18010,934 @@
         "summary": "Inspect",
         "tags": [
           "qc"
+        ]
+      }
+    },
+    "/api/v1/quotations": {
+      "get": {
+        "description": "Our quotations, newest first; revised ones are left out (the latest revision shows).",
+        "operationId": "quotations_api_list_quotations",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Status",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/QuoteListOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "List Quotations",
+        "tags": [
+          "quotations"
+        ]
+      },
+      "post": {
+        "operationId": "quotations_api_create_quotation",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuotationIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotationOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Create Quotation",
+        "tags": [
+          "quotations"
+        ]
+      }
+    },
+    "/api/v1/quotations/{quotation_id}": {
+      "delete": {
+        "operationId": "quotations_api_delete_quotation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "quotation_id",
+            "required": true,
+            "schema": {
+              "title": "Quotation Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Delete Quotation",
+        "tags": [
+          "quotations"
+        ]
+      },
+      "get": {
+        "operationId": "quotations_api_get_quotation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "quotation_id",
+            "required": true,
+            "schema": {
+              "title": "Quotation Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotationOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Get Quotation",
+        "tags": [
+          "quotations"
+        ]
+      },
+      "put": {
+        "operationId": "quotations_api_update_quotation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "quotation_id",
+            "required": true,
+            "schema": {
+              "title": "Quotation Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuotationIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotationOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Update Quotation",
+        "tags": [
+          "quotations"
+        ]
+      }
+    },
+    "/api/v1/quotations/{quotation_id}/cancel": {
+      "post": {
+        "operationId": "quotations_api_cancel_quotation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "quotation_id",
+            "required": true,
+            "schema": {
+              "title": "Quotation Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuoteReasonIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotationOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Cancel Quotation",
+        "tags": [
+          "quotations"
+        ]
+      }
+    },
+    "/api/v1/quotations/{quotation_id}/convert": {
+      "post": {
+        "description": "A draft sales order at the quoted rates.",
+        "operationId": "quotations_api_convert_quotation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "quotation_id",
+            "required": true,
+            "schema": {
+              "title": "Quotation Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConvertedOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Convert Quotation",
+        "tags": [
+          "quotations"
+        ]
+      }
+    },
+    "/api/v1/quotations/{quotation_id}/pdf": {
+      "get": {
+        "description": "The seller, and the customer once it's been sent.",
+        "operationId": "quotations_api_quotation_pdf",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "quotation_id",
+            "required": true,
+            "schema": {
+              "title": "Quotation Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Quotation Pdf",
+        "tags": [
+          "quotations"
+        ]
+      }
+    },
+    "/api/v1/quotations/{quotation_id}/response": {
+      "post": {
+        "description": "The customer's answer, when they gave it by phone or email.",
+        "operationId": "quotations_api_record_quotation_response",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "quotation_id",
+            "required": true,
+            "schema": {
+              "title": "Quotation Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuoteResponseIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotationOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Record Quotation Response",
+        "tags": [
+          "quotations"
+        ]
+      }
+    },
+    "/api/v1/quotations/{quotation_id}/revise": {
+      "post": {
+        "description": "A new draft revision; the one sent is kept, marked revised.",
+        "operationId": "quotations_api_revise_quotation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "quotation_id",
+            "required": true,
+            "schema": {
+              "title": "Quotation Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotationOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Revise Quotation",
+        "tags": [
+          "quotations"
+        ]
+      }
+    },
+    "/api/v1/quotations/{quotation_id}/send": {
+      "post": {
+        "operationId": "quotations_api_send_quotation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "quotation_id",
+            "required": true,
+            "schema": {
+              "title": "Quotation Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotationOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Send Quotation",
+        "tags": [
+          "quotations"
+        ]
+      }
+    },
+    "/api/v1/rfqs": {
+      "get": {
+        "operationId": "quotations_api_list_rfqs",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RfqListOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "List Rfqs",
+        "tags": [
+          "quotations"
+        ]
+      },
+      "post": {
+        "operationId": "quotations_api_create_rfq",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RfqIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RfqOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Create Rfq",
+        "tags": [
+          "quotations"
+        ]
+      }
+    },
+    "/api/v1/rfqs/{rfq_id}": {
+      "delete": {
+        "operationId": "quotations_api_delete_rfq",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rfq_id",
+            "required": true,
+            "schema": {
+              "title": "Rfq Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Delete Rfq",
+        "tags": [
+          "quotations"
+        ]
+      },
+      "get": {
+        "description": "The RFQ with every supplier's quote side by side.",
+        "operationId": "quotations_api_get_rfq",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rfq_id",
+            "required": true,
+            "schema": {
+              "title": "Rfq Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RfqOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Get Rfq",
+        "tags": [
+          "quotations"
+        ]
+      },
+      "put": {
+        "operationId": "quotations_api_update_rfq",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rfq_id",
+            "required": true,
+            "schema": {
+              "title": "Rfq Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RfqIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RfqOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Update Rfq",
+        "tags": [
+          "quotations"
+        ]
+      }
+    },
+    "/api/v1/rfqs/{rfq_id}/award": {
+      "post": {
+        "description": "Awards the RFQ and raises a draft purchase order for each supplier chosen.",
+        "operationId": "quotations_api_award_rfq",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rfq_id",
+            "required": true,
+            "schema": {
+              "title": "Rfq Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RfqAwardIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RfqAwardedOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Award Rfq",
+        "tags": [
+          "quotations"
+        ]
+      }
+    },
+    "/api/v1/rfqs/{rfq_id}/cancel": {
+      "post": {
+        "operationId": "quotations_api_cancel_rfq",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rfq_id",
+            "required": true,
+            "schema": {
+              "title": "Rfq Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuoteReasonIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RfqOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Cancel Rfq",
+        "tags": [
+          "quotations"
+        ]
+      }
+    },
+    "/api/v1/rfqs/{rfq_id}/pdf": {
+      "get": {
+        "description": "The RFQ to send to a supplier who isn't on MakeSetu.",
+        "operationId": "quotations_api_rfq_pdf",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rfq_id",
+            "required": true,
+            "schema": {
+              "title": "Rfq Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Rfq Pdf",
+        "tags": [
+          "quotations"
+        ]
+      }
+    },
+    "/api/v1/rfqs/{rfq_id}/send": {
+      "post": {
+        "operationId": "quotations_api_send_rfq",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rfq_id",
+            "required": true,
+            "schema": {
+              "title": "Rfq Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RfqOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Send Rfq",
+        "tags": [
+          "quotations"
+        ]
+      }
+    },
+    "/api/v1/rfqs/{rfq_id}/suppliers": {
+      "post": {
+        "operationId": "quotations_api_add_rfq_supplier",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rfq_id",
+            "required": true,
+            "schema": {
+              "title": "Rfq Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RfqAddSupplierIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RfqOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Add Rfq Supplier",
+        "tags": [
+          "quotations"
+        ]
+      }
+    },
+    "/api/v1/rfqs/{rfq_id}/suppliers/{invite_id}/decline": {
+      "post": {
+        "description": "The supplier said they won't quote.",
+        "operationId": "quotations_api_mark_declined",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rfq_id",
+            "required": true,
+            "schema": {
+              "title": "Rfq Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "invite_id",
+            "required": true,
+            "schema": {
+              "title": "Invite Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuoteReasonIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RfqOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Mark Declined",
+        "tags": [
+          "quotations"
+        ]
+      }
+    },
+    "/api/v1/rfqs/{rfq_id}/suppliers/{invite_id}/quote": {
+      "post": {
+        "description": "A supplier's quote, entered for them (from their email or letter).",
+        "operationId": "quotations_api_enter_quote",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rfq_id",
+            "required": true,
+            "schema": {
+              "title": "Rfq Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "invite_id",
+            "required": true,
+            "schema": {
+              "title": "Invite Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RfqQuoteIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RfqOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Enter Quote",
+        "tags": [
+          "quotations"
         ]
       }
     },
@@ -16814,6 +20017,170 @@
         "summary": "Decline Order",
         "tags": [
           "sales"
+        ]
+      }
+    },
+    "/api/v1/sales/rfqs-received": {
+      "get": {
+        "description": "RFQs customers have sent us on MakeSetu.",
+        "operationId": "quotations_api_rfqs_received",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RfqReceivedOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Rfqs Received",
+        "tags": [
+          "quotations"
+        ]
+      }
+    },
+    "/api/v1/sales/rfqs-received/{invite_id}": {
+      "get": {
+        "operationId": "quotations_api_rfq_received",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invite_id",
+            "required": true,
+            "schema": {
+              "title": "Invite Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RfqReceivedOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Rfq Received",
+        "tags": [
+          "quotations"
+        ]
+      }
+    },
+    "/api/v1/sales/rfqs-received/{invite_id}/decline": {
+      "post": {
+        "operationId": "quotations_api_decline_rfq_received",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invite_id",
+            "required": true,
+            "schema": {
+              "title": "Invite Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuoteReasonIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RfqReceivedOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Decline Rfq Received",
+        "tags": [
+          "quotations"
+        ]
+      }
+    },
+    "/api/v1/sales/rfqs-received/{invite_id}/quote": {
+      "post": {
+        "description": "Our quote to the customer, against their RFQ.",
+        "operationId": "quotations_api_quote_on_rfq",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invite_id",
+            "required": true,
+            "schema": {
+              "title": "Invite Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RfqQuoteIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RfqReceivedOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Quote On Rfq",
+        "tags": [
+          "quotations"
         ]
       }
     },

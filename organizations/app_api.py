@@ -887,6 +887,11 @@ class PartnerOut(Schema):
     vendor_code: str
     customer_code: str
     tds_section: str
+    msme_category: str
+    msme_activity: str
+    udyam_number: str
+    # A micro or small manufacturer or service provider: bills are due within 45 days.
+    msme_covered: bool
     editable_terms: List[str]
     created_at: datetime
     activated_at: Optional[datetime]
@@ -919,6 +924,9 @@ class TermsIn(Schema):
     vendor_code: Optional[str] = None
     customer_code: Optional[str] = None
     tds_section: Optional[str] = None
+    msme_category: Optional[str] = None
+    msme_activity: Optional[str] = None
+    udyam_number: Optional[str] = None
 
 
 def _partner_out(relationship, company):
@@ -1012,6 +1020,20 @@ def update_partner_terms(request, relationship_id: int, payload: TermsIn):
         changes['tds_section'] = changes['tds_section'] or ''
         if changes['tds_section'] and changes['tds_section'] not in SECTIONS:
             raise HttpError(400, "Choose a TDS section from the list.")
+    from finance import msme
+    for field, choices in (('msme_category', ('', 'micro', 'small', 'medium')),
+                           ('msme_activity', ('', 'manufacturing', 'services', 'trading'))):
+        if field in changes:
+            changes[field] = changes[field] or ''
+            if changes[field] not in choices:
+                raise HttpError(400, "Choose the enterprise and activity from the lists.")
+    if 'udyam_number' in changes:
+        try:
+            changes['udyam_number'] = msme.clean_udyam(changes['udyam_number'])
+        except msme.MsmeError as exc:
+            raise HttpError(400, str(exc))
+    if changes.get('msme_category') == '':
+        changes.update(msme_activity='', udyam_number='')
     if 'payment_terms_days' in changes and changes['payment_terms_days'] is not None \
             and not 0 <= changes['payment_terms_days'] <= 365:
         raise HttpError(400, "Payment terms are 0 to 365 days.")

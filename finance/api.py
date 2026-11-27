@@ -67,6 +67,9 @@ class OpenDocumentOut(Schema):
     status: str
     status_label: str
     bucket: str
+    # A bill from a micro or small supplier, due within 45 days (finance.msme).
+    msme: bool
+    msme_due_date: Optional[date]
 
 
 class PartyBalanceOut(Schema):
@@ -103,6 +106,7 @@ def _doc_out(r):
         'party': _party(r['party']), 'date': r['date'], 'due_date': r['due_date'], 'total': r['total'], 'paid': r['paid'],
         'pending': r['pending'], 'outstanding': r['outstanding'], 'available': r['available'], 'status': r['status'],
         'status_label': r['status_label'], 'bucket': r['bucket'],
+        'msme': bool(getattr(r['document'], 'msme_category', '')), 'msme_due_date': getattr(r['document'], 'msme_due_date', None),
     }
 
 
@@ -283,3 +287,123 @@ def cancel_payment(request, payment_id: int, payload: ReasonIn):
     membership = membership_for(request, 'payment.record', write=True)
     payment = _run(services.cancel_payment, membership, _payment(membership, payment_id), payload.reason)
     return _payment_out(_payment(membership, payment.pk), membership)
+
+
+# --- MSME: paying micro and small suppliers on time (s.43B(h)) -------------------------------------
+
+class MsmeBillOut(Schema):
+    id: int
+    number: str
+    supplier_invoice_number: str
+    supplier: PartyOut
+    category: str
+    invoice_date: date
+    msme_due_date: date
+    payable: Decimal
+    paid_on_time: Decimal
+    paid_late: Decimal
+    unpaid: Decimal
+    days_overdue: int
+    # allowed; disallowed (s.43B(h), after the year end); while the year runs, overdue
+    # (past due: pay before 31 March to keep the deduction) or open (not due yet).
+    effect: str
+    disallowed_expense: Decimal
+    interest: Decimal
+
+
+class MsmeSummaryOut(Schema):
+    payable: Decimal
+    paid_on_time: Decimal
+    paid_late: Decimal
+    unpaid: Decimal
+    disallowed_expense: Decimal
+    interest: Decimal
+    overdue: Decimal
+    open: Decimal
+
+
+class MsmeDueOut(Schema):
+    id: int
+    number: str
+    supplier: PartyOut
+    msme_due_date: date
+    days_left: int
+    outstanding: Decimal
+
+
+class MsmeOut(Schema):
+    fy: str
+    fy_options: List[str]
+    start: date
+    end: date
+    bank_rate: Decimal
+    summary: MsmeSummaryOut
+    bills: List[MsmeBillOut]
+    due_soon: List[MsmeDueOut]
+
+
+@router.get('/accounts/msme', response=MsmeOut)
+def msme_report(request, fy: str = ''):
+    """Bills from micro and small suppliers for a financial year: paid on time,
+    late, still owed, and what s.43B(h) disallows; plus what falls due this week."""
+    from django.utils import timezone
+
+    from . import msme
+
+    membership = viewer(request)
+    company = membership.company
+    current = msme.current_fy()
+    fy = fy or current
+    try:
+        start, end = msme.fy_bounds(fy)
+    except (ValueError, IndexError):
+        raise HttpError(400, "Choose a financial year like 2026-27.")
+    first = int(current[:4])
+    rows = msme.bill_rows(company, start, end)
+    today = timezone.localdate()
+    return {
+        'fy': fy, 'fy_options': [f"{y}-{str(y + 1)[2:]}" for y in range(first, first - 4, -1)], 'start': start, 'end': end,
+        'bank_rate': msme.BANK_RATE, 'summary': msme.summary(rows),
+        'bills': [{
+            'id': r['bill'].pk, 'number': r['bill'].number, 'supplier_invoice_number': r['bill'].supplier_invoice_number,
+            'supplier': _party(r['supplier']), 'category': r['category'], 'invoice_date': r['bill'].invoice_date,
+            'msme_due_date': r['bill'].msme_due_date, 'payable': r['payable'], 'paid_on_time': r['paid_on_time'],
+            'paid_late': r['paid_late'], 'unpaid': r['unpaid'], 'days_overdue': r['days_overdue'], 'effect': r['effect'],
+            'disallowed_expense': r['disallowed_expense'], 'interest': r['interest'],
+        } for r in rows],
+        'due_soon': [{'id': r['document'].pk, 'number': r['number'], 'supplier': _party(r['party']),
+                      'msme_due_date': r['document'].msme_due_date, 'days_left': (r['document'].msme_due_date - today).days,
+                      'outstanding': r['outstanding']} for r in msme.due_soon(company)],
+    }
+
+
+@router.get('/accounts/msme/form1.csv')
+def msme_form1(request, fy: str, half: str):
+    """MSME Form 1 for a half year (H1 April-September, H2 October-March):
+    what's owed to micro and small suppliers for more than 45 days."""
+    import csv
+    import io
+
+    from django.http import HttpResponse
+
+    from . import msme
+
+    company = viewer(request).company
+    try:
+        period = {h: (s, e) for h, s, e in msme.half_years(fy)}[half]
+    except (KeyError, ValueError, IndexError):
+        raise HttpError(400, "Choose the financial year and H1 or H2.")
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(['Name of the supplier', 'PAN', 'GSTIN', 'Udyam registration', 'Category', 'Bill', 'Invoice date',
+                     'Amount due (Rs)', 'Due from', 'Days since acceptance', 'Reason for delay'])
+    from organizations.models import BusinessRelationship
+    udyam = dict(BusinessRelationship.objects.filter(buyer=company).values_list('supplier_id', 'udyam_number'))
+    for r in msme.msme1_rows(company, period[1]):
+        s = r['supplier']
+        writer.writerow([s.legal_name or s.name, s.pan or '', s.gstin or '', udyam.get(s.pk, ''), r['bill'].msme_category.title(),
+                         r['bill'].supplier_invoice_number, r['bill'].invoice_date.isoformat(), f"{r['owed']:.2f}",
+                         r['due_from'].isoformat() if r['due_from'] else '', r['days'], ''])
+    response = HttpResponse(buffer.getvalue(), content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="MSME-1_{fy}_{half}.csv"'
+    return response

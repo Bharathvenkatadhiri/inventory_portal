@@ -157,6 +157,9 @@ class PurchaseBill(TaxTotals):
     tds_rate = models.DecimalField(max_digits=5, decimal_places=3, default=0)
     tds_base = models.DecimalField(**MONEY)
     tds_amount = models.DecimalField(**MONEY)
+    # Set when posted, for micro and small suppliers (finance.msme): the 45-day due date.
+    msme_category = models.CharField(max_length=6, blank=True)
+    msme_due_date = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

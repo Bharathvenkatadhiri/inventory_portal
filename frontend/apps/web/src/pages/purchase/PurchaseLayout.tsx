@@ -7,6 +7,8 @@ import { Badge, ErrorText, Field, Modal } from "../../components/ui";
 import { rupees } from "../../lib/format";
 
 const TABS = [
+  { to: "/purchase/rfqs", label: "RFQs" },
+  { to: "/purchase/quotations-received", label: "Quotations received" },
   { to: "/purchase/orders", label: "Purchase orders" },
   { to: "/purchase/receipts", label: "Goods receipts" },
   { to: "/purchase/bills", label: "Bills" },
@@ -49,6 +51,9 @@ const TONES: Record<string, Tone> = {
   accepted: "green",
   declined: "red",
   awaiting: "amber",
+  sent: "navy",
+  converted: "green",
+  superseded: "gray",
 };
 
 export function StatusBadge({ status, label }: { status: string; label: string }) {

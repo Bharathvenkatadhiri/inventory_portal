@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, Outlet } from "@tanstack/react-router";
 
 const TABS = [
+  { to: "/sales/rfqs-received", label: "RFQs received" },
+  { to: "/sales/quotations", label: "Quotations" },
   { to: "/sales/orders-received", label: "Orders received" },
   { to: "/sales/orders", label: "Sales orders" },
   { to: "/sales/dispatches", label: "Dispatches" },

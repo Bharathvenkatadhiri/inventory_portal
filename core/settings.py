@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "production",
     "quality",
     "jobwork",
+    "quotations",
 ]
 
 MIDDLEWARE = [

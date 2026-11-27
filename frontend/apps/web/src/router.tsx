@@ -18,6 +18,11 @@ import { SalesNotesPage, SupplierNotesPage } from "./pages/notes/NotesPage";
 import { InventoryLayout } from "./pages/inventory/InventoryLayout";
 import { BatchesPage } from "./pages/inventory/BatchesPage";
 import { ItemsPage } from "./pages/inventory/ItemsPage";
+import { MsmePage } from "./pages/accounts/MsmePage";
+import { QuotationReceivedPage, QuotationsReceivedPage } from "./pages/purchase/QuotationsReceivedPage";
+import { RfqDetailPage, RfqEditor, RfqsPage } from "./pages/purchase/RfqsPage";
+import { QuotationDetailPage, QuotationEditor, QuotationsPage } from "./pages/sales/QuotationsPage";
+import { RfqsReceivedPage } from "./pages/sales/RfqsReceivedPage";
 import { StockPage } from "./pages/inventory/StockPage";
 import { WarehousesPage } from "./pages/inventory/WarehousesPage";
 import { PartnersPage } from "./pages/PartnersPage";
@@ -79,6 +84,12 @@ const newOrderRoute = createRoute({ getParentRoute: () => purchaseRoute, path: "
 const orderRoute = createRoute({ getParentRoute: () => purchaseRoute, path: "orders/$orderId", component: OrderDetailPage });
 const editOrderRoute = createRoute({ getParentRoute: () => purchaseRoute, path: "orders/$orderId/edit", component: OrderEditor });
 const receiptsRoute = createRoute({ getParentRoute: () => purchaseRoute, path: "receipts", component: ReceiptsPage });
+const rfqsRoute = createRoute({ getParentRoute: () => purchaseRoute, path: "rfqs", component: RfqsPage });
+const newRfqRoute = createRoute({ getParentRoute: () => purchaseRoute, path: "rfqs/new", component: RfqEditor });
+const rfqRoute = createRoute({ getParentRoute: () => purchaseRoute, path: "rfqs/$rfqId", component: RfqDetailPage });
+const editRfqRoute = createRoute({ getParentRoute: () => purchaseRoute, path: "rfqs/$rfqId/edit", component: RfqEditor });
+const quotationsReceivedRoute = createRoute({ getParentRoute: () => purchaseRoute, path: "quotations-received", component: QuotationsReceivedPage });
+const quotationReceivedRoute = createRoute({ getParentRoute: () => purchaseRoute, path: "quotations-received/$quotationId", component: QuotationReceivedPage });
 const billsRoute = createRoute({
   getParentRoute: () => purchaseRoute,
   path: "bills",
@@ -104,6 +115,11 @@ const newSalesOrderRoute = createRoute({ getParentRoute: () => salesRoute, path:
 const salesOrderRoute = createRoute({ getParentRoute: () => salesRoute, path: "orders/$orderId", component: SalesOrderDetailPage });
 const editSalesOrderRoute = createRoute({ getParentRoute: () => salesRoute, path: "orders/$orderId/edit", component: SalesOrderEditor });
 const dispatchesRoute = createRoute({ getParentRoute: () => salesRoute, path: "dispatches", component: DispatchesPage });
+const quotationsRoute = createRoute({ getParentRoute: () => salesRoute, path: "quotations", component: QuotationsPage });
+const newQuotationRoute = createRoute({ getParentRoute: () => salesRoute, path: "quotations/new", component: QuotationEditor });
+const quotationRoute = createRoute({ getParentRoute: () => salesRoute, path: "quotations/$quotationId", component: QuotationDetailPage });
+const editQuotationRoute = createRoute({ getParentRoute: () => salesRoute, path: "quotations/$quotationId/edit", component: QuotationEditor });
+const rfqsReceivedRoute = createRoute({ getParentRoute: () => salesRoute, path: "rfqs-received", component: RfqsReceivedPage });
 const invoicesRoute = createRoute({
   getParentRoute: () => salesRoute,
   path: "invoices",
@@ -123,6 +139,7 @@ const receivablesRoute = createRoute({ getParentRoute: () => accountsRoute, path
 const payablesRoute = createRoute({ getParentRoute: () => accountsRoute, path: "payables", component: PayablesPage });
 const paymentsRoute = createRoute({ getParentRoute: () => accountsRoute, path: "payments", component: PaymentsPage });
 const tdsRoute = createRoute({ getParentRoute: () => accountsRoute, path: "tds", component: TdsPage });
+const msmeRoute = createRoute({ getParentRoute: () => accountsRoute, path: "msme", component: MsmePage });
 const gstReturnsRoute = createRoute({ getParentRoute: () => accountsRoute, path: "gst-returns", component: GstReturnsPage });
 const productionRoute = createRoute({ getParentRoute: () => rootRoute, path: "production", component: ProductionLayout });
 const productionIndexRoute = createRoute({ getParentRoute: () => productionRoute, path: "/", component: ProductionIndex });
@@ -152,9 +169,9 @@ const routeTree = rootRoute.addChildren([
   partnersRoute,
   qcRoute,
   productionRoute.addChildren([productionIndexRoute, workOrdersRoute, productionEntriesRoute, bomsRoute, jobWorkRoute, costingRoute]),
-  accountsRoute.addChildren([accountsIndexRoute, receivablesRoute, payablesRoute, paymentsRoute, tdsRoute, gstReturnsRoute]),
-  purchaseRoute.addChildren([purchaseIndexRoute, ordersRoute, newOrderRoute, orderRoute, editOrderRoute, receiptsRoute, billsRoute, supplierNotesRoute]),
-  salesRoute.addChildren([salesIndexRoute, ordersReceivedRoute, salesOrdersRoute, newSalesOrderRoute, salesOrderRoute, editSalesOrderRoute, dispatchesRoute, invoicesRoute, salesNotesRoute]),
+  accountsRoute.addChildren([accountsIndexRoute, receivablesRoute, payablesRoute, paymentsRoute, tdsRoute, gstReturnsRoute, msmeRoute]),
+  purchaseRoute.addChildren([purchaseIndexRoute, ordersRoute, newOrderRoute, orderRoute, editOrderRoute, receiptsRoute, billsRoute, supplierNotesRoute, rfqsRoute, newRfqRoute, rfqRoute, editRfqRoute, quotationsReceivedRoute, quotationReceivedRoute]),
+  salesRoute.addChildren([salesIndexRoute, ordersReceivedRoute, salesOrdersRoute, newSalesOrderRoute, salesOrderRoute, editSalesOrderRoute, dispatchesRoute, invoicesRoute, salesNotesRoute, quotationsRoute, newQuotationRoute, quotationRoute, editQuotationRoute, rfqsReceivedRoute]),
   inventoryRoute.addChildren([inventoryIndexRoute, itemsRoute, warehousesRoute, stockRoute, batchesRoute]),
   profileRoute,
   settingsRoute.addChildren([settingsIndexRoute, companyRoute, peopleRoute, rolesRoute, teamsRoute, billingRoute]),

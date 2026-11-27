@@ -99,7 +99,7 @@ function OutstandingPage({ direction }: { direction: Direction }) {
                     <tr key={d.id}>
                       <td className="table-cell text-sm"><span className="font-semibold">{d.number}</span><p className="text-xs text-gray-500">{day(d.date)}{received ? "" : ` · our ${d.our_number}`}</p></td>
                       <td className="table-cell text-sm">{d.party.name}</td>
-                      <td className="table-cell text-sm">{day(d.due_date)}<div className="mt-1"><Badge tone={PAYMENT_TONES[d.status] ?? "gray"}>{d.status_label}</Badge></div></td>
+                      <td className="table-cell text-sm">{day(d.due_date)}<div className="mt-1 flex flex-wrap gap-1"><Badge tone={PAYMENT_TONES[d.status] ?? "gray"}>{d.status_label}</Badge>{d.msme ? <Badge tone="orange">MSME</Badge> : null}</div></td>
                       <td className="table-cell text-right text-sm">{rupees(d.total)}</td>
                       <td className="table-cell text-right text-sm">{rupees(d.paid)}{Number(d.pending) > 0 ? <p className="text-xs text-amber-700">{rupees(d.pending)} awaiting approval</p> : null}</td>
                       <td className="table-cell text-right text-sm font-semibold">{rupees(d.outstanding)}</td>

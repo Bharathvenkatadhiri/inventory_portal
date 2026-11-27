@@ -287,6 +287,12 @@ class BusinessRelationship(models.Model):
     customer_code = models.CharField(max_length=30, blank=True)  # the supplier's code for the buyer
     # The buyer deducts TDS under this section when it pays the supplier (tds.rules).
     tds_section = models.CharField('TDS section', max_length=12, blank=True)
+    # The buyer's record of the supplier's Udyam registration (finance.msme): micro and
+    # small manufacturers and service providers must be paid within 45 days.
+    msme_category = models.CharField(max_length=6, blank=True, choices=[('micro', 'Micro'), ('small', 'Small'), ('medium', 'Medium')])
+    msme_activity = models.CharField(max_length=13, blank=True,
+                                     choices=[('manufacturing', 'Manufacturing'), ('services', 'Services'), ('trading', 'Trading')])
+    udyam_number = models.CharField(max_length=19, blank=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     activated_at = models.DateTimeField(null=True, blank=True)
     # The side that blocked it; only that side can unblock.

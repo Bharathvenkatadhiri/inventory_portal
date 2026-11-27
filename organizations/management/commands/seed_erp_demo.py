@@ -40,6 +40,8 @@ from finance import services as finance
 from finance.models import Payment
 from plans import erp
 from production import costing
+from quotations import services as quotations
+from quotations.models import Quotation, Rfq
 from production import services as production
 from production.models import BillOfMaterials, Machine, ProductionEntry
 from quality import services as quality
@@ -235,6 +237,13 @@ RELATIONSHIPS = [
 ]
 
 
+# (buyer, supplier): the supplier's Udyam details as the buyer recorded them (finance.msme).
+MSME = {
+    ('sri_lakshmi', 'kaveri'): ('small', 'manufacturing', 'UDYAM-MH-26-0041234'),
+    ('sri_lakshmi', 'rudra'): ('micro', 'manufacturing', 'UDYAM-TN-02-0007788'),
+}
+
+
 def demo_email(local):
     return f"{local}@{DEMO_DOMAIN}"
 
@@ -272,6 +281,9 @@ class Command(BaseCommand):
         ProductionEntry.objects.filter(company__in=companies).delete()
         BillOfMaterials.objects.filter(company__in=companies).delete()
         # Notes, payments, sales and purchase documents PROTECT the companies, documents, items and lines they point to.
+        Quotation.objects.filter(Q(company__in=companies) | Q(customer__in=companies)).update(previous=None)
+        Quotation.objects.filter(Q(company__in=companies) | Q(customer__in=companies)).delete()
+        Rfq.objects.filter(Q(company__in=companies) | Q(suppliers__supplier__in=companies)).delete()
         CreditDebitNote.objects.filter(Q(company__in=companies) | Q(party__in=companies)).delete()
         Payment.objects.filter(Q(company__in=companies) | Q(party__in=companies)).delete()
         SalesInvoice.objects.filter(Q(company__in=companies) | Q(customer__in=companies)).delete()
@@ -367,9 +379,65 @@ class Command(BaseCommand):
                 credit_limit=Decimal(credit) if credit else None,
                 activated_at=now - timedelta(days=20) if status in (Status.ACTIVE, Status.BLOCKED) else None,
                 blocked_by=self.orgs[initiator] if status == Status.BLOCKED else None,
+                **dict(zip(('msme_category', 'msme_activity', 'udyam_number'), MSME.get((buyer, supplier), ('', '', '')))),
             )
 
         self._purchases(users, now)
+        self._quotations(users, now)
+
+    def _quotations(self, users, now):
+        """Sri Lakshmi quotes Tejas twice (one accepted and turned into a sales
+        order, one waiting), and asks three suppliers to quote for castings and bolts."""
+        sri, tejas = self.orgs['sri_lakshmi'], self.orgs['tejas']
+
+        def member(key, local):
+            return Membership.objects.select_related('company', 'role', 'user').get(company=self.orgs[key], user=users[key][local])
+
+        def item(company, code):
+            return Item.objects.get(company=company, code=code).pk
+
+        divya = member('sri_lakshmi', 'divya')
+        store = Warehouse.objects.get(company=sri, code='AMB')
+        first = quotations.save_quotation(divya, Quotation(), {
+            'customer_id': tejas.pk, 'dispatch_from_id': store.pk, 'quote_date': (now - timedelta(days=9)).date(),
+            'enquiry_reference': 'Tejas enquiry TE/ENQ/311', 'delivery_days': 21, 'payment_terms_days': 45,
+            'terms': 'Prices ex-works Chennai. Packing in wooden crates included. Warranty 12 months against manufacturing defects.',
+            'lines': [{'item_id': item(sri, 'FG-GS-120'), 'quantity': Decimal('500'), 'rate': Decimal('840')}],
+        })
+        quotations.send(divya, first)
+        quotations.customer_response(member('tejas', 'kavya'), first, True)
+        quotations.convert(divya, first)
+        second = quotations.save_quotation(divya, Quotation(), {
+            'customer_id': tejas.pk, 'dispatch_from_id': store.pk, 'quote_date': (now - timedelta(days=2)).date(),
+            'enquiry_reference': 'Email of Kavya Rao', 'delivery_days': 30, 'payment_terms_days': 45,
+            'lines': [{'item_id': item(sri, 'FG-PH-75'), 'quantity': Decimal('60'), 'rate': Decimal('2350')},
+                      {'item_id': item(sri, 'SV-CNC'), 'quantity': Decimal('8'), 'rate': Decimal('1200'), 'description': 'Fixture trials'}],
+        })
+        quotations.send(divya, second)
+
+        priya = member('sri_lakshmi', 'priya')
+        rfq = quotations.save_rfq(priya, Rfq(), {
+            'title': 'Valve body castings and M10 bolts, January', 'ship_to_id': Warehouse.objects.get(company=sri, code='PS').pk,
+            'rfq_date': (now - timedelta(days=4)).date(), 'respond_by': (now + timedelta(days=3)).date(),
+            'required_by': (now + timedelta(days=25)).date(), 'notes': 'Castings to drawing VB-50 rev C, with radiography reports.',
+            'lines': [{'item_id': item(sri, 'BO-CAST-VB50'), 'quantity': Decimal('400'), 'description': 'Drawing VB-50 rev C'},
+                      {'item_id': item(sri, 'BO-BOLT-M10'), 'quantity': Decimal('3000'), 'description': 'Grade 8.8, zinc plated'}],
+            'supplier_ids': [self.orgs['kaveri'].pk, self.orgs['malabar'].pk, self.orgs['rudra'].pk],
+        })
+        quotations.send_rfq(priya, rfq)
+        lines = {l.item.code: l.pk for l in rfq.lines.select_related('item')}
+        invites = {i.supplier_id: i for i in rfq.suppliers.all()}
+        # Kaveri quotes on MakeSetu; Malabar's came by email and Priya entered it; Rudra hasn't replied.
+        quotations.save_quote(member('kaveri', 'sneha'), invites[self.orgs['kaveri'].pk], {
+            'their_reference': 'KC/Q/2611/14', 'delivery_days': 18, 'payment_terms_days': 30,
+            'valid_until': (now + timedelta(days=20)).date(),
+            'lines': [{'rfq_line_id': lines['BO-CAST-VB50'], 'rate': Decimal('960')}],
+        }, by_supplier=True)
+        quotations.save_quote(priya, invites[self.orgs['malabar'].pk], {
+            'their_reference': 'MA-221', 'delivery_days': 10, 'payment_terms_days': 30,
+            'lines': [{'rfq_line_id': lines['BO-CAST-VB50'], 'rate': Decimal('995')},
+                      {'rfq_line_id': lines['BO-BOLT-M10'], 'rate': Decimal('5.95')}],
+        })
 
     def _purchases(self, users, now):
         """Purchase documents in each state, made through purchase.services
