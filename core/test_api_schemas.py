@@ -11,7 +11,7 @@ from ninja import Schema
 
 # Every module core/api.py adds a router from. Add new ones here too.
 API_MODULES = ['organizations.api', 'organizations.app_api', 'billing.api', 'inventory.api', 'purchase.api',
-               'sales.api', 'finance.api', 'printouts.api', 'adjustments.api', 'gstreturns.api', 'tds.api', 'production.api']
+               'sales.api', 'finance.api', 'printouts.api', 'adjustments.api', 'gstreturns.api', 'tds.api', 'production.api', 'quality.api', 'jobwork.api']
 
 
 class SchemaNameTests(SimpleTestCase):

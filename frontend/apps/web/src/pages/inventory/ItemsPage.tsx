@@ -109,7 +109,9 @@ function ItemForm({ item, onClose }: { item: Item | null; onClose: () => void })
     reorder_level: item?.reorder_level != null ? String(Number(item.reorder_level)) : "",
     description: item?.description ?? "",
     is_active: item?.is_active ?? true,
+    inspection_required: item?.inspection_required ?? false,
   });
+  const qc = useCan()("inspection.record");
   const set = (field: keyof typeof form) => (e: { target: { value: string } }) => setForm({ ...form, [field]: e.target.value });
   const isService = form.kind === "service";
   const done = () => {
@@ -199,6 +201,13 @@ function ItemForm({ item, onClose }: { item: Item | null; onClose: () => void })
           </Field>
         </div>
       </div>
+      {qc && !isService ? (
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" className="rounded border-gray-300 text-accent-500" checked={form.inspection_required}
+            onChange={(e) => setForm({ ...form, inspection_required: e.target.checked })} />
+          Needs inspection (received or produced quantities wait for QC before they can be used)
+        </label>
+      ) : null}
       {item ? (
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" className="rounded border-gray-300 text-accent-500" checked={form.is_active}

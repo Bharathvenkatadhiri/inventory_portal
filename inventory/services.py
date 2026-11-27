@@ -28,7 +28,7 @@ def _messages(exc):
 # --- Items ------------------------------------------------------------------------
 
 ITEM_FIELDS = ('code', 'name', 'kind', 'unit', 'hsn_code', 'gst_rate', 'purchase_price', 'sale_price',
-               'reorder_level', 'description', 'is_active')
+               'reorder_level', 'description', 'is_active', 'inspection_required')
 
 
 def save_item(company, user, item, data):
@@ -77,8 +77,27 @@ def warehouse_limit(company):
 
 
 def warehouse_usage(company):
-    """Active warehouses, the way the plan counts them."""
-    return Warehouse.objects.filter(company=company, is_active=True).count()
+    """Active warehouses, the way the plan counts them (system QC locations don't count)."""
+    return Warehouse.objects.filter(company=company, is_active=True, kind=Warehouse.Kind.STORE).count()
+
+
+def store(company, warehouse_id, lock=False):
+    """One of the company's own active stores (never a system QC location), or None."""
+    warehouses = Warehouse.objects.filter(company=company, pk=warehouse_id, is_active=True, kind=Warehouse.Kind.STORE)
+    if lock:
+        warehouses = warehouses.select_for_update()
+    return warehouses.first()
+
+
+def system_location(company, kind):
+    """A system location (under inspection, rejected goods, at job workers), made the first time it's needed."""
+    warehouse = Warehouse.objects.filter(company=company, kind=kind).first()
+    if warehouse is None:
+        label = Warehouse.Kind(kind).label
+        name = label if not Warehouse.objects.filter(company=company, name__iexact=label).exists() else f"{label} (QC)"
+        codes = {Warehouse.Kind.QC_HOLD: 'QC', Warehouse.Kind.REJECTED: 'REJ', Warehouse.Kind.JOB_WORK: 'JW'}
+        warehouse = Warehouse.objects.create(company=company, kind=kind, name=name, code=codes.get(kind, ''))
+    return warehouse
 
 
 def _check_room(company):
@@ -96,6 +115,8 @@ def save_warehouse(company, warehouse, data):
     making another the default moves it there."""
     from organizations.models import Address
 
+    if warehouse.pk and warehouse.kind != Warehouse.Kind.STORE:
+        raise InventoryError("This is a system location for QC; it can't be changed.")
     creating = warehouse.pk is None
     reactivating = not creating and data.get('is_active') is True and not warehouse.is_active
     if creating or reactivating:
@@ -121,7 +142,7 @@ def save_warehouse(company, warehouse, data):
         raise InventoryError("This is your default warehouse. Make another one the default first.")
     if data.get('is_default') is False and warehouse.is_default:
         raise InventoryError("Make another warehouse the default instead.")
-    others = Warehouse.objects.select_for_update().filter(company=company).exclude(pk=warehouse.pk)
+    others = Warehouse.objects.select_for_update().filter(company=company, kind=Warehouse.Kind.STORE).exclude(pk=warehouse.pk)
     make_default = data.get('is_default') is True or not others.filter(is_default=True, is_active=True).exists()
     if make_default and not warehouse.is_active:
         raise InventoryError("An inactive warehouse can't be the default.")
@@ -133,6 +154,8 @@ def save_warehouse(company, warehouse, data):
 
 
 def delete_warehouse(warehouse):
+    if warehouse.kind != Warehouse.Kind.STORE:
+        raise InventoryError("This is a system location for QC; it can't be deleted.")
     if warehouse.stock_entries.exists():
         raise InventoryError("This warehouse has stock entries, so it can't be deleted. Mark it inactive instead.")
     if warehouse.is_default and Warehouse.objects.filter(company=warehouse.company).exclude(pk=warehouse.pk).exists():
@@ -147,7 +170,7 @@ def set_opening_stock(company, user, *, item_id, warehouse_id, quantity, rate, e
     """Sets (or replaces) an item's opening stock in a warehouse. A
     quantity of 0 removes it. Returns the entry, or None if removed."""
     item = Item.objects.filter(company=company, pk=item_id).first()
-    warehouse = Warehouse.objects.filter(company=company, pk=warehouse_id).first()
+    warehouse = Warehouse.objects.filter(company=company, pk=warehouse_id, kind=Warehouse.Kind.STORE).first()
     if item is None or warehouse is None:
         raise InventoryError("Choose one of your items and warehouses.")
     if not item.tracks_stock:

@@ -175,7 +175,9 @@ def save_note(membership, note, data):
     is_return = reason == Reason.GOODS_RETURNED
     warehouse = None
     if is_return:
-        warehouse = Warehouse.objects.filter(company=company, pk=data.get('warehouse_id'), is_active=True).first()
+        # A purchase return may go back from the rejected-goods location; a sales return comes into a store.
+        kinds = [Warehouse.Kind.STORE] + ([Warehouse.Kind.REJECTED] if side == Side.PURCHASE else [])
+        warehouse = Warehouse.objects.filter(company=company, pk=data.get('warehouse_id'), is_active=True, kind__in=kinds).first()
         if warehouse is None:
             raise NoteError("Choose the warehouse the goods come back into." if side == Side.SALES
                             else "Choose the warehouse the goods go back from.")

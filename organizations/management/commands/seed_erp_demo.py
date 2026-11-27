@@ -41,6 +41,8 @@ from finance.models import Payment
 from plans import erp
 from production import services as production
 from production.models import BillOfMaterials, ProductionEntry
+from quality import services as quality
+from quality.models import InspectionLot
 from purchase import services as purchase
 from purchase.models import GoodsReceipt, PurchaseBill, PurchaseOrder
 from sales import services as sales
@@ -238,7 +240,8 @@ class Command(BaseCommand):
     def _flush(self):
         gstins = [g for g, *_ in ORGANIZATIONS.values()] + [UNCLAIMED_GSTIN]
         companies = Company.objects.filter(gstin__in=gstins)
-        # Production entries and BOMs PROTECT items and warehouses.
+        # QC lots, production entries and BOMs PROTECT items and warehouses.
+        InspectionLot.objects.filter(company__in=companies).delete()
         ProductionEntry.objects.filter(company__in=companies).delete()
         BillOfMaterials.objects.filter(company__in=companies).delete()
         # Notes, payments, sales and purchase documents PROTECT the companies, documents, items and lines they point to.
@@ -384,10 +387,17 @@ class Command(BaseCommand):
         })
         invoice = sales.post_invoice(sneha, invoice)
 
-        # Sri Lakshmi receives them against Kaveri's challan and enters Kaveri's invoice as a bill.
-        purchase.post_receipt(member('sri_lakshmi', 'suresh'), castings, {
+        # Sri Lakshmi receives them against Kaveri's challan (castings need inspection, so they
+        # wait under QC), passes 240 and rejects 10, and enters Kaveri's invoice as a bill.
+        Item.objects.filter(company=sri, code='BO-CAST-VB50').update(inspection_required=True)
+        receipt = purchase.post_receipt(member('sri_lakshmi', 'suresh'), castings, {
             'received_date': ago(12), 'supplier_challan': challan.number, 'vehicle_number': challan.vehicle_number,
             'lines': [{'order_line_id': castings.lines.get().pk, 'quantity': '250'}],
+        })
+        lot = InspectionLot.objects.get(receipt_line__receipt=receipt)
+        quality.inspect(member('sri_lakshmi', 'vignesh'), lot, {
+            'accepted': Decimal('240'), 'rejected': Decimal('10'), 'inspected_on': ago(11),
+            'remarks': 'Blow holes on 10 castings (radiography); 240 within drawing tolerances.',
         })
         accounts = member('sri_lakshmi', 'lakshmi.accounts')
         bill = purchase.save_bill(accounts, PurchaseBill(), castings, {
@@ -422,7 +432,8 @@ class Command(BaseCommand):
         credit_note = adjustments.post_note(sneha, credit_note)
         supplier_note = adjustments.save_note(accounts, CreditDebitNote(), {
             'side': 'purchase', 'kind': 'credit', 'document_id': bill.pk, 'reason': 'goods_returned', 'note_date': ago(5),
-            'party_note_number': credit_note.number, 'warehouse_id': plant.pk,
+            'party_note_number': credit_note.number,
+            'warehouse_id': Warehouse.objects.get(company=sri, kind=Warehouse.Kind.REJECTED).pk,
             'remarks': 'Rejected at incoming inspection (blow holes).',
             'lines': [{'line_id': bill.lines.get().pk, 'quantity': '10'}],
         })

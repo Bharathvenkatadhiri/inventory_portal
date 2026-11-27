@@ -7,8 +7,10 @@ import { GstReturnsPage } from "./pages/accounts/GstReturnsPage";
 import { PaymentsPage } from "./pages/accounts/PaymentsPage";
 import { TdsPage } from "./pages/accounts/TdsPage";
 import { HomePage } from "./pages/HomePage";
+import { QcPage } from "./pages/quality/QcPage";
 import { BomsPage } from "./pages/production/BomsPage";
-import { ProductionLayout } from "./pages/production/ProductionLayout";
+import { JobWorkPage } from "./pages/production/JobWorkPage";
+import { ProductionIndex, ProductionLayout } from "./pages/production/ProductionLayout";
 import { ProductionPage } from "./pages/production/ProductionPage";
 import { SalesNotesPage, SupplierNotesPage } from "./pages/notes/NotesPage";
 import { InventoryLayout } from "./pages/inventory/InventoryLayout";
@@ -119,15 +121,11 @@ const paymentsRoute = createRoute({ getParentRoute: () => accountsRoute, path: "
 const tdsRoute = createRoute({ getParentRoute: () => accountsRoute, path: "tds", component: TdsPage });
 const gstReturnsRoute = createRoute({ getParentRoute: () => accountsRoute, path: "gst-returns", component: GstReturnsPage });
 const productionRoute = createRoute({ getParentRoute: () => rootRoute, path: "production", component: ProductionLayout });
-const productionIndexRoute = createRoute({
-  getParentRoute: () => productionRoute,
-  path: "/",
-  beforeLoad: () => {
-    throw redirect({ to: "/production/entries" });
-  },
-});
+const productionIndexRoute = createRoute({ getParentRoute: () => productionRoute, path: "/", component: ProductionIndex });
 const productionEntriesRoute = createRoute({ getParentRoute: () => productionRoute, path: "entries", component: ProductionPage });
 const bomsRoute = createRoute({ getParentRoute: () => productionRoute, path: "boms", component: BomsPage });
+const jobWorkRoute = createRoute({ getParentRoute: () => productionRoute, path: "job-work", component: JobWorkPage });
+const qcRoute = createRoute({ getParentRoute: () => rootRoute, path: "qc", component: QcPage });
 const profileRoute = createRoute({ getParentRoute: () => rootRoute, path: "profile", component: ProfilePage });
 const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: "settings", component: SettingsLayout });
 const settingsIndexRoute = createRoute({
@@ -146,7 +144,8 @@ const billingRoute = createRoute({ getParentRoute: () => settingsRoute, path: "b
 const routeTree = rootRoute.addChildren([
   homeRoute,
   partnersRoute,
-  productionRoute.addChildren([productionIndexRoute, productionEntriesRoute, bomsRoute]),
+  qcRoute,
+  productionRoute.addChildren([productionIndexRoute, productionEntriesRoute, bomsRoute, jobWorkRoute]),
   accountsRoute.addChildren([accountsIndexRoute, receivablesRoute, payablesRoute, paymentsRoute, tdsRoute, gstReturnsRoute]),
   purchaseRoute.addChildren([purchaseIndexRoute, ordersRoute, newOrderRoute, orderRoute, editOrderRoute, receiptsRoute, billsRoute, supplierNotesRoute]),
   salesRoute.addChildren([salesIndexRoute, ordersReceivedRoute, salesOrdersRoute, newSalesOrderRoute, salesOrderRoute, editSalesOrderRoute, dispatchesRoute, invoicesRoute, salesNotesRoute]),

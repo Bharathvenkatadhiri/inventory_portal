@@ -19,8 +19,8 @@ export function NoteForm({ side, kind, documentId, onClose, onDone }: {
     queryKey: ["note-room", side, documentId],
     queryFn: async () => unwrap(await api.GET("/api/v1/notes/room", { params: { query: { side, document_id: documentId } } })),
   });
-  const warehouses = useWarehouses();
-  const activeWarehouses = (warehouses.data?.warehouses ?? []).filter((w) => w.is_active);
+  const warehouses = useWarehouses(side === "purchase");
+  const activeWarehouses = (warehouses.data?.warehouses ?? []).filter((w) => w.is_active && (w.kind === "store" || w.kind === "rejected"));
   const reasons = (kind === "credit" ? room.data?.credit_reasons : room.data?.debit_reasons) ?? [];
   const [reason, setReason] = useState<string>(kind === "credit" ? "goods_returned" : "rate_change");
   const [values, setValues] = useState<Record<number, string>>({});

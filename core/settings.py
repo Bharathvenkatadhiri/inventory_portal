@@ -45,6 +45,8 @@ INSTALLED_APPS = [
     "adjustments",
     "tds",
     "production",
+    "quality",
+    "jobwork",
 ]
 
 MIDDLEWARE = [

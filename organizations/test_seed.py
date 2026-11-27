@@ -56,6 +56,10 @@ class SeedERPDemoTests(TestCase):
                                                        status='posted').exists())
         self.assertTrue(StockEntry.objects.filter(company=sri, kind='purchase_return').exists())
         self.assertTrue(sri.__class__.objects.get(pk=sri.pk).logo)
+        from quality.models import InspectionLot
+        lot = InspectionLot.objects.get(company=sri)
+        self.assertEqual((lot.status, lot.accepted_quantity, lot.rejected_quantity), ('done', 240, 10))
+        self.assertEqual(sum(e.quantity for e in StockEntry.objects.filter(company=sri, warehouse__kind='rejected')), 0)  # returned
         from production.models import ProductionEntry
         run = ProductionEntry.objects.get(company=sri)
         self.assertEqual((run.created_by.email, run.quantity_produced), (seed.demo_email('murugan'), 40))

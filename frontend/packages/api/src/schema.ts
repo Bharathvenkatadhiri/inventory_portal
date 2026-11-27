@@ -339,6 +339,98 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/job-work": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Challans
+         * @description status: 'open' (with the job worker), or a status, or '' for all.
+         */
+        get: operations["jobwork_api_list_challans"];
+        put?: never;
+        /** Send */
+        post: operations["jobwork_api_send"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/job-work/itc04": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Itc04 Csv
+         * @description ITC-04 rows for start..end: table 'sent' (table 4) or 'received' (table 5A).
+         */
+        get: operations["jobwork_api_itc04_csv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/job-work/{challan_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel */
+        post: operations["jobwork_api_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/job-work/{challan_id}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Challan Pdf */
+        get: operations["jobwork_api_challan_pdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/job-work/{challan_id}/receipts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Receive */
+        post: operations["jobwork_api_receive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me": {
         parameters: {
             query?: never;
@@ -1281,6 +1373,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/qc/lots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Lots
+         * @description status: 'open' (waiting or partly inspected), 'done', or 'all'.
+         */
+        get: operations["quality_api_list_lots"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/qc/lots/{lot_id}/inspections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Inspect */
+        post: operations["quality_api_inspect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/roles": {
         parameters: {
             query?: never;
@@ -1791,7 +1920,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Warehouses */
+        /**
+         * List Warehouses
+         * @description The company's stores; include_system adds the QC locations (for stock views).
+         */
         get: operations["inventory_api_list_warehouses"];
         put?: never;
         /** Create Warehouse */
@@ -2636,6 +2768,42 @@ export interface components {
             /** Unit Cost */
             unit_cost: number | string;
         };
+        /** InspectIn */
+        InspectIn: {
+            /**
+             * Accepted
+             * @default 0
+             */
+            accepted: number | string;
+            /** Inspected On */
+            inspected_on?: string | null;
+            /**
+             * Rejected
+             * @default 0
+             */
+            rejected: number | string;
+            /**
+             * Remarks
+             * @default
+             */
+            remarks: string;
+        };
+        /** InspectionOut */
+        InspectionOut: {
+            /** Accepted */
+            accepted: number | string;
+            /**
+             * Inspected On
+             * Format: date
+             */
+            inspected_on: string;
+            /** Inspector */
+            inspector: string;
+            /** Rejected */
+            rejected: number | string;
+            /** Remarks */
+            remarks: string;
+        };
         /** InventoryOptionsOut */
         InventoryOptionsOut: {
             /** Gst Rates */
@@ -2832,6 +3000,11 @@ export interface components {
              */
             hsn_code: string;
             /**
+             * Inspection Required
+             * @default false
+             */
+            inspection_required: boolean;
+            /**
              * Is Active
              * @default true
              */
@@ -2869,6 +3042,8 @@ export interface components {
             hsn_code: string;
             /** Id */
             id: number;
+            /** Inspection Required */
+            inspection_required: boolean;
             /** Is Active */
             is_active: boolean;
             /** Kind */
@@ -2887,6 +3062,231 @@ export interface components {
             sale_price: number | string | null;
             /** Tracks Stock */
             tracks_stock: boolean;
+            /** Unit */
+            unit: string;
+        };
+        /** JobWorkChallanIn */
+        JobWorkChallanIn: {
+            /** Challan Date */
+            challan_date?: string | null;
+            /** Expected Return */
+            expected_return?: string | null;
+            /** From Warehouse Id */
+            from_warehouse_id: number;
+            /** Job Worker Id */
+            job_worker_id: number;
+            /** Lines */
+            lines: components["schemas"]["JobWorkLineIn"][];
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /** Process */
+            process: string;
+            /**
+             * Vehicle Number
+             * @default
+             */
+            vehicle_number: string;
+        };
+        /** JobWorkChallanLineOut */
+        JobWorkChallanLineOut: {
+            /** Id */
+            id: number;
+            /** Item Code */
+            item_code: string;
+            /** Item Id */
+            item_id: number;
+            /** Item Name */
+            item_name: string;
+            /** Pending Quantity */
+            pending_quantity: number | string;
+            /** Quantity */
+            quantity: number | string;
+            /** Rate */
+            rate: number | string;
+            /** Returned Quantity */
+            returned_quantity: number | string;
+            /** Unit */
+            unit: string;
+            /** Waste Quantity */
+            waste_quantity: number | string;
+        };
+        /** JobWorkChallanOut */
+        JobWorkChallanOut: {
+            /** Age Flag */
+            age_flag: string;
+            /** Can Change */
+            can_change: boolean;
+            /** Cancel Reason */
+            cancel_reason: string;
+            /**
+             * Challan Date
+             * Format: date
+             */
+            challan_date: string;
+            /**
+             * Due Back
+             * Format: date
+             */
+            due_back: string;
+            /** Expected Return */
+            expected_return: string | null;
+            /** From Warehouse */
+            from_warehouse: string;
+            /** Id */
+            id: number;
+            job_worker: components["schemas"]["PartyOut"];
+            /** Lines */
+            lines: components["schemas"]["JobWorkChallanLineOut"][];
+            /** Notes */
+            notes: string;
+            /** Number */
+            number: string;
+            /** Process */
+            process: string;
+            /** Receipts */
+            receipts: components["schemas"]["JobWorkReceiptOut"][];
+            /** Status */
+            status: string;
+            /** Status Label */
+            status_label: string;
+            /** Value */
+            value: number | string;
+            /** Vehicle Number */
+            vehicle_number: string;
+        };
+        /** JobWorkLineIn */
+        JobWorkLineIn: {
+            /** Item Id */
+            item_id: number;
+            /** Quantity */
+            quantity: number | string;
+        };
+        /** JobWorkReceiptLineOut */
+        JobWorkReceiptLineOut: {
+            /** Input Quantity */
+            input_quantity: number | string;
+            /** Item Name */
+            item_name: string;
+            /** Output Item Name */
+            output_item_name: string;
+            /** Output Quantity */
+            output_quantity: number | string;
+            /** Rate */
+            rate: number | string;
+            /** Unit */
+            unit: string;
+            /** Waste Quantity */
+            waste_quantity: number | string;
+        };
+        /** JobWorkReceiptOut */
+        JobWorkReceiptOut: {
+            /** Id */
+            id: number;
+            /** Into Warehouse */
+            into_warehouse: string;
+            /** Job Worker Challan */
+            job_worker_challan: string;
+            /** Lines */
+            lines: components["schemas"]["JobWorkReceiptLineOut"][];
+            /** Number */
+            number: string;
+            /**
+             * Received Date
+             * Format: date
+             */
+            received_date: string;
+            /** Recorded By */
+            recorded_by: string;
+        };
+        /** JobWorkReceiveIn */
+        JobWorkReceiveIn: {
+            /** Into Warehouse Id */
+            into_warehouse_id?: number | null;
+            /**
+             * Job Worker Challan
+             * @default
+             */
+            job_worker_challan: string;
+            /** Lines */
+            lines: components["schemas"]["JobWorkReceiveLineIn"][];
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /** Received Date */
+            received_date?: string | null;
+        };
+        /** JobWorkReceiveLineIn */
+        JobWorkReceiveLineIn: {
+            /** Challan Line Id */
+            challan_line_id: number;
+            /**
+             * Charge Per Unit
+             * @default 0
+             */
+            charge_per_unit: number | string;
+            /**
+             * Input Quantity
+             * @default 0
+             */
+            input_quantity: number | string;
+            /** Output Item Id */
+            output_item_id?: number | null;
+            /** Output Quantity */
+            output_quantity?: number | string | null;
+            /**
+             * Waste Quantity
+             * @default 0
+             */
+            waste_quantity: number | string;
+        };
+        /** LotOut */
+        LotOut: {
+            /** Accepted Quantity */
+            accepted_quantity: number | string;
+            /** Can Inspect */
+            can_inspect: boolean;
+            /** Destination */
+            destination: string;
+            /** Id */
+            id: number;
+            /** Inspections */
+            inspections: components["schemas"]["InspectionOut"][];
+            /** Item Code */
+            item_code: string;
+            /** Item Id */
+            item_id: number;
+            /** Item Name */
+            item_name: string;
+            /** Number */
+            number: string;
+            /** Pending Quantity */
+            pending_quantity: number | string;
+            /** Quantity */
+            quantity: number | string;
+            /**
+             * Received On
+             * Format: date
+             */
+            received_on: string;
+            /** Reference */
+            reference: string;
+            /** Rejected Quantity */
+            rejected_quantity: number | string;
+            /** Source */
+            source: string;
+            /** Source Label */
+            source_label: string;
+            /** Status */
+            status: string;
+            /** Status Label */
+            status_label: string;
+            /** Supplier */
+            supplier: string;
             /** Unit */
             unit: string;
         };
@@ -4493,6 +4893,8 @@ export interface components {
             is_active: boolean;
             /** Is Default */
             is_default: boolean;
+            /** Kind */
+            kind: string;
             /** Name */
             name: string;
         };
@@ -5029,6 +5431,146 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    jobwork_api_list_challans: {
+        parameters: {
+            query?: {
+                status?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobWorkChallanOut"][];
+                };
+            };
+        };
+    };
+    jobwork_api_send: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobWorkChallanIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobWorkChallanOut"];
+                };
+            };
+        };
+    };
+    jobwork_api_itc04_csv: {
+        parameters: {
+            query: {
+                start: string;
+                end: string;
+                table?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    jobwork_api_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                challan_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobWorkChallanOut"];
+                };
+            };
+        };
+    };
+    jobwork_api_challan_pdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                challan_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    jobwork_api_receive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                challan_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobWorkReceiveIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobWorkChallanOut"];
+                };
             };
         };
     };
@@ -6699,6 +7241,55 @@ export interface operations {
             };
         };
     };
+    quality_api_list_lots: {
+        parameters: {
+            query?: {
+                status?: string;
+                item_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LotOut"][];
+                };
+            };
+        };
+    };
+    quality_api_inspect: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lot_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InspectIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LotOut"];
+                };
+            };
+        };
+    };
     organizations_app_api_list_roles: {
         parameters: {
             query?: never;
@@ -7596,7 +8187,9 @@ export interface operations {
     };
     inventory_api_list_warehouses: {
         parameters: {
-            query?: never;
+            query?: {
+                include_system?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;

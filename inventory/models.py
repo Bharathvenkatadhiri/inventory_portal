@@ -57,6 +57,9 @@ class Item(models.Model):
     # Alert when stock across warehouses falls to this.
     reorder_level = models.DecimalField(max_digits=14, decimal_places=3, null=True, blank=True)
     description = models.TextField(blank=True)
+    # Received or produced quantities wait under inspection until QC passes
+    # them (quality app; plans with QC only).
+    inspection_required = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -99,8 +102,21 @@ class Item(models.Model):
 
 class Warehouse(models.Model):
     """A place stock is kept: a store, godown or the shop floor. How many an
-    organization can have is set by its plan (plans.erp 'warehouses')."""
+    organization can have is set by its plan (plans.erp 'warehouses').
+
+    Two system locations, made as needed by QC (quality app), hold stock
+    that can't be used: goods waiting for inspection, and goods rejected.
+    They don't count toward the plan, can't be edited, and can't be chosen
+    for dispatch, production or receipts."""
+
+    class Kind(models.TextChoices):
+        STORE = 'store', 'Store'
+        QC_HOLD = 'qc_hold', 'Under inspection'
+        REJECTED = 'rejected', 'Rejected goods'
+        JOB_WORK = 'job_work', 'At job workers'
+
     company = models.ForeignKey('accounts.Company', on_delete=models.CASCADE, related_name='warehouses')
+    kind = models.CharField(max_length=10, choices=Kind.choices, default=Kind.STORE)
     name = models.CharField(max_length=80)
     code = models.CharField(max_length=20, blank=True)
     address = models.ForeignKey('organizations.Address', on_delete=models.SET_NULL, null=True, blank=True, related_name='warehouses')
@@ -129,11 +145,15 @@ class StockEntry(models.Model):
     class Kind(models.TextChoices):
         OPENING = 'opening', 'Opening stock'
         RECEIPT = 'receipt', 'Goods receipt'
+        QC_ACCEPTED = 'qc_accepted', 'Passed inspection'
+        QC_REJECTED = 'qc_rejected', 'Rejected at inspection'
         DISPATCH = 'dispatch', 'Dispatch'
         SALES_RETURN = 'sales_return', 'Returned by customer'
         PURCHASE_RETURN = 'purchase_return', 'Returned to supplier'
         PRODUCTION_ISSUE = 'production_issue', 'Used in production'
         PRODUCTION_RECEIPT = 'production_receipt', 'Produced'
+        JOB_WORK_OUT = 'job_work_out', 'Sent for job work'
+        JOB_WORK_IN = 'job_work_in', 'Back from job work'
 
     company = models.ForeignKey('accounts.Company', on_delete=models.CASCADE, related_name='stock_entries')
     item = models.ForeignKey(Item, on_delete=models.PROTECT, related_name='stock_entries')

@@ -26,6 +26,7 @@ const NAV: NavItem[] = [
     to: "/production", label: "Production", exact: false,
     show: (a) => PRODUCTION_ROLES.some((code) => a.allowed.includes(code)),
   },
+  { to: "/qc", label: "QC", exact: false, show: (a) => a.allowed.includes("inspection.record") },
   { to: "/inventory", label: "Inventory", exact: false },
   { to: "/accounts", label: "Accounts", exact: false, show: (a) => ACCOUNTS_ROLES.some((code) => a.allowed.includes(code)) },
   { to: "/settings", label: "Settings", exact: false },
@@ -33,7 +34,7 @@ const NAV: NavItem[] = [
 
 // The modules the ERP is growing into, shown so people know what's coming.
 const COMING: string[] = [];
-const PRODUCTION_ROLES = ["bom.manage", "production.record"];
+const PRODUCTION_ROLES = ["bom.manage", "production.record", "job_work.manage"];
 
 export function AppShell() {
   const { data: me, error, isLoading } = useMe();

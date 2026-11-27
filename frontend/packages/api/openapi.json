@@ -2251,6 +2251,101 @@
         "title": "EntryOut",
         "type": "object"
       },
+      "InspectIn": {
+        "properties": {
+          "accepted": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "default": "0",
+            "title": "Accepted"
+          },
+          "inspected_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inspected On"
+          },
+          "rejected": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "default": "0",
+            "title": "Rejected"
+          },
+          "remarks": {
+            "default": "",
+            "title": "Remarks",
+            "type": "string"
+          }
+        },
+        "title": "InspectIn",
+        "type": "object"
+      },
+      "InspectionOut": {
+        "properties": {
+          "accepted": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Accepted"
+          },
+          "inspected_on": {
+            "format": "date",
+            "title": "Inspected On",
+            "type": "string"
+          },
+          "inspector": {
+            "title": "Inspector",
+            "type": "string"
+          },
+          "rejected": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Rejected"
+          },
+          "remarks": {
+            "title": "Remarks",
+            "type": "string"
+          }
+        },
+        "required": [
+          "inspected_on",
+          "accepted",
+          "rejected",
+          "remarks",
+          "inspector"
+        ],
+        "title": "InspectionOut",
+        "type": "object"
+      },
       "InventoryOptionsOut": {
         "properties": {
           "gst_rates": {
@@ -2842,6 +2937,11 @@
             "title": "Hsn Code",
             "type": "string"
           },
+          "inspection_required": {
+            "default": false,
+            "title": "Inspection Required",
+            "type": "boolean"
+          },
           "is_active": {
             "default": true,
             "title": "Is Active",
@@ -2944,6 +3044,10 @@
             "title": "Id",
             "type": "integer"
           },
+          "inspection_required": {
+            "title": "Inspection Required",
+            "type": "boolean"
+          },
           "is_active": {
             "title": "Is Active",
             "type": "boolean"
@@ -3039,11 +3143,696 @@
           "reorder_level",
           "description",
           "is_active",
+          "inspection_required",
           "tracks_stock",
           "on_hand",
           "below_reorder"
         ],
         "title": "ItemOut",
+        "type": "object"
+      },
+      "JobWorkChallanIn": {
+        "properties": {
+          "challan_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Challan Date"
+          },
+          "expected_return": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Return"
+          },
+          "from_warehouse_id": {
+            "title": "From Warehouse Id",
+            "type": "integer"
+          },
+          "job_worker_id": {
+            "title": "Job Worker Id",
+            "type": "integer"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/JobWorkLineIn"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "notes": {
+            "default": "",
+            "title": "Notes",
+            "type": "string"
+          },
+          "process": {
+            "title": "Process",
+            "type": "string"
+          },
+          "vehicle_number": {
+            "default": "",
+            "title": "Vehicle Number",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_worker_id",
+          "process",
+          "from_warehouse_id",
+          "lines"
+        ],
+        "title": "JobWorkChallanIn",
+        "type": "object"
+      },
+      "JobWorkChallanLineOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "item_code": {
+            "title": "Item Code",
+            "type": "string"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "item_name": {
+            "title": "Item Name",
+            "type": "string"
+          },
+          "pending_quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Pending Quantity"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Rate"
+          },
+          "returned_quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Returned Quantity"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "waste_quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Waste Quantity"
+          }
+        },
+        "required": [
+          "id",
+          "item_id",
+          "item_code",
+          "item_name",
+          "unit",
+          "quantity",
+          "rate",
+          "returned_quantity",
+          "waste_quantity",
+          "pending_quantity"
+        ],
+        "title": "JobWorkChallanLineOut",
+        "type": "object"
+      },
+      "JobWorkChallanOut": {
+        "properties": {
+          "age_flag": {
+            "title": "Age Flag",
+            "type": "string"
+          },
+          "can_change": {
+            "title": "Can Change",
+            "type": "boolean"
+          },
+          "cancel_reason": {
+            "title": "Cancel Reason",
+            "type": "string"
+          },
+          "challan_date": {
+            "format": "date",
+            "title": "Challan Date",
+            "type": "string"
+          },
+          "due_back": {
+            "format": "date",
+            "title": "Due Back",
+            "type": "string"
+          },
+          "expected_return": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Return"
+          },
+          "from_warehouse": {
+            "title": "From Warehouse",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "job_worker": {
+            "$ref": "#/components/schemas/PartyOut"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/JobWorkChallanLineOut"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "process": {
+            "title": "Process",
+            "type": "string"
+          },
+          "receipts": {
+            "items": {
+              "$ref": "#/components/schemas/JobWorkReceiptOut"
+            },
+            "title": "Receipts",
+            "type": "array"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Value"
+          },
+          "vehicle_number": {
+            "title": "Vehicle Number",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "job_worker",
+          "challan_date",
+          "process",
+          "expected_return",
+          "due_back",
+          "age_flag",
+          "from_warehouse",
+          "vehicle_number",
+          "notes",
+          "status",
+          "status_label",
+          "cancel_reason",
+          "value",
+          "lines",
+          "receipts",
+          "can_change"
+        ],
+        "title": "JobWorkChallanOut",
+        "type": "object"
+      },
+      "JobWorkLineIn": {
+        "properties": {
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          }
+        },
+        "required": [
+          "item_id",
+          "quantity"
+        ],
+        "title": "JobWorkLineIn",
+        "type": "object"
+      },
+      "JobWorkReceiptLineOut": {
+        "properties": {
+          "input_quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Input Quantity"
+          },
+          "item_name": {
+            "title": "Item Name",
+            "type": "string"
+          },
+          "output_item_name": {
+            "title": "Output Item Name",
+            "type": "string"
+          },
+          "output_quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Output Quantity"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Rate"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "waste_quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Waste Quantity"
+          }
+        },
+        "required": [
+          "item_name",
+          "input_quantity",
+          "waste_quantity",
+          "output_item_name",
+          "output_quantity",
+          "unit",
+          "rate"
+        ],
+        "title": "JobWorkReceiptLineOut",
+        "type": "object"
+      },
+      "JobWorkReceiptOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "into_warehouse": {
+            "title": "Into Warehouse",
+            "type": "string"
+          },
+          "job_worker_challan": {
+            "title": "Job Worker Challan",
+            "type": "string"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/JobWorkReceiptLineOut"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "received_date": {
+            "format": "date",
+            "title": "Received Date",
+            "type": "string"
+          },
+          "recorded_by": {
+            "title": "Recorded By",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "received_date",
+          "job_worker_challan",
+          "into_warehouse",
+          "recorded_by",
+          "lines"
+        ],
+        "title": "JobWorkReceiptOut",
+        "type": "object"
+      },
+      "JobWorkReceiveIn": {
+        "properties": {
+          "into_warehouse_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Into Warehouse Id"
+          },
+          "job_worker_challan": {
+            "default": "",
+            "title": "Job Worker Challan",
+            "type": "string"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/JobWorkReceiveLineIn"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "notes": {
+            "default": "",
+            "title": "Notes",
+            "type": "string"
+          },
+          "received_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Received Date"
+          }
+        },
+        "required": [
+          "lines"
+        ],
+        "title": "JobWorkReceiveIn",
+        "type": "object"
+      },
+      "JobWorkReceiveLineIn": {
+        "properties": {
+          "challan_line_id": {
+            "title": "Challan Line Id",
+            "type": "integer"
+          },
+          "charge_per_unit": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "default": "0",
+            "title": "Charge Per Unit"
+          },
+          "input_quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "default": "0",
+            "title": "Input Quantity"
+          },
+          "output_item_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Item Id"
+          },
+          "output_quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Quantity"
+          },
+          "waste_quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "default": "0",
+            "title": "Waste Quantity"
+          }
+        },
+        "required": [
+          "challan_line_id"
+        ],
+        "title": "JobWorkReceiveLineIn",
+        "type": "object"
+      },
+      "LotOut": {
+        "properties": {
+          "accepted_quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Accepted Quantity"
+          },
+          "can_inspect": {
+            "title": "Can Inspect",
+            "type": "boolean"
+          },
+          "destination": {
+            "title": "Destination",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "inspections": {
+            "items": {
+              "$ref": "#/components/schemas/InspectionOut"
+            },
+            "title": "Inspections",
+            "type": "array"
+          },
+          "item_code": {
+            "title": "Item Code",
+            "type": "string"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "item_name": {
+            "title": "Item Name",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "pending_quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Pending Quantity"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "received_on": {
+            "format": "date",
+            "title": "Received On",
+            "type": "string"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "rejected_quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Rejected Quantity"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "source_label": {
+            "title": "Source Label",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "supplier": {
+            "title": "Supplier",
+            "type": "string"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "source",
+          "source_label",
+          "reference",
+          "supplier",
+          "item_id",
+          "item_code",
+          "item_name",
+          "unit",
+          "quantity",
+          "accepted_quantity",
+          "rejected_quantity",
+          "pending_quantity",
+          "destination",
+          "status",
+          "status_label",
+          "received_on",
+          "inspections",
+          "can_inspect"
+        ],
+        "title": "LotOut",
         "type": "object"
       },
       "MeIn": {
@@ -8224,6 +9013,10 @@
             "title": "Is Default",
             "type": "boolean"
           },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -8237,7 +9030,8 @@
           "address",
           "is_default",
           "is_active",
-          "has_stock"
+          "has_stock",
+          "kind"
         ],
         "title": "WarehouseOut",
         "type": "object"
@@ -9146,6 +9940,260 @@
         "summary": "Update Item",
         "tags": [
           "inventory"
+        ]
+      }
+    },
+    "/api/v1/job-work": {
+      "get": {
+        "description": "status: 'open' (with the job worker), or a status, or '' for all.",
+        "operationId": "jobwork_api_list_challans",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Status",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/JobWorkChallanOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "List Challans",
+        "tags": [
+          "job-work"
+        ]
+      },
+      "post": {
+        "operationId": "jobwork_api_send",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobWorkChallanIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobWorkChallanOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Send",
+        "tags": [
+          "job-work"
+        ]
+      }
+    },
+    "/api/v1/job-work/itc04": {
+      "get": {
+        "description": "ITC-04 rows for start..end: table 'sent' (table 4) or 'received' (table 5A).",
+        "operationId": "jobwork_api_itc04_csv",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "start",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Start",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "End",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "table",
+            "required": false,
+            "schema": {
+              "default": "sent",
+              "title": "Table",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Itc04 Csv",
+        "tags": [
+          "job-work"
+        ]
+      }
+    },
+    "/api/v1/job-work/{challan_id}/cancel": {
+      "post": {
+        "operationId": "jobwork_api_cancel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "challan_id",
+            "required": true,
+            "schema": {
+              "title": "Challan Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobWorkChallanOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Cancel",
+        "tags": [
+          "job-work"
+        ]
+      }
+    },
+    "/api/v1/job-work/{challan_id}/pdf": {
+      "get": {
+        "operationId": "jobwork_api_challan_pdf",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "challan_id",
+            "required": true,
+            "schema": {
+              "title": "Challan Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Challan Pdf",
+        "tags": [
+          "job-work"
+        ]
+      }
+    },
+    "/api/v1/job-work/{challan_id}/receipts": {
+      "post": {
+        "operationId": "jobwork_api_receive",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "challan_id",
+            "required": true,
+            "schema": {
+              "title": "Challan Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobWorkReceiveIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobWorkChallanOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Receive",
+        "tags": [
+          "job-work"
         ]
       }
     },
@@ -11942,6 +12990,112 @@
         ]
       }
     },
+    "/api/v1/qc/lots": {
+      "get": {
+        "description": "status: 'open' (waiting or partly inspected), 'done', or 'all'.",
+        "operationId": "quality_api_list_lots",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "open",
+              "title": "Status",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "item_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LotOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "List Lots",
+        "tags": [
+          "qc"
+        ]
+      }
+    },
+    "/api/v1/qc/lots/{lot_id}/inspections": {
+      "post": {
+        "operationId": "quality_api_inspect",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lot_id",
+            "required": true,
+            "schema": {
+              "title": "Lot Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InspectIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LotOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Inspect",
+        "tags": [
+          "qc"
+        ]
+      }
+    },
     "/api/v1/roles": {
       "get": {
         "operationId": "organizations_app_api_list_roles",
@@ -13436,8 +14590,20 @@
     },
     "/api/v1/warehouses": {
       "get": {
+        "description": "The company's stores; include_system adds the QC locations (for stock views).",
         "operationId": "inventory_api_list_warehouses",
-        "parameters": [],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "include_system",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include System",
+              "type": "boolean"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {

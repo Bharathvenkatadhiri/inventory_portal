@@ -48,10 +48,10 @@ export function useItems(params: { q?: string; kind?: string } = {}) {
   });
 }
 
-export function useWarehouses() {
+export function useWarehouses(includeSystem = false) {
   return useQuery({
-    queryKey: ["warehouses"],
-    queryFn: async () => unwrap(await api.GET("/api/v1/warehouses")),
+    queryKey: ["warehouses", includeSystem],
+    queryFn: async () => unwrap(await api.GET("/api/v1/warehouses", { params: { query: { include_system: includeSystem } } })),
   });
 }
 

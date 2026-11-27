@@ -138,7 +138,7 @@ def record(membership, data):
         raise ProductionError("The date can't be in the future.")
 
     def warehouse(key, what):
-        w = Warehouse.objects.select_for_update().filter(company=company, pk=data.get(key), is_active=True).first()
+        w = inventory.store(company, data.get(key), lock=True)
         if w is None:
             raise ProductionError(f"Choose the warehouse {what}.")
         return w
@@ -178,10 +178,16 @@ def record(membership, data):
                                       quantity=-used, rate=rate, entry_date=entry_date, reference=entry.number,
                                       note=f"For {good.normalize():f} {bom.item.unit} {bom.item.code}"[:200], created_by=membership.user)
     if good:
-        StockEntry.objects.create(company=company, item=bom.item, warehouse=target, kind=StockEntry.Kind.PRODUCTION_RECEIPT,
-                                  quantity=good, rate=entry.unit_cost, entry_date=entry_date, reference=entry.number,
+        from quality import services as quality
+        inspect = quality.needs_inspection(company, bom.item)
+        StockEntry.objects.create(company=company, item=bom.item, warehouse=quality.hold(company) if inspect else target,
+                                  kind=StockEntry.Kind.PRODUCTION_RECEIPT, quantity=good, rate=entry.unit_cost,
+                                  entry_date=entry_date, reference=entry.number,
                                   note=f"BOM {bom.name}" + (f", {rejected.normalize():f} rejected" if rejected else ''),
                                   created_by=membership.user)
+        if inspect:
+            quality.open_lot(company, item=bom.item, quantity=good, rate=entry.unit_cost, destination=target,
+                             source='production', reference=entry.number, received_on=entry_date, production_entry=entry)
     return entry
 
 
@@ -195,7 +201,15 @@ def cancel(membership, entry, reason):
     entry = ProductionEntry.objects.select_for_update().get(pk=entry.pk)
     if entry.status != ProductionEntry.Status.POSTED:
         raise ProductionError("This entry is already cancelled.")
-    target = Warehouse.objects.select_for_update().get(pk=entry.target_warehouse_id)
+    from quality.services import QualityError, cancel_for_production
+    try:
+        cancel_for_production(entry)
+    except QualityError as exc:
+        raise ProductionError(str(exc))
+    # The good units went into the target store, or under inspection when QC applies.
+    received = StockEntry.objects.filter(company=entry.company, reference=entry.number,
+                                         kind=StockEntry.Kind.PRODUCTION_RECEIPT).select_related('warehouse').first()
+    target = Warehouse.objects.select_for_update().get(pk=received.warehouse_id if received else entry.target_warehouse_id)
     if entry.quantity_produced:
         on_hand = inventory.on_hand(entry.company, entry.item, target)[0]
         if on_hand < entry.quantity_produced:

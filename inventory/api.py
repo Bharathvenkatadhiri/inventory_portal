@@ -66,6 +66,7 @@ class ItemIn(Schema):
     reorder_level: Optional[Decimal] = None
     description: str = ''
     is_active: bool = True
+    inspection_required: bool = False
 
 
 class ItemOut(Schema):
@@ -82,6 +83,7 @@ class ItemOut(Schema):
     reorder_level: Optional[Decimal]
     description: str
     is_active: bool
+    inspection_required: bool
     tracks_stock: bool
     # Total across warehouses; null when the person can't see stock.
     on_hand: Optional[Decimal]
@@ -94,7 +96,8 @@ def _item_out(item, on_hand=None):
         'id': item.pk, 'code': item.code, 'name': item.name, 'kind': item.kind, 'kind_label': item.get_kind_display(),
         'unit': item.unit, 'hsn_code': item.hsn_code, 'gst_rate': item.gst_rate,
         'purchase_price': item.purchase_price, 'sale_price': item.sale_price, 'reorder_level': item.reorder_level,
-        'description': item.description, 'is_active': item.is_active, 'tracks_stock': item.tracks_stock,
+        'description': item.description, 'is_active': item.is_active, 'inspection_required': item.inspection_required,
+        'tracks_stock': item.tracks_stock,
         'on_hand': quantity,
         'below_reorder': quantity is not None and item.reorder_level is not None and quantity <= item.reorder_level,
     }
@@ -164,6 +167,8 @@ class WarehouseOut(Schema):
     is_default: bool
     is_active: bool
     has_stock: bool
+    # 'store', or a system QC location: 'qc_hold' (under inspection) or 'rejected'.
+    kind: str
 
 
 class WarehousesOut(Schema):
@@ -179,14 +184,17 @@ def _warehouse_out(w):
         address = ', '.join(p for p in (a.label, a.line1, a.city, a.pincode) if p)
     return {
         'id': w.pk, 'name': w.name, 'code': w.code, 'address_id': w.address_id, 'address': address,
-        'is_default': w.is_default, 'is_active': w.is_active, 'has_stock': w.stock_entries.exists(),
+        'is_default': w.is_default, 'is_active': w.is_active, 'has_stock': w.stock_entries.exists(), 'kind': w.kind,
     }
 
 
 @router.get('/warehouses', response=WarehousesOut)
-def list_warehouses(request):
+def list_warehouses(request, include_system: bool = False):
+    """The company's stores; include_system adds the QC locations (for stock views)."""
     company = membership_for(request).company
     warehouses = Warehouse.objects.filter(company=company).select_related('address')
+    if not include_system:
+        warehouses = warehouses.filter(kind=Warehouse.Kind.STORE)
     return {
         'warehouses': [_warehouse_out(w) for w in warehouses],
         'used': services.warehouse_usage(company),

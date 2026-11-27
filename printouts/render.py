@@ -409,3 +409,49 @@ def credit_debit_note(note):
         story += [Spacer(1, 3 * mm), kit.P(f"<b>CANCELLED</b>: {_esc(note.cancel_reason)}")]
     watermark = 'DRAFT' if draft else ('CANCELLED' if note.status == 'cancelled' else '')
     return _build(kit, f"{title.title()} {number}", [story], watermark)
+
+
+# --- Job work challan --------------------------------------------------------------------------
+
+def job_work_challan(challan):
+    """A delivery challan for goods sent for job work (rule 55): not a supply,
+    no tax charged, to be returned within the time s.143 allows."""
+    from reportlab.platypus import Spacer
+
+    kit = _Kit()
+    mm = kit.mm
+    company, worker = challan.company, challan.job_worker
+    source = challan.from_warehouse
+    address = source.address
+    story = [kit.header(company, 'DELIVERY CHALLAN', 'For job work (s.143) · not a supply', [
+        ('Challan no.', challan.number), ('Date', challan.challan_date.strftime('%d %b %Y')),
+        ('Nature of job work', challan.process),
+        ('Return by', challan.expected_return.strftime('%d %b %Y') if challan.expected_return else '—'),
+        ('Vehicle', challan.vehicle_number or '—'),
+    ]), Spacer(1, 4 * mm)]
+    consignor = kit.party('Principal (sent from)', company.legal_name or company.name,
+                          ', '.join(p for p in (source.name, address.line1 if address else '', address.city if address else '') if p),
+                          company.gstin, (address.state_code if address else '') or _state_code(company))
+    consignee = kit.party('Job worker', worker.legal_name or worker.name, worker.principal_address, worker.gstin, _state_code(worker))
+    story += [kit.two_boxes(consignor, consignee), Spacer(1, 4 * mm)]
+    head = [kit.P(h, kit.label if i < 2 else kit.label_right) for i, h in enumerate(['#', 'DESCRIPTION', 'HSN', 'QTY', 'RATE', 'VALUE'])]
+    rows, total = [head], Decimal('0')
+    for i, l in enumerate(challan.lines.select_related('item'), start=1):
+        value = (l.quantity * l.rate).quantize(Decimal('0.01'))
+        total += value
+        rows.append([kit.P(str(i)), [kit.P(_esc(l.item.name)), kit.P(_esc(l.item.code), kit.small)], kit.P(_esc(l.item.hsn_code), kit.right),
+                     kit.P(f"{_qty(l.quantity)} {l.item.unit}", kit.right), kit.P(_money(l.rate, 'INR'), kit.right),
+                     kit.P(_money(value, 'INR'), kit.right)])
+    rows.append(['', kit.P('<b>Value of goods (for the record; no tax charged)</b>'), '', '', '', kit.P(_money(total, 'INR'), kit.right_bold)])
+    story += [kit.table(rows, [7 * mm, kit.width - 101 * mm, 18 * mm, 24 * mm, 24 * mm, 28 * mm],
+                        [('LINEBELOW', (0, 0), (-1, 0), 0.8, kit.navy), ('LINEBELOW', (0, 1), (-1, -2), 0.3, kit.rule),
+                         ('LINEABOVE', (0, -1), (-1, -1), 0.8, kit.navy)], repeat=1),
+              Spacer(1, 3 * mm),
+              kit.P("Goods sent for job work under section 143 of the CGST Act, 2017. Not a supply: no GST is charged. "
+                    "Inputs are to be returned within one year of this challan.", kit.small)]
+    if challan.notes:
+        story += [Spacer(1, 2 * mm), kit.P(_esc(challan.notes))]
+    received = [kit.P("Received by the job worker", kit.label), Spacer(1, 14 * mm), kit.P("Signature and stamp", kit.small)]
+    story += [Spacer(1, 8 * mm), kit.table([[received, kit.signature(company, 'Authorised signatory')]], [kit.width / 2, kit.width / 2])]
+    watermark = 'CANCELLED' if challan.status == 'cancelled' else ''
+    return _build(kit, f"Job work challan {challan.number}", [story], watermark)

@@ -96,7 +96,7 @@ def accept(membership, purchase_order, data):
     and rates, each line matched to one of our own items."""
     company = membership.company
     po = _received_po(membership, purchase_order)
-    warehouse = Warehouse.objects.filter(company=company, pk=data.get('dispatch_from_id'), is_active=True).first()
+    warehouse = inventory.store(company, data.get('dispatch_from_id'))
     if warehouse is None:
         raise SalesError("Choose the warehouse you'll dispatch from.")
     mapping = {row['purchase_order_line_id']: row.get('item_id') for row in data.get('lines') or []}
@@ -196,7 +196,7 @@ def save_order(membership, order, data):
     if customer is None or customer.pk == company.pk:
         raise SalesError("Choose a customer.")
     _check(membership, 'so.create', counterparty=customer)
-    warehouse = Warehouse.objects.filter(company=company, pk=data.get('dispatch_from_id'), is_active=True).first()
+    warehouse = inventory.store(company, data.get('dispatch_from_id'))
     if warehouse is None:
         raise SalesError("Choose the warehouse you'll dispatch from.")
     order_date = data.get('order_date') or timezone.localdate()
@@ -322,8 +322,7 @@ def post_dispatch(membership, order, data):
     company = membership.company
     # Locking the warehouse serializes stock going out of it, so two
     # dispatches can't both take the last of something.
-    warehouse = Warehouse.objects.select_for_update().filter(
-        company=company, pk=data.get('warehouse_id') or order.dispatch_from_id, is_active=True).first()
+    warehouse = inventory.store(company, data.get('warehouse_id') or order.dispatch_from_id, lock=True)
     if warehouse is None:
         raise SalesError("Choose an active warehouse to dispatch from.")
     dispatch_date = data.get('dispatch_date') or timezone.localdate()

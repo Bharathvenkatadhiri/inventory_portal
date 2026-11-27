@@ -40,6 +40,7 @@ PERMISSIONS = {
     'bom.manage': ("Manage bills of materials", 'Production', erp.BOM, None),
     'production.record': ("Record production", 'Production', erp.BOM, None),
     'work_order.manage': ("Create and update work orders", 'Production', erp.MULTI_LEVEL_BOM, None),
+    'job_work.manage': ("Send goods for job work and receive them back", 'Production', erp.JOB_WORK, BUYING),
 
     'inspection.record': ("Record QC inspections", 'QC', erp.QC, None),
 
@@ -79,9 +80,10 @@ DEFAULT_ROLES = {
     ], FULL),
     'store': ("Store / Warehouse", "Receives goods, issues stock and dispatches", [
         'grn.post', 'stock.issue', 'dispatch.post', 'stock.view', 'items.manage', 'warehouses.manage', 'stock.adjust',
+        'job_work.manage',
     ], FULL),
     'production_planner': ("Production Planner", "Maintains BOMs and work orders", [
-        'bom.manage', 'production.record', 'work_order.manage', 'stock.view', 'items.manage',
+        'bom.manage', 'production.record', 'work_order.manage', 'stock.view', 'items.manage', 'job_work.manage',
     ], FULL),
     'accounts': ("Accounts", "Invoices, payments and ledgers", [
         'invoice.create', 'purchase_bill.create', 'purchase_bill.approve', 'payment.record', 'payment.approve',

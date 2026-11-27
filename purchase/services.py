@@ -166,7 +166,8 @@ def save_order(membership, order, data):
     if not decision:
         raise PurchaseError(decision.reason)
     relationship = BusinessRelationship.objects.get(buyer=company, supplier=supplier)
-    warehouse = Warehouse.objects.filter(company=company, pk=data.get('ship_to_id'), is_active=True).select_related('address').first()
+    warehouse = Warehouse.objects.filter(company=company, pk=data.get('ship_to_id'), is_active=True,
+                                         kind=Warehouse.Kind.STORE).select_related('address').first()
     if warehouse is None:
         raise PurchaseError("Choose the warehouse the goods should go to.")
     order_date = data.get('order_date') or timezone.localdate()
@@ -287,7 +288,7 @@ def post_receipt(membership, order, data):
         raise PurchaseError("The supplier declined this order. Cancel it, or raise a new one.")
     company = membership.company
     warehouse_id = data.get('warehouse_id') or order.ship_to_id
-    warehouse = Warehouse.objects.filter(company=company, pk=warehouse_id, is_active=True).first()
+    warehouse = Warehouse.objects.filter(company=company, pk=warehouse_id, is_active=True, kind=Warehouse.Kind.STORE).first()
     if warehouse is None:
         raise PurchaseError("Choose an active warehouse to receive into.")
     received_date = data.get('received_date') or timezone.localdate()
@@ -320,17 +321,25 @@ def post_receipt(membership, order, data):
         vehicle_number=(data.get('vehicle_number') or '').strip().upper()[:20],
         notes=(data.get('notes') or '').strip()[:300], created_by=membership.user,
     )
+    from quality import services as quality
     for line, quantity in wanted:
-        GoodsReceiptLine.objects.create(receipt=receipt, order_line=line, quantity=quantity)
+        receipt_line = GoodsReceiptLine.objects.create(receipt=receipt, order_line=line, quantity=quantity)
         line.received_quantity += quantity
         line.save(update_fields=['received_quantity'])
         if line.item.tracks_stock:
+            # Items that need QC wait under inspection; the lot remembers the store they're for.
+            inspect = quality.needs_inspection(company, line.item)
             StockEntry.objects.create(
-                company=company, item=line.item, warehouse=warehouse, kind=StockEntry.Kind.RECEIPT,
-                quantity=quantity, rate=line.rate, entry_date=received_date, reference=receipt.number,
+                company=company, item=line.item, warehouse=quality.hold(company) if inspect else warehouse,
+                kind=StockEntry.Kind.RECEIPT, quantity=quantity, rate=line.rate, entry_date=received_date,
+                reference=receipt.number,
                 note=f"From {order.supplier.name or order.supplier.legal_name} against {order.number}"[:200],
                 created_by=membership.user,
             )
+            if inspect:
+                quality.open_lot(company, item=line.item, quantity=quantity, rate=line.rate, destination=warehouse,
+                                 source='receipt', reference=receipt.number, received_on=received_date,
+                                 receipt_line=receipt_line, supplier=order.supplier)
     complete = all(l.received_quantity >= l.quantity for l in order_lines.values())
     order.status = Order.Status.RECEIVED if complete else Order.Status.PARTIALLY_RECEIVED
     order.save(update_fields=['status', 'updated_at'])

@@ -14,6 +14,7 @@ export function StockPage() {
   const writable = useWritable();
   const adjust = can("stock.adjust") && writable;
   const warehouses = useWarehouses();
+  const allLocations = useWarehouses(true);
   const [warehouseId, setWarehouseId] = useState<number | null>(null);
   const stock = useQuery({
     queryKey: ["stock", warehouseId],
@@ -44,7 +45,7 @@ export function StockPage() {
         actions={
           <select className="field-input w-auto" aria-label="Warehouse" value={warehouseId ?? ""} onChange={(e) => setWarehouseId(e.target.value ? Number(e.target.value) : null)}>
             <option value="">All warehouses</option>
-            {(warehouses.data?.warehouses ?? []).map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+            {(allLocations.data?.warehouses ?? []).map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
           </select>
         }
         className="overflow-x-auto"
