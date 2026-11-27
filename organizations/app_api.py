@@ -94,6 +94,7 @@ class CompanyOut(Schema):
     plan_label: str
     tan: str
     tds_194q: bool
+    einvoice_applicable: bool
 
 
 class SeatsOut(Schema):
@@ -163,7 +164,7 @@ def company_out(company):
         'state': company.state, 'state_code': company.state_code, 'pincode': company.pincode,
         'buying_enabled': company.buying_enabled, 'selling_enabled': company.selling_enabled,
         'findable': company.findable, 'plan': company.erp_plan, 'plan_label': plan['label'] if plan else '',
-        'tan': company.tan, 'tds_194q': company.tds_194q,
+        'tan': company.tan, 'tds_194q': company.tds_194q, 'einvoice_applicable': company.einvoice_applicable,
     }
 
 
@@ -249,6 +250,7 @@ class OrganizationIn(Schema):
     selling_enabled: Optional[bool] = None
     tan: Optional[str] = None
     tds_194q: Optional[bool] = None
+    einvoice_applicable: Optional[bool] = None
 
 
 @router.get('/organization', response=CompanyOut, tags=['organization'])
@@ -265,7 +267,7 @@ def update_organization(request, payload: OrganizationIn):
         if not name:
             raise HttpError(400, "Enter the name your company goes by.")
         company.name = name[:255]
-    for field in ('findable', 'buying_enabled', 'selling_enabled', 'tds_194q'):
+    for field in ('findable', 'buying_enabled', 'selling_enabled', 'tds_194q', 'einvoice_applicable'):
         if field in changes and changes[field] is not None:
             setattr(company, field, changes[field])
     if 'tan' in changes and changes['tan'] is not None:

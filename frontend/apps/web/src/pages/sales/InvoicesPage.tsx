@@ -10,6 +10,7 @@ import { PAYMENT_TONES } from "../accounts/AccountsLayout";
 import { NoteForm, type Kind } from "../notes/NoteForm";
 import { DocumentNotes } from "../notes/DocumentNotes";
 import { ReasonModal, StatusBadge, TotalsTable } from "../purchase/PurchaseLayout";
+import { EInvoicePanel } from "../../components/GstPortal";
 
 type Invoice = Schemas["InvoiceOut"];
 
@@ -116,6 +117,7 @@ function InvoiceDetail({ invoice: inv, onClose }: { invoice: Invoice; onClose: (
       </div>
       {inv.status === "draft" ? <Notice tone="navy">The invoice number is given when it's posted.</Notice> : null}
       {inv.status === "cancelled" ? <Notice tone="red">Cancelled: {inv.cancel_reason}. The number {inv.number} stays used.</Notice> : null}
+      {inv.status !== "draft" ? <EInvoicePanel kind="invoice" id={inv.id} /> : null}
       <div className="grid gap-4 text-sm sm:grid-cols-2">
         <div><p className="text-xs font-bold uppercase text-gray-400">From</p><p className="font-semibold">{inv.seller.name}</p><p className="text-gray-600">GSTIN {inv.seller.gstin || "—"} · {inv.seller.state}</p></div>
         <div>

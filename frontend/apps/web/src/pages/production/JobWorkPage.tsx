@@ -9,6 +9,7 @@ import { useWritable } from "../../lib/session";
 import { useItems, useWarehouses } from "../inventory/InventoryLayout";
 import { ReasonModal, StatusBadge, todayIso } from "../purchase/PurchaseLayout";
 import { batchText } from "../inventory/batches";
+import { EwayBillPanel } from "../../components/GstPortal";
 
 type Challan = Schemas["JobWorkChallanOut"];
 const STATUS_TONE: Record<string, string> = { open: "issued", partly: "partially_received", closed: "received", cancelled: "cancelled" };
@@ -186,6 +187,7 @@ function ChallanDetail({ challan: c, onClose }: { challan: Challan; onClose: () 
       <p className="text-sm">{c.process} · sent {day(c.challan_date)} from {c.from_warehouse}{c.vehicle_number ? ` · ${c.vehicle_number}` : ""} · back by {day(c.due_back)}</p>
       {c.age_flag === "overdue" ? <Notice tone="red">These inputs have been away over a year: under s.143 they're treated as supplied on the challan date, and GST is payable on them.</Notice> : null}
       {c.status === "cancelled" ? <Notice tone="red">Cancelled: {c.cancel_reason}</Notice> : null}
+      {c.status !== "cancelled" ? <EwayBillPanel kind="job-work" id={c.id} vehicle={c.vehicle_number} /> : null}
       <table className="w-full">
         <thead className="border-b border-gray-100"><tr><th scope="col" className="table-head">Item</th><th scope="col" className="table-head text-right">Sent</th><th scope="col" className="table-head text-right">Back</th><th scope="col" className="table-head text-right">Lost</th><th scope="col" className="table-head text-right">Still away</th></tr></thead>
         <tbody className="divide-y divide-gray-100">

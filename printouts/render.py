@@ -207,6 +207,8 @@ def tax_invoice(invoice, copies=1):
     draft = invoice.status == 'draft'
     number = invoice.number or 'DRAFT'
     bank = seller.bank_accounts.filter(is_default=True).first() or seller.bank_accounts.first()
+    from einvoice.services import active_irn
+    irn = active_irn(invoice) if invoice.pk else None
 
     def page(copy_label):
         story = [kit.header(seller, 'TAX INVOICE', copy_label, [
@@ -214,6 +216,8 @@ def tax_invoice(invoice, copies=1):
             ('Place of supply', _state(invoice.place_of_supply)), ('Reverse charge', 'No'),
             ('Due date', invoice.due_date.strftime('%d %b %Y') if invoice.due_date else '—'),
         ]), Spacer(1, 4 * mm)]
+        if irn is not None:
+            story += [_irn_block(kit, irn), Spacer(1, 3 * mm)]
         bill_to = kit.party('Bill to', customer.legal_name or customer.name, customer.principal_address, customer.gstin,
                             _state_code(customer),
                             [f"Your order: {order.customer_po_number}" if order.customer_po_number else '', f"Our order: {order.number}"])
@@ -286,11 +290,14 @@ def delivery_challan(dispatch):
     customer = order.customer
     warehouse = dispatch.warehouse
     address = warehouse.address
+    from einvoice.services import active_ewb
+    ewb = active_ewb(dispatch)
     story = [kit.header(seller, 'DELIVERY CHALLAN', 'For supply of goods', [
         ('Challan no.', dispatch.number), ('Date', dispatch.dispatch_date.strftime('%d %b %Y')),
         ('Place of supply', _state(order.place_of_supply)), ('Against order', order.number),
-        ('Vehicle', dispatch.vehicle_number or '—'),
-    ]), Spacer(1, 4 * mm)]
+        ('Vehicle', (ewb.vehicle_number if ewb and ewb.vehicle_number else dispatch.vehicle_number) or '—'),
+    ] + ([('E-way bill', ewb.number)] + ([('Valid until', timezone.localtime(ewb.valid_until).strftime('%d %b %Y %H:%M'))] if ewb.valid_until else [])
+         if ewb else [])), Spacer(1, 4 * mm)]
     consignor = kit.party('Consignor (dispatched from)', seller.legal_name or seller.name,
                           ', '.join(p for p in (warehouse.name, address.line1 if address else '', address.city if address else '',
                                                 address.pincode if address else '') if p),
@@ -431,11 +438,14 @@ def job_work_challan(challan):
     company, worker = challan.company, challan.job_worker
     source = challan.from_warehouse
     address = source.address
+    from einvoice.services import active_ewb
+    ewb = active_ewb(challan)
     story = [kit.header(company, 'DELIVERY CHALLAN', 'For job work (s.143) · not a supply', [
         ('Challan no.', challan.number), ('Date', challan.challan_date.strftime('%d %b %Y')),
         ('Nature of job work', challan.process),
         ('Return by', challan.expected_return.strftime('%d %b %Y') if challan.expected_return else '—'),
-        ('Vehicle', challan.vehicle_number or '—'),
+        ('Vehicle', (ewb.vehicle_number if ewb and ewb.vehicle_number else challan.vehicle_number) or '—'),
+        *([('E-way bill', ewb.number)] if ewb else []),
     ]), Spacer(1, 4 * mm)]
     consignor = kit.party('Principal (sent from)', company.legal_name or company.name,
                           ', '.join(p for p in (source.name, address.line1 if address else '', address.city if address else '') if p),
@@ -584,3 +594,21 @@ def request_for_quotation(rfq):
                     "your quote is valid, quoting our RFQ number.", kit.small),
               Spacer(1, 8 * mm), kit.table([['', kit.signature(buyer, 'Purchase')]], [kit.width * 0.6, kit.width * 0.4])]
     return _build(kit, f"RFQ {rfq.number}", [story])
+
+
+def _irn_block(kit, e):
+    """The IRN, acknowledgement and the IRP's signed QR code, as rule 48(4) requires on the invoice."""
+    from reportlab.graphics.barcode.qr import QrCodeWidget
+    from reportlab.graphics.shapes import Drawing
+
+    mm = kit.mm
+    widget = QrCodeWidget(e.signed_qr)
+    x1, y1, x2, y2 = widget.getBounds()
+    size = 30 * mm
+    drawing = Drawing(size, size, transform=[size / (x2 - x1), 0, 0, size / (y2 - y1), 0, 0])
+    drawing.add(widget)
+    text = [kit.P('E-INVOICE', kit.label), kit.P(f"IRN: {e.irn}", kit.small),
+            kit.P(f"Ack no. {e.ack_number} · Ack date {timezone.localtime(e.ack_date):%d %b %Y %H:%M}", kit.small)]
+    if e.provider == 'mock':
+        text.append(kit.P("Registered on the MakeSetu test portal: not a valid e-invoice.", kit.small))
+    return kit.table([[drawing, text]], [33 * mm, kit.width - 33 * mm])

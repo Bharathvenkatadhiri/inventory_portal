@@ -6,7 +6,7 @@ export function active(overrides: Partial<Schemas["SubscriptionOut"]> = {}, allo
       id: 1, name: "Vaigai", legal_name: "Vaigai Precision Works Private Limited", trade_name: "", gstin: "33AAAAA0000A1Z5",
       pan: "AAAAA0000A", gst_status: "Active", principal_address: "", city: "Madurai", state: "Tamil Nadu", state_code: "33",
       pincode: "625001", buying_enabled: true, selling_enabled: true, findable: true, plan: "starter", plan_label: "Starter",
-      tan: "", tds_194q: false,
+      tan: "", tds_194q: false, einvoice_applicable: false,
     },
     role: { id: 1, key: "org_admin", name: "Org Admin", user_type: "full" },
     granted: allowed,

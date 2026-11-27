@@ -325,6 +325,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dispatches/{document_id}/eway-bill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dispatches Eway Bill Get */
+        get: operations["dispatches_eway_bill_get"];
+        put?: never;
+        /** Dispatches Eway Bill Post */
+        post: operations["dispatches_eway_bill_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispatches/{document_id}/eway-bill/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dispatches Eway Bill Cancel */
+        post: operations["dispatches_eway_bill_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispatches/{document_id}/eway-bill/vehicle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dispatches Eway Bill Vehicle */
+        post: operations["dispatches_eway_bill_vehicle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/goods-receipts": {
         parameters: {
             query?: never;
@@ -334,6 +386,26 @@ export interface paths {
         };
         /** List Receipts */
         get: operations["purchase_api_list_receipts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/gst-portal/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Register List
+         * @description Everything registered with the GST portals, newest first, and what still needs it.
+         */
+        get: operations["einvoice_api_register_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -575,6 +647,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/job-work/{document_id}/eway-bill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Job Work Eway Bill Get */
+        get: operations["job_work_eway_bill_get"];
+        put?: never;
+        /** Job Work Eway Bill Post */
+        post: operations["job_work_eway_bill_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/job-work/{document_id}/eway-bill/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Job Work Eway Bill Cancel */
+        post: operations["job_work_eway_bill_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/job-work/{document_id}/eway-bill/vehicle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Job Work Eway Bill Vehicle */
+        post: operations["job_work_eway_bill_vehicle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/machines": {
         parameters: {
             query?: never;
@@ -714,6 +838,41 @@ export interface paths {
         put?: never;
         /** Cancel Note */
         post: operations["adjustments_api_cancel_note"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notes/{note_id}/einvoice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Note Einvoice */
+        get: operations["einvoice_api_note_einvoice"];
+        put?: never;
+        /** Register Note */
+        post: operations["einvoice_api_register_note"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notes/{note_id}/einvoice/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Note Irn */
+        post: operations["einvoice_api_cancel_note_irn"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2120,6 +2279,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sales-invoices/{invoice_id}/einvoice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Invoice Einvoice */
+        get: operations["einvoice_api_invoice_einvoice"];
+        put?: never;
+        /**
+         * Register Invoice
+         * @description Registers the invoice with the IRP: its IRN and signed QR code.
+         */
+        post: operations["einvoice_api_register_invoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-invoices/{invoice_id}/einvoice/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Invoice Irn
+         * @description Cancels the IRN (within 24 hours). The invoice itself can then be cancelled.
+         */
+        post: operations["einvoice_api_cancel_invoice_irn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sales-invoices/{invoice_id}/pdf": {
         parameters: {
             query?: never;
@@ -3342,6 +3542,8 @@ export interface components {
             buying_enabled: boolean;
             /** City */
             city: string;
+            /** Einvoice Applicable */
+            einvoice_applicable: boolean;
             /** Findable */
             findable: boolean;
             /** Gst Status */
@@ -3736,6 +3938,52 @@ export interface components {
             /** Total */
             total: number | string | null;
         };
+        /** EInvoiceOut */
+        EInvoiceOut: {
+            /**
+             * Ack Date
+             * Format: date-time
+             */
+            ack_date: string;
+            /** Ack Number */
+            ack_number: string;
+            /** Can Cancel */
+            can_cancel: boolean;
+            /** Cancel Reason Label */
+            cancel_reason_label: string;
+            /** Cancel Remark */
+            cancel_remark: string;
+            /** Cancelled At */
+            cancelled_at: string | null;
+            /** Document Number */
+            document_number: string;
+            /** Document Type */
+            document_type: string;
+            /** Id */
+            id: number;
+            /** Irn */
+            irn: string;
+            /** Provider */
+            provider: string;
+            /** Registered By */
+            registered_by: string;
+            /** Signed Qr */
+            signed_qr: string;
+            /** Status */
+            status: string;
+            /** Status Label */
+            status_label: string;
+        };
+        /** EInvoiceStateOut */
+        EInvoiceStateOut: {
+            /** Applicable */
+            applicable: boolean;
+            /** Can Register */
+            can_register: boolean;
+            current: components["schemas"]["EInvoiceOut"] | null;
+            /** History */
+            history: components["schemas"]["EInvoiceOut"][];
+        };
         /** EntryIn */
         EntryIn: {
             /** Bom Id */
@@ -3856,6 +4104,159 @@ export interface components {
             /** Work Order Number */
             work_order_number: string;
         };
+        /** EwayBillOut */
+        EwayBillOut: {
+            /** Can Cancel */
+            can_cancel: boolean;
+            /** Can Update Vehicle */
+            can_update_vehicle: boolean;
+            /** Cancel Reason Label */
+            cancel_reason_label: string;
+            /** Cancel Remark */
+            cancel_remark: string;
+            /** Distance Km */
+            distance_km: number;
+            /** Document Number */
+            document_number: string;
+            /** Expired */
+            expired: boolean;
+            /** From Pincode */
+            from_pincode: string;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Generated By */
+            generated_by: string;
+            /** Id */
+            id: number;
+            /** Number */
+            number: string;
+            /** Provider */
+            provider: string;
+            /** Status */
+            status: string;
+            /** Status Label */
+            status_label: string;
+            /** To Pincode */
+            to_pincode: string;
+            /** Transport Document */
+            transport_document: string;
+            /** Transport Mode */
+            transport_mode: string;
+            /** Transport Mode Label */
+            transport_mode_label: string;
+            /** Transporter Id */
+            transporter_id: string;
+            /** Transporter Name */
+            transporter_name: string;
+            /** Valid Until */
+            valid_until: string | null;
+            /** Value */
+            value: number | string;
+            /** Vehicle Number */
+            vehicle_number: string;
+            /** Vehicle Type */
+            vehicle_type: string;
+            /** Vehicles */
+            vehicles: components["schemas"]["EwbVehicleOut"][];
+        };
+        /** EwbCancelIn */
+        EwbCancelIn: {
+            /** Reason */
+            reason: string;
+            /**
+             * Remark
+             * @default
+             */
+            remark: string;
+        };
+        /** EwbIn */
+        EwbIn: {
+            /** Distance Km */
+            distance_km: number;
+            /**
+             * Transport Document
+             * @default
+             */
+            transport_document: string;
+            /** Transport Document Date */
+            transport_document_date?: string | null;
+            /**
+             * Transport Mode
+             * @default 1
+             */
+            transport_mode: string;
+            /**
+             * Transporter Id
+             * @default
+             */
+            transporter_id: string;
+            /**
+             * Transporter Name
+             * @default
+             */
+            transporter_name: string;
+            /**
+             * Vehicle Number
+             * @default
+             */
+            vehicle_number: string;
+            /**
+             * Vehicle Type
+             * @default R
+             */
+            vehicle_type: string;
+        };
+        /** EwbStateOut */
+        EwbStateOut: {
+            /** Can Generate */
+            can_generate: boolean;
+            current: components["schemas"]["EwayBillOut"] | null;
+            /** History */
+            history: components["schemas"]["EwayBillOut"][];
+            /** Needed */
+            needed: boolean;
+            /** Value */
+            value: number | string;
+            /** Why */
+            why: string;
+        };
+        /** EwbVehicleIn */
+        EwbVehicleIn: {
+            /**
+             * From Place
+             * @default
+             */
+            from_place: string;
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+            /**
+             * Remark
+             * @default
+             */
+            remark: string;
+            /** Vehicle Number */
+            vehicle_number: string;
+        };
+        /** EwbVehicleOut */
+        EwbVehicleOut: {
+            /** From Place */
+            from_place: string;
+            /** Reason Label */
+            reason_label: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Vehicle Number */
+            vehicle_number: string;
+        };
         /** ExplodeRowOut */
         ExplodeRowOut: {
             /** Item Code */
@@ -3876,6 +4277,67 @@ export interface components {
             short: number | string | null;
             /** Unit */
             unit: string;
+        };
+        /** GstPortalPendingOut */
+        GstPortalPendingOut: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Document Id */
+            document_id: number;
+            /** Document Kind */
+            document_kind: string;
+            /** Document Number */
+            document_number: string;
+            /** Party */
+            party: string;
+            /** Value */
+            value: number | string;
+            /** Why */
+            why: string;
+        };
+        /** GstPortalRegisterOut */
+        GstPortalRegisterOut: {
+            /** Einvoicing On */
+            einvoicing_on: boolean;
+            /** Pending */
+            pending: components["schemas"]["GstPortalPendingOut"][];
+            /** Provider */
+            provider: string;
+            /** Rows */
+            rows: components["schemas"]["GstPortalRowOut"][];
+        };
+        /** GstPortalRowOut */
+        GstPortalRowOut: {
+            /**
+             * Date
+             * Format: date-time
+             */
+            date: string;
+            /** Document Id */
+            document_id: number;
+            /** Document Kind */
+            document_kind: string;
+            /** Document Number */
+            document_number: string;
+            /** Id */
+            id: number;
+            /** Kind */
+            kind: string;
+            /** Number */
+            number: string;
+            /** Party */
+            party: string;
+            /** Status */
+            status: string;
+            /** Status Label */
+            status_label: string;
+            /** Valid Until */
+            valid_until: string | null;
+            /** Value */
+            value: number | string;
         };
         /** InspectIn */
         InspectIn: {
@@ -4097,6 +4559,16 @@ export interface components {
             taxable_value: number | string;
             /** Total */
             total: number | string;
+        };
+        /** IrnCancelIn */
+        IrnCancelIn: {
+            /** Reason */
+            reason: string;
+            /**
+             * Remark
+             * @default
+             */
+            remark: string;
         };
         /** ItemIn */
         ItemIn: {
@@ -5152,6 +5624,8 @@ export interface components {
         OrganizationIn: {
             /** Buying Enabled */
             buying_enabled?: boolean | null;
+            /** Einvoice Applicable */
+            einvoice_applicable?: boolean | null;
             /** Findable */
             findable?: boolean | null;
             /** Name */
@@ -7378,6 +7852,106 @@ export interface operations {
             };
         };
     };
+    dispatches_eway_bill_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EwbStateOut"];
+                };
+            };
+        };
+    };
+    dispatches_eway_bill_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EwbIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EwbStateOut"];
+                };
+            };
+        };
+    };
+    dispatches_eway_bill_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EwbCancelIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EwbStateOut"];
+                };
+            };
+        };
+    };
+    dispatches_eway_bill_vehicle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EwbVehicleIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EwbStateOut"];
+                };
+            };
+        };
+    };
     purchase_api_list_receipts: {
         parameters: {
             query?: never;
@@ -7394,6 +7968,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReceiptOut"][];
+                };
+            };
+        };
+    };
+    einvoice_api_register_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GstPortalRegisterOut"];
                 };
             };
         };
@@ -7752,6 +8346,106 @@ export interface operations {
             };
         };
     };
+    job_work_eway_bill_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EwbStateOut"];
+                };
+            };
+        };
+    };
+    job_work_eway_bill_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EwbIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EwbStateOut"];
+                };
+            };
+        };
+    };
+    job_work_eway_bill_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EwbCancelIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EwbStateOut"];
+                };
+            };
+        };
+    };
+    job_work_eway_bill_vehicle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EwbVehicleIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EwbStateOut"];
+                };
+            };
+        };
+    };
     production_api_list_machines: {
         parameters: {
             query?: never;
@@ -8071,6 +8765,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NoteOut"];
+                };
+            };
+        };
+    };
+    einvoice_api_note_einvoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                note_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EInvoiceStateOut"];
+                };
+            };
+        };
+    };
+    einvoice_api_register_note: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                note_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EInvoiceStateOut"];
+                };
+            };
+        };
+    };
+    einvoice_api_cancel_note_irn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                note_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IrnCancelIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EInvoiceStateOut"];
                 };
             };
         };
@@ -10477,6 +11241,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InvoiceOut"];
+                };
+            };
+        };
+    };
+    einvoice_api_invoice_einvoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EInvoiceStateOut"];
+                };
+            };
+        };
+    };
+    einvoice_api_register_invoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EInvoiceStateOut"];
+                };
+            };
+        };
+    };
+    einvoice_api_cancel_invoice_irn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IrnCancelIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EInvoiceStateOut"];
                 };
             };
         };

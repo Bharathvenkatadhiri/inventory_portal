@@ -1687,6 +1687,10 @@
             "title": "City",
             "type": "string"
           },
+          "einvoice_applicable": {
+            "title": "Einvoice Applicable",
+            "type": "boolean"
+          },
           "findable": {
             "title": "Findable",
             "type": "boolean"
@@ -1775,7 +1779,8 @@
           "plan",
           "plan_label",
           "tan",
-          "tds_194q"
+          "tds_194q",
+          "einvoice_applicable"
         ],
         "title": "CompanyOut",
         "type": "object"
@@ -2971,6 +2976,135 @@
         "title": "DocRefOut",
         "type": "object"
       },
+      "EInvoiceOut": {
+        "properties": {
+          "ack_date": {
+            "format": "date-time",
+            "title": "Ack Date",
+            "type": "string"
+          },
+          "ack_number": {
+            "title": "Ack Number",
+            "type": "string"
+          },
+          "can_cancel": {
+            "title": "Can Cancel",
+            "type": "boolean"
+          },
+          "cancel_reason_label": {
+            "title": "Cancel Reason Label",
+            "type": "string"
+          },
+          "cancel_remark": {
+            "title": "Cancel Remark",
+            "type": "string"
+          },
+          "cancelled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancelled At"
+          },
+          "document_number": {
+            "title": "Document Number",
+            "type": "string"
+          },
+          "document_type": {
+            "title": "Document Type",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "irn": {
+            "title": "Irn",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "registered_by": {
+            "title": "Registered By",
+            "type": "string"
+          },
+          "signed_qr": {
+            "title": "Signed Qr",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "document_type",
+          "document_number",
+          "irn",
+          "ack_number",
+          "ack_date",
+          "signed_qr",
+          "status",
+          "status_label",
+          "cancel_reason_label",
+          "cancel_remark",
+          "cancelled_at",
+          "can_cancel",
+          "provider",
+          "registered_by"
+        ],
+        "title": "EInvoiceOut",
+        "type": "object"
+      },
+      "EInvoiceStateOut": {
+        "properties": {
+          "applicable": {
+            "title": "Applicable",
+            "type": "boolean"
+          },
+          "can_register": {
+            "title": "Can Register",
+            "type": "boolean"
+          },
+          "current": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EInvoiceOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/EInvoiceOut"
+            },
+            "title": "History",
+            "type": "array"
+          }
+        },
+        "required": [
+          "applicable",
+          "can_register",
+          "current",
+          "history"
+        ],
+        "title": "EInvoiceStateOut",
+        "type": "object"
+      },
       "EntryIn": {
         "properties": {
           "bom_id": {
@@ -3405,6 +3539,347 @@
         "title": "EntryOut",
         "type": "object"
       },
+      "EwayBillOut": {
+        "properties": {
+          "can_cancel": {
+            "title": "Can Cancel",
+            "type": "boolean"
+          },
+          "can_update_vehicle": {
+            "title": "Can Update Vehicle",
+            "type": "boolean"
+          },
+          "cancel_reason_label": {
+            "title": "Cancel Reason Label",
+            "type": "string"
+          },
+          "cancel_remark": {
+            "title": "Cancel Remark",
+            "type": "string"
+          },
+          "distance_km": {
+            "title": "Distance Km",
+            "type": "integer"
+          },
+          "document_number": {
+            "title": "Document Number",
+            "type": "string"
+          },
+          "expired": {
+            "title": "Expired",
+            "type": "boolean"
+          },
+          "from_pincode": {
+            "title": "From Pincode",
+            "type": "string"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "generated_by": {
+            "title": "Generated By",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "to_pincode": {
+            "title": "To Pincode",
+            "type": "string"
+          },
+          "transport_document": {
+            "title": "Transport Document",
+            "type": "string"
+          },
+          "transport_mode": {
+            "title": "Transport Mode",
+            "type": "string"
+          },
+          "transport_mode_label": {
+            "title": "Transport Mode Label",
+            "type": "string"
+          },
+          "transporter_id": {
+            "title": "Transporter Id",
+            "type": "string"
+          },
+          "transporter_name": {
+            "title": "Transporter Name",
+            "type": "string"
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Until"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Value"
+          },
+          "vehicle_number": {
+            "title": "Vehicle Number",
+            "type": "string"
+          },
+          "vehicle_type": {
+            "title": "Vehicle Type",
+            "type": "string"
+          },
+          "vehicles": {
+            "items": {
+              "$ref": "#/components/schemas/EwbVehicleOut"
+            },
+            "title": "Vehicles",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "status",
+          "status_label",
+          "generated_at",
+          "valid_until",
+          "expired",
+          "document_number",
+          "value",
+          "distance_km",
+          "transport_mode",
+          "transport_mode_label",
+          "vehicle_type",
+          "vehicle_number",
+          "transporter_id",
+          "transporter_name",
+          "transport_document",
+          "from_pincode",
+          "to_pincode",
+          "cancel_reason_label",
+          "cancel_remark",
+          "vehicles",
+          "can_update_vehicle",
+          "can_cancel",
+          "provider",
+          "generated_by"
+        ],
+        "title": "EwayBillOut",
+        "type": "object"
+      },
+      "EwbCancelIn": {
+        "properties": {
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "remark": {
+            "default": "",
+            "title": "Remark",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "EwbCancelIn",
+        "type": "object"
+      },
+      "EwbIn": {
+        "properties": {
+          "distance_km": {
+            "title": "Distance Km",
+            "type": "integer"
+          },
+          "transport_document": {
+            "default": "",
+            "title": "Transport Document",
+            "type": "string"
+          },
+          "transport_document_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transport Document Date"
+          },
+          "transport_mode": {
+            "default": "1",
+            "title": "Transport Mode",
+            "type": "string"
+          },
+          "transporter_id": {
+            "default": "",
+            "title": "Transporter Id",
+            "type": "string"
+          },
+          "transporter_name": {
+            "default": "",
+            "title": "Transporter Name",
+            "type": "string"
+          },
+          "vehicle_number": {
+            "default": "",
+            "title": "Vehicle Number",
+            "type": "string"
+          },
+          "vehicle_type": {
+            "default": "R",
+            "title": "Vehicle Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "distance_km"
+        ],
+        "title": "EwbIn",
+        "type": "object"
+      },
+      "EwbStateOut": {
+        "properties": {
+          "can_generate": {
+            "title": "Can Generate",
+            "type": "boolean"
+          },
+          "current": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EwayBillOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/EwayBillOut"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "needed": {
+            "title": "Needed",
+            "type": "boolean"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Value"
+          },
+          "why": {
+            "title": "Why",
+            "type": "string"
+          }
+        },
+        "required": [
+          "needed",
+          "why",
+          "value",
+          "can_generate",
+          "current",
+          "history"
+        ],
+        "title": "EwbStateOut",
+        "type": "object"
+      },
+      "EwbVehicleIn": {
+        "properties": {
+          "from_place": {
+            "default": "",
+            "title": "From Place",
+            "type": "string"
+          },
+          "reason": {
+            "default": "",
+            "title": "Reason",
+            "type": "string"
+          },
+          "remark": {
+            "default": "",
+            "title": "Remark",
+            "type": "string"
+          },
+          "vehicle_number": {
+            "title": "Vehicle Number",
+            "type": "string"
+          }
+        },
+        "required": [
+          "vehicle_number"
+        ],
+        "title": "EwbVehicleIn",
+        "type": "object"
+      },
+      "EwbVehicleOut": {
+        "properties": {
+          "from_place": {
+            "title": "From Place",
+            "type": "string"
+          },
+          "reason_label": {
+            "title": "Reason Label",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "vehicle_number": {
+            "title": "Vehicle Number",
+            "type": "string"
+          }
+        },
+        "required": [
+          "vehicle_number",
+          "from_place",
+          "reason_label",
+          "updated_at"
+        ],
+        "title": "EwbVehicleOut",
+        "type": "object"
+      },
       "ExplodeRowOut": {
         "properties": {
           "item_code": {
@@ -3483,6 +3958,175 @@
           "short"
         ],
         "title": "ExplodeRowOut",
+        "type": "object"
+      },
+      "GstPortalPendingOut": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "document_id": {
+            "title": "Document Id",
+            "type": "integer"
+          },
+          "document_kind": {
+            "title": "Document Kind",
+            "type": "string"
+          },
+          "document_number": {
+            "title": "Document Number",
+            "type": "string"
+          },
+          "party": {
+            "title": "Party",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Value"
+          },
+          "why": {
+            "title": "Why",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_kind",
+          "document_id",
+          "document_number",
+          "party",
+          "date",
+          "value",
+          "why"
+        ],
+        "title": "GstPortalPendingOut",
+        "type": "object"
+      },
+      "GstPortalRegisterOut": {
+        "properties": {
+          "einvoicing_on": {
+            "title": "Einvoicing On",
+            "type": "boolean"
+          },
+          "pending": {
+            "items": {
+              "$ref": "#/components/schemas/GstPortalPendingOut"
+            },
+            "title": "Pending",
+            "type": "array"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/GstPortalRowOut"
+            },
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "einvoicing_on",
+          "provider",
+          "rows",
+          "pending"
+        ],
+        "title": "GstPortalRegisterOut",
+        "type": "object"
+      },
+      "GstPortalRowOut": {
+        "properties": {
+          "date": {
+            "format": "date-time",
+            "title": "Date",
+            "type": "string"
+          },
+          "document_id": {
+            "title": "Document Id",
+            "type": "integer"
+          },
+          "document_kind": {
+            "title": "Document Kind",
+            "type": "string"
+          },
+          "document_number": {
+            "title": "Document Number",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "party": {
+            "title": "Party",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Until"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "document_kind",
+          "document_id",
+          "document_number",
+          "party",
+          "number",
+          "date",
+          "valid_until",
+          "status",
+          "status_label",
+          "value"
+        ],
+        "title": "GstPortalRowOut",
         "type": "object"
       },
       "InspectIn": {
@@ -4162,6 +4806,24 @@
           "payment_status_label"
         ],
         "title": "InvoiceOut",
+        "type": "object"
+      },
+      "IrnCancelIn": {
+        "properties": {
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "remark": {
+            "default": "",
+            "title": "Remark",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "IrnCancelIn",
         "type": "object"
       },
       "ItemIn": {
@@ -7519,6 +8181,17 @@
               }
             ],
             "title": "Buying Enabled"
+          },
+          "einvoice_applicable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Einvoice Applicable"
           },
           "findable": {
             "anyOf": [
@@ -14108,6 +14781,182 @@
         ]
       }
     },
+    "/api/v1/dispatches/{document_id}/eway-bill": {
+      "get": {
+        "operationId": "dispatches_eway_bill_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "title": "Document Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EwbStateOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Dispatches Eway Bill Get",
+        "tags": [
+          "einvoice"
+        ]
+      },
+      "post": {
+        "operationId": "dispatches_eway_bill_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "title": "Document Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EwbIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EwbStateOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Dispatches Eway Bill Post",
+        "tags": [
+          "einvoice"
+        ]
+      }
+    },
+    "/api/v1/dispatches/{document_id}/eway-bill/cancel": {
+      "post": {
+        "operationId": "dispatches_eway_bill_cancel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "title": "Document Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EwbCancelIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EwbStateOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Dispatches Eway Bill Cancel",
+        "tags": [
+          "einvoice"
+        ]
+      }
+    },
+    "/api/v1/dispatches/{document_id}/eway-bill/vehicle": {
+      "post": {
+        "operationId": "dispatches_eway_bill_vehicle",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "title": "Document Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EwbVehicleIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EwbStateOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Dispatches Eway Bill Vehicle",
+        "tags": [
+          "einvoice"
+        ]
+      }
+    },
     "/api/v1/goods-receipts": {
       "get": {
         "operationId": "purchase_api_list_receipts",
@@ -14136,6 +14985,34 @@
         "summary": "List Receipts",
         "tags": [
           "purchase"
+        ]
+      }
+    },
+    "/api/v1/gst-portal/register": {
+      "get": {
+        "description": "Everything registered with the GST portals, newest first, and what still needs it.",
+        "operationId": "einvoice_api_register_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GstPortalRegisterOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Register List",
+        "tags": [
+          "einvoice"
         ]
       }
     },
@@ -14741,6 +15618,182 @@
         ]
       }
     },
+    "/api/v1/job-work/{document_id}/eway-bill": {
+      "get": {
+        "operationId": "job_work_eway_bill_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "title": "Document Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EwbStateOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Job Work Eway Bill Get",
+        "tags": [
+          "einvoice"
+        ]
+      },
+      "post": {
+        "operationId": "job_work_eway_bill_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "title": "Document Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EwbIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EwbStateOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Job Work Eway Bill Post",
+        "tags": [
+          "einvoice"
+        ]
+      }
+    },
+    "/api/v1/job-work/{document_id}/eway-bill/cancel": {
+      "post": {
+        "operationId": "job_work_eway_bill_cancel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "title": "Document Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EwbCancelIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EwbStateOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Job Work Eway Bill Cancel",
+        "tags": [
+          "einvoice"
+        ]
+      }
+    },
+    "/api/v1/job-work/{document_id}/eway-bill/vehicle": {
+      "post": {
+        "operationId": "job_work_eway_bill_vehicle",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "title": "Document Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EwbVehicleIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EwbStateOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Job Work Eway Bill Vehicle",
+        "tags": [
+          "einvoice"
+        ]
+      }
+    },
     "/api/v1/machines": {
       "get": {
         "description": "Machines (work centres), for routing and production entries.",
@@ -15284,6 +16337,125 @@
         "summary": "Cancel Note",
         "tags": [
           "notes"
+        ]
+      }
+    },
+    "/api/v1/notes/{note_id}/einvoice": {
+      "get": {
+        "operationId": "einvoice_api_note_einvoice",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "note_id",
+            "required": true,
+            "schema": {
+              "title": "Note Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EInvoiceStateOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Note Einvoice",
+        "tags": [
+          "einvoice"
+        ]
+      },
+      "post": {
+        "operationId": "einvoice_api_register_note",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "note_id",
+            "required": true,
+            "schema": {
+              "title": "Note Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EInvoiceStateOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Register Note",
+        "tags": [
+          "einvoice"
+        ]
+      }
+    },
+    "/api/v1/notes/{note_id}/einvoice/cancel": {
+      "post": {
+        "operationId": "einvoice_api_cancel_note_irn",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "note_id",
+            "required": true,
+            "schema": {
+              "title": "Note Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IrnCancelIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EInvoiceStateOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Cancel Note Irn",
+        "tags": [
+          "einvoice"
         ]
       }
     },
@@ -19340,6 +20512,127 @@
         "summary": "Cancel Invoice",
         "tags": [
           "sales"
+        ]
+      }
+    },
+    "/api/v1/sales-invoices/{invoice_id}/einvoice": {
+      "get": {
+        "operationId": "einvoice_api_invoice_einvoice",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invoice_id",
+            "required": true,
+            "schema": {
+              "title": "Invoice Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EInvoiceStateOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Invoice Einvoice",
+        "tags": [
+          "einvoice"
+        ]
+      },
+      "post": {
+        "description": "Registers the invoice with the IRP: its IRN and signed QR code.",
+        "operationId": "einvoice_api_register_invoice",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invoice_id",
+            "required": true,
+            "schema": {
+              "title": "Invoice Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EInvoiceStateOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Register Invoice",
+        "tags": [
+          "einvoice"
+        ]
+      }
+    },
+    "/api/v1/sales-invoices/{invoice_id}/einvoice/cancel": {
+      "post": {
+        "description": "Cancels the IRN (within 24 hours). The invoice itself can then be cancelled.",
+        "operationId": "einvoice_api_cancel_invoice_irn",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invoice_id",
+            "required": true,
+            "schema": {
+              "title": "Invoice Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IrnCancelIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EInvoiceStateOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "TabSessionAuth": []
+          }
+        ],
+        "summary": "Cancel Invoice Irn",
+        "tags": [
+          "einvoice"
         ]
       }
     },

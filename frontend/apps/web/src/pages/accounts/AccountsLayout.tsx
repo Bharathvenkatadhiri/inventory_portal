@@ -8,6 +8,7 @@ const TABS = [
   { to: "/accounts/payments", label: "Payments" },
   { to: "/accounts/tds", label: "TDS", side: "buying" },
   { to: "/accounts/msme", label: "MSME", side: "buying" },
+  { to: "/accounts/gst-portal", label: "E-invoice & EWB" },
   { to: "/accounts/gst-returns", label: "GST returns", needs: "ledger.view" },
 ] as const;
 

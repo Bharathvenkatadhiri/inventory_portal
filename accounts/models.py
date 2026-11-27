@@ -85,6 +85,8 @@ class Company(models.Model):
     state = models.CharField(max_length=100, blank=True)
     state_code = models.CharField(max_length=10, blank=True)
     pincode = models.CharField(max_length=10, blank=True)
+    # E-invoicing applies once turnover has crossed Rs 5 crore in any year (einvoice.services).
+    einvoice_applicable = models.BooleanField(default=False)
     gst_verified_at = models.DateTimeField(null=True, blank=True)
     # Letter of Undertaking for zero-rated exports without paying IGST. Filed
     # on the GST portal once per financial year; the ARN is quoted on

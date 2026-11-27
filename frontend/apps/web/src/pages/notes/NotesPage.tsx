@@ -8,6 +8,7 @@ import { Card, Empty, ErrorText, Loading, Modal, Notice, PageHeader } from "../.
 import { day, quantity, rupees } from "../../lib/format";
 import { ReasonModal, StatusBadge, TotalsTable } from "../purchase/PurchaseLayout";
 import type { Side } from "./NoteForm";
+import { EInvoicePanel } from "../../components/GstPortal";
 
 type Note = Schemas["NoteOut"];
 
@@ -107,6 +108,7 @@ export function NoteDetail({ note: n, onClose }: { note: Note; onClose: () => vo
       {n.warehouse ? <p className="text-sm text-gray-600">Goods {n.side === "sales" ? "came back into" : "went back from"} {n.warehouse}.</p> : null}
       {n.status === "draft" && n.side === "sales" ? <Notice tone="navy">It's numbered when you post it.</Notice> : null}
       {n.status === "cancelled" ? <Notice tone="red">Cancelled: {n.cancel_reason}</Notice> : null}
+      {n.side === "sales" && n.status !== "draft" ? <EInvoicePanel kind="note" id={n.id} /> : null}
       <table className="w-full">
         <thead className="border-b border-gray-100">
           <tr><th scope="col" className="table-head">Item</th><th scope="col" className="table-head text-right">Quantity</th><th scope="col" className="table-head text-right">Taxable</th><th scope="col" className="table-head text-right">GST</th></tr>

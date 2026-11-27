@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "quality",
     "jobwork",
     "quotations",
+    "einvoice",
 ]
 
 MIDDLEWARE = [
@@ -319,6 +320,8 @@ SITE_URL = env("SITE_URL", default=_default_site_url).rstrip("/")
 # no external calls, deterministic results, for dev/test), "setu" or
 # "cleartax". Provider credentials belong in env vars only, never in code.
 GST_PROVIDER = env("GST_PROVIDER", default="mock")
+# Who registers e-invoices and e-way bills (einvoice.providers): "mock" until a GSP account is set up.
+EINVOICE_PROVIDER = env("EINVOICE_PROVIDER", default="mock")
 # How long a successful verification stays usable for finishing sign-up.
 GST_VERIFICATION_MAX_AGE_MINUTES = env.int("GST_VERIFICATION_MAX_AGE_MINUTES", default=60)
 

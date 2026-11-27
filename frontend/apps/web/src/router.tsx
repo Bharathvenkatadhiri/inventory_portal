@@ -19,6 +19,7 @@ import { InventoryLayout } from "./pages/inventory/InventoryLayout";
 import { BatchesPage } from "./pages/inventory/BatchesPage";
 import { ItemsPage } from "./pages/inventory/ItemsPage";
 import { MsmePage } from "./pages/accounts/MsmePage";
+import { GstPortalPage } from "./components/GstPortal";
 import { QuotationReceivedPage, QuotationsReceivedPage } from "./pages/purchase/QuotationsReceivedPage";
 import { RfqDetailPage, RfqEditor, RfqsPage } from "./pages/purchase/RfqsPage";
 import { QuotationDetailPage, QuotationEditor, QuotationsPage } from "./pages/sales/QuotationsPage";
@@ -140,6 +141,7 @@ const payablesRoute = createRoute({ getParentRoute: () => accountsRoute, path: "
 const paymentsRoute = createRoute({ getParentRoute: () => accountsRoute, path: "payments", component: PaymentsPage });
 const tdsRoute = createRoute({ getParentRoute: () => accountsRoute, path: "tds", component: TdsPage });
 const msmeRoute = createRoute({ getParentRoute: () => accountsRoute, path: "msme", component: MsmePage });
+const gstPortalRoute = createRoute({ getParentRoute: () => accountsRoute, path: "gst-portal", component: GstPortalPage });
 const gstReturnsRoute = createRoute({ getParentRoute: () => accountsRoute, path: "gst-returns", component: GstReturnsPage });
 const productionRoute = createRoute({ getParentRoute: () => rootRoute, path: "production", component: ProductionLayout });
 const productionIndexRoute = createRoute({ getParentRoute: () => productionRoute, path: "/", component: ProductionIndex });
@@ -169,7 +171,7 @@ const routeTree = rootRoute.addChildren([
   partnersRoute,
   qcRoute,
   productionRoute.addChildren([productionIndexRoute, workOrdersRoute, productionEntriesRoute, bomsRoute, jobWorkRoute, costingRoute]),
-  accountsRoute.addChildren([accountsIndexRoute, receivablesRoute, payablesRoute, paymentsRoute, tdsRoute, gstReturnsRoute, msmeRoute]),
+  accountsRoute.addChildren([accountsIndexRoute, receivablesRoute, payablesRoute, paymentsRoute, tdsRoute, gstReturnsRoute, msmeRoute, gstPortalRoute]),
   purchaseRoute.addChildren([purchaseIndexRoute, ordersRoute, newOrderRoute, orderRoute, editOrderRoute, receiptsRoute, billsRoute, supplierNotesRoute, rfqsRoute, newRfqRoute, rfqRoute, editRfqRoute, quotationsReceivedRoute, quotationReceivedRoute]),
   salesRoute.addChildren([salesIndexRoute, ordersReceivedRoute, salesOrdersRoute, newSalesOrderRoute, salesOrderRoute, editSalesOrderRoute, dispatchesRoute, invoicesRoute, salesNotesRoute, quotationsRoute, newQuotationRoute, quotationRoute, editQuotationRoute, rfqsReceivedRoute]),
   inventoryRoute.addChildren([inventoryIndexRoute, itemsRoute, warehousesRoute, stockRoute, batchesRoute]),

@@ -10,6 +10,7 @@ import { useWarehouses } from "../inventory/InventoryLayout";
 import { BatchPicker, picksIn, useLineBatches, useTracking } from "../inventory/batches";
 import { ReasonModal, StatusBadge, todayIso, TotalsTable } from "../purchase/PurchaseLayout";
 import { salesOrderKey, useSalesOrder } from "./SalesLayout";
+import { EwayBillPanel } from "../../components/GstPortal";
 
 type Order = Schemas["SalesOrderOut"];
 type Action = "submit" | "approve" | "close";
@@ -20,6 +21,7 @@ export function SalesOrderDetailPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [modal, setModal] = useState<"dispatch" | "invoice" | "reject" | "cancel" | null>(null);
+  const [ewbFor, setEwbFor] = useState<{ id: number; number: string } | null>(null);
   const refresh = (data?: Order) => {
     if (data) queryClient.setQueryData(salesOrderKey(orderId), data);
     else queryClient.invalidateQueries({ queryKey: salesOrderKey(orderId) });
@@ -134,7 +136,10 @@ export function SalesOrderDetailPage() {
               {o.dispatches.map((d) => (
                 <li key={d.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                   <div><span className="font-semibold">{d.number}</span><p className="text-xs text-gray-500">{day(d.date)} · {d.detail}</p></div>
-                  <PdfButton url={`/api/v1/dispatches/${d.id}/pdf`} label="Challan" className="btn-link" />
+                  <span className="flex items-center gap-3">
+                    <button type="button" className="btn-link" onClick={() => setEwbFor({ id: d.id, number: d.number })}>E-way bill</button>
+                    <PdfButton url={`/api/v1/dispatches/${d.id}/pdf`} label="Challan" className="btn-link" />
+                  </span>
                 </li>
               ))}
             </ul>
@@ -157,6 +162,11 @@ export function SalesOrderDetailPage() {
         </Card>
       </div>
 
+      {ewbFor ? (
+        <Modal title={`E-way bill for ${ewbFor.number}`} onClose={() => setEwbFor(null)} footer={<button type="button" className="btn-secondary" onClick={() => setEwbFor(null)}>Close</button>}>
+          <EwayBillPanel kind="dispatch" id={ewbFor.id} />
+        </Modal>
+      ) : null}
       {modal === "dispatch" ? <DispatchModal order={o} onClose={() => setModal(null)} onDone={() => { refresh(); setModal(null); }} /> : null}
       {modal === "invoice" ? <InvoiceModal order={o} onClose={() => setModal(null)} onDone={(id) => { refresh(); navigate({ to: "/sales/invoices", search: { invoice: id } }); }} /> : null}
       {modal === "reject" ? (

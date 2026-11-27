@@ -478,6 +478,9 @@ def cancel_invoice(membership, invoice, reason):
     from adjustments.services import has_live_notes
     if has_live_notes(invoice):
         raise SalesError("There are credit or debit notes against this invoice. Cancel them first.")
+    from einvoice.services import active_irn
+    if active_irn(invoice):
+        raise SalesError("Cancel its e-invoice (IRN) first; after 24 hours, issue a credit note instead.")
     invoice.status = Invoice.Status.CANCELLED
     invoice.cancelled_at, invoice.cancel_reason = timezone.now(), reason[:300]
     invoice.save()

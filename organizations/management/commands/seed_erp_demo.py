@@ -39,6 +39,8 @@ from adjustments.models import CreditDebitNote
 from finance import services as finance
 from finance.models import Payment
 from plans import erp
+from einvoice import services as einvoicing
+from einvoice.models import EInvoice, EwayBill
 from production import costing
 from quotations import services as quotations
 from quotations.models import Quotation, Rfq
@@ -157,13 +159,13 @@ ITEMS = {
         ('FG-GS-120', 'Gear shaft GS-120', 'finished_good', 'NOS', '8483', '18', None, '850', None, {'AMB': ('240', '610')}),
         ('FG-PH-75', 'Pump housing PH-75', 'finished_good', 'NOS', '8413', '18', None, '2400', None, {'AMB': ('85', '1720')}),
         ('SV-CNC', 'CNC machining charges', 'service', 'OTH', '998898', '18', None, '1200', None, {}),
-        ('BO-CAST-VB50', 'Valve body casting VB-50 (from Kaveri)', 'component', 'NOS', '7325', '18', '980', None, '50', {}),
+        ('BO-CAST-VB50', 'Valve body casting VB-50 (from Kaveri)', 'component', 'NOS', '73251000', '18', '980', None, '50', {}),
     ],
     'kaveri': [
         ('RM-PIG-IRON', 'Foundry-grade pig iron', 'raw_material', 'TON', '7201', '18', '41000', None, '20', {'FS': ('48', '40500')}),
         ('RM-FESI-75', 'Ferro silicon 75%', 'raw_material', 'KGS', '7202', '18', '118', None, '500', {'FS': ('1250', '115')}),
         ('CO-SAND-SILICA', 'Silica moulding sand', 'consumable', 'TON', '2505', '5', '2600', None, '10', {'FS': ('35', '2550')}),
-        ('FG-VB-50', 'Valve body casting VB-50', 'finished_good', 'NOS', '7325', '18', None, '1450', None, {'FS': ('320', '980')}),
+        ('FG-VB-50', 'Valve body casting VB-50', 'finished_good', 'NOS', '73251000', '18', None, '1450', None, {'FS': ('320', '980')}),
     ],
     'tejas': [
         ('BO-PCB-CTRL', 'Controller PCB assembly, rev C', 'component', 'NOS', '8534', '18', '860', None, '50', {'RS': ('120', '845')}),
@@ -281,6 +283,8 @@ class Command(BaseCommand):
         ProductionEntry.objects.filter(company__in=companies).delete()
         BillOfMaterials.objects.filter(company__in=companies).delete()
         # Notes, payments, sales and purchase documents PROTECT the companies, documents, items and lines they point to.
+        EInvoice.objects.filter(company__in=companies).delete()  # PROTECT invoices and notes
+        EwayBill.objects.filter(company__in=companies).delete()  # PROTECT dispatches and challans
         Quotation.objects.filter(Q(company__in=companies) | Q(customer__in=companies)).update(previous=None)
         Quotation.objects.filter(Q(company__in=companies) | Q(customer__in=companies)).delete()
         Rfq.objects.filter(Q(company__in=companies) | Q(suppliers__supplier__in=companies)).delete()
@@ -466,6 +470,8 @@ class Command(BaseCommand):
 
         # Kaveri accepts it on MakeSetu, sends 250 and invoices them.
         kaveri = self.orgs['kaveri']
+        # Kaveri's turnover is over ₹5 crore, so its B2B invoices are e-invoices.
+        Company.objects.filter(pk=kaveri.pk).update(einvoice_applicable=True)
         sneha = member('kaveri', 'sneha')  # Sales Manager: may accept on Growth
         sales_order = sales.accept(sneha, castings, {
             'dispatch_from_id': Warehouse.objects.get(company=kaveri, code='FS').pk,
@@ -482,6 +488,10 @@ class Command(BaseCommand):
             'invoice_date': ago(13), 'lines': [{'order_line_id': sales_order.lines.get().pk, 'quantity': '250'}],
         })
         invoice = sales.post_invoice(sneha, invoice)
+        # The consignment is worth over ₹50,000 and goes Pune to Chennai: an e-way bill, then the IRN.
+        einvoicing.generate_ewb(member('kaveri', 'nikhil'), challan, {
+            'distance_km': 1190, 'vehicle_number': challan.vehicle_number, 'transporter_name': challan.transporter})
+        einvoicing.register(sneha, invoice)
 
         # Sri Lakshmi receives them against Kaveri's challan (castings need inspection, so they
         # wait under QC), passes 240 and rejects 10, and enters Kaveri's invoice as a bill.

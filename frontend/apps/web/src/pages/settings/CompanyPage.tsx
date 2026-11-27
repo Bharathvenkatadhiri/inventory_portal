@@ -117,6 +117,13 @@ function Profile({ company, manage }: { company: Company; manage: boolean }) {
             onChange={(value) => update.mutate({ tds_194q: value })}
           />
           <Toggle
+            label="E-invoicing applies"
+            description="Switch on once your turnover has crossed ₹5 crore in any year since 2017-18: B2B invoices and notes then get an IRN and QR code from the IRP (Accounts, E-invoice & EWB)."
+            checked={company.einvoice_applicable}
+            disabled={!manage || update.isPending}
+            onChange={(value) => update.mutate({ einvoice_applicable: value })}
+          />
+          <Toggle
             label="Findable by name"
             description="Other companies can find you by name when they add a partner. Off: only someone with your GSTIN can."
             checked={company.findable}

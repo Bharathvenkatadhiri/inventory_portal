@@ -322,6 +322,9 @@ def cancel_note(membership, note, reason):
     if not reason:
         raise NoteError("Say why the note is being cancelled.")
     note = _locked(note, Status.POSTED)
+    from einvoice.services import active_irn
+    if active_irn(note):
+        raise NoteError("Cancel its e-invoice (IRN) first.")
     if note.is_return and note.warehouse_id:
         warehouse = Warehouse.objects.select_for_update().get(pk=note.warehouse_id)
         moved = list(StockEntry.objects.filter(company=note.company, reference=note.number,
