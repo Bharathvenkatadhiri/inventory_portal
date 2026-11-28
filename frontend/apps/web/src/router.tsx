@@ -46,6 +46,7 @@ import { CompanyPage } from "./pages/settings/CompanyPage";
 import { PeoplePage } from "./pages/settings/PeoplePage";
 import { RolesPage } from "./pages/settings/RolesPage";
 import { SettingsLayout } from "./pages/settings/SettingsLayout";
+import { AuditPage } from "./pages/settings/AuditPage";
 import { TeamsPage } from "./pages/settings/TeamsPage";
 
 function NotFound() {
@@ -165,6 +166,7 @@ const peopleRoute = createRoute({ getParentRoute: () => settingsRoute, path: "pe
 const rolesRoute = createRoute({ getParentRoute: () => settingsRoute, path: "roles", component: RolesPage });
 const teamsRoute = createRoute({ getParentRoute: () => settingsRoute, path: "teams", component: TeamsPage });
 const billingRoute = createRoute({ getParentRoute: () => settingsRoute, path: "billing", component: BillingPage });
+const auditRoute = createRoute({ getParentRoute: () => settingsRoute, path: "audit", component: AuditPage });
 
 const routeTree = rootRoute.addChildren([
   homeRoute,
@@ -176,7 +178,7 @@ const routeTree = rootRoute.addChildren([
   salesRoute.addChildren([salesIndexRoute, ordersReceivedRoute, salesOrdersRoute, newSalesOrderRoute, salesOrderRoute, editSalesOrderRoute, dispatchesRoute, invoicesRoute, salesNotesRoute, quotationsRoute, newQuotationRoute, quotationRoute, editQuotationRoute, rfqsReceivedRoute]),
   inventoryRoute.addChildren([inventoryIndexRoute, itemsRoute, warehousesRoute, stockRoute, batchesRoute]),
   profileRoute,
-  settingsRoute.addChildren([settingsIndexRoute, companyRoute, peopleRoute, rolesRoute, teamsRoute, billingRoute]),
+  settingsRoute.addChildren([settingsIndexRoute, companyRoute, peopleRoute, rolesRoute, teamsRoute, billingRoute, auditRoute]),
 ]);
 
 // Every app path is under /app (Django serves the page there, organizations.views.app_shell).

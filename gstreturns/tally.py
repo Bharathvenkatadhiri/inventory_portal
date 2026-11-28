@@ -24,7 +24,8 @@ LEDGERS = {
 
 
 def _x(text):
-    return escape(str(text or ''))
+    """Escaped for XML text and attribute values (quotes too: names go in NAME="...")."""
+    return escape(str(text or ''), {'"': '&quot;', "'": '&apos;'})
 
 
 def _amt(value):

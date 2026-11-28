@@ -36,7 +36,7 @@ export function BomsPage() {
                 <div>
                   <p className="font-semibold text-navy-900">{b.item_name} <span className="text-sm font-normal text-gray-500">{b.item_code}</span></p>
                   <p className="text-sm text-gray-500">
-                    {b.name} · for {quantity(b.output_quantity, b.unit)} · {costed
+                    {b.name} · for {quantity(b.output_quantity, b.unit)} · {costed && b.standard_cost.total != null
                       ? <>standard {rupees(b.standard_cost.total)} a unit</>
                       : <>about {rupees(b.estimated_unit_cost)} a unit in materials</>}
                   </p>

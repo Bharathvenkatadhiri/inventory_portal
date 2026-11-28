@@ -18,6 +18,7 @@ PERMISSIONS = {
     'roles.manage': ("Create and edit roles", 'Admin', erp.ADMIN, None),
     'partners.manage': ("Invite and approve customers and suppliers", 'Admin', erp.ADMIN, None),
     'billing.manage': ("Manage the plan and payments", 'Admin', erp.ADMIN, None),
+    'audit.view': ("See the audit log (who changed what)", 'Admin', erp.MAINTENANCE_AUDIT, None),
 
     'po.create': ("Create purchase orders", 'Purchase', erp.PURCHASE, BUYING),
     'po.approve': ("Approve purchase orders", 'Purchase', erp.APPROVALS, BUYING),

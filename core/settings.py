@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     "jobwork",
     "quotations",
     "einvoice",
+    "audit",
 ]
 
 MIDDLEWARE = [
@@ -67,6 +68,7 @@ MIDDLEWARE = [
     "accounts.middleware.RolePermissionMiddleware",
     "plans.middleware.StorageLimitMiddleware",
     "organizations.middleware.WorkspaceScopeMiddleware",
+    "audit.recorder.AuditMiddleware",
     "django.contrib.auth.middleware.LoginRequiredMiddleware",
 ]
 

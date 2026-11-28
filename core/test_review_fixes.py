@@ -84,3 +84,35 @@ class TdsDepositTests(TdsTestCase):
         self.assertEqual([(r['bill_reference'][:3], r['challan_serial']) for r in rows],
                          [('K-1', '00001'), ('K-2', '00001'), ('K-3', '00002')])
         self.assertEqual(sum((r['tds_deducted'] for r in rows), Decimal('0')), Decimal('2400'))
+
+
+class CostVisibilityTests(TdsTestCase):
+    """Security review, 28 Nov 2026: conversion costs only for people with costing.manage."""
+
+    def test_machine_operator_sees_materials_but_not_conversion_costs(self):
+        from inventory.models import Item, StockEntry
+        from organizations.tests import add_member
+        from plans import erp
+
+        self.company.erp_plan = erp.GROWTH
+        self.company.save(update_fields=['erp_plan'])
+        gear = Item.objects.create(company=self.company, code='GEAR', name='Gear', kind='finished_good', unit='NOS', hsn_code='8483')
+        StockEntry.objects.create(company=self.company, item=self.bar, warehouse=self.store, kind='opening', quantity=100, rate=80,
+                                  entry_date=TODAY)
+        self.ok(self.api('put', '/production/cost-settings', {'labour_hour_rate': '200', 'overhead_percent': '50'}))
+        machine = self.ok(self.api('post', '/machines', {'code': 'CNC', 'name': 'Lathe', 'hour_rate': '500'}))
+        bom = self.ok(self.api('post', '/boms', {'item_id': gear.pk, 'machine_id': machine['id'], 'machine_hours': '0.2', 'labour_hours': '0.25',
+                                                 'components': [{'item_id': self.bar.pk, 'quantity': '2'}]}))
+        self.assertEqual(Decimal(bom['standard_cost']['total']), Decimal('381'))  # 2 kg bar at 78 + 50 + 100 + 75
+        operator = add_member(self.company, 'op@vaigai.example', 'machine_operator')
+        self.login(operator.user)
+        entry = self.ok(self.api('post', '/production/entries', {'bom_id': bom['id'], 'quantity_produced': '1', 'source_warehouse_id': self.store.pk}))
+        self.assertEqual((entry['labour_cost'], entry['machine_cost'], entry['total_cost']), (None, None, None))
+        seen = self.ok(self.api('get', f"/boms/{bom['id']}"))['standard_cost']
+        self.assertEqual((Decimal(seen['material']), seen['labour'], seen['machine'], seen['total']), (Decimal('156'), None, None, None))
+
+
+class TallyQuoteTests(TdsTestCase):
+    def test_quotes_in_names_are_escaped_in_attributes(self):
+        from gstreturns.tally import _x
+        self.assertEqual(_x('Acme" ACTION="Delete'), 'Acme&quot; ACTION=&quot;Delete')

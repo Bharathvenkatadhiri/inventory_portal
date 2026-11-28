@@ -69,12 +69,14 @@ class ComponentOut(Schema):
 
 
 class StandardCostOut(Schema):
+    # Labour, machine, overhead and the total are null for people without costing.manage:
+    # with the hours they'd give away the cost rates.
     material: Decimal
-    labour: Decimal
-    machine: Decimal
-    overhead: Decimal
+    labour: Optional[Decimal]
+    machine: Optional[Decimal]
+    overhead: Optional[Decimal]
     scrap: Decimal
-    total: Decimal
+    total: Optional[Decimal]
 
 
 class BomOut(Schema):
@@ -123,8 +125,19 @@ def _bom_out(bom, membership):
         'machine_id': bom.machine_id, 'machine_name': str(bom.machine) if bom.machine_id else '',
         'machine_hours': bom.machine_hours, 'labour_hours': bom.labour_hours, 'scrap_item_id': bom.scrap_item_id,
         'scrap_item_name': bom.scrap_item.name if bom.scrap_item_id else '', 'scrap_quantity': bom.scrap_quantity,
-        'standard_cost': costing.standard_cost(bom),
+        'standard_cost': _standard(bom, membership),
     }
+
+
+def _sees_costs(membership):
+    return _can(membership, 'costing.manage')
+
+
+def _standard(bom, membership):
+    cost = costing.standard_cost(bom)
+    if not _sees_costs(membership) and (cost['labour'] or cost['machine'] or cost['overhead']):
+        cost.update(labour=None, machine=None, overhead=None, total=None)
+    return cost
 
 
 def _bom(membership, bom_id):
@@ -304,11 +317,11 @@ class EntryOut(Schema):
     machine_name: str
     machine_hours: Decimal
     labour_hours: Decimal
-    labour_cost: Decimal
-    machine_cost: Decimal
-    overhead_cost: Decimal
+    labour_cost: Optional[Decimal]  # null without costing.manage
+    machine_cost: Optional[Decimal]  # null without costing.manage
+    overhead_cost: Optional[Decimal]  # null without costing.manage
     scrap_value: Decimal
-    total_cost: Decimal
+    total_cost: Optional[Decimal]  # null without costing.manage
     scrap: List[ScrapOut]
 
 
@@ -329,8 +342,11 @@ def _entry_out(e, membership):
                         for c in e.consumption.select_related('item')],
         'output_batches': batch_rows(made.get((e.number, e.item_id))),
         'machine_name': str(e.machine) if e.machine_id else '', 'machine_hours': e.machine_hours, 'labour_hours': e.labour_hours,
-        'labour_cost': e.labour_cost, 'machine_cost': e.machine_cost, 'overhead_cost': e.overhead_cost,
-        'scrap_value': e.scrap_value, 'total_cost': costing.total_cost(e),
+        **({'labour_cost': e.labour_cost, 'machine_cost': e.machine_cost, 'overhead_cost': e.overhead_cost,
+            'total_cost': costing.total_cost(e)}
+           if _sees_costs(membership) or not (e.labour_cost or e.machine_cost or e.overhead_cost) else
+           {'labour_cost': None, 'machine_cost': None, 'overhead_cost': None, 'total_cost': None}),
+        'scrap_value': e.scrap_value,
         'scrap': [{'item_id': s.item_id, 'item_code': s.item.code, 'item_name': s.item.name, 'unit': s.item.unit,
                    'quantity': s.quantity, 'rate': s.rate, 'value': costing.money(s.value)} for s in e.scrap.select_related('item')],
         'can_cancel': e.status == ProductionEntry.Status.POSTED and _writes_allowed(membership) and _can(membership, 'bom.manage'),

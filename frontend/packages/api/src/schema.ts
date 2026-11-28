@@ -84,6 +84,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Audit Log
+         * @description Newest first, a page at a time (pass the last id as before_id for the next).
+         */
+        get: operations["audit_api_audit_log"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/batch-labels/pdf": {
         parameters: {
             query?: never;
@@ -3067,6 +3087,43 @@ export interface components {
              */
             state_code: string;
         };
+        /** AuditEventOut */
+        AuditEventOut: {
+            /** Action */
+            action: string;
+            /** Action Label */
+            action_label: string;
+            /** Changes */
+            changes: unknown;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Id */
+            id: number;
+            /** Ip Address */
+            ip_address: string | null;
+            /** Object Id */
+            object_id: string;
+            /** Object Label */
+            object_label: string;
+            /** Object Name */
+            object_name: string;
+            /** Object Type */
+            object_type: string;
+            /** User Name */
+            user_name: string;
+        };
+        /** AuditPageOut */
+        AuditPageOut: {
+            /** Events */
+            events: components["schemas"]["AuditEventOut"][];
+            /** More */
+            more: boolean;
+            /** Object Types */
+            object_types: string[][];
+        };
         /** BankAccountIn */
         BankAccountIn: {
             /** Account Name */
@@ -4054,11 +4111,11 @@ export interface components {
             /** Item Name */
             item_name: string;
             /** Labour Cost */
-            labour_cost: number | string;
+            labour_cost: number | string | null;
             /** Labour Hours */
             labour_hours: number | string;
             /** Machine Cost */
-            machine_cost: number | string;
+            machine_cost: number | string | null;
             /** Machine Hours */
             machine_hours: number | string;
             /** Machine Name */
@@ -4072,7 +4129,7 @@ export interface components {
             /** Output Batches */
             output_batches: components["schemas"]["BatchQtyOut"][];
             /** Overhead Cost */
-            overhead_cost: number | string;
+            overhead_cost: number | string | null;
             /** Quantity Produced */
             quantity_produced: number | string;
             /** Quantity Rejected */
@@ -4094,7 +4151,7 @@ export interface components {
             /** Target Warehouse */
             target_warehouse: string;
             /** Total Cost */
-            total_cost: number | string;
+            total_cost: number | string | null;
             /** Unit */
             unit: string;
             /** Unit Cost */
@@ -7069,17 +7126,17 @@ export interface components {
         /** StandardCostOut */
         StandardCostOut: {
             /** Labour */
-            labour: number | string;
+            labour: number | string | null;
             /** Machine */
-            machine: number | string;
+            machine: number | string | null;
             /** Material */
             material: number | string;
             /** Overhead */
-            overhead: number | string;
+            overhead: number | string | null;
             /** Scrap */
             scrap: number | string;
             /** Total */
-            total: number | string;
+            total: number | string | null;
         };
         /** StockRowOut */
         StockRowOut: {
@@ -7493,6 +7550,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaymentOptionsOut"];
+                };
+            };
+        };
+    };
+    audit_api_audit_log: {
+        parameters: {
+            query?: {
+                object_type?: string;
+                object_id?: string;
+                user_id?: number | null;
+                action?: string;
+                q?: string;
+                start?: string | null;
+                end?: string | null;
+                before_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditPageOut"];
                 };
             };
         };

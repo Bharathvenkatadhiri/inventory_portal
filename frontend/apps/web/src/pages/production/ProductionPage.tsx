@@ -266,7 +266,8 @@ function EntryDetail({ entry: e, onClose }: { entry: Entry; onClose: () => void 
       {e.status === "cancelled" ? <Notice tone="red">Cancelled: {e.cancel_reason}</Notice> : null}
       <p className="text-sm">
         <strong>{quantity(e.quantity_produced, e.unit)}</strong> good{Number(e.quantity_rejected) ? `, ${quantity(e.quantity_rejected, e.unit)} rejected` : ""} into {e.target_warehouse}.
-        {Number(e.total_cost) !== Number(e.material_cost) ? "Cost" : "Materials"} {rupees(e.total_cost)} → <strong>{rupees(e.unit_cost)}</strong> a good unit.
+        {e.total_cost == null ? <>Costed at <strong>{rupees(e.unit_cost)}</strong> a good unit.</>
+          : <>{Number(e.total_cost) !== Number(e.material_cost) ? "Cost" : "Materials"} {rupees(e.total_cost)} → <strong>{rupees(e.unit_cost)}</strong> a good unit.</>}
       </p>
       {Number(e.labour_cost) || Number(e.machine_cost) || Number(e.overhead_cost) || Number(e.scrap_value) ? (
         <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-3">
